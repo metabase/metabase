@@ -41,8 +41,8 @@
     If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
-  {:arglists '([driver error-type database error-message]), :added "0.48.0"}
-  (fn [driver error-type _database _error-message]
+  {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
+  (fn [driver error-type _database _action-type _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
 
@@ -51,13 +51,13 @@
   nil)
 
 (defn- parse-sql-error
-  [driver database e]
+  [driver database action-type e]
   (let [parsers-for-driver (keep (fn [[[method-driver error-type] method]]
                                    (when (= method-driver driver)
                                      (partial method driver error-type)))
                                  (dissoc (methods maybe-parse-sql-error) :default))]
     (try
-     (some #(% database (ex-message e)) parsers-for-driver)
+     (some #(% database action-type (ex-message e)) parsers-for-driver)
      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
      ;; We'll still get the original unparsed error message.
      (catch Throwable new-e
@@ -65,19 +65,19 @@
        nil))))
 
 (defn- do-with-auto-parse-sql-error
-  [driver database thunk]
+  [driver database action thunk]
   (try
    (thunk)
    (catch SQLException e
      (throw (ex-info (or (ex-message e) "Error executing action.")
-                     (or (some-> (parse-sql-error driver database e) (assoc :status-code 400))
+                     (or (some-> (parse-sql-error driver database action e) (assoc :status-code 400))
                          (ex-data e)
                          {}))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
-  [driver database & body]
-  `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
+  [driver database action-type & body]
+  `(do-with-auto-parse-sql-error ~driver ~database ~action-type (fn [] ~@body)))
 
 (defn- mbql-query->raw-hsql
   [driver query]
@@ -204,7 +204,7 @@
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-deleted (with-auto-parse-sql-exception driver database
+      (let [rows-deleted (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
         (when-not (= rows-deleted 1)
           (throw (ex-info (if (zero? rows-deleted)
@@ -226,7 +226,7 @@
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-updated (with-auto-parse-sql-exception driver database
+      (let [rows-updated (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
         (when-not (= rows-updated 1)
           (throw (ex-info (if (zero? rows-updated)
@@ -276,7 +276,7 @@
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
-      (let [result (with-auto-parse-sql-exception driver database
+      (let [result (with-auto-parse-sql-exception driver database action
                      (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false}))
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (select-created-row driver create-hsql conn result)]

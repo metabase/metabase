@@ -24,7 +24,7 @@
           (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
-  [_driver error-type _database error-message]
+  [_driver error-type _database _action-type error-message]
   (when-let [[_ _value column _table]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" of relation \"([^\"]+)\" violates not-null constraint"  error-message)]
     {:type    error-type
@@ -32,7 +32,7 @@
      :errors  {column (tru "You must provide a value.")}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
-  [_driver error-type database error-message]
+  [_driver error-type database _action-type error-message]
   (when-let [[_match constraint _value]
              (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (let [columns (constraint->column-names database constraint)]
@@ -44,20 +44,31 @@
                         columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
-  [_driver error-type _database error-message]
-  (or (when-let [[_match _table _constraint _ref-table _columns _value]
-                 (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
-        {:type    error-type
-         :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
-         :errors  {}})
-      (when-let [[_match _table _constraint column _value ref-table]
+  [_driver error-type _database action-type error-message]
+  (or (when-let [[_match _table _constraint _ref-table column _value _ref-table-2]
+                 (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 :row/delete
+                 {:message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+                  :errors  {}}
+
+                 :row/update
+                 {:message (tru "Unable to update the record.")
+                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+      (when-let [[_match _table _constraint column _value _ref-table]
                  (re-find #"ERROR: insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
-        {:type    error-type
-         :message (tru "Your row contains foreign key that is not existed, so it cannot be created/updated.")
-         :errors  {column (tru "This value does not exist in {0} table" ref-table)}})))
+          {:type    error-type
+           :message (case action-type
+                      :row/create
+                      (tru "Unable to create a new record.")
+
+                      :row/update
+                      (tru "Unable to update the record."))
+           :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/incorrect-value-type]
-  [_driver error-type _database error-message]
+  [_driver error-type _database _action-type error-message]
   (when-let [[_ _expected-type _value]
              (re-find #"ERROR:\s+invalid input syntax for type ([^\"]+):\s+.*" error-message)]
     {:type          error-type
@@ -66,19 +77,19 @@
 
 (comment
  (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-foreign-key-constraint {:id 47}
+  :postgres actions.error/violate-foreign-key-constraint {:id 47} :row/update
   "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")
 
  (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-unique-constraint {:id 47}
+  :postgres actions.error/violate-unique-constraint {:id 47} nil
   "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")
 
  (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-not-null-constraint nil
+  :postgres actions.error/violate-not-null-constraint nil nil
   "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")
 
  (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/incorrect-value-type nil
+  :postgres actions.error/incorrect-value-type nil nil
   "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch."))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres

@@ -3419,7 +3419,7 @@
                 (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
                   (testing (str "Attempting to implicitly insert bad " field-name)
                     (is (has-valid-action-execution-error-message?
-                         (mt/user-http-request :crowberto :post 500
+                         (mt/user-http-request :crowberto :post 400
                                                (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
                                                {:parameters {field-name value}}))))
                   (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}

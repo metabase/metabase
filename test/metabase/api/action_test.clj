@@ -654,7 +654,7 @@
      ["lucky"     1]]]])
 
 (deftest action-error-handling-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions))
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
         (mt/with-current-user (mt/user->id :crowberto)
@@ -667,7 +667,9 @@
                                                        :kind "row/delete"}]
             (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query user) :dataset true}
                               {create-user :action-id} {:type :implicit
-                                                        :kind "row/create"}]
+                                                        :kind "row/create"}
+                              {update-user :action-id} {:type :implicit
+                                                        :kind "row/update"}]
               (testing "violate not-null constraint"
                 (testing "when creating"
                   (is (= (case driver/*driver*
@@ -685,71 +687,82 @@
                                                {:parameters {"id" "admin" "ranking" nil}})))))
 
               (testing "violate unique constraint"
-                (testing "when creating"
-                  (is (= (case driver/*driver*
-                           :h2
-                           {:message "Ranking already exist."
-                            :errors {:RANKING "This Ranking value already exists."}}
+               (testing "when creating"
+                 (is (= (case driver/*driver*
+                          :h2
+                          {:message "Ranking already exist."
+                           :errors {:RANKING "This Ranking value already exists."}}
 
-                           {:message "Ranking already exist."
-                            :errors {:ranking "This Ranking value already exists."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                               {:parameters {"name" "new" "ranking" 1}}))))
-                (testing "when updating"
-                  (is (= (case driver/*driver*
-                           :h2
-                           {:message "Ranking already exist."
-                            :errors {:RANKING "This Ranking value already exists."}}
+                          {:message "Ranking already exist."
+                           :errors {:ranking "This Ranking value already exists."}})
+                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                              {:parameters {"name" "new" "ranking" 1}}))))
+               (testing "when updating"
+                 (is (= (case driver/*driver*
+                          :h2
+                          {:message "Ranking already exist."
+                           :errors {:RANKING "This Ranking value already exists."}}
 
-                           {:message "Ranking already exist."
-                            :errors {:ranking "This Ranking value already exists."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                               {:parameters {"id" 1 "ranking" 2}})))))
+                          {:message "Ranking already exist."
+                           :errors {:ranking "This Ranking value already exists."}})
+                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                              {:parameters {"id" 1 "ranking" 2}})))))
 
               (testing "incorrect type"
-                (testing "when creating"
-                  (is (= (case driver/*driver*
-                           :h2
-                           {:message "Some of your values aren’t of the correct type for the database"
-                            :errors {}}
+               (testing "when creating"
+                 (is (= (case driver/*driver*
+                          :h2
+                          {:message "Some of your values aren’t of the correct type for the database"
+                           :errors {}}
 
-                           :postgres
-                           {:message "Some of your values aren’t of the correct type for the database"
-                            :errors {}}
+                          :postgres
+                          {:message "Some of your values aren’t of the correct type for the database"
+                           :errors {}}
 
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {:ranking "This value should be of type Integer."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                               {:parameters {"name" "new" "ranking" "S"}}))))
+                          {:message "Some of your values aren’t of the correct type for the database."
+                           :errors {:ranking "This value should be of type Integer."}})
+                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                              {:parameters {"name" "new" "ranking" "S"}}))))
 
-                (testing "when updating"
-                  (is (= (case driver/*driver*
-                           :h2
-                           {:message "Some of your values aren’t of the correct type for the database"
-                            :errors {}}
+               (testing "when updating"
+                 (is (= (case driver/*driver*
+                          :h2
+                          {:message "Some of your values aren’t of the correct type for the database"
+                           :errors {}}
 
-                           :postgres
-                           {:message "Some of your values aren’t of the correct type for the database"
-                            :errors {}}
+                          :postgres
+                          {:message "Some of your values aren’t of the correct type for the database"
+                           :errors {}}
 
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {:ranking "This value should be of type Integer."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                               {:parameters {"id" 1 "ranking" "S"}})))))
+                          {:message "Some of your values aren’t of the correct type for the database."
+                           :errors {:ranking "This value should be of type Integer."}})
+                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                              {:parameters {"id" 1 "ranking" "S"}})))))
 
              (testing "violate fk constraint"
                (testing "when creating"
                  (is (= (case driver/*driver*
                           :h2
-                          {:message "Other tables rely on this row so it cannot be updated/deleted."
-                           :errors {}}
+                          {:message "Unable to create a new record."
+                           :errors {:GROUP-ID "This Group-id does not exist."}}
 
-                          {:message "Your row contains foreign key that is not existed, so it cannot be created/updated."
-                           :errors {:group-id "This value does not exist in group table"}})
+                          {:message "Unable to create a new record."
+                           :errors {:group-id "This Group-id does not exist."}})
                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-user)
                                               {:parameters {"name" "new user"
                                                             "group_id" 999}}))))
 
+               (testing "when updating"
+                 (is (= (case driver/*driver*
+                          :h2
+                          {:message "Unable to update the record."
+                           :errors  {:GROUP-ID "This Group-id does not exist."}}
+
+                          {:message "Unable to update the record."
+                           :errors {:group-id "This Group-id does not exist."}})
+                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-user)
+                                              {:parameters {"id"       1
+                                                            "group_id" 999}}))))
                (testing "when deleting"
                  (is (= {:message "Other tables rely on this row so it cannot be updated/deleted."
                          :errors  {}}
