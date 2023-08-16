@@ -18,6 +18,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -234,26 +235,43 @@
                         {:field field-id, :database (database-id)})))))
   nil)
 
+(defn ->legacy-metadata
+  "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
+  or [[metabase.lib.metadata]] functions
+  (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
+  and Toucan 2 model `:type` metadata).
+
+  Try to avoid using this, we would live to remove this in the near future."
+  [mlv2-metadata]
+  (let [model (case (:lib/type mlv2-metadata)
+                :metadata/database :model/Database
+                :metadata/table :model/Table
+                :metadata/column :model/Field)]
+    (-> mlv2-metadata
+        (dissoc :lib/type)
+        (update-keys u/->snake_case_en)
+        (vary-meta assoc :type model))))
+
 (mu/defn database :- DatabaseInstanceWithRequiredStoreKeys
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
   returned."
   []
   (-> (or (lib.metadata.protocols/database (metadata-provider))
           (throw (ex-info (tru "Database {0} does not exist." (pr-str (database-id)))
-                          {:database-id (database-id)})))
-      (dissoc :lib/type)
-      (update-keys u/->snake_case_en)
-      (vary-meta assoc :type :model/Database)))
+                          {:status-code 404
+                           :type        qp.error-type/invalid-query
+                           :database-id (database-id)})))
+      ->legacy-metadata))
 
 (defn- default-table
   "Default implementation of [[table]]."
   [table-id]
   (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
           (throw (ex-info (tru "Table {0} does not exist." (pr-str table-id))
-                          {:table-id table-id})))
-      (dissoc :lib/type)
-      (update-keys u/->snake_case_en)
-      (vary-meta assoc :type :model/Table)))
+                          {:status-code 404
+                           :type        qp.error-type/invalid-query
+                           :table-id    table-id})))
+      ->legacy-metadata))
 
 (def ^:dynamic *table*
   "Implementation of [[table]]. Dynamic so this can be overridden as needed by tests."
@@ -269,10 +287,10 @@
   [field-id]
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
           (throw (ex-info (tru "Field {0} does not exist." (pr-str field-id))
-                          {:field-id field-id})))
-      (dissoc :lib/type)
-      (update-keys u/->snake_case_en)
-      (vary-meta assoc :type :model/Field)))
+                          {:status-code 404
+                           :type        qp.error-type/invalid-query
+                           :field-id    field-id})))
+      ->legacy-metadata))
 
 (def ^:dynamic *field*
   "Implementation of [[field]]. Dynamic so this can be overridden as needed by tests."

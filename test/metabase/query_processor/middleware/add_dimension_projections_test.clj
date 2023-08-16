@@ -499,7 +499,7 @@
                           :fields [&Q1.orders.id &Q1.orders.product_id]
                           :limit  2})))))))))
 
-(deftest ^:parallel internal-remap-e2e-test
+(deftest internal-remap-e2e-test
   (mt/with-column-remappings [venues.category_id (values-of categories.name)]
     (let [results (qp/process-query
                    {:database (mt/id)

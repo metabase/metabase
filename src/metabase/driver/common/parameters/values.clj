@@ -11,11 +11,10 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -165,10 +164,10 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (t2/select-one Card :id card-id)
+  (let [card           (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
         persisted-info (when (:dataset card)
-                         (t2/select-one PersistedInfo :card_id card-id))
-        query          (or (:dataset_query card)
+                         (:lib/persisted-info card))
+        query          (or (:dataset-query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try

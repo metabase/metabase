@@ -21,7 +21,9 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm])
   (:import
    (java.sql Connection PreparedStatement)))
 
@@ -76,7 +78,9 @@
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
-                          (m/index-by :name (t2/select Field :table_id table-id))))]
+                          (into {}
+                                (map (juxt :name qp.store/->legacy-metadata))
+                                (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
@@ -165,7 +169,7 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (qp.store/with-store
+  (let [raw-hsql    (qp.store/with-metadata-provider database-id
                       (try
                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                         (sql.qp/mbql->honeysql driver query)
@@ -201,7 +205,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [update-row   (update-keys update-row keyword)
-        raw-hsql     (qp.store/with-store
+        raw-hsql     (qp.store/with-metadata-provider database-id
                        (try
                          (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                          (sql.qp/mbql->honeysql driver query)
@@ -267,7 +271,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :row/create]
   [driver action database {database-id :database :keys [create-row] :as query}]
   (let [create-row  (update-keys create-row keyword)
-        raw-hsql    (qp.store/with-store
+        raw-hsql    (qp.store/with-metadata-provider database-id
                       (try
                         (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
                         (sql.qp/mbql->honeysql driver query)

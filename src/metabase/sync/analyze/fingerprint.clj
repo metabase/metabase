@@ -205,7 +205,7 @@
     tables :- [i/TableInstance]
     log-progress-fn
     continue?]
-   (qp.store/with-store
+   (qp.store/with-metadata-provider (u/the-id database)
      ;; store is bound so DB timezone can be used in date coercion logic
      (qp.store/store-database! database)
      (reduce (fn [acc table]

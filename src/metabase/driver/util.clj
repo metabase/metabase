@@ -10,13 +10,13 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2])
+   [schema.core :as s])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -175,7 +175,8 @@
    ^{::memoize/args-fn (fn [[db-id]]
                          [(mdb.connection/unique-identifier) db-id])}
    (fn [db-id]
-     (t2/select-one-fn :engine 'Database, :id db-id))
+     (qp.store/with-metadata-provider db-id
+       (:engine (qp.store/database))))
    :ttl/threshold 1000))
 
 (defn database->driver
