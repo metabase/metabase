@@ -319,15 +319,6 @@ class QuestionInner {
     sensibleDisplays: [string],
     previousSensibleDisplays: [string] | null,
   ): Question {
-    // For 1x1 data, we show a scalar. If our display was a 1x1 type, but the data
-    // isn't 1x1, we show a table.
-    const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
-    const isOneByOne = data.rows.length === 1 && data.cols.length === 1;
-    // if we have a 1x1 data result then this should always be viewed as a scalar
-    if (!isScalar && isOneByOne && !this.displayIsLocked()) {
-      return this.setDisplay("scalar");
-    }
-
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
@@ -335,16 +326,31 @@ class QuestionInner {
     const shouldUnlock = wasSensible && !isSensible;
     const defaultDisplay = this.setDefaultDisplay().display();
 
+    let question;
     if (isSensible && defaultDisplay === "table") {
       // any sensible display is better than the default table display
-      return this;
+      question = this;
+    } else if (shouldUnlock && this.displayIsLocked()) {
+      question = this.setDisplayIsLocked(false).setDefaultDisplay();
+    } else {
+      question = this.setDefaultDisplay();
     }
 
-    if (shouldUnlock && this.displayIsLocked()) {
-      return this.setDisplayIsLocked(false).setDefaultDisplay();
-    }
+    return question._maybeSwitchToScalar(data);
+  }
 
-    return this.setDefaultDisplay();
+  // Switches display based on data shape. For 1x1 data, we show a scalar. If
+  // our display was a 1x1 type, but the data isn't 1x1, we show a table.
+  private _maybeSwitchToScalar({ rows, cols }): Question {
+    // For 1x1 data, we show a scalar. If our display was a 1x1 type, but the data
+    // isn't 1x1, we show a table.
+    const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
+    const isOneByOne = rows.length === 1 && cols.length === 1;
+    // if we have a 1x1 data result then this should always be viewed as a scalar
+    if (!isScalar && isOneByOne && !this.displayIsLocked()) {
+      return this.setDisplay("scalar");
+    }
+    return this;
   }
 
   setDefaultDisplay(): Question {
