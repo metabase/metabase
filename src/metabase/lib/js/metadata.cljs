@@ -238,9 +238,22 @@
       :id                (parse-field-id v)
       v)))
 
-(defmethod parse-objects-default-key :field
-  [_object-type]
-  "fields")
+(defmethod parse-objects :field
+  [object-type metadata]
+  (let [parse-object (parse-object-fn object-type)
+        unparsed-fields (object-get metadata "fields")]
+    (obj->clj (keep (fn [[k v]]
+                      ;; Sometimes fields coming from saved questions are only present with their ID
+                      ;; prefixed with "card__<card-id>:". For such keys we parse the field ID from
+                      ;; the suffix and use the entry unless the ID is present in the metadata without
+                      ;; prefix. (The assumption being that the data under the two keys are mostly the
+                      ;; same but the one under the plain key is to be preferred.)
+                      (when-let [field-id (or (parse-long k)
+                                              (when-let [[_ id-str] (re-matches #"card__\d+:(\d+)" k)]
+                                                (and (nil? (object-get unparsed-fields id-str))
+                                                     (parse-long id-str))))]
+                        [field-id (delay (parse-object v))])))
+              unparsed-fields)))
 
 (defmethod lib-type :card
   [_object-type]

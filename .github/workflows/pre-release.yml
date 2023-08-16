@@ -151,7 +151,7 @@ jobs:
 
   run-sanity-check:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     needs: check-uberjar-health
     strategy:
       matrix:

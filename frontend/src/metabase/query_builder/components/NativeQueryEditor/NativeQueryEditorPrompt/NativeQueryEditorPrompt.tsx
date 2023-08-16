@@ -23,7 +23,7 @@ import {
 } from "./NativeQueryEditorPrompt.styled";
 
 interface NativeQueryEditorPromptProps {
-  databaseId: DatabaseId;
+  databaseId?: DatabaseId | null;
   onQueryGenerated: (queryText: string) => void;
   onClose: () => void;
 }

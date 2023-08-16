@@ -17,6 +17,8 @@ import type {
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
+  FilterOperator,
+  FilterOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -90,6 +92,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  filterOperator: FilterOperator,
+): FilterOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

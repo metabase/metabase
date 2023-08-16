@@ -206,15 +206,9 @@
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-u" "--user EMAIL"               "Include collections owned by the specified user"
-               :id :user-email]
-              ["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
-               :id        :collections
-               :multi     true
-               :parse-fn  #(Integer/parseInt %)
-               :update-fn (fnil conj [])]
-              [nil "--collections ID_LIST"       "(Legacy-style) Export collections in comma-separated list of IDs, e.g. '123,456'."
-               :parse-fn  (fn [s] (map #(Integer/parseInt %) (str/split s #"\s*,\s*")))]
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs."
+               :id        :collection-ids
+               :parse-fn  (fn [raw-string] (map parse-long (str/split raw-string #"\s*,\s*")))]
               ["-C" "--no-collections"           "Do not export any content in collections."]
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]

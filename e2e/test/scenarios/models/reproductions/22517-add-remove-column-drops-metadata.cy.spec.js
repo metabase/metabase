@@ -43,7 +43,7 @@ describe("issue 22517", () => {
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

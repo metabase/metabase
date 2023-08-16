@@ -5,7 +5,7 @@ import {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase/modes/types";
+import type { ClickObject } from "metabase/visualizations/click-actions/types";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

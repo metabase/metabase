@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import { QuestionsAuditTable } from "../containers/QuestionsAuditTable";
@@ -5,7 +6,7 @@ import { QuestionsAuditTable } from "../containers/QuestionsAuditTable";
 import * as QueriesCards from "../lib/cards/queries";
 
 const AuditQuestions = props => (
-  <AuditContent {...props} title="Questions" tabs={AuditQuestions.tabs} />
+  <AuditContent {...props} title={t`Questions`} tabs={AuditQuestions.tabs} />
 );
 
 const AuditQuestionsOverviewTab = () => (
@@ -22,8 +23,12 @@ const AuditQuestionsOverviewTab = () => (
 );
 
 AuditQuestions.tabs = [
-  { path: "overview", title: "Overview", component: AuditQuestionsOverviewTab },
-  { path: "all", title: "All questions", component: QuestionsAuditTable },
+  {
+    path: "overview",
+    title: t`Overview`,
+    component: AuditQuestionsOverviewTab,
+  },
+  { path: "all", title: t`All questions`, component: QuestionsAuditTable },
 ];
 
 export default AuditQuestions;
