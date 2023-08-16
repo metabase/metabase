@@ -10,7 +10,9 @@ const isPinnedGroup = (group: Group) =>
 
 export const getOrderedGroups = createSelector(
   Groups.selectors.getList,
-  (groups: Group[]) => _.partition(groups, isPinnedGroup),
+  (groups: Group[]) => {
+    return _.partition(groups, isPinnedGroup);
+  },
 );
 
 export const getAdminGroup = createSelector(

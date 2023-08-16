@@ -297,6 +297,120 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
+
+    it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
+      // products joined to orders with breakouts on 3 product columns followed by a custom column
+      cy.createQuestion(
+        {
+          name: "repro 22563",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    [
+                      "field",
+                      PRODUCTS.ID,
+                      {
+                        "join-alias": "Products",
+                      },
+                    ],
+                  ],
+                  "source-table": PRODUCTS_ID,
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.TITLE,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.VENDOR,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+            expressions: {
+              two: ["+", 1, 1],
+            },
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      const columnNames = [
+        "Products → Category",
+        "Products → Title",
+        "Products → Vendor",
+        "Count",
+        "two",
+      ];
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+      });
+
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        cy.findByText("More Columns").should("not.exist");
+
+        cy.icon("eye_outline").first().click();
+
+        cy.findByText("More columns").should("be.visible");
+
+        // disable the first column
+        cy.findByTestId("disabled-columns")
+          .findByText("Products → Category")
+          .should("be.visible");
+        cy.findByTestId("visible-columns")
+          .findByText("Products → Category")
+          .should("not.exist");
+      });
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        // the query should not have changed
+        cy.icon("play").should("not.exist");
+        cy.findByText("Products → Category").should("not.exist");
+      });
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.icon("add").click();
+        // re-enable the first column
+        cy.findByText("More columns").should("not.exist");
+        cy.findByTestId("visible-columns")
+          .findByText("Products → Category")
+          .should("be.visible");
+      });
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        // the query should not have changed
+        cy.icon("play").should("not.exist");
+        cy.findByText("Products → Category").should("be.visible");
+      });
+    });
   });
 
   describe("resetting state", () => {

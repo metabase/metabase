@@ -64,8 +64,12 @@
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error.")
 
   (metrics [metadata-provider table-id]
-    "Return a sequence of legacy v1 Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the [[metabase.lib.metadata/MetricMetadata]] schema. If no such Table exists, this should error."))
+    "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
+  the [[metabase.lib.metadata/MetricMetadata]] schema. If no such Table exists, this should error.")
+
+  (segments [metadata-provider table-id]
+    "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
+  the [[metabase.lib.metadata/SegmentMetadata]] schema. If no Table with ID `table-id` exists, this should error."))
 
 (defn metadata-provider?
   "Whether `x` is a valid [[MetadataProvider]]."

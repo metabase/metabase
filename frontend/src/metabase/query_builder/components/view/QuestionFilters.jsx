@@ -159,6 +159,7 @@ export function QuestionFilterWidget({ onOpenModal, className }) {
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       aria-label={t`Show more filters`}
       data-metabase-event="View Mode; Open Filter Modal"
+      data-testid="question-filter-header"
     >
       {t`Filter`}
     </HeaderButton>

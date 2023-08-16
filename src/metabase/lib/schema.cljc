@@ -58,8 +58,14 @@
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
+;; this is just for enabling round-tripping filters with named segment references
+(mr/def ::filterable
+  [:or
+   [:ref ::expression/boolean]
+   [:tuple [:= :segment] :map :string]])
+
 (mr/def ::filters
-  [:sequential {:min 1} [:ref ::expression/boolean]])
+  [:sequential {:min 1} ::filterable])
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)

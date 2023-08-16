@@ -37,7 +37,7 @@ import { DashboardCard } from "./DashboardGrid.styled";
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
-import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
+import { AddSeriesModal } from "./AddSeriesModal";
 import DashCard from "./DashCard";
 
 const mapDispatchToProps = { addUndo };
@@ -265,7 +265,11 @@ class DashboardGrid extends Component {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const isOpen = this.state.addSeriesModalDashCard != null;
     return (
-      <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
+      <Modal
+        className="Modal AddSeriesModal"
+        data-testid="add-series-modal"
+        isOpen={isOpen}
+      >
         {isOpen && (
           <AddSeriesModal
             dashcard={this.state.addSeriesModalDashCard}
@@ -296,6 +300,7 @@ class DashboardGrid extends Component {
   onDashCardRemove(dc) {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
+      cardId: dc.card_id,
     });
     this.props.addUndo({
       message: t`Removed card`,
