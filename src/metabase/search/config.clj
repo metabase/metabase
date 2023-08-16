@@ -101,7 +101,8 @@
 (defmethod searchable-columns-for-model "table"
   [_]
   [:name
-   :display_name])
+   :display_name
+   :description])
 
 (defmethod searchable-columns-for-model "indexed-entity"
   [_]

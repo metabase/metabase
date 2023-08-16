@@ -205,6 +205,36 @@ describe("scenarios > visualizations > line chart", () => {
     cy.get(`.sub._0`).find("circle").should("have.length", 2);
   });
 
+  it("should show the trend line", () => {
+    visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.show_trendline": true,
+        "graph.show_goal": false,
+        "graph.show_values": false,
+        "graph.metrics": ["count"],
+      },
+    });
+
+    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+  });
+
   describe("y-axis splitting (metabase#12939)", () => {
     it("should not split the y-axis when columns are of the same semantic_type and have close values", () => {
       visitQuestionAdhoc({

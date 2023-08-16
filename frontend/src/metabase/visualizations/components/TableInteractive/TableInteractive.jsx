@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
-import Draggable from "react-draggable";
 import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
@@ -32,6 +31,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
@@ -39,9 +39,11 @@ import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
+  TableDraggable,
   ExpandButton,
   HeaderCell,
   ResizeHandle,
+  TableInteractiveRoot,
 } from "./TableInteractive.styled";
 
 // approximately 120 chars
@@ -257,27 +259,29 @@ class TableInteractive extends Component {
     } = this.props;
 
     ReactDOM.render(
-      <div style={{ display: "flex" }}>
-        {cols.map((column, columnIndex) => (
-          <div className="fake-column" key={"column-" + columnIndex}>
-            {this.tableHeaderRenderer({
-              columnIndex,
-              rowIndex: 0,
-              key: "header",
-              style: {},
-              isVirtual: true,
-            })}
-            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({
-                rowIndex,
+      <EmotionCacheProvider>
+        <div style={{ display: "flex" }}>
+          {cols.map((column, columnIndex) => (
+            <div className="fake-column" key={"column-" + columnIndex}>
+              {this.tableHeaderRenderer({
                 columnIndex,
-                key: "row-" + rowIndex,
+                rowIndex: 0,
+                key: "header",
                 style: {},
-              }),
-            )}
-          </div>
-        ))}
-      </div>,
+                isVirtual: true,
+              })}
+              {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                this.cellRenderer({
+                  rowIndex,
+                  columnIndex,
+                  key: "row-" + rowIndex,
+                  style: {},
+                }),
+              )}
+            </div>
+          ))}
+        </div>
+      </EmotionCacheProvider>,
       this._div,
       () => {
         const contentWidths = [].map.call(
@@ -711,9 +715,10 @@ class TableInteractive extends Component {
     const isAscending = isSorted && sort[sortIndex][0] === "asc";
 
     return (
-      <Draggable
+      <TableDraggable
         /* needs to be index+name+counter so Draggable resets after each drag */
-        enableUserSelectHack={!isVirtual}
+        enableUserSelectHack={false}
+        enableCustomUserSelectHack={!isVirtual}
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -822,8 +827,9 @@ class TableInteractive extends Component {
               columnIndex,
             )}
           </DimensionInfoPopover>
-          <Draggable
-            enableUserSelectHack={!isVirtual}
+          <TableDraggable
+            enableUserSelectHack={false}
+            enableCustomUserSelectHack={!isVirtual}
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
             position={{
@@ -852,9 +858,9 @@ class TableInteractive extends Component {
                 cursor: "ew-resize",
               }}
             />
-          </Draggable>
+          </TableDraggable>
         </HeaderCell>
-      </Draggable>
+      </TableDraggable>
     );
   };
 
@@ -987,7 +993,7 @@ class TableInteractive extends Component {
             mainGridProps.scrollLeft = scrollLeft;
           }
           return (
-            <div
+            <TableInteractiveRoot
               className={cx(className, "TableInteractive relative", {
                 "TableInteractive--pivot": this.props.isPivoted,
                 "TableInteractive--ready": this.state.contentWidths,
@@ -1099,7 +1105,7 @@ class TableInteractive extends Component {
                 tabIndex={null}
                 overscanRowCount={20}
               />
-            </div>
+            </TableInteractiveRoot>
           );
         }}
       </ScrollSync>
