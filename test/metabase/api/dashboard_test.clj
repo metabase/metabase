@@ -1125,10 +1125,10 @@
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
-                                     (mapcat (fn [n] [n (str n " -- Duplicate")])))
+                                     (mapcat (fn [n] [n (str n " - Duplicate")])))
                            [total-card avg-card card])
                      (set (map :name cards-in-coll)))
-                  "Cards should have \"-- Duplicate\" appended"))))))))
+                  "Cards should have \"- Duplicate\" appended"))))))))
 
 (defn- ordered-cards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
