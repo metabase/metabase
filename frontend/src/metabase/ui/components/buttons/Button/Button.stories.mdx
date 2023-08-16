@@ -87,12 +87,12 @@ Not to use:
 
 export const TemplateRow = args => (
   <Group noWrap>
-    <Button {...args}>Button</Button>
-    <Button {...args} leftIcon={<Icon name="play" />}>
-      Button
+    <Button {...args}>Save</Button>
+    <Button {...args} leftIcon={<Icon name="add" />}>
+      New
     </Button>
     <Button {...args} rightIcon={<Icon name="chevrondown" />}>
-      Button
+      Category
     </Button>
     <Button {...args} leftIcon={<Icon name="play" />} />
   </Group>
@@ -117,10 +117,10 @@ export const Template = args => (
 export const LoadingTemplateRow = args => (
   <Group noWrap>
     <Button {...args} loaderPosition="left">
-      Button
+      Save
     </Button>
     <Button {...args} loaderPosition="right">
-      Button
+      Save
     </Button>
     <Button {...args} leftIcon={<Icon name="play" />} />
   </Group>
