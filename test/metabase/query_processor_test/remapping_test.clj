@@ -16,80 +16,80 @@
 (deftest basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (is (= {:rows [["20th Century Cafe"               12 "Café"]
-                     ["25°"                             11 "Burger"]
-                     ["33 Taps"                          7 "Bar"]
-                     ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-              :cols [(mt/col :venues :name)
-                     (assoc (mt/col :venues :category_id)
-                            :remapped_to "Category ID [internal remap]")
-                     (#'qp.add-dimension-projections/create-remapped-col
-                      "Category ID [internal remap]"
-                      (mt/format-name "category_id")
-                      :type/Text)]}
-             (qp.test/rows-and-cols
-              (mt/format-rows-by [str int str]
-                (mt/run-mbql-query venues
-                  {:fields   [$name $category_id]
-                   :order-by [[:asc $name]]
-                   :limit    4}))))))))
+      (is (=? {:rows [["20th Century Cafe"               12 "Café"]
+                      ["25°"                             11 "Burger"]
+                      ["33 Taps"                          7 "Bar"]
+                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
+               :cols [(mt/col :venues :name)
+                      (assoc (mt/col :venues :category_id)
+                             :remapped_to "Category ID [internal remap]")
+                      (#'qp.add-dimension-projections/create-remapped-col
+                       "Category ID [internal remap]"
+                       (mt/format-name "category_id")
+                       :type/Text)]}
+              (qp.test/rows-and-cols
+               (mt/format-rows-by [str int str]
+                 (mt/run-mbql-query venues
+                   {:fields   [$name $category_id]
+                    :order-by [[:asc $name]]
+                    :limit    4}))))))))
 
 (deftest basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-column-remappings [venues.category_id categories.name]
       (let [dimension-id (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))]
-        (is (= {:rows [["American" 2 8]
-                       ["Artisan"  3 2]
-                       ["Asian"    4 2]]
-                :cols [(merge (mt/col :categories :name)
-                              {:display_name  "Category ID [external remap]"
-                               :options       {::qp.add-dimension-projections/new-field-dimension-id dimension-id}
-                               :remapped_from (mt/format-name "category_id")
-                               :field_ref     [:field
-                                               (mt/id :categories :name)
-                                               {:source-field (mt/id :venues :category_id)}]
-                               :fk_field_id   (mt/id :venues :category_id)
-                               :source        :breakout})
-                       (merge (mt/col :venues :category_id)
-                              {:options     {::qp.add-dimension-projections/original-field-dimension-id dimension-id}
-                               :remapped_to (mt/format-name "name")
-                               :source      :breakout})
-                       {:field_ref     [:aggregation 0]
-                        :source        :aggregation
-                        :display_name  "Count"
-                        :name          "count"
-                        :semantic_type :type/Quantity}]}
-               (-> (mt/format-rows-by [str int int]
-                     (mt/run-mbql-query venues
-                       {:aggregation [[:count]]
-                        :breakout    [$category_id]
-                        :limit       3}))
-                   qp.test/rows-and-cols
-                   (update :cols (fn [[c1 c2 agg]]
-                                   [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)])))))))))
+        (is (=? {:rows [["American" 2 8]
+                        ["Artisan"  3 2]
+                        ["Asian"    4 2]]
+                 :cols [(merge (mt/col :categories :name)
+                               {:display_name  "Category ID [external remap]"
+                                :options       {::qp.add-dimension-projections/new-field-dimension-id dimension-id}
+                                :remapped_from (mt/format-name "category_id")
+                                :field_ref     [:field
+                                                (mt/id :categories :name)
+                                                {:source-field (mt/id :venues :category_id)}]
+                                :fk_field_id   (mt/id :venues :category_id)
+                                :source        :breakout})
+                        (merge (mt/col :venues :category_id)
+                               {:options     {::qp.add-dimension-projections/original-field-dimension-id dimension-id}
+                                :remapped_to (mt/format-name "name")
+                                :source      :breakout})
+                        {:field_ref     [:aggregation 0]
+                         :source        :aggregation
+                         :display_name  "Count"
+                         :name          "count"
+                         :semantic_type :type/Quantity}]}
+                (-> (mt/format-rows-by [str int int]
+                      (mt/run-mbql-query venues
+                        {:aggregation [[:count]]
+                         :breakout    [$category_id]
+                         :limit       3}))
+                    qp.test/rows-and-cols
+                    (update :cols (fn [[c1 c2 agg]]
+                                    [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)])))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (is (= {:rows [["20th Century Cafe"               12 "Café"]
-                     ["25°"                             11 "Burger"]
-                     ["33 Taps"                          7 "Bar"]
-                     ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-              :cols [(mt/col :venues :name)
-                     (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to "Category ID [internal remap]"))
-                     (#'qp.add-dimension-projections/create-remapped-col
-                      "Category ID [internal remap]"
-                      (mt/format-name "category_id")
-                      :type/Text)]}
-             (->> (mt/run-mbql-query venues
-                    {:source-query {:source-table (mt/id :venues)
-                                    :fields       [[:field (mt/id :venues :name) nil]
-                                                   [:field (mt/id :venues :category_id) nil]]
-                                    :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
-                                    :limit        4}})
-                  (mt/format-rows-by [str int str])
-                  qp.test/rows-and-cols))))))
+      (is (=? {:rows [["20th Century Cafe"               12 "Café"]
+                      ["25°"                             11 "Burger"]
+                      ["33 Taps"                          7 "Bar"]
+                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
+               :cols [(mt/col :venues :name)
+                      (-> (mt/col :venues :category_id)
+                          (assoc :remapped_to "Category ID [internal remap]"))
+                      (#'qp.add-dimension-projections/create-remapped-col
+                       "Category ID [internal remap]"
+                       (mt/format-name "category_id")
+                       :type/Text)]}
+              (->> (mt/run-mbql-query venues
+                     {:source-query {:source-table (mt/id :venues)
+                                     :fields       [[:field (mt/id :venues :name) nil]
+                                                    [:field (mt/id :venues :category_id) nil]]
+                                     :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
+                                     :limit        4}})
+                   (mt/format-rows-by [str int str])
+                   qp.test/rows-and-cols))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -138,29 +138,29 @@
     (testing (str "Check that we can have remappings when we include a `:fields` clause that restricts the query "
                   "fields returned")
       (mt/with-column-remappings [venues.category_id categories.name]
-        (is (= {:rows [["20th Century Cafe"               2 "Café"]
-                       ["25°"                             2 "Burger"]
-                       ["33 Taps"                         2 "Bar"]
-                       ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
-                :cols [(mt/col :venues :name)
-                       (mt/col :venues :price)
-                       (mt/$ids venues
-                         (assoc (mt/col :categories :name)
-                                :fk_field_id   %category_id
-                                :display_name  "Category ID [external remap]"
-                                :options       {::qp.add-dimension-projections/new-field-dimension-id
-                                                (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))}
-                                :name          (mt/format-name "name_2")
-                                :remapped_from (mt/format-name "category_id")
-                                :field_ref     $category_id->categories.name))]}
-               (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                     (mt/format-rows-by [str int str str]
-                       (mt/run-mbql-query venues
-                         {:fields   [$name $price $category_id]
-                          :order-by [[:asc $name]]
-                          :limit    4})))
-                   (update :cols (fn [[c1 c2 c3]]
-                                   [c1 c2 (dissoc c3 :source_alias)])))))))))
+        (is (=? {:rows [["20th Century Cafe"               2 "Café"]
+                        ["25°"                             2 "Burger"]
+                        ["33 Taps"                         2 "Bar"]
+                        ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
+                 :cols [(mt/col :venues :name)
+                        (mt/col :venues :price)
+                        (mt/$ids venues
+                          (assoc (mt/col :categories :name)
+                                 :fk_field_id   %category_id
+                                 :display_name  "Category ID [external remap]"
+                                 :options       {::qp.add-dimension-projections/new-field-dimension-id
+                                                 (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))}
+                                 :name          (mt/format-name "name_2")
+                                 :remapped_from (mt/format-name "category_id")
+                                 :field_ref     $category_id->categories.name))]}
+                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                      (mt/format-rows-by [str int str str]
+                        (mt/run-mbql-query venues
+                          {:fields   [$name $price $category_id]
+                           :order-by [[:asc $name]]
+                           :limit    4})))
+                    (update :cols (fn [[c1 c2 c3]]
+                                    [c1 c2 (dissoc c3 :source_alias)])))))))))
 
 (deftest remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"

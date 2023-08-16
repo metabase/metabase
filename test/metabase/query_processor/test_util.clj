@@ -54,7 +54,9 @@
                    table-ids)
      :fields (into #{}
                    (keep (fn [field-id]
-                           (:name (lib.metadata.protocols/cached-metadata provider :metadata/column field-id))))
+                           (when-let [field (lib.metadata.protocols/cached-metadata provider :metadata/column field-id)]
+                             (let [table (lib.metadata.protocols/cached-metadata provider :metadata/table (:table-id field))]
+                               [(:name table) (:name field)]))))
                    (t2/select-pks-set :model/Field :table_id [:in table-ids]))}))
 
 (defn card-with-source-metadata-for-query
