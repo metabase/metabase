@@ -53,7 +53,18 @@ Our themed wrapper around [Mantine Button](https://mantine.dev/core/button/).
 
 ## When to use Button
 
-TBD
+Use button in the following cases:
+
+- Buttons are widely used as actions that users can take. They are typically placed on the UI such as dialogs, forms, toolbars, config pages/panels, headers etc.
+- Use primary button for primarily intended actions.
+- Use icon in primary button for improved visual affordance.
+- Primary buttons could be colorized with our brand colors for differentiating actions and states.
+
+Not to use:
+
+- Avoid using multiple primary buttons on a form section, or a dialog for competing primarily intended actions.
+- If there is no primarily intended action for a form, use default (non-primary) button or other variations. That is, you don’t have to have a primary button on the form or dialog.
+- Not to use links to replace subtle buttons. Links are meant to navigate to another page. Subtle buttons share the characteristics of button and are mostly used in compact or inline situations.
 
 ## Docs
 
@@ -62,11 +73,14 @@ TBD
 
 ## Caveats
 
-N/A
+- Use verb, or verb+noun for button labels. E.g., Save, Filter, Summarize, Convert this question to SQL.
+- Use sentence casing for long button labels.
 
 ## Usage guidelines
 
-N/A
+- Although button labels can be as long as you wish, keep it simple and concise.
+- In general, use sentence casing for menu item labels.
+- Use icon+button label when applicable for better visual affordance. E.g., + New
 
 ## Examples
 
