@@ -84,9 +84,10 @@ function normalizeParameterValueForWidget(value, parameter) {
 }
 
 export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
-  const idValuePairs = parameters.map(parameter => [
-    parameter.id,
-    getParameterValueFromQueryParams(parameter, queryParams),
-  ]);
-  return Object.fromEntries(idValuePairs);
+  return Object.fromEntries(
+    parameters.map(parameter => [
+      parameter.id,
+      getParameterValueFromQueryParams(parameter, queryParams),
+    ]),
+  );
 }

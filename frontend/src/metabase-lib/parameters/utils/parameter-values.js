@@ -57,20 +57,16 @@ export function normalizeParameterValue(type, value) {
   }
 }
 
-export function getParameterValuesBySlug(parameters, parameterValuesById) {
-  parameters = parameters || [];
-  parameterValuesById = parameterValuesById || {};
-  const parameterValuePairs = parameters.map(parameter => [
-    parameter,
-    hasParameterValue(parameter.value)
-      ? parameter.value
-      : parameterValuesById[parameter.id],
-  ]);
-
-  const slugValuePairs = parameterValuePairs.map(([parameter, value]) => [
-    parameter.slug,
-    value,
-  ]);
-
-  return Object.fromEntries(slugValuePairs);
+export function getParameterValuesBySlug(
+  parameters = [],
+  parameterValuesById = {},
+) {
+  return Object.fromEntries(
+    parameters.map(parameter => [
+      parameter.slug,
+      hasParameterValue(parameter.value)
+        ? parameter.value
+        : parameterValuesById[parameter.id],
+    ]),
+  );
 }
