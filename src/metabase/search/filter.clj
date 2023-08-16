@@ -138,8 +138,8 @@
                              (params.dates/date-string->range created-at {:inclusive-end? false})
                              (catch Exception _e
                                (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
-        start               (when start (-> start u.date/parse))
-        end                 (when end  (-> end u.date/parse))
+        start               (some-> start u.date/parse)
+        end                 (some-> end u.date/parse)
         created-at-col      (search.config/column-with-model-alias model :created_at)
         created-at-col      (if (some #(instance? LocalDate %) [start end])
                              [:cast created-at-col :date]
