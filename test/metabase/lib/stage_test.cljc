@@ -4,7 +4,6 @@
    [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
@@ -38,7 +37,7 @@
       (is (mc/validate ::lib.schema/query query))
       (is (=? [(merge (meta/field-metadata :venues :price)
                       {:lib/source :source/fields})]
-              (lib.metadata.calculation/returned-columns query))))))
+              (lib/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test
   (testing "make sure multiple expressions come back with deduplicated names"
@@ -66,12 +65,12 @@
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
                   :lib/desired-column-alias "expression_2"}]
-                (lib.metadata.calculation/returned-columns query)))))))
+                (lib/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
   (let [query lib.tu/query-with-source-card]
     (is (= "My Card"
-           (lib.metadata.calculation/display-name query)))))
+           (lib/display-name query)))))
 
 (deftest ^:parallel adding-and-removing-stages
   (let [query                lib.tu/venues-query
@@ -106,7 +105,7 @@
              {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
              {:name "ID + 1", :lib/source :source/expressions}
              {:name "ID + 2", :lib/source :source/expressions}]
-            (lib.metadata.calculation/returned-columns (query-with-expressions))))))
+            (lib/returned-columns (query-with-expressions))))))
 
 (deftest ^:parallel default-fields-metadata-return-expressions-before-joins-test
   (testing "expressions should come back BEFORE columns from joins"
@@ -127,7 +126,7 @@
                          :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
                                        [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
               query))
-      (let [metadata (lib.metadata.calculation/returned-columns query)]
+      (let [metadata (lib/returned-columns query)]
         (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
                  {:id (meta/id :venues :name), :name "NAME", :lib/source :source/table-defaults}
                  {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}
@@ -162,13 +161,31 @@
                   "ID + 2"
                   "Cat → ID"
                   "Cat → Name"]
-                 (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
+                 (mapv #(lib/display-name query -1 % :long) metadata))))))))
+
+(deftest ^:parallel query-with-source-card-include-implicit-columns-test
+  (testing "visible-columns should not include implicitly joinable columns when the query has a source Card (#30950)"
+    (doseq [varr [#'lib.tu/query-with-source-card
+                  #'lib.tu/query-with-source-card-with-result-metadata]
+            :let [query @varr]]
+      (testing (pr-str varr)
+        (is (=? [{:name                     "USER_ID"
+                  :display-name             "User ID"
+                  :base-type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "USER_ID"}
+                 {:name                     "count"
+                  :display-name             "Count"
+                  :base-type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "count"}]
+                (lib/visible-columns query)))))))
 
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                   (lib/with-fields [(lib/with-temporal-bucket (meta/field-metadata :checkins :date) :year)])
                   lib/append-stage)
-        cols (lib.metadata.calculation/visible-columns query)]
+        cols (lib/visible-columns query)]
     (is (= [nil]
            (map lib/temporal-bucket cols)))
     (is (=? [[:field
@@ -219,7 +236,7 @@
               :effective-type :type/Text,
               :lib/desired-column-alias "Cat__NAME",
               :display-name "Name"}]
-            (lib.metadata.calculation/visible-columns query)))))
+            (lib/visible-columns query)))))
 
 (deftest ^:parallel expression-breakout-visible-column
   (testing "expression breakouts are handled by visible-columns"
@@ -229,7 +246,7 @@
       (is (=? [{:lib/type :metadata/column
                 :lib/source :source/expressions}]
               (filter #(= (:name %) expr-name)
-                      (lib.metadata.calculation/visible-columns query)))))))
+                      (lib/visible-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-test-query
   "A query against `ORDERS` with joins against `PRODUCTS` and `PEOPLE`, and breakouts on columns from both of those
@@ -267,7 +284,7 @@
                :lib/source-column-alias  "count"
                :lib/desired-column-alias "count"}]
              (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
-                  (lib.metadata.calculation/returned-columns query)))))))
+                  (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-test-query-2
   "A query against `REVIEWS` joining `PRODUCTS`."
@@ -289,7 +306,7 @@
       (is (= [{:name "CATEGORY", :lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "P2__CATEGORY"}
               {:name "avg", :lib/source-column-alias "avg", :lib/desired-column-alias "avg"}]
              (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
-                  (lib.metadata.calculation/returned-columns query)))))))
+                  (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-from-previous-stage-test-query
   "[[metadata-for-breakouts-from-joins-test-query]] but with an additional stage and a join
@@ -326,4 +343,4 @@
                ::lib.join/join-alias     "Q2"
                :lib/desired-column-alias "Q2__avg"}]
              (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
-                  (lib.metadata.calculation/returned-columns query)))))))
+                  (lib/returned-columns query)))))))

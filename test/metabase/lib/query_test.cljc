@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -27,9 +26,9 @@
                 " Filtered by Name equals \"Toucannery\","
                 " Sorted by ID ascending,"
                 " 100 rows")
-           (lib.metadata.calculation/display-name query)
-           (lib.metadata.calculation/describe-query query)
-           (lib.metadata.calculation/suggested-name query)))))
+           (lib/display-name query)
+           (lib/describe-query query)
+           (lib/suggested-name query)))))
 
 (deftest ^:parallel notebook-query-test
   (is (=? {:lib/type :mbql/query

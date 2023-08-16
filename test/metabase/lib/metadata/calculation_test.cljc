@@ -3,7 +3,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
@@ -22,19 +21,19 @@
                                       "TOTAL"]))]]
       (testing (str "\nquery =\n" (u/pprint-to-str query))
         (is (= "Venues, Sorted by Total ascending"
-               (lib.metadata.calculation/suggested-name query)))))))
+               (lib/suggested-name query)))))))
 
 (deftest ^:parallel long-display-name-test
   (let [query lib.tu/venues-query
         results (->> query
-                     lib.metadata.calculation/visible-columns
+                     lib/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Category → ID" "Category → Name"]
            results)))
 
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         results (->> query
-                     lib.metadata.calculation/visible-columns
+                     lib/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID"
             "User ID"
@@ -86,16 +85,47 @@
                                      (meta/field-metadata :venues :category-id)
                                      (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
                                   (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Categories")])))
-                    lib.metadata.calculation/visible-columns)))))
+                    lib/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
-                    (lib.metadata.calculation/visible-columns nil)))))
+                    (lib/visible-columns nil)))))
 
   (testing "multiple aggregations"
-    (lib.metadata.calculation/visible-columns
-      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          (lib/aggregate (lib/count))
-          (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))))
+    (is (= ["ID"
+            "USER_ID"
+            "PRODUCT_ID"
+            "SUBTOTAL"
+            "TAX"
+            "TOTAL"
+            "DISCOUNT"
+            "CREATED_AT"
+            "QUANTITY"
+            "PEOPLE__via__USER_ID__ID"
+            "PEOPLE__via__USER_ID__ADDRESS"
+            "PEOPLE__via__USER_ID__EMAIL"
+            "PEOPLE__via__USER_ID__PASSWORD"
+            "PEOPLE__via__USER_ID__NAME"
+            "PEOPLE__via__USER_ID__CITY"
+            "PEOPLE__via__USER_ID__LONGITUDE"
+            "PEOPLE__via__USER_ID__STATE"
+            "PEOPLE__via__USER_ID__SOURCE"
+            "PEOPLE__via__USER_ID__BIRTH_DATE"
+            "PEOPLE__via__USER_ID__ZIP"
+            "PEOPLE__via__USER_ID__LATITUDE"
+            "PEOPLE__via__USER_ID__CREATED_AT"
+            "PRODUCTS__via__PRODUCT_ID__ID"
+            "PRODUCTS__via__PRODUCT_ID__EAN"
+            "PRODUCTS__via__PRODUCT_ID__TITLE"
+            "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+            "PRODUCTS__via__PRODUCT_ID__VENDOR"
+            "PRODUCTS__via__PRODUCT_ID__PRICE"
+            "PRODUCTS__via__PRODUCT_ID__RATING"
+            "PRODUCTS__via__PRODUCT_ID__CREATED_AT"]
+           (map :lib/desired-column-alias
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))
+                    lib/visible-columns))))))
 
 (deftest ^:parallel source-cards-test
   (testing "with :source-card"
@@ -116,7 +146,7 @@
                                (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :products))]
                                  (assoc field :lib/source :source/implicitly-joinable)))
                        (sort-by (juxt :name :id)))
-                  (sort-by (juxt :name :id) (lib.metadata.calculation/visible-columns query)))))
+                  (sort-by (juxt :name :id) (lib/visible-columns query)))))
         (testing "are not included by returned-columns"
           (is (=? (sort-by (juxt :name :id) own-fields)
-                  (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query)))))))))
+                  (sort-by (juxt :name :id) (lib/returned-columns query)))))))))
