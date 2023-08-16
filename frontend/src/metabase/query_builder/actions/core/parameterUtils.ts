@@ -90,11 +90,7 @@ export function getParameterValuesForQuestion({
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);
-  return getParameterValuesByIdFromQueryParams(
-    parameters,
-    queryParams,
-    metadata,
-  );
+  return getParameterValuesByIdFromQueryParams(parameters, queryParams);
 }
 
 /**
