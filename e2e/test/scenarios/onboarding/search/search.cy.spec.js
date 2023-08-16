@@ -272,14 +272,14 @@ describe("scenarios > search", () => {
         });
       });
 
-      describe("rendering on tiered instances", () => {
-        it("should render if EE instance", () => {
+      describe("rendering on enterprise instances", () => {
+        it("should render if instance has content-verification enabled in token", () => {
           setTokenFeatures("all");
           cy.visit("/");
           cy.findByTestId("search-bar-filter-button").click();
           cy.findByTestId("verified-search-filter").should("exist");
         });
-        it("should not render if non-EE instance", () => {
+        it("should not render if instance doesn't have content-verification enabled in token", () => {
           setTokenFeatures("none");
           cy.visit("/");
           cy.findByTestId("search-bar-filter-button").click();
