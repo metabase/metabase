@@ -64,6 +64,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [trim](#trim)
   - [upper](#upper)
   - [week](#week)
+  - [weekday](#weekday)
   - [year](#year)
 - [Database limitations](#database-limitations)
 
