@@ -57,10 +57,7 @@ export function normalizeParameterValue(type, value) {
   }
 }
 
-export function getParameterValuesBySlug(
-  parameters = [],
-  parameterValuesById = {},
-) {
+export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
   return Object.fromEntries(
