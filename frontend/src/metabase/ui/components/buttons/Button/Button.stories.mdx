@@ -142,12 +142,30 @@ export const LoadingButtonGridTemplate = args => (
   </Stack>
 );
 
-### Default
+### Button
 
 export const Default = args => <Button {...args}>Button</Button>;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Button.Group
+
+export const ButtonGroup = args => (
+  <Button.Group>
+    <Button {...args} variant="filled">
+      Button
+    </Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+  </Button.Group>
+);
+
+<Canvas>
+  <Story name="ButtonGroup">{ButtonGroup}</Story>
 </Canvas>
 
 ### Default size
