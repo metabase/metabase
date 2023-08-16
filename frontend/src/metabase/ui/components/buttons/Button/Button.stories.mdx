@@ -86,7 +86,7 @@ Not to use:
 ## Examples
 
 export const TemplateRow = args => (
-  <Group>
+  <Group noWrap>
     <Button {...args}>Button</Button>
     <Button {...args} leftIcon={<Icon name="play" />}>
       Button
@@ -140,6 +140,36 @@ export const DefaultLoading = args => <Template {...args} loading />;
   <Story name="DefaultLoading">{DefaultLoading}</Story>
 </Canvas>
 
+### Default size & full width
+
+#### Default state
+
+export const DefaultFullWidth = args => <Template {...args} fullWidth />;
+
+<Canvas>
+  <Story name="DefaultFullWidth">{DefaultFullWidth}</Story>
+</Canvas>
+
+#### Disabled state
+
+export const DefaultDisabledFullWidth = args => (
+  <Template {...args} disabled fullWidth />
+);
+
+<Canvas>
+  <Story name="DefaultDisabledFullWidth">{DefaultDisabledFullWidth}</Story>
+</Canvas>
+
+#### Loading state
+
+export const DefaultLoadingFullWidth = args => (
+  <Template {...args} loading fullWidth />
+);
+
+<Canvas>
+  <Story name="DefaultLoadingFullWidth">{DefaultLoadingFullWidth}</Story>
+</Canvas>
+
 ### Compact size
 
 #### Default state
@@ -164,4 +194,36 @@ export const CompactLoading = args => <Template {...args} compact loading />;
 
 <Canvas>
   <Story name="CompactLoading">{CompactLoading}</Story>
+</Canvas>
+
+### Compact size & full width
+
+#### Default state
+
+export const CompactFullWidth = args => (
+  <Template {...args} compact fullWidth />
+);
+
+<Canvas>
+  <Story name="CompactFullWidth">{CompactFullWidth}</Story>
+</Canvas>
+
+#### Disabled state
+
+export const CompactDisabledFullWidth = args => (
+  <Template {...args} compact disabled fullWidth />
+);
+
+<Canvas>
+  <Story name="CompactDisabledFullWidth">{CompactDisabledFullWidth}</Story>
+</Canvas>
+
+#### Loading state
+
+export const CompactLoadingFullWidth = args => (
+  <Template {...args} compact loading fullWidth />
+);
+
+<Canvas>
+  <Story name="CompactLoadingFullWidth">{CompactLoadingFullWidth}</Story>
 </Canvas>
