@@ -25,8 +25,8 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
-  (when-let [[_ _value column _table]
-             (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" of relation \"([^\"]+)\" violates not-null constraint"  error-message)]
+  (when-let [[_ column]
+             (re-find #"null value in column \"([^\"]+)\".*violates not-null constraint"  error-message)]
     {:type    error-type
      :message (tru "{0} must have values." (str/capitalize column))
      :errors  {column (tru "You must provide a value.")}}))
@@ -34,7 +34,7 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
   (when-let [[_match constraint _value]
-             (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
+             (re-find #"duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (let [columns (constraint->column-names database constraint)]
       {:type    error-type
        :message (tru "{0} already exist." (u/build-sentence (map str/capitalize columns) :stop? false))
@@ -46,7 +46,7 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (or (when-let [[_match _table _constraint _ref-table column _value _ref-table-2]
-                 (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
+                 (re-find #"update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
         (merge {:type error-type}
                (case action-type
                  :row/delete
@@ -57,7 +57,7 @@
                  {:message (tru "Unable to update the record.")
                   :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
       (when-let [[_match _table _constraint column _value _ref-table]
-                 (re-find #"ERROR: insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
+                 (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
           {:type    error-type
            :message (case action-type
                       :row/create
@@ -69,10 +69,9 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
-  (when-let [[_ _expected-type _value]
-             (re-find #"ERROR:\s+invalid input syntax for type ([^\"]+):\s+.*" error-message)]
-    {:type          error-type
-     :message (tru "Some of your values aren’t of the correct type for the database")
+  (when-let [[_] (re-find #"invalid input syntax for .*" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
 
 (comment
@@ -83,7 +82,9 @@
  (sql-jdbc.actions/maybe-parse-sql-error
   :postgres actions.error/violate-unique-constraint {:id 47} nil
   "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")
-
+ (sql-jdbc.actions/maybe-parse-sql-error
+  :postgres actions.error/violate-not-null-constraint nil nil
+  "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")
  (sql-jdbc.actions/maybe-parse-sql-error
   :postgres actions.error/violate-not-null-constraint nil nil
   "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")

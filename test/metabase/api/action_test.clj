@@ -712,11 +712,11 @@
                (testing "when creating"
                  (is (= (case driver/*driver*
                           :h2
-                          {:message "Some of your values aren’t of the correct type for the database"
+                          {:message "Some of your values aren’t of the correct type for the database."
                            :errors {}}
 
                           :postgres
-                          {:message "Some of your values aren’t of the correct type for the database"
+                          {:message "Some of your values aren’t of the correct type for the database."
                            :errors {}}
 
                           {:message "Some of your values aren’t of the correct type for the database."
@@ -727,11 +727,11 @@
                (testing "when updating"
                  (is (= (case driver/*driver*
                           :h2
-                          {:message "Some of your values aren’t of the correct type for the database"
+                          {:message "Some of your values aren’t of the correct type for the database."
                            :errors {}}
 
                           :postgres
-                          {:message "Some of your values aren’t of the correct type for the database"
+                          {:message "Some of your values aren’t of the correct type for the database."
                            :errors {}}
 
                           {:message "Some of your values aren’t of the correct type for the database."

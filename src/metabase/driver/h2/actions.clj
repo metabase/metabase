@@ -93,7 +93,7 @@
   (when-let [[_ _expected-type _value]
              (re-find #"Data conversion error converting .*" error-message)]
     {:type    error-type
-     :message (tru "Some of your values aren’t of the correct type for the database")
+     :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
 
 (comment

@@ -61,18 +61,13 @@
       :errors  {column (tru "You must provide a value.")}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
-  [_driver error-type database _action-type error-message]
-  (when-let [[_match table constraint]
-             (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)]
-    (let [constraint (remove-backticks constraint)
-          table      (remove-backticks table)
-          columns    (constraint->column-names database table constraint)]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match fk]
+             (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
+    (let [column (last (str/split fk #"\."))]
       {:type    error-type
-       :message (tru "{0} already exist." (u/build-sentence (map str/capitalize columns) :stop? false))
-       :errors  (reduce (fn [acc col]
-                          (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
-                        {}
-                        columns)})))
+       :message (tru "{0} already exist." (str/capitalize column))
+       :errors  {column (tru "This {0} value already exists." (str/capitalize column))}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
