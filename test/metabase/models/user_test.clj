@@ -15,6 +15,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
