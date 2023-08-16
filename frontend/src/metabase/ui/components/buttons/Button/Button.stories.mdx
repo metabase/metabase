@@ -142,8 +142,6 @@ export const LoadingButtonGridTemplate = args => (
   </Stack>
 );
 
-### Button
-
 export const Default = args => <Button {...args}>Button</Button>;
 
 <Canvas>
@@ -165,17 +163,15 @@ export const ButtonGroup = args => (
 );
 
 <Canvas>
-  <Story name="ButtonGroup">{ButtonGroup}</Story>
+  <Story name="Button group">{ButtonGroup}</Story>
 </Canvas>
 
 ### Default size
 
-#### Default state
-
 export const DefaultGrid = args => <ButtonGridTemplate {...args} />;
 
 <Canvas>
-  <Story name="DefaultGrid">{DefaultGrid}</Story>
+  <Story name="Default size">{DefaultGrid}</Story>
 </Canvas>
 
 #### Disabled state
@@ -185,7 +181,7 @@ export const DefaultDisabledGrid = args => (
 );
 
 <Canvas>
-  <Story name="DefaultDisabledGrid">{DefaultDisabledGrid}</Story>
+  <Story name="Default size, disabled">{DefaultDisabledGrid}</Story>
 </Canvas>
 
 #### Loading state
@@ -195,19 +191,17 @@ export const DefaultLoadingGrid = args => (
 );
 
 <Canvas>
-  <Story name="DefaultLoadingGrid">{DefaultLoadingGrid}</Story>
+  <Story name="Default size, loading">{DefaultLoadingGrid}</Story>
 </Canvas>
 
 ### Default size & full width
-
-#### Default state
 
 export const DefaultFullWidthGrid = args => (
   <ButtonGridTemplate {...args} fullWidth />
 );
 
 <Canvas>
-  <Story name="DefaultFullWidthGrid">{DefaultFullWidthGrid}</Story>
+  <Story name="Default size, full width">{DefaultFullWidthGrid}</Story>
 </Canvas>
 
 #### Disabled state
@@ -217,7 +211,7 @@ export const DefaultDisabledFullWidthGrid = args => (
 );
 
 <Canvas>
-  <Story name="DefaultDisabledFullWidthGrid">
+  <Story name="Default size, full width, disabled">
     {DefaultDisabledFullWidthGrid}
   </Story>
 </Canvas>
@@ -229,19 +223,17 @@ export const DefaultLoadingFullWidthGrid = args => (
 );
 
 <Canvas>
-  <Story name="DefaultLoadingFullWidthGrid">
+  <Story name="Default size, full width, loading">
     {DefaultLoadingFullWidthGrid}
   </Story>
 </Canvas>
 
 ### Compact size
 
-#### Default state
-
 export const CompactGrid = args => <ButtonGridTemplate {...args} compact />;
 
 <Canvas>
-  <Story name="CompactGrid">{CompactGrid}</Story>
+  <Story name="Compact size">{CompactGrid}</Story>
 </Canvas>
 
 #### Disabled state
@@ -251,7 +243,7 @@ export const CompactDisabledGrid = args => (
 );
 
 <Canvas>
-  <Story name="CompactDisabledGrid">{CompactDisabledGrid}</Story>
+  <Story name="Compact size, disabled">{CompactDisabledGrid}</Story>
 </Canvas>
 
 #### Loading state
@@ -261,19 +253,17 @@ export const CompactLoadingGrid = args => (
 );
 
 <Canvas>
-  <Story name="CompactLoadingGrid">{CompactLoadingGrid}</Story>
+  <Story name="Compact size, loading">{CompactLoadingGrid}</Story>
 </Canvas>
 
 ### Compact size & full width
-
-#### Default state
 
 export const CompactFullWidthGrid = args => (
   <ButtonGridTemplate {...args} compact fullWidth />
 );
 
 <Canvas>
-  <Story name="CompactFullWidthGrid">{CompactFullWidthGrid}</Story>
+  <Story name="Compact size, full width">{CompactFullWidthGrid}</Story>
 </Canvas>
 
 #### Disabled state
@@ -283,7 +273,7 @@ export const CompactDisabledFullWidthGrid = args => (
 );
 
 <Canvas>
-  <Story name="CompactDisabledFullWidthGrid">
+  <Story name="Compact size, full width, disabled">
     {CompactDisabledFullWidthGrid}
   </Story>
 </Canvas>
@@ -295,7 +285,7 @@ export const CompactLoadingFullWidthGrid = args => (
 );
 
 <Canvas>
-  <Story name="CompactLoadingFullWidthGrid">
+  <Story name="Compact size, full width, loading">
     {CompactLoadingFullWidthGrid}
   </Story>
 </Canvas>
