@@ -301,6 +301,9 @@ describe("scenarios > question > new", () => {
     modal().within(() => {
       cy.findByLabelText("Name").type(NEW_COLLECTION);
       cy.findByText("Create").click();
+      cy.findByText("Save new question");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Save").click();
     });
     cy.get("header").findByText(NEW_COLLECTION);
   });

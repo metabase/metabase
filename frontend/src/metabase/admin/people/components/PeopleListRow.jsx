@@ -10,13 +10,13 @@ import * as Urls from "metabase/lib/urls";
 import { useSelector } from "metabase/lib/redux";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Icon } from "metabase/core/components/Icon";
-import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import MembershipSelect from "./MembershipSelect";
+import { RefreshLink } from "./PeopleListRow.styled";
 
 const enablePasswordLoginKey = "enable-password-login";
 
@@ -75,13 +75,9 @@ const PeopleListRow = ({
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip tooltip={t`Reactivate this account`}>
-              <Link to={Urls.reactivateUser(user.id)}>
-                <Icon
-                  name="refresh"
-                  className="text-light text-brand-hover cursor-pointer"
-                  size={20}
-                />
-              </Link>
+              <RefreshLink to={Urls.reactivateUser(user.id)}>
+                <Icon name="refresh" size={20} />
+              </RefreshLink>
             </Tooltip>
           </td>
         </Fragment>

@@ -20,7 +20,7 @@ describe("issue 16886", () => {
       { delay: 50 },
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
