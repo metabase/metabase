@@ -7,7 +7,7 @@ import AuditTableWithSearch from "../containers/AuditTableWithSearch";
 import * as DashboardCards from "../lib/cards/dashboards";
 
 const AuditDashboards = props => (
-  <AuditContent {...props} title="Dashboards" tabs={AuditDashboards.tabs} />
+  <AuditContent {...props} title={t`Dashboards`} tabs={AuditDashboards.tabs} />
 );
 
 const AuditDashboardsOverviewTab = () => (
