@@ -48,16 +48,11 @@ const storeInitialState = createMockState({
   }),
 });
 
-const defaultProps = {
-  params: { databaseId },
-  style: {},
-};
-
-function setup({ ...options } = {}) {
+function setup() {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => <TableList {...defaultProps} {...options} />}
+      component={() => <TableList params={{ databaseId }} style={{}} />}
     />,
     { storeInitialState, withRouter: true },
   );
