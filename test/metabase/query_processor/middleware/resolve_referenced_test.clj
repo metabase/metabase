@@ -55,13 +55,17 @@
                    (ex-data exc)))))
 
         (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
-
-        (is (= {:referenced-query     card-query
-                :expected-database-id query-db-id}
-               (try
-                 (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
-                 (catch ExceptionInfo exc
-                   (ex-data exc)))))))))
+        (qp.store/with-metadata-provider (mt/id)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"\QReferenced query is from a different database\E"
+               (#'qp.resolve-referenced/resolve-referenced-card-resources* query)))
+          (is (= {:referenced-query     card-query
+                  :expected-database-id query-db-id}
+                 (try
+                   (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
+                   (catch ExceptionInfo exc
+                     (ex-data exc))))))))))
 
 (deftest referenced-query-from-different-db-test-2
   (testing "fails on query that references an MBQL query from a different database"
@@ -84,15 +88,18 @@
                  (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
                  (catch ExceptionInfo exc
                    (ex-data exc)))))
-
         (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
-
-        (is (= {:referenced-query     card-query
-                :expected-database-id query-db-id}
-               (try
-                 (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
-                 (catch ExceptionInfo exc
-                   (ex-data exc)))))))))
+        (qp.store/with-metadata-provider (mt/id)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"\QReferenced query is from a different database\E"
+               (#'qp.resolve-referenced/resolve-referenced-card-resources* query)))
+          (is (= {:referenced-query     card-query
+                  :expected-database-id query-db-id}
+                 (try
+                   (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
+                   (catch ExceptionInfo exc
+                     (ex-data exc))))))))))
 
 (deftest circular-referencing-tags-test
   (testing "fails on query with circular referencing sub-queries"
