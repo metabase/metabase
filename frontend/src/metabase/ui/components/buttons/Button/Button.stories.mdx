@@ -85,7 +85,19 @@ Not to use:
 
 ## Examples
 
-export const GridRowTemplate = args => (
+export const ButtonTemplate = args => <Button {...args}>Button</Button>;
+
+export const ButtonGroupTemplate = args => (
+  <Button.Group>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+    <Button {...args}>Button</Button>
+  </Button.Group>
+);
+
+export const ButtonRowTemplate = args => (
   <Group noWrap>
     <Button {...args}>Save</Button>
     <Button {...args} leftIcon={<Icon name="add" />}>
@@ -98,23 +110,23 @@ export const GridRowTemplate = args => (
   </Group>
 );
 
-export const GridRowGroupTemplate = args => (
+export const ButtonRowGroupTemplate = args => (
   <Fragment>
-    <GridRowTemplate {...args} />
-    <GridRowTemplate {...args} radius="xl" />
+    <ButtonRowTemplate {...args} />
+    <ButtonRowTemplate {...args} radius="xl" />
   </Fragment>
 );
 
-export const GridTemplate = args => (
+export const ButtonGridTemplate = args => (
   <Stack>
-    <GridRowGroupTemplate {...args} variant="filled" />
-    <GridRowGroupTemplate {...args} variant="outline" />
-    <GridRowGroupTemplate {...args} variant="default" />
-    <GridRowTemplate {...args} variant="subtle" />
+    <ButtonRowGroupTemplate {...args} variant="filled" />
+    <ButtonRowGroupTemplate {...args} variant="outline" />
+    <ButtonRowGroupTemplate {...args} variant="default" />
+    <ButtonRowTemplate {...args} variant="subtle" />
   </Stack>
 );
 
-export const LoadingGridRowTemplate = args => (
+export const LoadingButtonRowTemplate = args => (
   <Group noWrap>
     <Button {...args} loaderPosition="left">
       Save
@@ -126,19 +138,19 @@ export const LoadingGridRowTemplate = args => (
   </Group>
 );
 
-export const LoadingGridRowGroupTemplate = args => (
+export const LoadingButtonRowGroupTemplate = args => (
   <Fragment>
-    <LoadingGridRowTemplate {...args} />
-    <LoadingGridRowTemplate {...args} radius="xl" />
+    <LoadingButtonRowTemplate {...args} />
+    <LoadingButtonRowTemplate {...args} radius="xl" />
   </Fragment>
 );
 
-export const LoadingGridTemplate = args => (
+export const LoadingButtonGridTemplate = args => (
   <Stack>
-    <LoadingGridRowGroupTemplate {...args} variant="filled" />
-    <LoadingGridRowGroupTemplate {...args} variant="outline" />
-    <LoadingGridRowGroupTemplate {...args} variant="default" />
-    <LoadingGridRowTemplate {...args} variant="subtle" />
+    <LoadingButtonRowGroupTemplate {...args} variant="filled" />
+    <LoadingButtonRowGroupTemplate {...args} variant="outline" />
+    <LoadingButtonRowGroupTemplate {...args} variant="default" />
+    <LoadingButtonRowTemplate {...args} variant="subtle" />
   </Stack>
 );
 
@@ -146,7 +158,7 @@ export const LoadingGridTemplate = args => (
 
 #### Default state
 
-export const DefaultGrid = args => <GridTemplate {...args} />;
+export const DefaultGrid = args => <ButtonGridTemplate {...args} />;
 
 <Canvas>
   <Story name="DefaultGrid">{DefaultGrid}</Story>
@@ -154,7 +166,9 @@ export const DefaultGrid = args => <GridTemplate {...args} />;
 
 #### Disabled state
 
-export const DefaultDisabledGrid = args => <GridTemplate {...args} disabled />;
+export const DefaultDisabledGrid = args => (
+  <ButtonGridTemplate {...args} disabled />
+);
 
 <Canvas>
   <Story name="DefaultDisabledGrid">{DefaultDisabledGrid}</Story>
@@ -162,7 +176,9 @@ export const DefaultDisabledGrid = args => <GridTemplate {...args} disabled />;
 
 #### Loading state
 
-export const DefaultLoadingGrid = args => <GridTemplate {...args} loading />;
+export const DefaultLoadingGrid = args => (
+  <ButtonGridTemplate {...args} loading />
+);
 
 <Canvas>
   <Story name="DefaultLoadingGrid">{DefaultLoadingGrid}</Story>
@@ -173,7 +189,7 @@ export const DefaultLoadingGrid = args => <GridTemplate {...args} loading />;
 #### Default state
 
 export const DefaultFullWidthGrid = args => (
-  <GridTemplate {...args} fullWidth />
+  <ButtonGridTemplate {...args} fullWidth />
 );
 
 <Canvas>
@@ -183,7 +199,7 @@ export const DefaultFullWidthGrid = args => (
 #### Disabled state
 
 export const DefaultDisabledFullWidthGrid = args => (
-  <GridTemplate {...args} disabled fullWidth />
+  <ButtonGridTemplate {...args} disabled fullWidth />
 );
 
 <Canvas>
@@ -195,7 +211,7 @@ export const DefaultDisabledFullWidthGrid = args => (
 #### Loading state
 
 export const DefaultLoadingFullWidthGrid = args => (
-  <LoadingGridTemplate {...args} loading fullWidth />
+  <LoadingButtonGridTemplate {...args} loading fullWidth />
 );
 
 <Canvas>
@@ -208,7 +224,7 @@ export const DefaultLoadingFullWidthGrid = args => (
 
 #### Default state
 
-export const CompactGrid = args => <GridTemplate {...args} compact />;
+export const CompactGrid = args => <ButtonGridTemplate {...args} compact />;
 
 <Canvas>
   <Story name="CompactGrid">{CompactGrid}</Story>
@@ -217,7 +233,7 @@ export const CompactGrid = args => <GridTemplate {...args} compact />;
 #### Disabled state
 
 export const CompactDisabledGrid = args => (
-  <GridTemplate {...args} compact disabled />
+  <ButtonGridTemplate {...args} compact disabled />
 );
 
 <Canvas>
@@ -227,7 +243,7 @@ export const CompactDisabledGrid = args => (
 #### Loading state
 
 export const CompactLoadingGrid = args => (
-  <LoadingGridTemplate {...args} compact loading />
+  <LoadingButtonGridTemplate {...args} compact loading />
 );
 
 <Canvas>
@@ -239,7 +255,7 @@ export const CompactLoadingGrid = args => (
 #### Default state
 
 export const CompactFullWidthGrid = args => (
-  <GridTemplate {...args} compact fullWidth />
+  <ButtonGridTemplate {...args} compact fullWidth />
 );
 
 <Canvas>
@@ -249,7 +265,7 @@ export const CompactFullWidthGrid = args => (
 #### Disabled state
 
 export const CompactDisabledFullWidthGrid = args => (
-  <GridTemplate {...args} compact disabled fullWidth />
+  <ButtonGridTemplate {...args} compact disabled fullWidth />
 );
 
 <Canvas>
@@ -261,7 +277,7 @@ export const CompactDisabledFullWidthGrid = args => (
 #### Loading state
 
 export const CompactLoadingFullWidthGrid = args => (
-  <LoadingGridTemplate {...args} compact loading fullWidth />
+  <LoadingButtonGridTemplate {...args} compact loading fullWidth />
 );
 
 <Canvas>
