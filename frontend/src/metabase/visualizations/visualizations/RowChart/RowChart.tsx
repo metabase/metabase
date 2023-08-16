@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
   getChartColumns,
@@ -48,7 +48,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
+import type {
   RemappingHydratedChartData,
   VisualizationProps,
 } from "metabase/visualizations/types";

@@ -20,7 +20,7 @@ import {
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
-import { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import {
   isCoordinate,
   isDate,

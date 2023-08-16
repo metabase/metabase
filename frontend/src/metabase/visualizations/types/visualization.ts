@@ -6,7 +6,7 @@ import {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase/visualizations/click-actions/types";
+import type { ClickObject } from "metabase/visualizations/types";
 import { IconName, IconProps } from "metabase/core/components/Icon";
 import type Query from "metabase-lib/queries/Query";
 

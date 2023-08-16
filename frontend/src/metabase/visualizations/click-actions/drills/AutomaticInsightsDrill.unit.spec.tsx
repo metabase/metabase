@@ -9,7 +9,7 @@ import {
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import type { ClickActionProps } from "../types";
+import type { ClickActionProps } from "metabase/visualizations/types";
 import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 
 describe("AutomaticInsightsDrill", () => {

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { Drill } from "metabase/visualizations/click-actions/types";
+import type { Drill } from "metabase/visualizations/types";
 import {
   distributionDrill,
   distributionDrillQuestion,

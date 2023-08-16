@@ -1,7 +1,7 @@
 import { isValidElement, useMemo } from "react";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import {
+import type {
   ComputedVisualizationSettings,
   DataPoint,
   HoveredDimension,

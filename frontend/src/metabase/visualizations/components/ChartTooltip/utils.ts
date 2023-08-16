@@ -1,5 +1,5 @@
 import { formatValue } from "metabase/lib/formatting";
-import {
+import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";

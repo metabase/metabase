@@ -1,4 +1,4 @@
-import type { QueryMode } from "../types";
+import type { QueryMode } from "metabase/visualizations/types";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 import { DefaultMode } from "./DefaultMode";
 

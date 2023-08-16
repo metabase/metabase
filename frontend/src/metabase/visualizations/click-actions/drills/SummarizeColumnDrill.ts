@@ -5,7 +5,7 @@ import type {
   ClickActionProps,
   ClickActionBase,
   Drill,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import type { Dispatch } from "metabase-types/store";
 import {
   summarizeColumnDrill,

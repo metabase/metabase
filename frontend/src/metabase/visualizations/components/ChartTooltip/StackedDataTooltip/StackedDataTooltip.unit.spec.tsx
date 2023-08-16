@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import _ from "underscore";
 
-import { StackedTooltipModel } from "metabase/visualizations/types";
+import type { StackedTooltipModel } from "metabase/visualizations/types";
 import StackedDataTooltip from "./StackedDataTooltip";
 
 const defaultHeaderRows = [

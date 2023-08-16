@@ -1,6 +1,6 @@
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
-import {
+import type {
   RemappingHydratedChartData,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";

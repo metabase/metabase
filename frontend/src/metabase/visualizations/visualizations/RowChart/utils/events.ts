@@ -25,9 +25,11 @@ import {
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { ClickObject } from "metabase/modes/types";
 import { isMetric } from "metabase-lib/types/utils/isa";
-import { ClickObjectDimension } from "metabase-lib/queries/drills/types";
+import {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],

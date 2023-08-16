@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
 import Tooltip from "metabase/core/components/Tooltip";
-import {
+import type {
   HoveredObject,
   HoveredTimelineEvent,
 } from "metabase/visualizations/types";
