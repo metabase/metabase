@@ -137,10 +137,9 @@ describe("scenarios > search", () => {
     });
   });
 
-  describeEE("applying search filters", () => {
+  describe("applying search filters", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      setTokenFeatures("all");
 
       createSegment({
         name: "Segment",
@@ -168,62 +167,228 @@ describe("scenarios > search", () => {
         query: { "source-table": ORDERS_ID },
         dataset: true,
       });
-
-      cy.createModerationReview({
-        status: "verified",
-        moderated_item_type: "card",
-        moderated_item_id: ORDERS_COUNT_QUESTION_ID,
-      });
     });
 
-    describe("rendering `Verified` filter", () => {
-      it("should render if Pro/EE instance", () => {
-        setTokenFeatures("all");
-        cy.visit("/");
-        cy.findByTestId("search-bar-filter-button").click();
-        cy.findByTestId("verified-search-filter").should("exist");
-      });
-      it("should not render if Starter instance", () => {
-        setTokenFeatures("none");
-        cy.visit("/");
-        cy.findByTestId("search-bar-filter-button").click();
-        cy.findByTestId("verified-search-filter").should("not.exist");
+    describe("text filter", () => {
+      describe("hydrating search text from URL", () => {
+        it("should hydrate search with search text", () => {
+          cy.visit("/search?q=orders");
+          cy.wait("@search");
+
+          getSearchBar().should("have.value", "orders");
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+        });
       });
     });
+    describe("type filter", () => {
+      describe("hydrating query params", () => {
+        it("should hydrate search with search text and filter", () => {
+          const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
+          cy.visit(`/search?q=orders&type=${filterName}`);
+          cy.wait("@search");
 
-    describe("hydrating search query from URL", () => {
-      it("should hydrate search with search text", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
+          getSearchBar().should("have.value", "orders");
+          cy.findByTestId("search-bar-filter-button").should(
+            "have.attr",
+            "data-is-filtered",
+            "true",
+          );
 
-        getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+
+          cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
+          cy.findByTestId("type-sidebar").within(() => {
+            cy.findByText(sidebarLabel).should("exist");
+          });
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            cy.wrap(result).should("contain.text", resultInfoText);
+          });
         });
       });
 
-      it("should hydrate search with search text and filter", () => {
-        const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
-        cy.wait("@search");
+      describe("applying filter", () => {
+        typeFilters.forEach(
+          ({ label, sidebarLabel, filterName, resultInfoText }) => {
+            it(`should filter results by ${label}`, () => {
+              cy.visit("/");
 
-        getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-bar-filter-button").should(
-          "have.attr",
-          "data-is-filtered",
-          "true",
+              cy.findByTestId("search-bar-filter-button").click();
+              getSearchModalContainer().within(() => {
+                cy.findByText(label).click();
+                cy.findByText("Apply all filters").click();
+              });
+
+              getSearchBar().clear().type("e{enter}");
+              cy.wait("@search");
+
+              cy.url().should("include", `type=${filterName}`);
+
+              cy.findAllByTestId("result-link-info-text").each(result => {
+                cy.wrap(result).should("contain.text", resultInfoText);
+              });
+
+              cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
+              cy.findByTestId("type-sidebar").within(() => {
+                cy.findByText(sidebarLabel).should("exist");
+              });
+            });
+          },
         );
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
+        it("should not filter results by type when `Clear all filters` is applied", () => {
+          cy.visit("/search?q=order&type=card");
+          cy.wait("@search");
 
-        cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-        cy.findByTestId("type-sidebar").within(() => {
-          cy.findByText(sidebarLabel).should("exist");
+          cy.findAllByTestId("search-result-item-name");
+          cy.findByTestId("search-bar-filter-button").click();
+
+          getSearchModalContainer().within(() => {
+            cy.findByText("Clear all filters").click();
+          });
+
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
+
+          cy.url().should("not.include", "type=card");
+
+          cy.findAllByTestId("type-sidebar-item").should(
+            "have.length",
+            typeFilters.length + 1,
+          );
         });
-        cy.findAllByTestId("result-link-info-text").each(result => {
-          cy.wrap(result).should("contain.text", resultInfoText);
+      });
+    });
+    describeEE("verified filter", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+        cy.createModerationReview({
+          status: "verified",
+          moderated_item_type: "card",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+        });
+      });
+
+      describe("rendering on tiered instances", () => {
+        it("should render if EE instance", () => {
+          setTokenFeatures("all");
+          cy.visit("/");
+          cy.findByTestId("search-bar-filter-button").click();
+          cy.findByTestId("verified-search-filter").should("exist");
+        });
+        it("should not render if non-EE instance", () => {
+          setTokenFeatures("none");
+          cy.visit("/");
+          cy.findByTestId("search-bar-filter-button").click();
+          cy.findByTestId("verified-search-filter").should("not.exist");
+        });
+      });
+
+      describe("hydrating query params", () => {
+        it("should hydrate search with search text and filter", () => {
+          cy.visit(`/search?q=orders&verified=true`);
+          cy.wait("@search");
+
+          getSearchBar().should("have.value", "orders");
+          cy.findByTestId("search-bar-filter-button").should(
+            "have.attr",
+            "data-is-filtered",
+            "true",
+          );
+
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+        });
+      });
+
+      describe("applying filter", () => {
+        describe("verified filter", () => {
+          it("should filter only for `Verified` assets", () => {
+            cy.visit("/");
+
+            cy.findByTestId("search-bar-filter-button").click();
+            getSearchModalContainer().within(() => {
+              cy.findByText("Only verified items").click();
+              cy.findByText("Apply all filters").click();
+            });
+
+            getSearchBar().clear().type("Orders{enter}");
+            cy.wait("@search");
+
+            cy.url().should("include", `verified=true`);
+
+            const verifiedItem = cy.findByTestId("search-result-item");
+            verifiedItem.within(() => {
+              cy.findByLabelText("verified icon").should("exist");
+            });
+          });
+
+          it("should show verified and unverified assets when `All items` is selected", () => {
+            cy.visit("/");
+
+            cy.findByTestId("search-bar-filter-button").click();
+            getSearchModalContainer().within(() => {
+              cy.findByText("All items").click();
+              cy.findByText("Apply all filters").click();
+            });
+
+            getSearchBar().clear().type("Orders{enter}");
+            cy.wait("@search");
+
+            cy.url().should("not.include", `verified=true`);
+
+            let verifiedElementCount = 0;
+            let unverifiedElementCount = 0;
+
+            cy.findAllByTestId("search-result-item")
+              .each($el => {
+                if ($el.find('[aria-label="verified icon"]').length) {
+                  verifiedElementCount++;
+                } else {
+                  unverifiedElementCount++;
+                }
+              })
+              .then(() => {
+                expect(verifiedElementCount).to.eq(1);
+                expect(unverifiedElementCount).to.be.gt(0);
+              });
+          });
+
+          it("should not filter unverified assets when `Clear all filters` is applied", () => {
+            cy.visit("/search?q=order&verified=true");
+            cy.wait("@search");
+
+            cy.findAllByTestId("search-result-item-name");
+            cy.findByTestId("search-bar-filter-button").click();
+
+            getSearchModalContainer().within(() => {
+              cy.findByText("Clear all filters").click();
+            });
+
+            getSearchBar().clear().type("Orders{enter}");
+            cy.wait("@search");
+
+            cy.url().should("not.include", "verified=true");
+
+            let verifiedElementCount = 0;
+            let unverifiedElementCount = 0;
+            cy.findAllByTestId("search-result-item")
+              .each($el => {
+                if (!$el.find('[aria-label="verified icon"]').length) {
+                  unverifiedElementCount++;
+                } else {
+                  verifiedElementCount++;
+                }
+              })
+              .then(() => {
+                expect(verifiedElementCount).to.eq(1);
+                expect(unverifiedElementCount).to.be.gt(0);
+              });
+          });
         });
       });
     });
@@ -266,147 +431,6 @@ describe("scenarios > search", () => {
         cy.location().should(loc => {
           expect(loc.pathname).to.eq("/search");
           expect(loc.search).to.eq("?q=orders&type=card");
-        });
-      });
-    });
-
-    describe("search filters", () => {
-      describe("type filters", () => {
-        typeFilters.forEach(
-          ({ label, sidebarLabel, filterName, resultInfoText }) => {
-            it(`should filter results by ${label}`, () => {
-              cy.visit("/");
-
-              cy.findByTestId("search-bar-filter-button").click();
-              getSearchModalContainer().within(() => {
-                cy.findByText(label).click();
-                cy.findByText("Apply all filters").click();
-              });
-
-              getSearchBar().clear().type("e{enter}");
-              cy.wait("@search");
-
-              cy.url().should("include", `type=${filterName}`);
-
-              cy.findAllByTestId("result-link-info-text").each(result => {
-                cy.wrap(result).should("contain.text", resultInfoText);
-              });
-
-              cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-              cy.findByTestId("type-sidebar").within(() => {
-                cy.findByText(sidebarLabel).should("exist");
-              });
-            });
-          },
-        );
-      });
-
-      describe("verified filter", () => {
-        it("should filter only for `Verified` assets", () => {
-          cy.visit("/");
-
-          cy.findByTestId("search-bar-filter-button").click();
-          getSearchModalContainer().within(() => {
-            cy.findByText("Only verified items").click();
-            cy.findByText("Apply all filters").click();
-          });
-
-          getSearchBar().clear().type("Orders{enter}");
-          cy.wait("@search");
-
-          cy.url().should("include", `verified=true`);
-
-          const verifiedItem = cy.findByTestId("search-result-item");
-          verifiedItem.within(() => {
-            cy.findByLabelText("verified icon").should("exist");
-          });
-        });
-
-        it("should show verified and unverified assets when `All items` is selected", () => {
-          cy.visit("/");
-
-          cy.findByTestId("search-bar-filter-button").click();
-          getSearchModalContainer().within(() => {
-            cy.findByText("All items").click();
-            cy.findByText("Apply all filters").click();
-          });
-
-          getSearchBar().clear().type("Orders{enter}");
-          cy.wait("@search");
-
-          cy.url().should("not.include", `verified=true`);
-
-          let verifiedElementCount = 0;
-          let unverifiedElementCount = 0;
-
-          cy.findAllByTestId("search-result-item")
-            .each($el => {
-              if ($el.find('[aria-label="verified icon"]').length) {
-                verifiedElementCount++;
-              } else {
-                unverifiedElementCount++;
-              }
-            })
-            .then(() => {
-              expect(verifiedElementCount).to.eq(1);
-              expect(unverifiedElementCount).to.be.gt(0);
-            });
-        });
-      });
-
-      describe("no filters applied", () => {
-        it("should not filter results by type when `Clear all filters` is applied", () => {
-          cy.visit("/search?q=order&type=card");
-          cy.wait("@search");
-
-          cy.findAllByTestId("search-result-item-name");
-          cy.findByTestId("search-bar-filter-button").click();
-
-          getSearchModalContainer().within(() => {
-            cy.findByText("Clear all filters").click();
-          });
-
-          getSearchBar().clear().type("e{enter}");
-          cy.wait("@search");
-
-          cy.url().should("not.include", "type=card");
-
-          cy.findAllByTestId("type-sidebar-item").should(
-            "have.length",
-            typeFilters.length + 1,
-          );
-        });
-
-        it("should not filter unverified assets when `Clear all filters` is applied", () => {
-          cy.visit("/search?q=order&verified=true");
-          cy.wait("@search");
-
-          cy.findAllByTestId("search-result-item-name");
-          cy.findByTestId("search-bar-filter-button").click();
-
-          getSearchModalContainer().within(() => {
-            cy.findByText("Clear all filters").click();
-          });
-
-          getSearchBar().clear().type("Orders{enter}");
-          cy.wait("@search");
-
-          cy.url().should("not.include", "verified=true");
-
-          let verifiedElementCount = 0;
-          let unverifiedElementCount = 0;
-          cy.findAllByTestId("search-result-item")
-            .each($el => {
-              if (!$el.find('[aria-label="verified icon"]').length) {
-                unverifiedElementCount++;
-              } else {
-                verifiedElementCount++;
-              }
-            })
-            .then(() => {
-              expect(verifiedElementCount).to.eq(1);
-              expect(unverifiedElementCount).to.be.gt(0);
-            });
         });
       });
     });

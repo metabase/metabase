@@ -50,14 +50,17 @@ const TestSearchFilterModal = ({
 }) => {
   const [filters, setFilters] = useState(initialFilters);
 
-  onChangeFilters.mockImplementation(newFilters => setFilters(newFilters));
+  function handleChangeFilters(newFilters: SearchFilters) {
+    setFilters(newFilters);
+    onChangeFilters(newFilters);
+  }
 
   return (
     <SearchFilterModal
       isOpen={true}
       setIsOpen={jest.fn()}
       value={filters}
-      onChangeFilters={onChangeFilters}
+      onChangeFilters={handleChangeFilters}
     />
   );
 };

@@ -2,7 +2,6 @@ import { t } from "ttag";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import Modal from "metabase/components/Modal";
-import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModal/SearchFilterModalFooter/SearchFilterModalFooter";
 import {
   FilterTypeKeys,
   SearchFilterComponent,
@@ -15,6 +14,7 @@ import { SearchFilterKeys } from "metabase/search/constants";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { TypeFilter } from "../filters";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
+import { SearchFilterModalFooter } from "./SearchFilterModalFooter";
 
 export const SearchFilterModal = ({
   isOpen,
@@ -29,22 +29,29 @@ export const SearchFilterModal = ({
 }) => {
   const [output, setOutput] = useState<SearchFilters>(value);
 
-  const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = useMemo(
-    () => ({
-      [SearchFilterKeys.Type]: TypeFilter,
-      [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-    }),
-    [],
-  );
+  const filterMap: Record<FilterTypeKeys, SearchFilterComponent | null> =
+    useMemo(
+      () => ({
+        [SearchFilterKeys.Type]: TypeFilter,
+        [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+      }),
+      [],
+    );
 
   const isValidFilterValue = useCallback(
     (
       key: FilterTypeKeys,
       val: SearchFilterPropTypes[FilterTypeKeys],
-    ): boolean =>
-      !!val &&
-      (!Array.isArray(val) || val.length > 0) &&
-      !!filterMap[key as FilterTypeKeys],
+    ): boolean => {
+      if (!val || !filterMap[key]) {
+        return false;
+      }
+
+      if (Array.isArray(val)) {
+        return val.length > 0;
+      }
+      return true;
+    },
     [filterMap],
   );
 

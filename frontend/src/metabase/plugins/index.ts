@@ -25,6 +25,7 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import { SearchFilterComponent } from "metabase/search/types";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -289,5 +290,5 @@ export const PLUGIN_EMBEDDING = {
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
-  VerifiedFilter: null as any,
+  VerifiedFilter: null as SearchFilterComponent | null,
 };
