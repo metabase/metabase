@@ -114,6 +114,34 @@ export const Template = args => (
   </Stack>
 );
 
+export const LoadingTemplateRow = args => (
+  <Group noWrap>
+    <Button {...args} loaderPosition="left">
+      Button
+    </Button>
+    <Button {...args} loaderPosition="right">
+      Button
+    </Button>
+    <Button {...args} leftIcon={<Icon name="play" />} />
+  </Group>
+);
+
+export const LoadingTemplateRowGroup = args => (
+  <Fragment>
+    <LoadingTemplateRow {...args} />
+    <LoadingTemplateRow {...args} radius="xl" />
+  </Fragment>
+);
+
+export const LoadingTemplate = args => (
+  <Stack>
+    <LoadingTemplateRowGroup {...args} variant="filled" />
+    <LoadingTemplateRowGroup {...args} variant="outline" />
+    <LoadingTemplateRowGroup {...args} variant="default" />
+    <LoadingTemplateRow {...args} variant="subtle" />
+  </Stack>
+);
+
 ### Default size
 
 #### Default state
@@ -134,7 +162,7 @@ export const DefaultDisabled = args => <Template {...args} disabled />;
 
 #### Loading state
 
-export const DefaultLoading = args => <Template {...args} loading />;
+export const DefaultLoading = args => <LoadingTemplate {...args} loading />;
 
 <Canvas>
   <Story name="DefaultLoading">{DefaultLoading}</Story>
@@ -163,7 +191,7 @@ export const DefaultDisabledFullWidth = args => (
 #### Loading state
 
 export const DefaultLoadingFullWidth = args => (
-  <Template {...args} loading fullWidth />
+  <LoadingTemplate {...args} loading fullWidth />
 );
 
 <Canvas>
@@ -190,7 +218,9 @@ export const CompactDisabled = args => <Template {...args} compact disabled />;
 
 #### Loading state
 
-export const CompactLoading = args => <Template {...args} compact loading />;
+export const CompactLoading = args => (
+  <LoadingTemplate {...args} compact loading />
+);
 
 <Canvas>
   <Story name="CompactLoading">{CompactLoading}</Story>
@@ -221,7 +251,7 @@ export const CompactDisabledFullWidth = args => (
 #### Loading state
 
 export const CompactLoadingFullWidth = args => (
-  <Template {...args} compact loading fullWidth />
+  <LoadingTemplate {...args} compact loading fullWidth />
 );
 
 <Canvas>
