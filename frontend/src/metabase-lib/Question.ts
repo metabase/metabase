@@ -319,6 +319,8 @@ class QuestionInner {
     sensibleDisplays: [string],
     previousSensibleDisplays: [string] | null,
   ): Question {
+    const question = this._maybeSwitchToScalar(data);
+
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
@@ -328,14 +330,14 @@ class QuestionInner {
 
     if (isSensible && defaultDisplay === "table") {
       // any sensible display is better than the default table display
-      return this;
+      return question;
     }
 
-    if (shouldUnlock && this.displayIsLocked()) {
-      return this.setDisplayIsLocked(false).setDefaultDisplay();
+    if (shouldUnlock && question.displayIsLocked()) {
+      return question.setDisplayIsLocked(false).setDefaultDisplay();
     }
 
-    return this.setDefaultDisplay()._maybeSwitchToScalar(data);
+    return question.setDefaultDisplay();
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
