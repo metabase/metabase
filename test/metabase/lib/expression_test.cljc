@@ -297,4 +297,4 @@
                                                   (lib.tu/field-literal-ref query "QUANTITY"))))]
       (is (= ["ID" "Subtotal" "Total" "Tax" "Discount" "Quantity" "Created At" "Product ID" "User ID" "Unit price"]
              (map (partial lib/display-name query)
-                  (lib.metadata.calculation/returned-columns query)))))))
+                  (lib/returned-columns query)))))))
