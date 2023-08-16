@@ -36,10 +36,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
             backgroundColor: styles.disabledBackgroundColor,
           },
           "&[data-loading]": {
-            "&::before": {
-              backgroundColor: styles.loadingBackgroundColor,
-            },
-
             [`& .${getStylesRef("icon")}`]: {
               color: styles.loaderColor,
             },
@@ -109,7 +105,6 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         loaderColor: theme.fn.primaryColor(),
         hoverColor: hoverColor,
         hoverBackgroundColor: "transparent",
-        loadingBackgroundColor: "transparent",
         disabledColor: theme.colors.text[0],
         disabledBorderColor: "transparent",
         disabledBackgroundColor: "transparent",
