@@ -87,7 +87,7 @@
                            {:created-by 1}))))))
 
   (testing "verified filter"
-    (premium-features-test/with-premium-features #{:content-verification :official-collections}
+    (premium-features-test/with-premium-features #{:content-verification}
       (testing "for cards"
         (is (= (merge
                 base-search-query
@@ -112,23 +112,7 @@
                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
-                (merge default-search-ctx {:verified true})))))
-
-      (testing "for dashboards"
-        (is (= (merge
-                base-search-query
-                {:where [:and [:= :dashboard.archived false] [:= :collection.authority_level "official"]]})
-               (search.filter/build-filters
-                base-search-query "dashboard"
-                (merge default-search-ctx {:verified true})))))
-
-     (testing "for collections"
-       (is (= (merge
-               base-search-query
-               {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
-            (search.filter/build-filters
-             base-search-query "collection"
-             (merge default-search-ctx {:verified true}))))))
+                (merge default-search-ctx {:verified true}))))))
 
     (premium-features-test/with-premium-features #{}
       (testing "for cards without ee features"
@@ -141,12 +125,14 @@
                 base-search-query "card"
                 (merge default-search-ctx {:verified true})))))
 
-      (testing "for collections without ee features"
+      (testing "for models without ee features"
         (is (= (merge
                 base-search-query
-                {:where [:and [:= :collection.archived false] [:inline [:= 0 1]]]})
+                {:where  [:and
+                          [:= :card.archived false]
+                          [:inline [:= 0 1]]]})
                (search.filter/build-filters
-                base-search-query "collection"
+                base-search-query "dataset"
                 (merge default-search-ctx {:verified true})))))))
 
  (testing "throw error for filtering with unsupport models"
