@@ -70,7 +70,7 @@ export function cleanQuery(query) {
     _.all(filter, a => a != null),
   );
   if (filters.length > 0) {
-    query.filter = ["and", ...filters];
+    query.filter = QUERY.getFilterClause(filters);
   } else {
     delete query.filter;
   }
