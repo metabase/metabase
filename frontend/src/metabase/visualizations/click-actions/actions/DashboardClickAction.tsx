@@ -7,7 +7,7 @@ import type {
   Drill,
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
 import {
   getDashboardDrillLinkUrl,

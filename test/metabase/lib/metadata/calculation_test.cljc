@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]))
@@ -18,19 +17,19 @@
                                       "TOTAL"]))]]
       (testing (str "\nquery =\n" (u/pprint-to-str query))
         (is (= "Venues, Sorted by Total ascending"
-               (lib.metadata.calculation/suggested-name query)))))))
+               (lib/suggested-name query)))))))
 
 (deftest ^:parallel long-display-name-test
   (let [query lib.tu/venues-query
         results (->> query
-                     lib.metadata.calculation/visible-columns
+                     lib/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Category → ID" "Category → Name"]
            results)))
 
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         results (->> query
-                     lib.metadata.calculation/visible-columns
+                     lib/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID"
             "User ID"
@@ -82,7 +81,7 @@
                                      (meta/field-metadata :venues :category-id)
                                      (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
                                   (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Categories")])))
-                    lib.metadata.calculation/visible-columns)))))
+                    lib/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
-                    (lib.metadata.calculation/visible-columns nil))))))
+                    (lib/visible-columns nil))))))

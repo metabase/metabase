@@ -6,7 +6,7 @@ import type {
   ClickActionProps,
   PopoverClickAction,
   QuestionChangeClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import {
   quickFilterDrill,
   QuickFilterDrillOperator,

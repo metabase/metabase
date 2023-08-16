@@ -147,6 +147,43 @@ describe("scenarios > question > saved", () => {
     });
   });
 
+  it("should duplicate a saved question to a collection created on the go", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").click();
+    });
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
+
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 

@@ -1,5 +1,5 @@
 /* eslint-disable react/display-name */
-import { ClickActionPopoverProps } from "metabase/visualizations/click-actions/types";
+import { ClickActionPopoverProps } from "metabase/visualizations/types";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 import type { Card } from "metabase-types/api";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";

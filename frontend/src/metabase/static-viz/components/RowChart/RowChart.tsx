@@ -11,12 +11,8 @@ import {
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { VisualizationSettings } from "metabase-types/api";
-import { ColorGetter } from "metabase/static-viz/lib/colors";
-import {
-  RemappingHydratedChartData,
-  TwoDimensionalChartData,
-} from "metabase/visualizations/shared/types/data";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getAxesVisibility,
@@ -29,6 +25,7 @@ import {
   getStaticFormatters,
 } from "metabase/static-viz/lib/format";
 import { extractRemappedColumns } from "metabase/visualizations";
+import type { RemappingHydratedChartData } from "metabase/visualizations/types";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 
@@ -46,7 +43,7 @@ const WIDTH = 620;
 const HEIGHT = 440;
 
 interface StaticRowChartProps {
-  data: TwoDimensionalChartData;
+  data: DatasetData;
   settings: VisualizationSettings;
   getColor: ColorGetter;
 }

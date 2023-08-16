@@ -1,3 +1,4 @@
+import type { QueryMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
 import {
   MODE_TYPE_NATIVE,
@@ -15,7 +16,6 @@ import { PivotMode } from "../modes/PivotMode";
 import { NativeMode } from "../modes/NativeMode";
 import { DefaultMode } from "../modes/DefaultMode";
 import { Mode, getModeType } from "../Mode";
-import type { QueryMode } from "../types";
 
 export function getMode(question: Question): Mode | null {
   const queryMode = getQueryMode(question);

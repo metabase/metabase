@@ -190,12 +190,11 @@ export const queryCompleted = (question, queryResults) => {
         );
       }
 
-      question = question
-        .maybeResetDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .switchTableScalar(data);
+      question = question.maybeResetDisplay(
+        data,
+        getSensibleDisplays(data),
+        prevData && getSensibleDisplays(prevData),
+      );
     }
 
     const card = question.card();

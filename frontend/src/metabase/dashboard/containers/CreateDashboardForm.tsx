@@ -14,8 +14,6 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import { OnClickNewCollection } from "metabase/containers/CreateCollectionOnTheGo";
-
 import * as Errors from "metabase/core/utils/errors";
 
 import Collections from "metabase/entities/collections";
@@ -45,7 +43,6 @@ export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
-  onClickNewCollection?: OnClickNewCollection;
   initialValues?: CreateDashboardProperties | null;
 }
 
@@ -81,7 +78,6 @@ function CreateDashboardForm({
   handleCreateDashboard,
   onCreate,
   onCancel,
-  onClickNewCollection,
   initialValues,
 }: Props) {
   const computedInitialValues = useMemo(
@@ -125,8 +121,6 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
-            canCreateNew={true}
-            onClickNewCollection={onClickNewCollection}
           />
           <FormFooter>
             <FormErrorMessage inline />

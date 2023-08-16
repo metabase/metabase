@@ -14,7 +14,7 @@ import type {
   QuestionChangeClickAction,
   ReduxClickAction,
   ClickObject,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import type {
   StructuredDatasetQuery,
   DatasetColumn,

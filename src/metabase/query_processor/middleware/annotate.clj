@@ -347,7 +347,7 @@
     ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
     ;; probably going to involve updating a ton of tests that encode the old behavior.
     (binding [lib.metadata.calculation/*display-name-style* :long]
-      (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
+      (-> (lib/metadata (mlv2-query inner-query) -1 mlv2-clause)
           (update-keys u/->snake_case_en)
           (dissoc :lib/type)))))
 
@@ -362,7 +362,7 @@
                     {:error/message "legacy inner-query with :source-table or :source-query"}
                     (some-fn :source-table :source-query)]]
    ag-clause]
-  (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
+  (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------

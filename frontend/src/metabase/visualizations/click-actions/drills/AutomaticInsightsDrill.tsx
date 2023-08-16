@@ -5,7 +5,7 @@ import type {
   ClickActionProps,
   PopoverClickAction,
   UrlClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import MetabaseSettings from "metabase/lib/settings";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import {

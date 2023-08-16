@@ -187,7 +187,7 @@ class DashboardGrid extends Component {
   };
 
   getLayoutForDashCard = dashcard => {
-    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
 
