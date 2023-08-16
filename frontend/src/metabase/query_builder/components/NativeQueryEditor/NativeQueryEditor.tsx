@@ -67,7 +67,7 @@ import {
 } from "./utils";
 
 import NativeQueryEditorSidebar from "./NativeQueryEditorSidebar";
-import VisibilityToggler from "./VisibilityToggler";
+import { VisibilityToggler } from "./VisibilityToggler";
 import RightClickPopover from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";
 
@@ -80,7 +80,6 @@ import {
   NativeQueryEditorRoot,
   StyledResizableBox,
 } from "./NativeQueryEditor.styled";
-import "./NativeQueryEditor.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%

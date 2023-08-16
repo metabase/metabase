@@ -73,5 +73,6 @@
     `(def ~(vary-meta fn-name merge attr-map)
        ~docstring
        ~(macros/case
-          :clj  (mu.fn/instrumented-fn-form parsed)
+          :clj  (let [error-context {:fn-name (list 'quote (symbol (name (ns-name *ns*)) (name fn-name)))}]
+                  (mu.fn/instrumented-fn-form error-context parsed))
           :cljs (mu.fn/deparameterized-fn-form parsed)))))

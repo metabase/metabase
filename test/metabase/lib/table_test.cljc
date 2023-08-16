@@ -2,12 +2,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -43,4 +42,4 @@
                                              (metadata.protocols/fields meta/metadata-provider table-id))))
           query (lib/query metadata-provider (meta/table-metadata :venues))]
       (mu/disable-enforcement
-        (is (sequential? (lib.metadata.calculation/visible-columns query)))))))
+        (is (sequential? (lib/visible-columns query)))))))

@@ -5,8 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -14,6 +12,8 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(def ^:private absent-key-marker (symbol "nil #_\"key is not present.\""))
 
 (deftest ^:parallel resolve-join-test
   (let [query       lib.tu/venues-query
@@ -41,7 +41,7 @@
                                                       {:lib/uuid string?}
                                                       [:field
                                                        {:lib/uuid string?
-                                                        :join-alias (symbol "nil #_\"key is not present.\"")}
+                                                        :join-alias absent-key-marker}
                                                        (meta/id :venues :category-id)]
                                                       [:field
                                                        {:lib/uuid string?
@@ -100,7 +100,7 @@
                                                       {:lib/uuid string?}
                                                       [:field
                                                        {:lib/uuid string?
-                                                        :join-alias (symbol "nil #_\"key is not present.\"")}
+                                                        :join-alias absent-key-marker}
                                                        (meta/id :categories :id)]
                                                       [:field
                                                        {:lib/uuid string?
@@ -140,7 +140,7 @@
                                                           [:field
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
-                                                            :join-alias (symbol "nil #_\"key is not present.\"")}
+                                                            :join-alias absent-key-marker}
                                                            "ID"]
                                                           [:field
                                                            {:lib/uuid string?
@@ -164,7 +164,7 @@
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
                 :lib/source  :source/fields}]
-              (lib.metadata.calculation/returned-columns query -1 query))))))
+              (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
   (testing "Display name for a joined field should include a nice name for the join; include other info like :source-alias"
@@ -190,7 +190,7 @@
                                                                 :source-table (meta/id :categories)}]}]}]
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
-      (let [metadata (lib.metadata.calculation/returned-columns query)]
+      (let [metadata (lib/returned-columns query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
                         {:display-name         "Name"
                          :lib/source           :source/fields
@@ -211,7 +211,7 @@
                                            :query    {:source-table (meta/id :checkins)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+        metadata-provider (lib/composed-metadata-provider
                            meta/metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:cards [card-1]}))
@@ -246,7 +246,7 @@
               :lib/source               :source/joins
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "checkins_by_user__count"}]
-            (lib.metadata.calculation/returned-columns query -1 join)))
+            (lib/returned-columns query -1 join)))
     (is (= (assoc card-1 :lib/type :metadata/card)
            (lib.join/joined-thing query join)))))
 
@@ -275,7 +275,7 @@
               :lib/desired-column-alias "Cat__NAME"
               ::lib.join/join-alias     "Cat"
               :lib/source               :source/joins}]
-            (lib.metadata.calculation/returned-columns query)))
+            (lib/returned-columns query)))
     (is (=? {:lib/type :metadata/table
              :db-id (meta/id)
              :name "CATEGORIES"
@@ -304,7 +304,7 @@
               :long-display-name "Cat → Name"
               :display-name      "Name"}]
             (map #(lib/display-info query %)
-                 (lib.metadata.calculation/returned-columns query))))
+                 (lib/returned-columns query))))
     (testing "Introduce a new stage"
       (let [query' (lib/append-stage query)]
         (is (=? [{:name                     "ID"
@@ -319,7 +319,7 @@
                   :lib/source-column-alias  "Cat__NAME"
                   :lib/desired-column-alias "Cat__NAME"
                   :lib/source               :source/previous-stage}]
-                (lib.metadata.calculation/returned-columns query')))))))
+                (lib/returned-columns query')))))))
 
 (deftest ^:parallel default-columns-added-by-joins-deduplicate-names-test
   (let [join-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -358,7 +358,7 @@
               :display-name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
-            (lib.metadata.calculation/returned-columns query)))))
+            (lib/returned-columns query)))))
 
 (deftest ^:parallel join-strategy-test
   (let [query  lib.tu/query-with-join
@@ -381,7 +381,7 @@
   (are [strategy] (=? {:stages [{:joins [{:conditions [[:=
                                                         {}
                                                         [:field
-                                                         {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                                         {:join-alias absent-key-marker}
                                                          (meta/id :venues :category-id)]
                                                         [:field
                                                          {:join-alias "Categories"}
@@ -406,7 +406,7 @@
 (deftest ^:parallel join-strategy-display-name-test
   (let [query lib.tu/query-with-join]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
-           (map (partial lib.metadata.calculation/display-name query)
+           (map (partial lib/display-name query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel join-strategy-display-info-test
@@ -414,7 +414,7 @@
     (is (= [{:short-name "left-join", :display-name "Left outer join", :default true}
             {:short-name "right-join", :display-name "Right outer join"}
             {:short-name "inner-join", :display-name "Inner join"}]
-           (map (partial lib.metadata.calculation/display-info query)
+           (map (partial lib/display-info query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel with-join-alias-update-fields-test
@@ -457,8 +457,8 @@
                                                  conditions))))]
       (is (=? {:conditions [[:= {}
                              [:field {} (meta/id :venues :category-id)]
-                             [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :categories :id)]]]
-               :alias      (symbol "nil #_\"key is not present.\"")}
+                             [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]
+               :alias      absent-key-marker}
               join))
       (let [join' (lib/with-join-alias join "New Alias")]
         (is (=? {:conditions [[:= {}
@@ -532,7 +532,7 @@
             join' (lib/with-join-conditions join new-conditions)]
         (is (=? [[:= {}
                   [:field {} (meta/id :venues :id)]
-                  [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :categories :id)]]]
+                  [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]
                 (lib/join-conditions join')))
         (testing "Adding an alias later with lib/with-join-alias should update conditions that are missing aliases"
           (let [join'' (lib/with-join-alias join' "New Alias")]
@@ -553,7 +553,7 @@
               conditions' (lib/join-conditions (lib/with-join-conditions join new-conditions))]
           (is (=? [[:between {}
                     [:field {} (meta/id :venues :id)]
-                    [:field {:join-alias (symbol "nil #_\"key is not present.\"")}
+                    [:field {:join-alias absent-key-marker}
                      (meta/id :categories :id)]
                     1]]
                   conditions'))))
@@ -569,10 +569,10 @@
           (is (=? [[:and {}
                     [:= {}
                      [:field {} (meta/id :venues :id)]
-                     [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :categories :id)]]
+                     [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]
                     [:= {}
                      [:field {} (meta/id :venues :category-id)]
-                     [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :categories :id)]]]]
+                     [:field {:join-alias absent-key-marker} (meta/id :categories :id)]]]]
                   conditions')))))))
 
 (defn- test-with-join-fields [input expected]
@@ -1040,6 +1040,42 @@
             (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
                    products-created-at)
             :year)))))
+
+(deftest ^:parallel default-join-alias-test
+  (testing "default join-alias set without overwriting other aliases (#32897)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :checkins)
+                                   [(lib/= (meta/field-metadata :venues :id)
+                                           (-> (meta/field-metadata :checkins :venue-id)
+                                               (lib/with-join-alias "Checkins")))])
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-alias "Checkins")))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :users)
+                                   [(lib/= (-> (meta/field-metadata :checkins :user-id)
+                                               (lib/with-join-alias "Checkins"))
+                                           (meta/field-metadata :users :id))])
+                                  (lib/with-join-fields :all))))]
+      (is (=? [{:lib/type :mbql/join,
+                :stages [{:lib/type :mbql.stage/mbql
+                          :source-table (meta/id :checkins)}]
+                :fields :all
+                :conditions [[:=
+                              {}
+                              [:field {:join-alias absent-key-marker} (meta/id :venues :id)]
+                              [:field {:join-alias "Checkins"} (meta/id :checkins :venue-id)]]]
+                :alias "Checkins"}
+               {:lib/type :mbql/join
+                :stages [{:lib/type :mbql.stage/mbql
+                          :source-table (meta/id :users)}]
+                :fields :all,
+                :conditions [[:=
+                              {}
+                              [:field {:join-alias "Checkins"} (meta/id :checkins :user-id)]
+                              [:field {:join-alias "Users"} (meta/id :users :id)]]],
+                :alias "Users"}]
+              (lib/joins query))))))
 
 (deftest ^:parallel join-condition-columns-handle-temporal-units-test
   (testing "join-condition-lhs-columns and -rhs-columns should correctly mark columns regardless of :temporal-unit (#32390)\n"

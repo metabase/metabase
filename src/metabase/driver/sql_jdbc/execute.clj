@@ -438,6 +438,14 @@
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
+  (when (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
+                (catch Throwable _ (count params)))
+           (count params))
+    (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
+                    {:driver driver
+                     :type   qp.error-type/driver
+                     :statement (str/split-lines (str stmt))
+                     :params params})))
   (dorun
    (map-indexed
     (fn [i param]

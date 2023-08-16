@@ -4,7 +4,6 @@
               [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
@@ -188,8 +187,8 @@
 (deftest ^:parallel native-query-suggested-name-test
   (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil)]
     (is (= "Native query"
-           (lib.metadata.calculation/describe-query query)))
-    (is (nil? (lib.metadata.calculation/suggested-name query)))))
+           (lib/describe-query query)))
+    (is (nil? (lib/suggested-name query)))))
 
 (deftest ^:parallel native-query-building
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")]

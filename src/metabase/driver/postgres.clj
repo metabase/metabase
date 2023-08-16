@@ -804,12 +804,14 @@
                                      :columns     (map keyword column-names)
                                      ::from-stdin "''"}
                                     :quoted true
-                                    :dialect (sql.qp/quote-style driver))
-           tsvs         (->> values
-                             (map row->tsv)
-                             (str/join "\n")
-                             (StringReader.))]
-       (.copyIn copy-manager ^String sql tsvs)))))
+                                    :dialect (sql.qp/quote-style driver))]
+       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+       (doseq [slice-of-values (partition-all 100 values)]
+         (let [tsvs (->> slice-of-values
+                         (map row->tsv)
+                         (str/join "\n")
+                         (StringReader.))]
+           (.copyIn copy-manager ^String sql tsvs)))))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

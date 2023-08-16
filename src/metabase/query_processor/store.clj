@@ -13,8 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -344,6 +343,6 @@
   "Create a new MLv2 metadata provider that uses the QP store."
   []
   (cached ::metadata-provider
-    (lib.metadata.composed-provider/composed-metadata-provider
+    (lib/composed-metadata-provider
      (base-metadata-provider)
      (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))
