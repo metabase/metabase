@@ -335,12 +335,12 @@ class QuestionInner {
       return this.setDisplayIsLocked(false).setDefaultDisplay();
     }
 
-    return this.setDefaultDisplay().switchTableScalar(data);
+    return this.setDefaultDisplay()._switchTableScalar(data);
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
   // our display was a 1x1 type, but the data isn't 1x1, we show a table.
-  switchTableScalar({ rows, cols }): Question {
+  private _switchTableScalar({ rows, cols }): Question {
     // For 1x1 data, we show a scalar. If our display was a 1x1 type, but the data
     // isn't 1x1, we show a table.
     const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
