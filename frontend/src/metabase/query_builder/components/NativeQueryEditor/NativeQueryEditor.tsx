@@ -93,7 +93,7 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
 
 type AutocompleteItem = [string, string];
 
-interface OwnProps {
+type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
   query: NativeQuery;
 
@@ -145,7 +145,7 @@ interface OwnProps {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
-}
+};
 
 interface StateProps {
   canUsePromptInput: boolean;
@@ -747,12 +747,7 @@ export class NativeQueryEditor extends Component<
       resizable,
       editorContext = "question",
       setDatasetQuery,
-      sidebarFeatures = {
-        dataReference: true,
-        variables: true,
-        snippets: true,
-        promptInput: true,
-      },
+      sidebarFeatures,
       canChangeDatabase,
     } = this.props;
 
