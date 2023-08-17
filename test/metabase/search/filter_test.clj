@@ -43,15 +43,15 @@
                       :created-by 1})))))
 
     (testing "verified"
-      (is (= #{"card" "collection"}
+      (is (= #{"dataset" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
-      (is (= #{"card"}
+      (is (= #{"dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:models   #{"card" "dashboard" "dataset" "table"}
+                     {:models   #{"dashboard" "dataset" "table"}
                       :verified true})))))))
 
 (def ^:private base-search-query
@@ -137,7 +137,7 @@
 
 (deftest build-verified-filter-test
   (testing "verified filter"
-    (premium-features-test/with-premium-features #{:content-verification :official-collections}
+    (premium-features-test/with-premium-features #{:content-verification}
       (testing "for cards"
         (is (= (merge
                 base-search-query
@@ -151,12 +151,17 @@
                 base-search-query "card"
                 (merge default-search-ctx {:verified true})))))
 
-      (testing "for collections"
+      (testing "for models"
         (is (= (merge
                 base-search-query
-                {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
+                {:where  [:and
+                          [:= :card.archived false]
+                          [:= :moderation_review.status "verified"]
+                          [:= :moderation_review.moderated_item_type "card"]
+                          [:= :moderation_review.most_recent true]]
+                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
-                base-search-query "collection"
+                base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))
 
     (premium-features-test/with-premium-features #{}
@@ -170,12 +175,14 @@
                 base-search-query "card"
                 (merge default-search-ctx {:verified true})))))
 
-      (testing "for collections without ee features"
+      (testing "for models without ee features"
         (is (= (merge
                 base-search-query
-                {:where [:and [:= :collection.archived false] [:inline [:= 0 1]]]})
+                {:where  [:and
+                          [:= :card.archived false]
+                          [:inline [:= 0 1]]]})
                (search.filter/build-filters
-                base-search-query "collection"
+                base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
 
 (deftest ^:parallel buidl-filter-throw-error-for-unsuported-filters-test
