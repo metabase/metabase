@@ -71,7 +71,11 @@
     (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
       (do (log/info "Beginning Audit DB Sync...")
           (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
-          (log/info "Audit DB Sync Complete."))
+          (log/info "Audit DB Sync Complete.")
+          ;; We need to move back to a schema that matches the serialized data
+          (when (= :h2 mdb.env/db-type)
+            (t2/update! :metabase_database (:id audit-db) {:engine "postgres"})
+            (t2/update! :metabase_table {:db_id (:id audit-db)} {:schema "public"})))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
@@ -83,4 +87,8 @@
                                                                          :token-check? false))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))
+          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))
+    (when (= :h2 mdb.env/db-type)
+      (when-let [audit-db-id (t2/select-one-pk :model/Database {:where [:= :is_audit true]})]
+        (t2/update! :metabase_database audit-db-id {:engine "h2"})
+        (t2/update! :metabase_table {:db_id audit-db-id} {:schema "PUBLIC"})))))
