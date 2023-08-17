@@ -29,6 +29,19 @@
   [_driver _conn thunk]
   (thunk))
 
+(defn- db-identifier->name
+  "Get the name of identifier from JDBC error message.
+  An identifier can contains quote and full schema, database, table , etc.
+  This formats so that we get  only the identifer name with quote removed.
+
+
+    (db-identifier->name \"PUBLIC.TABLE\" ) => \"TABLE\""
+  [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/split #"\.")
+      last))
+
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database table-name constraint-name]
@@ -72,21 +85,22 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
-  (when-let [[_match _constraint-name _table column]
-             (re-find #"Referential integrity constraint violation: \"([^\:]+): [^.]+.\"\"([^\s]+)\"\" FOREIGN KEY\(\"\"([^\"]+)\"\"\)" error-message)]
-    (merge {:type error-type}
-           (case action-type
-             :row/create
-             {:message (tru "Unable to create a new record.")
-              :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
+  (when-let [[_match column]
+             (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
+    (let  [column (db-identifier->name column)]
+     (merge {:type error-type}
+            (case action-type
+              :row/create
+              {:message (tru "Unable to create a new record.")
+               :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
-             :row/delete
-             {:message (tru "Other tables rely on this row so it cannot be deleted.")
-              :errors  {}}
+              :row/delete
+              {:message (tru "Other tables rely on this row so it cannot be deleted.")
+               :errors  {}}
 
-             :row/update
-             {:message (tru "Unable to update the record.")
-              :errors  {column (tru "This {0} does not exist." (str/capitalize column))}}))))
+              :row/update
+              {:message (tru "Unable to update the record.")
+               :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
@@ -108,5 +122,9 @@
   "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]")
 
  (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-foreign-key-constraint {:id 1} nil
+  :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
+  "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")
+
+ (sql-jdbc.actions/maybe-parse-sql-error
+  :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
   "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]"))
