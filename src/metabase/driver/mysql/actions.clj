@@ -59,23 +59,25 @@
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
-                 :row/delete
-                 {:message (tru "Other tables rely on this row so it cannot be deleted.")
-                  :errors  {}}
+              :row/delete
+              {:message (tru "Other tables rely on this row so it cannot be deleted.")
+               :errors  {}}
 
-                 :row/update
-                 {:message (tru "Unable to update the record.")
-                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+              :row/update
+              (let [column (remove-backticks column)]
+                {:message (tru "Unable to update the record.")
+                 :errors  {column (tru "This {0} does not exist." (str/capitalize column))}}))))
    (when-let [[_match _ref-table _constraint column _fk-table _fk-col]
               (re-find #"Cannot add or update a child row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
-     {:type    error-type
-      :message (case action-type
-                 :row/create
-                 (tru "Unable to create a new record.")
+     (let [column (remove-backticks column)]
+       {:type    error-type
+        :message (case action-type
+                   :row/create
+                   (tru "Unable to create a new record.")
 
-                 :row/update
-                 (tru "Unable to update the record."))
-      :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}})))
+                   :row/update
+                   (tru "Unable to update the record."))
+        :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
@@ -85,20 +87,6 @@
       {:type    error-type
        :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
-
-(comment
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil nil
-                                          "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")
-
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil nil
-                                          "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-unique-constraint {:id 3} nil
-                                          "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-not-null-constraint nil nil
-                                          "Column 'f1' cannot be null")
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/incorrect-value-type nil nil
-                                          "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")
-  nil)
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:

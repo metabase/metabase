@@ -109,22 +109,3 @@
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
-
-(comment
- (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-not-null-constraint nil nil
-  "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")
- (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-unique-constraint {:id 1} nil
-  "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]")
- (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/incorrect-value-type nil nil
-  "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]")
-
- (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
-  "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")
-
- (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
-  "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]"))

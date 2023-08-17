@@ -7,11 +7,14 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [malli.core :as mc]
+   [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
+   [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -788,6 +791,62 @@
                                               {:parameters {"name"   "new bird"
                                                             "status" "good bird"
                                                             "type"   "turkey"}}))))))))))))
+
+;; API tests are in [[metabase.api.action-test]]
+(deftest actions-maybe-parse-sql-error-test
+  (testing "violate not null constraint"
+    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
+            :message "Ranking must have values."
+            :errors {"ranking" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-not-null-constraint nil :row/created
+            "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))
+
+    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
+            :message "Ranking must have values."
+            :errors {"ranking" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-not-null-constraint nil :row/created
+            "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null)."))))
+
+  (testing "vioalte unique constraint"
+    (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
+      (is (= {:type :metabase.actions.error/violate-unique-constraint,
+              :message "Ranking already exists.",
+              :errors {"ranking" "This Ranking value already exists."}}
+             (sql-jdbc.actions/maybe-parse-sql-error
+              :postgres actions.error/violate-unique-constraint nil nil
+              "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")))))
+
+  (testing "incorrect type"
+    (is (= {:type :metabase.actions.error/incorrect-value-type,
+            :message "Some of your values aren’t of the correct type for the database.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/incorrect-value-type nil nil
+            "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch."))))
+
+  (testing "violate fk constraints"
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to create a new record.",
+            :errors {"group-id" "This Group-id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to update the record.",
+            :errors {"id" "This Id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Other tables rely on this row so it cannot be deleted.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------

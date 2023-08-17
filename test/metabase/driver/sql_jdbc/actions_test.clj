@@ -52,3 +52,5 @@
                                             (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
+
+(deftest h2-maybe-pasre-sql-error-test)

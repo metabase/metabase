@@ -74,25 +74,6 @@
      :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
 
-(comment
- (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-foreign-key-constraint {:id 47} :row/update
-  "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")
-
- (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-unique-constraint {:id 47} nil
-  "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")
- (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-not-null-constraint nil nil
-  "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")
- (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/violate-not-null-constraint nil nil
-  "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")
-
- (sql-jdbc.actions/maybe-parse-sql-error
-  :postgres actions.error/incorrect-value-type nil nil
-  "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch."))
-
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]
   {:type/BigInteger          "BIGINT"
