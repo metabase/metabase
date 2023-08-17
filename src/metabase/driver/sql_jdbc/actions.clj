@@ -70,7 +70,11 @@
    (thunk)
    (catch SQLException e
      (throw (ex-info (or (ex-message e) "Error executing action.")
-                     (merge (or (parse-sql-error driver database action e)
+                     (merge (or (some-> (parse-sql-error driver database action e)
+                                        ;; the columns in error message should match with columns
+                                        ;; in the parameter. It's usually got from calling
+                                        ;; GET /api/action/:id/execute, and in there all column names are slugified
+                                        (m/update-existing :errors update-keys u/slugify))
                                 (assoc (ex-data e) :message (ex-message e)))
                             {:status-code 400}))))))
 
