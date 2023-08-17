@@ -127,6 +127,25 @@ const nestedQuestion = card => ({
   },
 });
 
+const nestedQuestionWithJoinOnTable = card => ({
+  display: "table",
+  query: {
+    "source-table": `card__${card.id}`,
+    joins: [
+      {
+        fields: "all",
+        "source-table": PRODUCTS_ID,
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+        ],
+        alias: "Products",
+      },
+    ],
+  },
+});
+
 const nestedQuestionWithJoinOnQuestion = card => ({
   display: "table",
   query: {
@@ -538,6 +557,39 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Product → Ean").should("exist");
     });
 
+    it("should be able to show and hide implicitly joinable fields for a nested query with joins and fields", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestionWithJoinOnTable(card), {
+          visitQuestion: true,
+        });
+      });
+      openSettings();
+
+      cy.log("show a new column");
+      additionalColumns().within(() => showColumn("ID"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("User → ID").should("exist");
+      additionalColumns().findByText("ID").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("exist");
+
+      cy.log("hide the column");
+      visibleColumns().within(() => hideColumn("User → ID"));
+      visibleColumns().findByText("User → ID").should("not.exist");
+      disabledColumns().findByText("User → ID").should("exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visibleColumns().findByText("User → ID").should("not.exist");
+      disabledColumns().findByText("User → ID").should("not.exist");
+      additionalColumns().findByText("ID").should("exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("not.exist");
+    });
+
     it("should be able to show and hide implicitly joinable fields for a nested query", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
@@ -634,7 +686,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Sum of Quantity").should("exist");
     });
 
-    it("should be able to show and hide questions from a nested query with a self join", () => {
+    it("should be able to show and hide columns from a nested query with a self join", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         const columnName = "Tax";
         const columnLongName = `Question ${card.id} → ${columnName}`;
