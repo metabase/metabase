@@ -64,7 +64,7 @@
 
 (def analytics-root-dir-resource
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics.zip"))
+  (io/resource "instance_analytics"))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
@@ -87,7 +87,7 @@
       (ee.internal-user/ensure-internal-user-exists!)
       (log/info "Loading Analytics Content...")
       (log/info "Unzipping analytics to plugins...")
-      (u.files/unzip-file analytics-root-dir-resource "plugins")
+      #_(u.files/unzip-file analytics-root-dir-resource "plugins")
       (log/info "Unzipping done.")
       (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
       ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
