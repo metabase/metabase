@@ -106,36 +106,50 @@ export const Default = args => <Title {...args}>Header</Title>;
 
 ### Left alignment
 
-export const LeftNoUnderline = args => <Template {...args} />;
+export const LeftAlignment = args => <Template {...args} />;
 
 <Canvas>
-  <Story name="Left, no underline">{LeftNoUnderline}</Story>
+  <Story name="Left alignment">{LeftAlignment}</Story>
 </Canvas>
 
-#### Underlined
+### Center alignment
 
-export const LeftUnderlined = args => <Template {...args} underline />;
+export const CenterAlignment = args => <Template {...args} align="center" />;
 
 <Canvas>
-  <Story name="Left, underlined">{LeftUnderlined}</Story>
+  <Story name="Center alignment">{CenterAlignment}</Story>
 </Canvas>
 
-#### Truncated
+### Right alignment
 
-export const LeftTruncated = args => <TruncatedTemplate {...args} truncate />;
+export const RightAlignment = args => <Template {...args} align="right" />;
 
 <Canvas>
-  <Story name="Left, truncated">{LeftTruncated}</Story>
+  <Story name="Right alignment">{RightAlignment}</Story>
 </Canvas>
 
-#### Truncated and underlined
+### Underlined
 
-export const LeftTruncatedAndUnderlined = args => (
+export const Underlined = args => <Template {...args} underline />;
+
+<Canvas>
+  <Story name="Underlined">{Underlined}</Story>
+</Canvas>
+
+### Truncated
+
+export const Truncated = args => <TruncatedTemplate {...args} truncate />;
+
+<Canvas>
+  <Story name="Truncated">{Truncated}</Story>
+</Canvas>
+
+### Truncated and underlined
+
+export const TruncatedAndUnderlined = args => (
   <TruncatedTemplate {...args} truncate underline />
 );
 
 <Canvas>
-  <Story name="Left, truncated and underlined">
-    {LeftTruncatedAndUnderlined}
-  </Story>
+  <Story name="Truncated and underlined">{TruncatedAndUnderlined}</Story>
 </Canvas>
