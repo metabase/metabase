@@ -107,45 +107,6 @@ describe(
       cy.intercept("POST", "/api/action").as("createAction");
     });
 
-    it("should show detailed form errors for constraint violations when executing model actions", () => {
-      cy.get("@modelId").then(modelId => {
-        cy.visit(`/model/${modelId}/detail`);
-        cy.wait("@getModel");
-      });
-
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-
-      createBasicActions();
-
-      cy.findByLabelText("Action list").within(() => {
-        cy.get("li").eq(1).findByText("Update").should("be.visible");
-      });
-
-      runActionFor("Update");
-
-      modal().within(() => {
-        cy.findByLabelText("ID").type("1");
-        // cy.findByLabelText("Product ID").type("999999");
-        cy.findByLabelText("User ID").type("999999");
-        cy.findByRole("button", { name: "Update" }).click();
-        cy.wait("@executeAction");
-
-        // cy.findByLabelText("Product ID").should("not.exist");
-        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
-        //   "exist",
-        // );
-
-        cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText("User ID: This User_id does not exist.").should(
-          "exist",
-        );
-
-        cy.findByText("Unable to update the record.").should("exist");
-      });
-    });
-
     it("should allow CRUD operations on model actions", () => {
       cy.get("@modelId").then(id => {
         cy.visit(`/model/${id}/detail`);
@@ -367,6 +328,45 @@ describe(
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
       cy.findByLabelText("ID").should("be.visible");
+    });
+
+    it("should show detailed form errors for constraint violations when executing model actions", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}/detail`);
+        cy.wait("@getModel");
+      });
+
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+
+      createBasicActions();
+
+      cy.findByLabelText("Action list").within(() => {
+        cy.get("li").eq(1).findByText("Update").should("be.visible");
+      });
+
+      runActionFor("Update");
+
+      modal().within(() => {
+        cy.findByLabelText("ID").type("1");
+        // cy.findByLabelText("Product ID").type("999999");
+        cy.findByLabelText("User ID").type("999999");
+        cy.findByRole("button", { name: "Update" }).click();
+        cy.wait("@executeAction");
+
+        // cy.findByLabelText("Product ID").should("not.exist");
+        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
+        //   "exist",
+        // );
+
+        cy.findByLabelText("User ID").should("not.exist");
+        cy.findByLabelText("User ID: This User_id does not exist.").should(
+          "exist",
+        );
+
+        cy.findByText("Unable to update the record.").should("exist");
+      });
     });
   },
 );
