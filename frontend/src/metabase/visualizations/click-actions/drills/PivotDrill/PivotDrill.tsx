@@ -5,7 +5,7 @@ import type {
   ClickActionPopoverProps,
   ClickActionProps,
   PopoverClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import { Card } from "metabase-types/api";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";

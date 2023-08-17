@@ -4,7 +4,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import type {
   RegularClickAction,
   QueryMode,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import {
   createSampleDatabase,
   REVIEWS_ID,

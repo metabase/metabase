@@ -1,8 +1,5 @@
 import { t } from "ttag";
-import type {
-  ClickActionBase,
-  Drill,
-} from "metabase/visualizations/click-actions/types";
+import type { ClickActionBase, Drill } from "metabase/visualizations/types";
 import {
   sortDrill,
   sortDrillQuestion,

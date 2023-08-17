@@ -465,7 +465,7 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefinitionsForColumn(series, column) {
-  const { visualization } = getVisualizationRaw(series);
+  const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"
       ? visualization.columnSettings(column)

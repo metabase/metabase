@@ -122,9 +122,9 @@
                     {:base-type base-type})
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
-                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
-                  ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
-                  ;; taking that into consideration?
+                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
+                  ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
+                  ;; We should probably be taking that into consideration?
                   (when-let [binning (:binning opts)]
                     {::binning binning})
                   (when-let [unit (:temporal-unit opts)]

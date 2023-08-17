@@ -1,4 +1,4 @@
-import type { RegularClickAction } from "metabase/visualizations/click-actions/types";
+import type { RegularClickAction } from "metabase/visualizations/types";
 import { Container, Divider } from "./ClickActionsPopover.styled";
 import {
   getGroupedAndSortedActions,

@@ -676,7 +676,13 @@
 (defn- mark-selected-column [metadata-providerable existing-column-or-nil columns]
   (if-not existing-column-or-nil
     columns
-    (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil])))
+    (mapv (fn [column]
+            (if (:selected? column)
+              (lib.temporal-bucket/with-temporal-bucket
+                column
+                (lib.temporal-bucket/temporal-bucket existing-column-or-nil))
+              column))
+          (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil]))))
 
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
