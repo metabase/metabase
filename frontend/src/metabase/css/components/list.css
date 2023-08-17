@@ -72,7 +72,7 @@
 }
 
 .List-item--disabled .List-item-title {
-  color: var(--color-text-medium);
+  color: var(--color-text-light);
 }
 
 .List-item--cursor:not(.List-item--disabled) .List-item-title,

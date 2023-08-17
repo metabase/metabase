@@ -127,6 +127,7 @@ export const AccordionListCell = ({
         aria-label={name}
         role="option"
         aria-selected={isSelected}
+        aria-disabled={!isClickable}
         isClickable={isClickable}
         className={cx(
           "List-item flex mx1",

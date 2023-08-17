@@ -190,6 +190,15 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
     });
 }
 
+export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy
+    .request("GET", `/api/database/${databaseId}/metadata`)
+    .then(({ body }) => {
+      const table = body?.tables?.find(table => table.name === name);
+      return table || null;
+    });
+}
+
 export const createModelFromTableName = ({
   tableName,
   modelName = "Test Action Model",
