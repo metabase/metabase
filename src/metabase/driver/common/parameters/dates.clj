@@ -404,7 +404,7 @@
 
 (mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
-  `:unit`, `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
+  `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
 
   e.g:
     (date-string->range \"past2days\") ; -> {:start \"2020-01-20\", :end \"2020-01-21\"}
