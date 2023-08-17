@@ -127,7 +127,7 @@ function LinkVizInner({
       );
     }
 
-    const target = isWithinIframe() ? undefined : "_blank";
+    const target = isWithinIframe() ? undefined : "_self";
 
     return (
       <DisplayLinkCardWrapper>
