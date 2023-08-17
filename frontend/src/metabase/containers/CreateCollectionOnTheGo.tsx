@@ -1,57 +1,82 @@
-import { useState, useCallback, ReactElement } from "react";
+import {
+  useState,
+  useCallback,
+  ReactElement,
+  createContext,
+  useContext,
+} from "react";
+import { t } from "ttag";
 import type { FormikValues } from "formik";
+import { useFormikContext } from "formik";
+
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
 
-export interface Values extends FormikValues {
+interface Values extends FormikValues {
   collection_id: CollectionId;
 }
 
 interface State {
-  enabled: boolean;
+  enabled?: boolean;
   resumedValues?: Values;
   openCollectionId?: CollectionId;
 }
 
-export type OnClickNewCollection = (
-  resumedValues: Values,
-  openCollectionId: CollectionId,
-) => void;
-
-type RenderChildFn = (
-  resumedValues: Values | undefined,
-  onClickNewCollection: OnClickNewCollection,
-) => ReactElement;
+const Context = createContext<{
+  canCreateNew?: boolean;
+  updateState?: (newState: State) => void;
+}>({});
 
 export function CreateCollectionOnTheGo({
   children,
 }: {
-  children: RenderChildFn;
+  children: (props: { resumedValues?: Values }) => ReactElement;
 }) {
-  const [state, setState] = useState<State>({
-    enabled: false,
-  });
-  const { enabled, openCollectionId, resumedValues } = state;
-
-  const onClickNewCollection = useCallback<OnClickNewCollection>(
-    (resumedValues, openCollectionId) =>
-      setState({ ...state, enabled: true, resumedValues, openCollectionId }),
+  const [state, setState] = useState<State>({});
+  const updateState = useCallback(
+    (newState: State) => setState({ ...state, ...newState }),
     [state, setState],
   );
-
+  const { enabled, resumedValues, openCollectionId } = state;
   return enabled ? (
     <CreateCollectionModal
       collectionId={openCollectionId}
-      onClose={() => setState({ ...state, enabled: false })}
+      onClose={() => updateState({ enabled: false })}
       onCreate={(collection: Collection) => {
-        setState({
-          ...state,
-          resumedValues: { ...resumedValues, collection_id: collection.id },
+        updateState({
           enabled: false,
+          resumedValues: { ...resumedValues, collection_id: collection.id },
         });
       }}
     />
   ) : (
-    children(resumedValues, onClickNewCollection)
+    <Context.Provider value={{ canCreateNew: true, updateState }}>
+      {children({ resumedValues })}
+    </Context.Provider>
   );
+}
+
+export function CreateCollectionOnTheGoButton({
+  openCollectionId,
+}: {
+  openCollectionId?: CollectionId;
+}) {
+  const { canCreateNew, updateState } = useContext(Context);
+  const formik = useFormikContext<Values>();
+  return canCreateNew && formik ? (
+    <NewCollectionButton
+      light
+      icon="add"
+      onClick={() =>
+        updateState?.({
+          enabled: true,
+          resumedValues: formik.values,
+          openCollectionId,
+        })
+      }
+    >
+      {t`New collection`}
+    </NewCollectionButton>
+  ) : null;
 }

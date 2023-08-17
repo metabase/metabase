@@ -2,7 +2,11 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";
-import { createMockMetric } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockDatasetData,
+  createMockMetric,
+} from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -139,6 +143,29 @@ const orders_count_card = {
   },
 };
 const orders_count_question = new Question(orders_count_card, metadata);
+const ordersCountData = createMockDatasetData({
+  cols: [
+    createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/BigInteger",
+      semantic_type: "type/Quantity",
+      effective_type: "type/BigInteger",
+    }),
+  ],
+  rows: [[1]],
+});
+
+const multipleRowsData = createMockDatasetData({
+  cols: [
+    createMockColumn({ display_name: "foo" }),
+    createMockColumn({ display_name: "bar" }),
+  ],
+  rows: [
+    [10, 20],
+    [100, 200],
+  ],
+});
 
 const orders_count_where_card = {
   id: 2,
@@ -445,11 +472,35 @@ describe("Question", () => {
         expect(question.display()).toBe("scalar");
       });
 
-      it("should not set the display to scalar if table was selected", () => {
+      it("should not set the display to scalar if table was selected and display is locked", () => {
         const question = orders_count_question
           .setDisplay("table")
           .lockDisplay()
-          .maybeResetDisplay(["table", "scalar"]);
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
+
+        expect(question.display()).toBe("table");
+      });
+
+      it("should set the display to scalar if a non-scalar was selected and display is locked", () => {
+        const question = base_question
+          .setDisplay("table")
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
+
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should not set the display to scalar if another scalar display was selected and display is locked", () => {
+        const question = base_question
+          .setDisplay("gauge")
+          .maybeResetDisplay(ordersCountData, ["table", "scalar", "gauge"]);
+
+        expect(question.display()).toBe("gauge");
+      });
+
+      it("switch to table view if we had a scalar and now have more than 1x1 data", () => {
+        const question = base_question
+          .setDisplay("scalar")
+          .maybeResetDisplay(multipleRowsData, ["table"]);
 
         expect(question.display()).toBe("table");
       });
@@ -458,7 +509,7 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeResetDisplay(["table", "scalar"]);
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
 
         expect(question.display()).toBe("scalar");
       });
@@ -471,7 +522,11 @@ describe("Question", () => {
         const question = new Question(orders_count_card, metadata)
           .setDisplay("scalar")
           .lockDisplay()
-          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
 
         expect(question.displayIsLocked()).toBe(true);
         expect(question.display()).toBe("scalar");
@@ -483,7 +538,11 @@ describe("Question", () => {
         const question = new Question(orders_count_card, metadata)
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
 
         expect(question.displayIsLocked()).toBe(true);
         expect(question.display()).toBe("funnel");
@@ -493,7 +552,11 @@ describe("Question", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("funnel")
-          .maybeResetDisplay(sensibleDisplays, sensibleDisplays);
+          .maybeResetDisplay(
+            multipleRowsData,
+            sensibleDisplays,
+            sensibleDisplays,
+          );
 
         expect(question.display()).not.toBe("funnel");
         expect(question.display()).toBe("table");
@@ -505,7 +568,11 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
 
         expect(question.displayIsLocked()).toBe(false);
         expect(question.display()).not.toBe("funnel");
@@ -517,7 +584,7 @@ describe("Question", () => {
         const question = base_question
           .setDisplay("scalar")
           .lockDisplay()
-          .maybeResetDisplay(sensibleDisplays);
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays);
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");
@@ -527,7 +594,17 @@ describe("Question", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("scalar")
-          .maybeResetDisplay(sensibleDisplays);
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should switch to scalar display for 1x1 data", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = orders_count_question
+          .setDisplay("table")
+          .maybeResetDisplay(ordersCountData, sensibleDisplays);
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");

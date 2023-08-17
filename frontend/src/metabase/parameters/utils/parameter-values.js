@@ -1,19 +1,18 @@
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 export function getParameterValueFromQueryParams(parameter, queryParams) {
   queryParams = queryParams || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
-  // skip parsing "" because it indicates a forcefully unset parameter
+  // parse "" as null because it indicates a forcefully unset parameter
   if (maybeParameterValue === "") {
     return null;
-  } else if (hasParameterValue(maybeParameterValue)) {
+  } else if (maybeParameterValue == null) {
+    return parameter.default;
+  } else {
     const parsedValue = parseParameterValue(maybeParameterValue, parameter);
     return normalizeParameterValueForWidget(parsedValue, parameter);
-  } else {
-    return parameter.default ?? null;
   }
 }
 

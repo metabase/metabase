@@ -17,10 +17,6 @@ export function hasDefaultParameterValue(parameter) {
   return parameter.default != null;
 }
 
-export function hasParameterValue(value) {
-  return value != null;
-}
-
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
@@ -63,9 +59,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,
-      hasParameterValue(parameter.value)
-        ? parameter.value
-        : parameterValuesById[parameter.id],
+      parameter.value ?? parameterValuesById[parameter.id],
     ]),
   );
 }

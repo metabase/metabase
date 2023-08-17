@@ -8,8 +8,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -104,7 +102,7 @@
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name          "My Card"
@@ -127,7 +125,7 @@
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name            "My Card"
@@ -263,7 +261,7 @@
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
       {:cards (vals mock-cards)})))
@@ -274,7 +272,7 @@
   source Card."
   [query       :- ::lib.schema/query
    column-name :- ::lib.schema.common/non-blank-string]
-  (let [cols     (lib.metadata.calculation/visible-columns query)
+  (let [cols     (lib/visible-columns query)
         metadata (or (m/find-first #(= (:name %) column-name)
                                    cols)
                      (let [col-names (vec (sort (map :name cols)))]

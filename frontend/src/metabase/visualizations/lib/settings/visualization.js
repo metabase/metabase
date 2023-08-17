@@ -47,7 +47,7 @@ function getSettingDefintionsForSeries(series) {
   if (!series) {
     return {};
   }
-  const { visualization } = getVisualizationRaw(series);
+  const visualization = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),

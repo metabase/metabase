@@ -6,10 +6,7 @@ import * as Yup from "yup";
 import ModalContent from "metabase/components/ModalContent";
 import FormProvider from "metabase/core/components/FormProvider/FormProvider";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import {
-  CreateCollectionOnTheGo,
-  OnClickNewCollection,
-} from "metabase/containers/CreateCollectionOnTheGo";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -56,7 +53,6 @@ interface SaveQuestionModalProps {
   onClose: () => void;
   multiStep?: boolean;
   initialCollectionId?: number;
-  onClickNewCollection?: OnClickNewCollection;
 }
 
 interface FormValues {
@@ -81,7 +77,6 @@ export const SaveQuestionModal = ({
   onClose,
   multiStep,
   initialCollectionId,
-  onClickNewCollection,
 }: SaveQuestionModalProps) => {
   const handleOverwrite = useCallback(
     async (originalQuestion: Question, details: FormValues) => {
@@ -172,10 +167,9 @@ export const SaveQuestionModal = ({
     questionType === "question"
       ? t`What is the name of your question?`
       : t`What is the name of your model?`;
-
   return (
     <CreateCollectionOnTheGo>
-      {(resumedValues, onClickNewCollection) => (
+      {({ resumedValues }) => (
         <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
           <FormProvider
             initialValues={{ ...initialValues, ...resumedValues }}
@@ -223,8 +217,6 @@ export const SaveQuestionModal = ({
                         <FormCollectionPicker
                           name="collection_id"
                           title={t`Which collection should this go in?`}
-                          canCreateNew={true}
-                          onClickNewCollection={onClickNewCollection}
                         />
                       </div>
                     </CSSTransition>

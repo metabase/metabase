@@ -12,7 +12,6 @@ import {
 import { isNotNull } from "metabase/core/utils/types";
 import {
   hasDefaultParameterValue,
-  hasParameterValue,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -217,9 +216,7 @@ export function getActivePulseParameters(
 
       return {
         ...parameter,
-        value: hasParameterValue(pulseParameter?.value)
-          ? pulseParameter.value
-          : parameter.default,
+        value: pulseParameter?.value ?? parameter.default,
       };
     })
     .filter(isNotNull);
