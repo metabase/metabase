@@ -350,20 +350,20 @@ describe(
 
       modal().within(() => {
         cy.findByLabelText("ID").type("1");
-        // cy.findByLabelText("Product ID").type("999999");
         cy.findByLabelText("User ID").type("999999");
+        // cy.findByLabelText("Product ID").type("999999");
         cy.findByRole("button", { name: "Update" }).click();
         cy.wait("@executeAction");
-
-        // cy.findByLabelText("Product ID").should("not.exist");
-        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
-        //   "exist",
-        // );
 
         cy.findByLabelText("User ID").should("not.exist");
         cy.findByLabelText("User ID: This User_id does not exist.").should(
           "exist",
         );
+
+        // cy.findByLabelText("Product ID").should("not.exist");
+        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
+        //   "exist",
+        // );
 
         cy.findByText("Unable to update the record.").should("exist");
       });
