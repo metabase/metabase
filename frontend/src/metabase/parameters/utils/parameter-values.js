@@ -5,11 +5,12 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
-  // parse "" as null because it indicates a forcefully unset parameter
+  // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
     return null;
   } else if (maybeParameterValue == null) {
-    return parameter.default;
+    // try to use the default if the parameter is not present in the query params
+    return parameter.default ?? null;
   } else {
     const parsedValue = parseParameterValue(maybeParameterValue, parameter);
     return normalizeParameterValueForWidget(parsedValue, parameter);
