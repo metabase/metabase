@@ -424,7 +424,7 @@
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
+      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
           (is (= "count\n107\n"
                  (client/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))

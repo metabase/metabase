@@ -253,7 +253,7 @@
                     [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                     [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
                    (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                     (api-call "transform/%s" ["Test transform"]
+                     (api-call "transform/%s" ["Test%20transform"]
                                #(revoke-collection-permissions!
                                  (tf.materialize/get-collection "Test transform"))
                                (fn [dashboard]

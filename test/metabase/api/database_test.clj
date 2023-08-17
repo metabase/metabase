@@ -1257,11 +1257,12 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/schema/My%20Collection" lib.schema.id/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "My%20Collection")))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
+                                                       (str/replace (api.table/root-collection-schema-name) #" " "%20")))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1281,7 +1282,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin%20Collection")))))))
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1")
@@ -1304,11 +1305,12 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/My%20Collection" lib.schema.id/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My%20Collection")))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
+                                                       (str/replace (api.table/root-collection-schema-name) #" " "%20")))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1327,7 +1329,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin%20Collection")))))))
 
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [_ {:db_id db-id, :schema nil, :name "t1"}]
