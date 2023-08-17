@@ -145,7 +145,9 @@
                                  ;; This will be applied, if still appropriate, by the peristence middleware
                                  persisted?
                                  (assoc :persisted-info/native
-                                        (qp.persisted/persisted-info-native-query persisted-info)))
+                                        (qp.persisted/persisted-info-native-query
+                                         (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                                         persisted-info)))
               :database        database-id
               :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
        dataset? (assoc :source-query/dataset? dataset?)))))

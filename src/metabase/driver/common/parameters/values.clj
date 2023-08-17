@@ -11,6 +11,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.schema :as mbql.s]
@@ -177,7 +178,9 @@
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
                 (or (when (qp.persistence/can-substitute? card persisted-info)
-                      {:query (qp.persistence/persisted-info-native-query persisted-info)})
+                      {:query (qp.persistence/persisted-info-native-query
+                               (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                               persisted-info)})
                     (qp/compile query)))))
       (catch ExceptionInfo e
         (throw (ex-info
