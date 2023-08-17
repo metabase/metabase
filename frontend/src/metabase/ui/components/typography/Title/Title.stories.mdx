@@ -1,4 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Stack } from "metabase/ui";
 import { Title } from "./";
 
 export const args = {
@@ -55,8 +56,33 @@ TBD
 
 ## Examples
 
+export const Template = args => (
+  <Stack>
+    <Title {...args} order={1}>
+      Header 1
+    </Title>
+    <Title {...args} order={2}>
+      Header 2
+    </Title>
+    <Title {...args} order={3}>
+      Header 3
+    </Title>
+    <Title {...args} order={4}>
+      Header 4
+    </Title>
+  </Stack>
+);
+
 export const Default = args => <Title {...args}>Header</Title>;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### No underline
+
+export const NoUnderline = args => <Template {...args} />;
+
+<Canvas>
+  <Story name="No underline">{NoUnderline}</Story>
 </Canvas>
