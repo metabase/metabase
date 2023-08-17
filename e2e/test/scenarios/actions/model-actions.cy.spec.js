@@ -1,17 +1,17 @@
 import { assocIn } from "icepick";
 import {
-  createAction,
-  createModelFromTableName,
-  fillActionQuery,
+  setActionsEnabledForDB,
   modal,
+  popover,
+  restore,
+  fillActionQuery,
+  createAction,
   navigationSidebar,
   openNavigationSidebar,
-  popover,
-  queryWritableDB,
   resetTestTable,
-  restore,
   resyncDatabase,
-  setActionsEnabledForDB,
+  createModelFromTableName,
+  queryWritableDB,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
