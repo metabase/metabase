@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -47,6 +49,16 @@ export const questionDetails = {
   },
   display: "scalar",
 };
+
+export const questionDetailsWithDefaults = assocIn(
+  assocIn(
+    questionDetails,
+    ["native", "template-tags", "name", "default"],
+    "Lina Heaney",
+  ),
+  ["native", "template-tags", "id", "default"],
+  [1, 2], // These are not Lina Heaney
+);
 
 // Define dashboard filters
 const idFilter = { name: "Id", slug: "id", id: "1", type: "id" };

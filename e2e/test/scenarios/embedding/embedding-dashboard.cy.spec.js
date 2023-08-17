@@ -10,6 +10,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   questionDetails,
+  questionDetailsWithDefaults,
   dashboardDetails,
   mapParameters,
 } from "./shared/embedding-dashboard";
@@ -235,6 +236,65 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(".ScalarValue", "2");
     });
+  });
+});
+
+describe("scenarios > embedding > dashboard parameters with defaults", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createNativeQuestionAndDashboard({
+      questionDetails: questionDetailsWithDefaults,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      mapParameters({ id, card_id, dashboard_id });
+    });
+
+    cy.get("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+  });
+
+  it("card parameter defaults should apply for disabled parameters, but not for editable parameters", () => {
+    cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Embed in your application").click();
+
+    cy.findByRole("heading", { name: "Parameters" })
+      .parent()
+      .as("allParameters")
+      .within(() => {
+        // verify that all the parameters on the dashboard are defaulted to disabled
+        cy.findAllByText("Disabled").should("have.length", 4);
+
+        // select the dropdown next to the Name parameter so that we can set it to editable
+        cy.findByText("Name")
+          .parent()
+          .within(() => {
+            cy.findByText("Disabled").click();
+          });
+      });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Editable").click();
+
+    // publish the embedded dashboard so that we can directly navigate to its url
+    publishChanges(({ request }) => {
+      const actual = request.body.embedding_params;
+      const expected = { name: "enabled" };
+      assert.deepEqual(actual, expected);
+    });
+
+    // directly navigate to the embedded dashboard
+    visitIframe();
+
+    // The Name default should not apply, because the Name param is editable
+    // But the ID default should apply, because it is disabled.
+    // If both applied the result would be 0.
+    cy.get(".ScalarValue").invoke("text").should("eq", "2");
   });
 });
 
