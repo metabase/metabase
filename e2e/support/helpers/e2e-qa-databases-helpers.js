@@ -228,19 +228,28 @@ export function waitForSyncToFinish({
 
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {
-      return waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+      return waitForSyncToFinish({
+        iteration: ++iteration,
+        dbId,
+        tableName,
+        tableAlias,
+      });
     } else if (tableName) {
       const table = body.tables.find(
         table =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
-      console.log({ table, body, tableAlias });
+
       if (!table) {
-        return waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+        return waitForSyncToFinish({
+          iteration: ++iteration,
+          dbId,
+          tableName,
+          tableAlias,
+        });
       }
 
       if (tableAlias) {
-        console.log("setting table alias");
         cy.wrap(table).as(tableAlias);
       }
 
