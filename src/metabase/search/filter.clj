@@ -115,8 +115,8 @@
 
 ;; Verified filters
 
-(defn- default-verified-card-query
-  [model query verified]
+(defmethod build-optional-filter-query [:verified "card"]
+  [_filter model query verified]
   (assert (true? verified) "filter for non-verified cards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
@@ -128,15 +128,9 @@
                            [:= :moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
 
-(defmethod build-optional-filter-query [:verified "card"]
-  [_filter model query verified]
-  (assert (true? verified) "filter for non-verified cards is not supported")
-  (default-verified-card-query model query verified))
-
 (defmethod build-optional-filter-query [:verified "dataset"]
-  [_filter model query verified]
-  (assert (true? verified) "filter for non-verified cards is not supported")
-  (default-verified-card-query model query verified))
+  [filter _model query verified]
+  (build-optional-filter-query filter "card" query verified))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
