@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Database Permissions]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -13,6 +14,7 @@
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
+   [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -21,9 +23,7 @@
    [metabase.util :as u]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.lib.test-util :as lib.tu]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 

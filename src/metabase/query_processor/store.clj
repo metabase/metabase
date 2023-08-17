@@ -203,30 +203,32 @@
   provider), fetches them with repeated calls to the appropriate single-object method,
   e.g. [[lib.metadata.protocols/field]].
 
-  The order objects are returned in is indeterminate, but the response is guaranteed to contain every object referred to
-  by `ids`. Throws an exception if any objects could not be fetched."
+  The order of the returned objects will match the order of `ids`, and the response is guaranteed to contain every
+  object referred to by `ids`. Throws an exception if any objects could not be fetched."
   [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
    ids           :- [:maybe
                      [:or
                       [:set ::lib.schema.common/positive-int]
                       [:sequential ::lib.schema.common/positive-int]]]]
-  (when-let [ids (not-empty (set ids))]
+  (when-let [ids-set (not-empty (set ids))]
     (let [provider (metadata-provider)
           objects  (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                          (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids))
+                          (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
                           (let [f (case metadata-type
                                     :metadata/card    lib.metadata.protocols/card
                                     :metadata/column  lib.metadata.protocols/field
                                     :metadata/metric  lib.metadata.protocols/metric
                                     :metadata/segment lib.metadata.protocols/segment
                                     :metadata/table   lib.metadata.protocols/table)]
-                            (for [id ids]
+                            (for [id ids-set]
                               (or (f provider id)
                                   (throw (missing-bulk-metadata-error metadata-type id)))))))]
-      (doseq [id ids]
+      (doseq [id ids-set]
         (or (some #(= (u/the-id %) id) objects)
             (throw (missing-bulk-metadata-error metadata-type id))))
-      objects)))
+      (let [id->object (m/index-by :id objects)]
+        (for [id ids]
+          (get id->object id))))))
 
 ;;;;
 ;;;; DEPRECATED STUFF

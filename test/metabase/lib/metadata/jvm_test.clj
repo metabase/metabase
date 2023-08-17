@@ -15,7 +15,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel fetch-field-test
-  (let [field (#'lib.metadata.jvm/fetch-instance :metadata/column (mt/id :categories :id))]
+  (let [field (#'lib.metadata.jvm/fetch-instance :metadata/column (mt/id) (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
 
 (deftest ^:parallel fetch-database-test

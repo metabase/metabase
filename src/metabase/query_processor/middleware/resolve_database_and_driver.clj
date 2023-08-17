@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-database-and-driver
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.setting :as setting]
@@ -9,8 +10,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [metabase.lib.metadata :as lib.metadata]))
+   [toucan2.core :as t2]))
 
 (declare resolve-database-id)
 

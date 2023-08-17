@@ -284,7 +284,8 @@
               nil))))))
 
 (defn- query->params-map [inner-query]
-  (mt/with-everything-store (params.values/query->params-map inner-query)))
+  (qp.store/with-metadata-provider (mt/id)
+    (params.values/query->params-map inner-query)))
 
 (deftest field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
@@ -656,10 +657,6 @@
       (testing "of numbers (#20845)"
         (is (= 1
                (#'params.values/value->number [1])))))))
-
-(defn- query->params-map [inner-query]
-  (qp.store/with-metadata-provider (mt/id)
-    (params.values/query->params-map inner-query)))
 
 (deftest handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"

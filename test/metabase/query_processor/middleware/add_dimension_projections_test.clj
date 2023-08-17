@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]

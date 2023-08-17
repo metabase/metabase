@@ -22,21 +22,21 @@
 (deftest details-only-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "sanity check -- everything should be returned before making changes"
-      (is (= (m/index-by :id (qp.test/expected-cols :venues))
-             (m/index-by :id (venues-cols-from-query)))))
+      (is (=? (m/index-by :id (qp.test/expected-cols :venues))
+              (m/index-by :id (venues-cols-from-query)))))
 
     (testing ":details-only fields should not be returned in normal queries"
       (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type :details-only}
-        (is (= (m/index-by :id (for [col (qp.test/expected-cols :venues)]
-                                 (if (= (mt/id :venues :price) (u/the-id col))
-                                   (assoc col :visibility_type :details-only)
-                                   col)))
-               (m/index-by :id (venues-cols-from-query))))))))
+        (is (=? (m/index-by :id (for [col (qp.test/expected-cols :venues)]
+                                  (if (= (mt/id :venues :price) (u/the-id col))
+                                    (assoc col :visibility_type :details-only)
+                                    col)))
+                (m/index-by :id (venues-cols-from-query))))))))
 
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
-(deftest sensitive-fields-test
+(deftest ^:parallel sensitive-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
       (is (=? {:cols (qp.test/expected-cols :users [:id :name :last_login])

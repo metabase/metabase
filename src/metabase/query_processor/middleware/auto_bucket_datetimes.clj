@@ -9,9 +9,9 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.log :as log]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private FieldTypeInfo
   [:map

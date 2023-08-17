@@ -537,21 +537,22 @@
           expected-cols (fn []
                           (for [col  original-cols
                                 :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
-                            (assoc col
-                                   :id id
-                                   :table_id (mt/id :venues)
-                                   :field_ref [:field id nil])))]
+                            (-> col
+                                (assoc :id id
+                                       :table_id (mt/id :venues)
+                                       :field_ref [:field id nil])
+                                (dissoc :fk_target_field_id))))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (met/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                          :attributes {"cat" 50}}
-          (is (= (expected-cols)
-                 (cols)))))
+          (is (=? (expected-cols)
+                  (cols)))))
 
       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
         (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                          :attributes {"cat" 50}}
-          (is (= (expected-cols)
-                 (cols)))))
+          (is (=? (expected-cols)
+                  (cols)))))
 
       (testing "A query with an equivalent native query sandbox should have the same metadata"
         (met/with-gtaps {:gtaps {:venues {:query (mt/native-query
@@ -564,8 +565,8 @@
                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                          :attributes {"cat" 50}}
-          (is (= (expected-cols)
-                 (cols)))))
+          (is (=? (expected-cols)
+                  (cols)))))
 
       (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
                     "able to match from the original Table")
@@ -580,8 +581,8 @@
                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                          :attributes {"cat" 50}}
           (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
-            (is (= [name-col id-col longitude-col price-col]
-                   (cols)))))))))
+            (is (=? [name-col id-col longitude-col price-col]
+                    (cols)))))))))
 
 (deftest sql-with-joins-test
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
