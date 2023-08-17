@@ -138,7 +138,9 @@
   authenticate
   build-url
   client
-  client-full-response]
+  real-client
+  client-full-response
+  real-client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
