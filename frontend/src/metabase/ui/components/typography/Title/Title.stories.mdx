@@ -1,5 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { Title } from "./";
 
 export const args = {
@@ -73,16 +73,69 @@ export const Template = args => (
   </Stack>
 );
 
+export const TruncatedTemplate = args => (
+  <Stack>
+    <Box w="8rem">
+      <Title {...args} order={1}>
+        Header 1
+      </Title>
+    </Box>
+    <Box w="6.5rem">
+      <Title {...args} order={2}>
+        Header 2
+      </Title>
+    </Box>
+    <Box w="5.5rem">
+      <Title {...args} order={3}>
+        Header 3
+      </Title>
+    </Box>
+    <Box w="4.5rem">
+      <Title {...args} order={4}>
+        Header 4
+      </Title>
+    </Box>
+  </Stack>
+);
+
 export const Default = args => <Title {...args}>Header</Title>;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### No underline
+### Left alignment
 
-export const NoUnderline = args => <Template {...args} />;
+export const LeftNoUnderline = args => <Template {...args} />;
 
 <Canvas>
-  <Story name="No underline">{NoUnderline}</Story>
+  <Story name="Left, no underline">{LeftNoUnderline}</Story>
+</Canvas>
+
+#### Underlined
+
+export const LeftUnderlined = args => <Template {...args} underline />;
+
+<Canvas>
+  <Story name="Left, underlined">{LeftUnderlined}</Story>
+</Canvas>
+
+#### Truncated
+
+export const LeftTruncated = args => <TruncatedTemplate {...args} truncate />;
+
+<Canvas>
+  <Story name="Left, truncated">{LeftTruncated}</Story>
+</Canvas>
+
+#### Truncated and underlined
+
+export const LeftTruncatedAndUnderlined = args => (
+  <TruncatedTemplate {...args} truncate underline />
+);
+
+<Canvas>
+  <Story name="Left, truncated and underlined">
+    {LeftTruncatedAndUnderlined}
+  </Story>
 </Canvas>
