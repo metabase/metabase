@@ -687,57 +687,57 @@
                                                {:parameters {"id" "admin" "ranking" nil}})))))
 
               (testing "violate unique constraint"
-               (testing "when creating"
-                 (is (= (case driver/*driver*
-                          :h2
-                          {:message "Ranking already exist."
-                           :errors {:RANKING "This Ranking value already exists."}}
+                (testing "when creating"
+                  (is (= (case driver/*driver*
+                           :h2
+                           {:message "Ranking already exists."
+                            :errors {:RANKING "This Ranking value already exists."}}
 
-                          {:message "Ranking already exist."
-                           :errors {:ranking "This Ranking value already exists."}})
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                              {:parameters {"name" "new" "ranking" 1}}))))
-               (testing "when updating"
-                 (is (= (case driver/*driver*
-                          :h2
-                          {:message "Ranking already exist."
-                           :errors {:RANKING "This Ranking value already exists."}}
+                           {:message "Ranking already exists."
+                            :errors {:ranking "This Ranking value already exists."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                               {:parameters {"name" "new" "ranking" 1}}))))
+                (testing "when updating"
+                  (is (= (case driver/*driver*
+                           :h2
+                           {:message "Ranking already exists."
+                            :errors {:RANKING "This Ranking value already exists."}}
 
-                          {:message "Ranking already exist."
-                           :errors {:ranking "This Ranking value already exists."}})
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                              {:parameters {"id" 1 "ranking" 2}})))))
+                           {:message "Ranking already exists."
+                            :errors {:ranking "This Ranking value already exists."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                               {:parameters {"id" 1 "ranking" 2}})))))
 
               (testing "incorrect type"
-               (testing "when creating"
-                 (is (= (case driver/*driver*
-                          :h2
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {}}
+                (testing "when creating"
+                  (is (= (case driver/*driver*
+                           :h2
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {}}
 
-                          :postgres
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {}}
+                           :postgres
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {}}
 
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {:ranking "This value should be of type Integer."}})
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                              {:parameters {"name" "new" "ranking" "S"}}))))
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {:ranking "This value should be of type Integer."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                               {:parameters {"name" "new" "ranking" "S"}}))))
 
-               (testing "when updating"
-                 (is (= (case driver/*driver*
-                          :h2
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {}}
+                (testing "when updating"
+                  (is (= (case driver/*driver*
+                           :h2
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {}}
 
-                          :postgres
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {}}
+                           :postgres
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {}}
 
-                          {:message "Some of your values aren’t of the correct type for the database."
-                           :errors {:ranking "This value should be of type Integer."}})
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                              {:parameters {"id" 1 "ranking" "S"}})))))
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {:ranking "This value should be of type Integer."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                               {:parameters {"id" 1 "ranking" "S"}})))))
 
              (testing "violate fk constraint"
                (testing "when creating"
@@ -764,7 +764,7 @@
                                               {:parameters {"id"       1
                                                             "group_id" 999}}))))
                (testing "when deleting"
-                 (is (= {:message "Other tables rely on this row so it cannot be updated/deleted."
+                 (is (= {:message "Other tables rely on this row so it cannot be deleted."
                          :errors  {}}
                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-group)
                                               {:parameters {"id" 1}}))))))))))))

@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :h2
@@ -64,7 +64,7 @@
              (re-find #"Unique index or primary key violation: \"[^.]+.(.+?) ON [^.]+.\"\"(.+?)\"\"" error-message)]
     (let [columns (constraint->column-names database table constraint-name)]
       {:type    error-type
-       :message (tru "{0} already exist." (u/build-sentence (map str/capitalize columns) :stop? false))
+       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (trun "exists" "exist" (count columns)))
        :errors  (reduce (fn [acc col]
                           (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}
@@ -81,7 +81,7 @@
               :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
              :row/delete
-             {:message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+             {:message (tru "Other tables rely on this row so it cannot be deleted.")
               :errors  {}}
 
              :row/update
@@ -101,12 +101,12 @@
   :h2 actions.error/violate-not-null-constraint nil nil
   "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")
  (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-unique-constraint (toucan2.core/select-one :model/Database :name "action-error-handling" :engine :h2) nil
+  :h2 actions.error/violate-unique-constraint {:id 1} nil
   "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]")
  (sql-jdbc.actions/maybe-parse-sql-error
   :h2 actions.error/incorrect-value-type nil nil
   "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]")
 
  (sql-jdbc.actions/maybe-parse-sql-error
-  :h2 actions.error/violate-foreign-key-constraint (toucan2.core/select-one :model/Database :name "action-error-handling" :engine :h2) nil
+  :h2 actions.error/violate-foreign-key-constraint {:id 1} nil
   "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]"))

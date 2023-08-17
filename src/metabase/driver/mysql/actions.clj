@@ -1,13 +1,12 @@
-(ns metabase.driver.mysql.actions  "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:mysql."
+(ns metabase.driver.mysql.actions
+  "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:mysql."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -23,22 +22,6 @@
 ;;; do the query with the information we have and check if the result is unique.
 ;;; If it's not, we log a warning and signal that we couldn't find the columns
 ;;; names.
-(defn- constraint->column-names
-  "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
-  [database table-name constraint-name]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
-        sql-args  ["select table_catalog, table_schema, column_name from information_schema.key_column_usage where table_name = ? and constraint_name = ?" table-name constraint-name]]
-    (first
-     (reduce
-      (fn [[columns catalog schema] {:keys [table_catalog table_schema column_name]}]
-        (if (and (or (nil? catalog) (= table_catalog catalog))
-                 (or (nil? schema) (= table_schema schema)))
-          [(conj columns column_name) table_catalog table_schema]
-          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
-                         constraint-name table-name)
-              (reduced nil))))
-      [[] nil nil]
-      (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
 (defn- remove-backticks [id]
   (when id
@@ -66,7 +49,7 @@
              (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
     (let [column (last (str/split fk #"\."))]
       {:type    error-type
-       :message (tru "{0} already exist." (str/capitalize column))
+       :message (tru "{0} already exists." (str/capitalize column))
        :errors  {column (tru "This {0} value already exists." (str/capitalize column))}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
@@ -77,7 +60,7 @@
      (merge {:type error-type}
             (case action-type
                  :row/delete
-                 {:message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+                 {:message (tru "Other tables rely on this row so it cannot be deleted.")
                   :errors  {}}
 
                  :row/update

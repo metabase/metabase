@@ -20,9 +20,9 @@
    (build-sentence parts :stop? true))
   ([parts & {:keys [stop?]
              :or   {stop? true}
-             :as _options}]
+             :as options}]
    (when (seq parts)
      (cond
        (= (count parts) 1) (str (first parts) (when stop? \.))
        (= (count parts) 2) (str (first parts) " " (deferred-tru "and")  " " (second parts) (when stop? \.))
-       :else               (str (first parts) ", " (build-sentence (rest parts)))))))
+       :else               (str (first parts) ", " (build-sentence (rest parts) options))))))
