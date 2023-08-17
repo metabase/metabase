@@ -331,6 +331,8 @@ describe(
     });
 
     it("should show detailed form errors for constraint violations when executing model actions", () => {
+      const actionName = "Update";
+
       cy.get("@modelId").then(modelId => {
         cy.visit(`/model/${modelId}/detail`);
         cy.wait("@getModel");
@@ -343,16 +345,16 @@ describe(
       createBasicActions();
 
       cy.findByLabelText("Action list").within(() => {
-        cy.get("li").eq(1).findByText("Update").should("be.visible");
+        cy.get("li").eq(1).findByText(actionName).should("be.visible");
       });
 
-      runActionFor("Update");
+      runActionFor(actionName);
 
       modal().within(() => {
         cy.findByLabelText("ID").type("1");
         cy.findByLabelText("User ID").type("999999");
         // cy.findByLabelText("Product ID").type("999999");
-        cy.findByRole("button", { name: "Update" }).click();
+        cy.button(actionName).click();
         cy.wait("@executeAction");
 
         cy.findByLabelText("User ID").should("not.exist");
