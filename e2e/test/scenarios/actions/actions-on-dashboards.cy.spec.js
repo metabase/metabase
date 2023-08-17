@@ -961,6 +961,56 @@ const MODEL_NAME = "Test Action Model";
   );
 });
 
+describe("action error handling", () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: TEST_TABLE });
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    createModelFromTableName({
+      tableName: TEST_TABLE,
+      modelName: MODEL_NAME,
+    });
+
+    cy.intercept("GET", "/api/action").as("getActions");
+    cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
+      "executePrefetch",
+    );
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+      "executeAPI",
+    );
+  });
+
+  it("should show detailed form errors for constraint violations when executing model actions", () => {
+    const actionName = "Update";
+
+    cy.get("@modelId").then(modelId => {
+      createImplicitAction({ kind: "update", model_id: modelId });
+    });
+
+    createDashboardWithActionButton({ actionName, idFilter: true });
+
+    filterWidget().click();
+    addWidgetStringFilter("5");
+    cy.button(actionName).click();
+
+    cy.wait("@executePrefetch");
+
+    modal().within(() => {
+      cy.findByLabelText("Team Name").clear().type("Kind Koalas");
+      cy.button(actionName).click();
+      cy.wait("@executeAPI");
+
+      cy.findByLabelText("Team Name").should("not.exist");
+      cy.findByLabelText(
+        "Team Name: This Team_name value already exists.",
+      ).should("exist");
+
+      cy.findByText("Team_name already exists.").should("exist");
+    });
+  });
+});
+
 describe(
   "Action Parameters Mapping",
   { tags: ["@external", "@actions"] },
