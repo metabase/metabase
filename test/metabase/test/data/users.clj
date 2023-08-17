@@ -170,7 +170,7 @@
   {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                 request-options? http-body-map? & {:as query-params}])}
   [mock? user & args]
-  (let [the-client (if mock? client/real-client client/client)]
+  (let [the-client (if mock? client/client client/real-client)]
     (if (keyword? user)
       (do
        (fetch-user user)
