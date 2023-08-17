@@ -234,11 +234,13 @@ export function waitForSyncToFinish({
         table =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
+      console.log({ table, body, tableAlias });
       if (!table) {
         return waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
       }
 
       if (tableAlias) {
+        console.log("setting table alias");
         cy.wrap(table).as(tableAlias);
       }
 
