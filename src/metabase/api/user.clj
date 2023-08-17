@@ -160,6 +160,15 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+(defn- group-ids-for-user
+  [user-id]
+  (map :group_id
+       (t2/query
+        {:select-distinct [:permissions_group_membership.group_id]
+         :from  [:permissions_group_membership]
+         :where [:and [:= :permissions_group_membership.user_id user-id]
+                 [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]})))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
@@ -177,27 +186,32 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [status query group_id include_deactivated]
-  {status                 (s/maybe s/Str)
-   query                  (s/maybe s/Str)
-   group_id               (s/maybe su/IntGreaterThanZero)
-   include_deactivated    (s/maybe su/BooleanString)}
-  (api/check-403 (or api/*is-superuser?* api/*is-group-manager?*))
+  {status              (s/maybe s/Str)
+   query               (s/maybe s/Str)
+   group_id            (s/maybe su/IntGreaterThanZero)
+   include_deactivated (s/maybe su/BooleanString)}
+  (validation/check-group-manager)
   (when (or status include_deactivated)
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)
-        clauses             (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated)]
-    {:data   (cond-> (t2/select
-                      (vec (cons User (user-visible-columns)))
-                      (cond-> clauses
-                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                        true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
-               ;; For admins also include the IDs of Users' Personal Collections
-               api/*is-superuser?*
-               (t2/hydrate :personal_collection_id)
+        manager-group-ids   (set (group-ids-for-user api/*current-user-id*))
+        group-id-clause     (cond
+                              (and api/*is-superuser?* (some? group_id))                 [group_id]
+                              (and api/*is-group-manager?* (manager-group-ids group_id)) [group_id]
+                              api/*is-group-manager?*                                    (vec manager-group-ids))
+        clauses             (user-clauses status query group-id-clause include_deactivated)]
+    {:data (cond-> (t2/select
+                    (vec (cons User (user-visible-columns)))
+                    (cond-> clauses
+                      (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                      true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
+             ;; For admins also include the IDs of Users' Personal Collections
+             api/*is-superuser?*
+             (t2/hydrate :personal_collection_id)
 
-               (or api/*is-superuser?*
-                   api/*is-group-manager?*)
-               (t2/hydrate :group_ids))
+             (or api/*is-superuser?*
+                 api/*is-group-manager?*)
+             (t2/hydrate :group_ids))
      :total  (t2/count User (filter-clauses-without-paging clauses))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
@@ -294,8 +308,6 @@
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
-
-
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."

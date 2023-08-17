@@ -60,19 +60,33 @@
 
 (deftest user-list-test
   (testing "GET /api/user"
-    (testing "Check that only admins can get a list of all active Users"
+    (testing "Check that admins can get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= ["crowberto@metabase.com"
-                "lucky@metabase.com"
-                "rasta@metabase.com"]
+        (is (= #{"crowberto@metabase.com"
+                 "lucky@metabase.com"
+                 "rasta@metabase.com"}
                (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
                     (filter mt/test-user?)
-                    (map :email))))
+                    (map :email)
+                    set)))
         (testing "with a query"
           (is (= "lucky@metabase.com"
                  (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
     (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user")))))
+    (testing "Check that group-managers can get a list of that group's users."
+      (t2.with-temp/with-temp
+          [:model/PermissionsGroup           {group-id1 :id} {:name "Test Group"}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}]
+        (is (= #{"lucky@metabase.com"
+                 "rasta@metabase.com"}
+               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                    (filter mt/test-user?)
+                    (map :email)
+                    set)))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user")))))))
 
