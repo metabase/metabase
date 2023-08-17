@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.i18n :refer [tru deferred-trun]]
    [metabase.util.log :as log]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :h2
@@ -64,7 +64,7 @@
              (re-find #"Unique index or primary key violation: \"[^.]+.(.+?) ON [^.]+.\"\"(.+?)\"\"" error-message)]
     (let [columns (constraint->column-names database table constraint-name)]
       {:type    error-type
-       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (trun "exists" "exist" (count columns)))
+       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
        :errors  (reduce (fn [acc col]
                           (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}

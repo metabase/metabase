@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trun tru trun]]))
+   [metabase.util.i18n :refer [deferred-trun tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +37,7 @@
              (re-find #"duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (let [columns (constraint->column-names database constraint)]
       {:type    error-type
-       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (trun "exists" "exist" (count columns)))
+       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
        :errors  (reduce (fn [acc col]
                           (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}

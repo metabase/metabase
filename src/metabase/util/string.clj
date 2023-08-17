@@ -15,7 +15,10 @@
     (build-sentence [\"foo\" \"bar\" \"baz\"]) => \"foo, bar and baz.\"
 
     (build-sentence [\"foo\" \"bar\" \"baz\"] :stop? false) => \"foo, bar and baz\"
-  "
+
+  Note: this assume we're building a sentence with parts from left to right,
+  It might not works correctly with right-to-left language.
+  Also not all language uses command and \"and\" to represting 'listing'"
   ([parts]
    (build-sentence parts :stop? true))
   ([parts & {:keys [stop?]
