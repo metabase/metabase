@@ -1,11 +1,13 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-
+import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
 const ExpressionStep = ({
+  step,
   color,
   query,
+  topLevelQuery,
   updateQuery,
   isLastOpened,
   reportTimezone,
@@ -38,7 +40,15 @@ const ExpressionStep = ({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={({ name }) => updateQuery(query.removeExpression(name))}
+      onRemove={(legacyExpression, index) => {
+        const expressions = Lib.expressions(topLevelQuery, step.stageIndex);
+        const nextQuery = Lib.removeClause(
+          topLevelQuery,
+          step.stageIndex,
+          expressions[index],
+        );
+        updateQuery(nextQuery);
+      }}
     />
   );
 };
