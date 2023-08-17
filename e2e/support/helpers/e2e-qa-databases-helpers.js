@@ -217,6 +217,7 @@ export function waitForSyncToFinish({
   iteration = 0,
   dbId = 2,
   tableName = "",
+  tableAlias,
 }) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
@@ -229,20 +230,24 @@ export function waitForSyncToFinish({
     if (!body.tables.length) {
       waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
     } else if (tableName) {
-      const hasTable = body.tables.some(
+      const table = body.tables.find(
         table =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
-      if (!hasTable) {
+      if (!table) {
         waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+      }
+
+      if (tableAlias) {
+        cy.wrap(table).as(tableAlias);
       }
     }
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = "" }) {
+export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({ iteration: 0, dbId, tableName });
+  waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
 }
