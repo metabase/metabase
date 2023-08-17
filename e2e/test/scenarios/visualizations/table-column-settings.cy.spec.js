@@ -1,4 +1,4 @@
-import { popover, restore } from "e2e/support/helpers";
+import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -67,6 +67,32 @@ const tableQuestionWithJoinAndFields = {
   },
 };
 
+const tableQuestionWithSelfJoinAndFields = {
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TAX, null],
+    ],
+    joins: [
+      {
+        "source-table": ORDERS_ID,
+        fields: [
+          ["field", ORDERS.ID, { "join-alias": "Orders" }],
+          ["field", ORDERS.TAX, { "join-alias": "Orders" }],
+        ],
+        condition: [
+          "=",
+          ["field", ORDERS.USER_ID, null],
+          ["field", ORDERS.ID, { "join-alias": "Orders" }],
+        ],
+        alias: "Orders",
+      },
+    ],
+  },
+};
+
 const tableQuestionWithExpression = {
   display: "table",
   query: {
@@ -124,6 +150,25 @@ const nestedQuestion = card => ({
   display: "table",
   query: {
     "source-table": `card__${card.id}`,
+  },
+});
+
+const nestedQuestionWithJoinOnTable = card => ({
+  display: "table",
+  query: {
+    "source-table": `card__${card.id}`,
+    joins: [
+      {
+        fields: "all",
+        "source-table": PRODUCTS_ID,
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+        ],
+        alias: "Products",
+      },
+    ],
   },
 });
 
@@ -230,7 +275,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Category").should("exist");
     });
 
-    it("should be able to show and hide table fields with in a join with fields", () => {
+    it("should be able to show and hide table fields with a join with fields", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields, {
         visitQuestion: true,
       });
@@ -270,6 +315,42 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Rating").should("exist");
       scrollVisualization();
       visualization().findByText("Products → Category").should("exist");
+    });
+
+    it("should be able to show and hide table fields with a self join with fields", () => {
+      cy.createQuestion(tableQuestionWithSelfJoinAndFields, {
+        visitQuestion: true,
+      });
+      openSettings();
+
+      cy.log("hide an existing column");
+      visibleColumns().within(() => hideColumn("Orders → Tax"));
+      visibleColumns().findByText("Tax").should("exist");
+      visibleColumns().findByText("Orders → Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Orders → Tax").should("exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      visualization().findByText("Orders → Tax").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Orders → Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("exist");
+      visualization().findByText("Orders → Tax").should("not.exist");
+
+      cy.log("show the column");
+      additionalColumns().within(() => showColumn("Tax"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Orders → Tax").should("exist");
+      visibleColumns().findByText("Tax").should("exist");
+      disabledColumns().findByText("Orders → Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Orders → Tax").should("exist");
     });
 
     it("should be able to show and hide implicitly joinable fields for a table", () => {
@@ -455,6 +536,9 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("exist");
       scrollVisualization();
       visualization().findByText("Tax").should("not.exist");
 
@@ -533,6 +617,39 @@ describe("scenarios > visualizations > table column settings", () => {
       scrollVisualization();
       visualization().findByText("Products → Category").should("exist");
       visualization().findByText("Product → Ean").should("exist");
+    });
+
+    it("should be able to show and hide implicitly joinable fields for a nested query with joins and fields", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestionWithJoinOnTable(card), {
+          visitQuestion: true,
+        });
+      });
+      openSettings();
+
+      cy.log("show a new column");
+      additionalColumns().within(() => showColumn("ID"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("User → ID").should("exist");
+      additionalColumns().findByText("ID").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("exist");
+
+      cy.log("hide the column");
+      visibleColumns().within(() => hideColumn("User → ID"));
+      visibleColumns().findByText("User → ID").should("not.exist");
+      disabledColumns().findByText("User → ID").should("exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visibleColumns().findByText("User → ID").should("not.exist");
+      disabledColumns().findByText("User → ID").should("not.exist");
+      additionalColumns().findByText("ID").should("exist");
+      scrollVisualization();
+      visualization().findByText("User → ID").should("not.exist");
     });
 
     it("should be able to show and hide implicitly joinable fields for a nested query", () => {
@@ -631,7 +748,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Sum of Quantity").should("exist");
     });
 
-    it("should be able to show and hide questions from a nested query with a self join", () => {
+    it("should be able to show and hide columns from a nested query with a self join", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         const columnName = "Tax";
         const columnLongName = `Question ${card.id} → ${columnName}`;
@@ -702,6 +819,26 @@ describe("scenarios > visualizations > table column settings", () => {
         scrollVisualization();
         visualization().findByText(columnLongName).should("exist");
       });
+    });
+
+    it("should be able to show a column from a nested query when it was hidden in the notebook editor", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+
+      openNotebook();
+      cy.findByTestId("fields-picker").click();
+      popover().findByText("Tax").click();
+      visualize();
+
+      openSettings();
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Tax"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Tax").should("exist");
     });
   });
 
