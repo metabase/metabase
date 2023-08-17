@@ -67,6 +67,32 @@ const tableQuestionWithJoinAndFields = {
   },
 };
 
+const tableQuestionWithSelfJoinAndFields = {
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TAX, null],
+    ],
+    joins: [
+      {
+        "source-table": ORDERS_ID,
+        fields: [
+          ["field", ORDERS.ID, { "join-alias": "Orders" }],
+          ["field", ORDERS.TAX, { "join-alias": "Orders" }],
+        ],
+        condition: [
+          "=",
+          ["field", ORDERS.USER_ID, null],
+          ["field", ORDERS.ID, { "join-alias": "Orders" }],
+        ],
+        alias: "Orders",
+      },
+    ],
+  },
+};
+
 const tableQuestionWithExpression = {
   display: "table",
   query: {
@@ -249,7 +275,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Category").should("exist");
     });
 
-    it("should be able to show and hide table fields with in a join with fields", () => {
+    it("should be able to show and hide table fields with a join with fields", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields, {
         visitQuestion: true,
       });
@@ -289,6 +315,42 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Rating").should("exist");
       scrollVisualization();
       visualization().findByText("Products → Category").should("exist");
+    });
+
+    it("should be able to show and hide table fields with a self join with fields", () => {
+      cy.createQuestion(tableQuestionWithSelfJoinAndFields, {
+        visitQuestion: true,
+      });
+      openSettings();
+
+      cy.log("hide an existing column");
+      visibleColumns().within(() => hideColumn("Orders → Tax"));
+      visibleColumns().findByText("Tax").should("exist");
+      visibleColumns().findByText("Orders → Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Orders → Tax").should("exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      visualization().findByText("Orders → Tax").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Orders → Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("exist");
+      visualization().findByText("Orders → Tax").should("not.exist");
+
+      cy.log("show the column");
+      additionalColumns().within(() => showColumn("Tax"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Orders → Tax").should("exist");
+      visibleColumns().findByText("Tax").should("exist");
+      disabledColumns().findByText("Orders → Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Orders → Tax").should("exist");
     });
 
     it("should be able to show and hide implicitly joinable fields for a table", () => {
