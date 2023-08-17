@@ -1,17 +1,17 @@
 import { assocIn } from "icepick";
 import {
-  setActionsEnabledForDB,
-  modal,
-  popover,
-  restore,
-  fillActionQuery,
   createAction,
+  createModelFromTableName,
+  fillActionQuery,
+  modal,
   navigationSidebar,
   openNavigationSidebar,
-  resetTestTable,
-  resyncDatabase,
-  createModelFromTableName,
+  popover,
   queryWritableDB,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  setActionsEnabledForDB,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
@@ -21,8 +21,8 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 
-import { createMockActionParameter } from "metabase-types/api/mocks";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const PG_DB_ID = 2;
 const PG_ORDERS_TABLE_ID = 9;
@@ -103,7 +103,47 @@ describe(
 
       cy.intercept("GET", "/api/card/*").as("getModel");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
+    });
+
+    it("should show detailed form errors for constraint violations when executing model actions", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}/detail`);
+        cy.wait("@getModel");
+      });
+
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+
+      createBasicActions();
+
+      cy.findByLabelText("Action list").within(() => {
+        cy.get("li").eq(1).findByText("Update").should("be.visible");
+      });
+
+      runActionFor("Update");
+
+      modal().within(() => {
+        cy.findByLabelText("ID").type("1");
+        // cy.findByLabelText("Product ID").type("999999");
+        cy.findByLabelText("User ID").type("999999");
+        cy.findByRole("button", { name: "Update" }).click();
+        cy.wait("@executeAction");
+
+        // cy.findByLabelText("Product ID").should("not.exist");
+        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
+        //   "exist",
+        // );
+
+        cy.findByLabelText("User ID").should("not.exist");
+        cy.findByLabelText("User ID: This User_id does not exist.").should(
+          "exist",
+        );
+
+        cy.findByText("Unable to update the record.").should("exist");
+      });
     });
 
     it("should allow CRUD operations on model actions", () => {
