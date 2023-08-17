@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
@@ -8,21 +7,21 @@ import {
   IconStyled as Icon,
 } from "./RightClickPopover.styled";
 
-const propTypes = {
-  isOpen: PropTypes.bool,
-  target: PropTypes.func,
-  runQuery: PropTypes.func,
-  openSnippetModalWithSelectedText: PropTypes.func,
-  canSaveSnippets: PropTypes.bool,
-};
+interface RightClickPopoverProps {
+  isOpen: boolean;
+  canSaveSnippets: boolean;
+  target: () => Element | null | undefined;
+  runQuery: () => void;
+  openSnippetModalWithSelectedText: () => void;
+}
 
-const NativeQueryEditorRightClickPopover = ({
+export const RightClickPopover = ({
   isOpen,
   target,
   runQuery,
   openSnippetModalWithSelectedText,
   canSaveSnippets,
-}) => (
+}: RightClickPopoverProps) => (
   <Popover isOpen={isOpen} target={target}>
     <Container>
       <Anchor onClick={runQuery}>
@@ -38,7 +37,3 @@ const NativeQueryEditorRightClickPopover = ({
     </Container>
   </Popover>
 );
-
-NativeQueryEditorRightClickPopover.propTypes = propTypes;
-
-export default NativeQueryEditorRightClickPopover;
