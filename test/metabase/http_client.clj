@@ -21,7 +21,6 @@
    [metabase.util.log :as log]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
-   [ring.mock.request :as ring.mock]
    [ring.util.codec :as codec]
    [schema.core :as schema])
   (:import
@@ -34,7 +33,7 @@
 
 (def ^:dynamic *url-prefix*
   "Prefix to automatically prepend to the URL of calls made with `client`."
-  (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
+  (str "http://localhost:" (config/config-str :mb-jetty-port) "/api"))
 
 (defn- build-query-string
   [query-parameters]
@@ -56,7 +55,7 @@
     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url query-parameters]
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
-  (let [url (if (= (first url) \/) (subs url 1) url)]
+  (let [url (if (= (first url) \/) url (str "/" url))]
     (str *url-prefix* url (when (seq query-parameters)
                             (str "?" (build-query-string query-parameters))))))
 
@@ -260,7 +259,7 @@
                                         (some-> (java.net.URI. url)
                                                 .getRawQuery
                                                 (str/split #"&"))))
-        url         (first (str/split  url #"\?"))
+        url         (first (str/split url #"\?"))
         request     (merge {:accept :json
                             :content-type "application/json"
                             :cookie-policy :standard
@@ -287,7 +286,7 @@
                                               :body (fn [http-body] (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
                                                                                                                 http-body
                                                                                                                 (json/generate-string http-body)))))))
-        _           (log/debug method-name (pr-str url) (pr-str request))
+        _           (log/info method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
                        (let [resp (handler/app request identity identity)]

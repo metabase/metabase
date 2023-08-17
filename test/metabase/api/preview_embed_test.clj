@@ -471,8 +471,8 @@
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]
-                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer")))
-                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer&NAME=x")))))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer"))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
           (testing "Dashcard"
             (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
                                                            :embedding_params {:name "enabled"}
@@ -490,5 +490,5 @@
                                                                            :target       [:dimension [:template-tag "NAME"]]}]}]]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
-                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer")))
-                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer&name=x")))))))))))))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))

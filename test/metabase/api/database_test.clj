@@ -1209,7 +1209,7 @@
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [_ {:db_id db-id, :schema "schema1"}]]
         (is (= "Not found."
-               (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))
+               (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not%20schema1"))))))
 
     (testing "should exclude Tables for which the user has no perms"
       (mt/with-temp* [Database [{database-id :id}]
@@ -1257,7 +1257,7 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/schema/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/schema/My%20Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
@@ -1304,7 +1304,7 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/datasets/My%20Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200

@@ -338,7 +338,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
+      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
           (is (= "count\n107\n"
                  (client/client :get 200 (str "public/question/" uuid ".csv")
@@ -428,7 +428,7 @@
                 (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
                   (testing "Prefetch should only return non-hidden fields"
                     (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                           (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
+                           (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
                   (testing "Update should not allow hidden fields to be updated"
                     (is (= {:rows-updated [1]}
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
@@ -597,13 +597,12 @@
                                                     :parameter_id "_NUM_"}])]
                 (is (= [[50]]
                        (-> (mt/user-http-request :crowberto
-                                                 :get (str (dashcard-url dash card dashcard)
-                                                           "?parameters="
-                                                           (json/generate-string
-                                                            [{:type   :category
-                                                              :target [:variable [:template-tag :num]]
-                                                              :value  "50"
-                                                              :id     "_NUM_"}])))
+                                                 :get (dashcard-url dash card dashcard)
+                                                 :parameters (json/generate-string
+                                                              [{:type   :category
+                                                                :target [:variable [:template-tag :num]]
+                                                                :value  "50"
+                                                                :id     "_NUM_"}]))
                            mt/rows)))))))
 
         (testing "with MBQL queries"
@@ -624,13 +623,12 @@
                                                       :target       [:dimension [:field (mt/id :venues :id) nil]]}])]
                   (is (= [[1]]
                          (-> (mt/user-http-request :crowberto
-                                                   :get (str (dashcard-url dash card dashcard)
-                                                             "?parameters="
-                                                             (json/generate-string
-                                                              [{:type   :id
-                                                                :target [:dimension [:field (mt/id :venues :id) nil]]
-                                                                :value  "50"
-                                                                :id     "_VENUE_ID_"}])))
+                                                   :get (dashcard-url dash card dashcard)
+                                                   :parameters (json/generate-string
+                                                                [{:type   :id
+                                                                  :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                                  :value  "50"
+                                                                  :id     "_VENUE_ID_"}]))
                              mt/rows)))))))
 
           (testing "temporal parameters"
@@ -653,13 +651,12 @@
                                                                         (mt/id :checkins :date) nil]]}])]
                     (is (= [[733]]
                            (-> (mt/user-http-request :crowberto
-                                                     :get (str (dashcard-url dash card dashcard)
-                                                               "?parameters="
-                                                               (json/generate-string
-                                                                [{:type   "date/all-options"
-                                                                  :target [:dimension [:field (mt/id :checkins :date) nil]]
-                                                                  :value  "~2015-01-01"
-                                                                  :id     "_DATE_"}])))
+                                                     :get (dashcard-url dash card dashcard)
+                                                     :parameters (json/generate-string
+                                                                  [{:type   "date/all-options"
+                                                                    :target [:dimension [:field (mt/id :checkins :date) nil]]
+                                                                    :value  "~2015-01-01"
+                                                                    :id     "_DATE_"}]))
                                mt/rows)))))))))))))
 
 (deftest execute-public-dashcard-dimension-value-params-test
@@ -687,14 +684,13 @@
                                                                          :parameter_id "_MSG_"}])]
               (is (= [["World"]]
                      (-> (mt/user-http-request :crowberto
-                                               :get (str (dashcard-url dash card dashcard)
-                                                         "?parameters="
-                                                         (json/generate-string
-                                                          [{:type    :category
-                                                            :target  [:variable [:template-tag :msg]]
-                                                            :value   "World"
-                                                            :default "Hello"
-                                                            :id      "_MSG_"}])))
+                                               :get (dashcard-url dash card dashcard)
+                                               :parameters (json/generate-string
+                                                            [{:type    :category
+                                                              :target  [:variable [:template-tag :msg]]
+                                                              :value   "World"
+                                                              :default "Hello"
+                                                              :id      "_MSG_"}]))
                          mt/rows))))))))))
 
 
