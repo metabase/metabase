@@ -163,14 +163,14 @@
         (binding [*retrying-authentication*  true]
           (apply client-fn username args))))))
 
-(defn user-request
+(defn- user-request
   "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
   password, this function temporarily overrides the password for that User.)"
   {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                 request-options? http-body-map? & {:as query-params}])}
   [mock? user & args]
-  (let [the-client (if mock? client/mock-client client/client)]
+  (let [the-client (if mock? client/real-client client/client)]
     (if (keyword? user)
       (do
        (fetch-user user)

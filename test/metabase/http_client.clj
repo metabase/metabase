@@ -355,17 +355,17 @@
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
-      (-client parsed))))
+      (-mock-client parsed))))
 
 
-(defn mock-client-full-response
+(defn real-client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
-      (-mock-client parsed))))
+      (-client parsed))))
 
 (defn client
   "Perform an API call and return the response (for test purposes).
@@ -393,8 +393,8 @@
   [& args]
   (:body (apply client-full-response args)))
 
-(defn mock-client
+(defn real-client
   "Like client but it's mocked"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
-  (:body (apply mock-client-full-response args)))
+  (:body (apply real-client-full-response args)))
