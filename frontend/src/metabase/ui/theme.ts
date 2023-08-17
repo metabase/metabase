@@ -42,7 +42,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     lg: "17px",
     xl: "21px",
   },
-  fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
+  fontFamily: "var(--default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
