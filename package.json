@@ -302,7 +302,7 @@
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-debug": "yarn build:cljs && node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles --config jest.unit.conf.json",
-    "test-unit": "yarn build:cljs && jest --config jest.unit.conf.json",
+    "test-unit": "yarn build:cljs && jest --maxWorkers=50% --config jest.unit.conf.json",
     "test-unit-keep-cljs": "jest --maxWorkers=2 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
     "test-unit-watch:cljs": "yarn concurrently -n 'cljs,tests' 'yarn build-watch:cljs' 'yarn test-unit-keep-cljs --watch'",
