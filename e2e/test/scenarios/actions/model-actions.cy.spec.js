@@ -353,7 +353,7 @@ describe(
       modal().within(() => {
         cy.findByLabelText("ID").type("1");
         cy.findByLabelText("User ID").type("999999");
-        // cy.findByLabelText("Product ID").type("999999");
+        cy.findByLabelText("Product ID").type("999999");
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
@@ -362,10 +362,16 @@ describe(
           "exist",
         );
 
-        // cy.findByLabelText("Product ID").should("not.exist");
-        // cy.findByLabelText("Product ID: This Product_id does not exist.").should(
-        //   "exist",
-        // );
+        /**
+         * Even though we violate 2 FK constraints with this request, the JDBC gives
+         * us only the information about 1 FK violation at a time.
+         *
+         * @see https://github.com/metabase/metabase/pull/32935#discussion_r1297054339
+         */
+        cy.findByLabelText("Product ID").should("exist");
+        cy.findByLabelText(
+          "Product ID: This Product_id does not exist.",
+        ).should("not.exist");
 
         cy.findByText("Unable to update the record.").should("exist");
       });
