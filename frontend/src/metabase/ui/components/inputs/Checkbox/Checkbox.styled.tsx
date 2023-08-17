@@ -22,7 +22,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           borderRadius: theme.radius.xs,
 
           "&:focus": {
-            outline: `2px solid ${theme.colors.brand[1]}`,
+            outline: `2px solid ${theme.fn.primaryColor()}`,
           },
           "&:disabled": {
             background: theme.colors.border[0],
@@ -33,8 +33,8 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
           cursor: "pointer",
           ...(params.indeterminate && {
-            background: theme.colors.brand[1],
-            border: `1px solid ${theme.colors.brand[1]}`,
+            background: theme.fn.primaryColor(),
+            border: `1px solid ${theme.fn.primaryColor()}`,
           }),
           transform: `scale(0.75)`,
         },
