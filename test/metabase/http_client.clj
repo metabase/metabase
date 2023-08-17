@@ -240,8 +240,8 @@
                                            :request request-map}
                                           e)))))
         ;; Now perform the HTTP request
-        {:keys [status body], :as response} (thunk)]
-    (log/debug method-name url status)
+        {:keys [status body] :as response} (thunk)]
+    (log/debug :http-request method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
@@ -251,41 +251,34 @@
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
         method-name (u/upper-case-en (name method))
-        query-parameters (merge query-parameters
-                                (reduce (fn [acc query]
-                                          (let [[k v] (str/split query #"=")]
-                                            (assoc acc k v)))
-                                        {}
-                                        (some-> (java.net.URI. url)
-                                                .getRawQuery
-                                                (str/split #"&"))))
+        query-parameters (merge
+                          query-parameters
+                          (reduce (fn [acc query]
+                                    (let [[k v] (str/split query #"=")]
+                                      (assoc acc k v)))
+                                  {}
+                                  (some-> (java.net.URI. url)
+                                          .getRawQuery
+                                          (str/split #"&"))))
         url         (first (str/split url #"\?"))
-        request     (merge {:accept :json
-                            :content-type "application/json"
-                            :cookie-policy :standard
-                            :headers (merge
-                                      {"host"         (str "localhost:" (config/config-str :mb-jetty-port))
-                                       "content-type" "application/json"}
-                                      {@#'mw.session/metabase-session-header (when credentials
-                                                                               (if (map? credentials)
-                                                                                 (authenticate credentials)
-                                                                                 credentials))})
-                            :protocol "HTTP/1.1"
-                            :query-string (build-query-string query-parameters)
-                            :remote-addr "127.0.0.1"
-                            :request-method method
-                            :scheme :http
-                            :server-name "localhost"
-                            :server-port (config/config-int :mb-jetty-port)
-                            :uri (str "/api/" (if (= (first url) \/) (subs url 1) url))}
-                           (when (seq http-body)
-                             {:body (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
-                                                                                  http-body
-                                                                                  (json/generate-string http-body))))})
-                           (m/update-existing request-options
-                                              :body (fn [http-body] (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
-                                                                                                                http-body
-                                                                                                                (json/generate-string http-body)))))))
+        request     (-> (merge {:accept       "json"
+                                :content-type "application/json"
+                                :headers (merge
+                                          {"content-type" "application/json"}
+                                          {@#'mw.session/metabase-session-header (when credentials
+                                                                                   (if (map? credentials)
+                                                                                     (authenticate credentials)
+                                                                                     credentials))})
+                                :query-string (build-query-string query-parameters)
+                                :request-method method
+                                :uri (str "/api/" (if (= (first url) \/) (subs url 1) url))}
+                               (when (seq http-body)
+                                 {:body http-body})
+                               request-options)
+                        (m/update-existing :body (fn [http-body]
+                                                  (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
+                                                                                                http-body
+                                                                                                (json/generate-string http-body)))))))
         _           (log/info method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
@@ -313,10 +306,12 @@
                                           :request request}
                                          e)))))
         ;; Now perform the HTTP request
-        {:keys [status body], :as response} (thunk)]
-    (log/debug method-name url status)
+        {:keys [status body] :as response} (thunk)]
+    (log/debug :mock-request method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
+
+#_(metabase.test/set-ns-log-level! *ns* :debug)
 
 (s/def ::http-client-args
   (s/cat
@@ -351,21 +346,11 @@
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
-  [& args]
+  [mock? & args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
-      (-mock-client parsed))))
-
-
-(defn real-client-full-response
-  "Identical to `client` except returns the full HTTP response map, not just the body of the response"
-  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
-  [& args]
-  (let [parsed (parse-http-client-args args)]
-    (log/trace parsed)
-    (u/with-timeout response-timeout-ms
-      (-client parsed))))
+      ((if mock? -mock-client -client) parsed))))
 
 (defn client
   "Perform an API call and return the response (for test purposes).
@@ -391,10 +376,10 @@
    *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
-  (:body (apply client-full-response args)))
+  (:body (apply client-full-response true args)))
 
 (defn real-client
   "Like client but it's mocked"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
-  (:body (apply real-client-full-response args)))
+  (:body (apply client-full-response false args)))

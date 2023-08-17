@@ -139,8 +139,7 @@
   build-url
   client
   real-client
-  client-full-response
-  real-client-full-response]
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
