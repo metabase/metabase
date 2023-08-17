@@ -5,6 +5,7 @@ import type {
   ColumnMetadata,
   MetadataProvider,
   MetricMetadata,
+  Join,
   Query,
 } from "./types";
 
@@ -35,7 +36,7 @@ export function dropStage(query: Query, stageIndex: number): Query {
 export function removeClause(
   query: Query,
   stageIndex: number,
-  targetClause: Clause,
+  targetClause: Clause | Join,
 ): Query {
   return ML.remove_clause(query, stageIndex, targetClause);
 }

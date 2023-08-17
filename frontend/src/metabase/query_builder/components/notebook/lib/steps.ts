@@ -47,17 +47,43 @@ const STEPS: NotebookStepDef[] = [
     subSteps: query => query.joins().length,
     active: (query, index) =>
       typeof index === "number" && query.joins().length > index,
-    revert: (query, index) => query.removeJoin(index),
-    clean: (query, index) => {
-      const join = typeof index === "number" ? query.joins()[index] : null;
-      if (!join || join.isValid() || join.hasGaps()) {
-        return query;
+    revert: (legacyQuery, index, topLevelQuery, stageIndex) => {
+      if (typeof index !== "number") {
+        return legacyQuery;
       }
-      const cleanJoin = join.clean();
+      const join = Lib.joins(topLevelQuery, stageIndex)[index];
+      if (!join) {
+        return legacyQuery;
+      }
+      const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
+      return convertStageQueryToLegacyStageQuery(
+        nextQuery,
+        legacyQuery,
+        stageIndex,
+      );
+    },
+    clean: (legacyQuery, index, topLevelQuery, stageIndex) => {
+      if (typeof index !== "number") {
+        return legacyQuery;
+      }
+      const legacyJoin = legacyQuery.joins()[index];
+      if (!legacyJoin || legacyJoin.isValid() || legacyJoin.hasGaps()) {
+        return legacyQuery;
+      }
+      const cleanJoin = legacyJoin.clean();
       if (cleanJoin.isValid()) {
-        return query.updateJoin(index, cleanJoin);
+        return legacyQuery.updateJoin(index, cleanJoin);
       }
-      return query.removeJoin(index);
+      const join = Lib.joins(topLevelQuery, stageIndex)[index];
+      if (!join) {
+        return legacyQuery;
+      }
+      const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
+      return convertStageQueryToLegacyStageQuery(
+        nextQuery,
+        legacyQuery,
+        stageIndex,
+      );
     },
   },
   {
