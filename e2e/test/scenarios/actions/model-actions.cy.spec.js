@@ -21,8 +21,8 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 
-import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
+import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 
 const PG_DB_ID = 2;
 const PG_ORDERS_TABLE_ID = 9;
