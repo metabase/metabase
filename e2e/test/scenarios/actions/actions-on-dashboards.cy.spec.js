@@ -961,7 +961,7 @@ const MODEL_NAME = "Test Action Model";
   );
 });
 
-describe("action error handling", () => {
+describe("action error handling", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: TEST_TABLE });
     restore("postgres-writable");
