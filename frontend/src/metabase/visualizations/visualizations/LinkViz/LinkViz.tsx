@@ -14,7 +14,6 @@ import type {
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 import {
@@ -127,14 +126,11 @@ function LinkVizInner({
       );
     }
 
-    const target = isWithinIframe() ? undefined : "_self";
-
     return (
       <DisplayLinkCardWrapper>
         <CardLink
           data-testid="entity-view-display-link"
           to={wrappedEntity.getUrl()}
-          target={target}
           rel="noreferrer"
           role="link"
         >
