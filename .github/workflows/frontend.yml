@@ -38,8 +38,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - run: yarn run lint-prettier
-      name: Run Prettier formatting linter
+    - name: Run Prettier formatting linter
+      run: yarn run lint-prettier
 
   fe-linter-eslint:
     needs: files-changed
@@ -54,8 +54,8 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn run lint-eslint
-      name: Run ESLint linter
+    - name: Run ESLint linter
+      run: yarn run lint-eslint
 
   fe-type-check:
     needs: files-changed
@@ -88,9 +88,14 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn run test-unit --coverage --silent
-      name: Run frontend unit tests
+    - name: Run frontend unit tests and collect the code coverage information
+      if: github.ref == 'refs/heads/master'
+      run: yarn run test-unit --coverage --silent
+    - name: Run frontend unit tests
+      if: github.ref != 'refs/heads/master'
+      run: yarn run test-unit
     - name: Upload coverage to codecov.io
+      if: github.ref == 'refs/heads/master'
       uses: codecov/codecov-action@v3
       with:
         files: ./coverage/lcov.info
@@ -109,12 +114,12 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn run test-timezones
-      name: Run frontend timezones tests
+    - name: Run frontend timezones tests
+      run: yarn run test-timezones
 
   fe-chromatic:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
+    if: github.ref == 'refs/heads/master' && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
