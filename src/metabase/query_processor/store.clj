@@ -151,36 +151,6 @@
   [database-id-or-metadata-provider & body]
   `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
 
-(def ^:private LegacyDatabaseMetadata
-  [:map
-   [:id       ::lib.schema.id/database]
-   [:engine   :keyword]
-   [:name     ms/NonBlankString]
-   [:details  :map]
-   [:settings [:maybe :map]]])
-
-(def ^:private LegacyTableMetadata
-  [:map
-   [:schema [:maybe :string]]
-   [:name   ms/NonBlankString]])
-
-(def ^:private LegacyFieldMetadata
-  [:map
-   [:name          ms/NonBlankString]
-   [:table_id      ::lib.schema.common/positive-int]
-   [:display_name  ms/NonBlankString]
-   [:description   [:maybe :string]]
-   [:database_type ms/NonBlankString]
-   [:base_type     ms/FieldType]
-   [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
-   [:fingerprint   [:maybe :map]]
-   [:parent_id     [:maybe ::lib.schema.common/positive-int]]
-   [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
-   ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
-   ;; would make everything just use base_type.
-   [:effective_type    {:optional true} [:maybe ms/FieldType]]
-   [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
-
 (def ^:private IDs
   [:maybe
    [:or
@@ -233,6 +203,36 @@
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;
+
+(def ^:private LegacyDatabaseMetadata
+  [:map
+   [:id       ::lib.schema.id/database]
+   [:engine   :keyword]
+   [:name     ms/NonBlankString]
+   [:details  :map]
+   [:settings [:maybe :map]]])
+
+(def ^:private LegacyTableMetadata
+  [:map
+   [:schema [:maybe :string]]
+   [:name   ms/NonBlankString]])
+
+(def ^:private LegacyFieldMetadata
+  [:map
+   [:name          ms/NonBlankString]
+   [:table_id      ::lib.schema.common/positive-int]
+   [:display_name  ms/NonBlankString]
+   [:description   [:maybe :string]]
+   [:database_type ms/NonBlankString]
+   [:base_type     ms/FieldType]
+   [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
+   [:fingerprint   [:maybe :map]]
+   [:parent_id     [:maybe ::lib.schema.common/positive-int]]
+   [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
+   ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
+   ;; would make everything just use base_type.
+   [:effective_type    {:optional true} [:maybe ms/FieldType]]
+   [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
 
 ;;; TODO -- these should be considered deprecated in favor of [[bulk-metadata]]
 (mu/defn fetch-and-store-tables! :- :nil
