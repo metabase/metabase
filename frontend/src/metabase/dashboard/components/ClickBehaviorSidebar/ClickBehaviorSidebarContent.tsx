@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import type {
   Dashboard,
@@ -12,7 +13,11 @@ import type {
 } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { UiParameter } from "metabase-lib/parameters/types";
+import Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";
@@ -51,11 +56,30 @@ function ClickBehaviorSidebar({
     return { type: "actionMenu" };
   }, [clickBehavior]);
 
+  const metadata = useSelector(getMetadata);
+
   if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
+
+    // TODO: not sure what type to use here. I've tried both `Field` and `DatasetColumn`, but they're incompatible
+    let disabledStructuredQuestionColumns: any[] = [];
+    const dashcardQuery = new Question(dashcard.card, metadata).query();
+    if (dashcardQuery instanceof StructuredQuery) {
+      const fieldsOptions = dashcardQuery.fieldsOptions(dimension => {
+        return !_.find(columns, column =>
+          dimension.isSameBaseDimension(column.field_ref),
+        );
+      });
+
+      disabledStructuredQuestionColumns = fieldsOptions.dimensions.map(
+        dimension => dimension.column(),
+      );
+    }
+
     return (
       <TableClickBehaviorView
         columns={columns}
+        disabledStructuredQuestionColumns={disabledStructuredQuestionColumns}
         dashcard={dashcard}
         getClickBehaviorForColumn={(column: DatasetColumn) =>
           getClickBehaviorForColumn(dashcard, column)

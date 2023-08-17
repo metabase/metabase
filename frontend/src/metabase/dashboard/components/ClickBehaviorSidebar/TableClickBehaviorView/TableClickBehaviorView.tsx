@@ -34,6 +34,7 @@ function explainClickBehaviorType(
 
 interface Props {
   columns: DatasetColumn[];
+  disabledStructuredQuestionColumns: DatasetColumn[];
   dashcard: DashboardOrderedCard;
   getClickBehaviorForColumn: (
     column: DatasetColumn,
@@ -43,12 +44,18 @@ interface Props {
 
 function TableClickBehaviorView({
   columns,
+  disabledStructuredQuestionColumns,
   dashcard,
   getClickBehaviorForColumn,
   onColumnClick,
 }: Props) {
   const groupedColumns = useMemo(() => {
-    const withClickBehaviors = columns.map(column => ({
+    const disabledColumnsWithClickColumns =
+      disabledStructuredQuestionColumns.filter(column =>
+        getClickBehaviorForColumn(column),
+      );
+    const visibleColumns = columns.concat(disabledColumnsWithClickColumns);
+    const withClickBehaviors = visibleColumns.map(column => ({
       column,
       clickBehavior: getClickBehaviorForColumn(column),
     }));
@@ -63,7 +70,7 @@ function TableClickBehaviorView({
     return _.sortBy(pairs, ([type]) =>
       COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
     );
-  }, [columns, getClickBehaviorForColumn]);
+  }, [columns, disabledStructuredQuestionColumns, getClickBehaviorForColumn]);
 
   const renderColumn = useCallback(
     ({ column, clickBehavior }, index) => {
