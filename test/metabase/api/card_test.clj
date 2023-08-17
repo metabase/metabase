@@ -1880,7 +1880,7 @@
 
 (defn- test-download-response-headers
   [url]
-  (-> (client/client-full-response (test.users/username->token :rasta)
+  (-> (client/client-real-response (test.users/username->token :rasta)
                                    :post 200 url
                                    :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
       :headers

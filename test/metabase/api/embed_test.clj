@@ -6,7 +6,6 @@
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -15,6 +14,7 @@
    [metabase.api.embed :as api.embed]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public-test :as public-test]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -424,10 +424,10 @@
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api$" "/")]
-        (mt/with-temporary-setting-values [site-url client/*url-prefix*]
+      (binding [client/*url-prefix* ""]
+        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
           (is (= "count\n107\n"
-                 (client/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+                 (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------

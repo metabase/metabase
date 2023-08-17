@@ -11,6 +11,7 @@
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card
@@ -218,7 +219,7 @@
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
+                  (client/real-client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -267,12 +268,11 @@
                         :data     {:rows     (s/eq [["456"]])
                                    s/Keyword s/Any}
                         s/Keyword s/Any}
-                       (client/client :get 202 (format "public/card/%s/query?parameters=%s"
-                                                       uuid
-                                                       (json/encode [{:type   "category"
+                       (client/client :get 202 (format "public/card/%s/query" uuid)
+                                     :parameters (json/encode [{:type   "category"
                                                                       :value  "456"
                                                                       :target ["variable" ["template-tag" "foo"]]
-                                                                      :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}]))))))))))
+                                                                      :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
 
 
 
@@ -338,10 +338,10 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api$" "/")]
-        (mt/with-temporary-setting-values [site-url client/*url-prefix*]
+      (binding [client/*url-prefix* ""]
+        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
           (is (= "count\n107\n"
-                 (client/client :get 200 (str "public/question/" uuid ".csv")
+                 (client/real-client :get 200 (str "public/question/" uuid ".csv")
                                 :parameters (json/encode [{:id     "_DATE_"
                                                            :type   :date/quarter-year
                                                            :target [:dimension [:template-tag :date]]
@@ -1482,10 +1482,8 @@
             (is (partial= {:id 1 :name "African"}
                           (client/client
                            :get 200
-                           (format "public/dashboard/%s/dashcard/%s/execute?parameters=%s"
-                                   (:public_uuid dash)
-                                   dashcard-id
-                                   (json/encode {:id 1})))))))))))
+                           (format "public/dashboard/%s/dashcard/%s/execute" (:public_uuid dash) dashcard-id)
+                           :parameters (json/encode {:id 1}))))))))))
 
 ;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
 

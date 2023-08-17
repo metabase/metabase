@@ -12,6 +12,7 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.models.setting :as setting]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -33,7 +34,7 @@
 
 (def ^:dynamic *url-prefix*
   "Prefix to automatically prepend to the URL of calls made with `client`."
-  (str "http://localhost:" (config/config-str :mb-jetty-port) "/api"))
+  "/api")
 
 (defn- build-query-string
   [query-parameters]
@@ -56,8 +57,12 @@
   [url query-parameters]
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
   (let [url (if (= (first url) \/) url (str "/" url))]
-    (str *url-prefix* url (when (seq query-parameters)
-                            (str "?" (build-query-string query-parameters))))))
+    (str "http://localhost:"
+         (config/config-str :mb-jetty-port)
+         *url-prefix*
+         url
+         (when (seq query-parameters)
+           (str "?" (build-query-string query-parameters))))))
 
 ;;; parse-response
 
@@ -271,7 +276,7 @@
                                                                                      credentials))})
                                 :query-string (build-query-string query-parameters)
                                 :request-method method
-                                :uri (str "/api/" (if (= (first url) \/) (subs url 1) url))}
+                                :uri (str *url-prefix* (if (= (first url) \/) url (str "/" url)))}
                                (when (seq http-body)
                                  {:body http-body})
                                request-options)
@@ -279,7 +284,7 @@
                                                   (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
                                                                                                 http-body
                                                                                                 (json/generate-string http-body)))))))
-        _           (log/info method-name (pr-str url) (pr-str request))
+        _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
                        (let [resp (handler/app request identity identity)]
@@ -310,6 +315,9 @@
     (log/debug :mock-request method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
+
+(let  [url "/auth/sso"]
+ (if (= (first url) \/) url (str "/" url)))
 
 #_(metabase.test/set-ns-log-level! *ns* :debug)
 
@@ -346,11 +354,20 @@
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
-  [mock? & args]
+  [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
-      ((if mock? -mock-client -client) parsed))))
+      (-mock-client parsed))))
+
+(defn client-real-response
+  "Identical to `client` except returns the full HTTP response map, not just the body of the response"
+  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
+  [& args]
+  (let [parsed (parse-http-client-args args)]
+    (log/trace parsed)
+    (u/with-timeout response-timeout-ms
+      (-client parsed))))
 
 (defn client
   "Perform an API call and return the response (for test purposes).
@@ -376,10 +393,10 @@
    *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
-  (:body (apply client-full-response true args)))
+  (:body (apply client-full-response args)))
 
 (defn real-client
   "Like client but it's mocked"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
-  (:body (apply client-full-response false args)))
+  (:body (apply client-real-response args)))
