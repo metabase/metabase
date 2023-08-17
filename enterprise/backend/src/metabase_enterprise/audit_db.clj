@@ -86,9 +86,6 @@
     (when analytics-root-dir-resource
       (ee.internal-user/ensure-internal-user-exists!)
       (log/info "Loading Analytics Content...")
-      (log/info "Unzipping analytics to plugins...")
-      #_(u.files/unzip-file analytics-root-dir-resource "plugins")
-      (log/info "Unzipping done.")
       (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
       ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
       (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource

@@ -142,7 +142,7 @@
     (init-status/set-progress! 0.9))
 
   ;; TODO uncomment when audit v2 is ready
-  (ensure-audit-db-installed!)
+  ;; (ensure-audit-db-installed!)
 
   ;; start scheduler at end of init!
   (task/start-scheduler!)
