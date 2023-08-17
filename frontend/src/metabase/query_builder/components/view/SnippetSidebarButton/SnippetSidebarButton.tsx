@@ -12,8 +12,8 @@ interface SnippetSidebarButtonProps {
 
 export const SnippetSidebarButton = ({
   className,
-  size,
   isShowingSnippetSidebar,
+  size,
   toggleSnippetSidebar,
 }: SnippetSidebarButtonProps) => (
   <Tooltip tooltip={t`SQL Snippets`}>
