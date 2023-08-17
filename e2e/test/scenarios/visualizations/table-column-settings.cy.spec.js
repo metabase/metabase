@@ -1,4 +1,4 @@
-import { popover, restore } from "e2e/support/helpers";
+import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -455,6 +455,9 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("not.exist");
+      additionalColumns().findByText("Tax").should("exist");
       scrollVisualization();
       visualization().findByText("Tax").should("not.exist");
 
@@ -702,6 +705,26 @@ describe("scenarios > visualizations > table column settings", () => {
         scrollVisualization();
         visualization().findByText(columnLongName).should("exist");
       });
+    });
+
+    it("should be able to show a column from a nested query when it was hidden in the notebook editor", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+
+      openNotebook();
+      cy.findByTestId("fields-picker").click();
+      popover().findByText("Tax").click();
+      visualize();
+
+      openSettings();
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Tax"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Tax").should("exist");
     });
   });
 
