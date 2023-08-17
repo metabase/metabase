@@ -61,12 +61,12 @@
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
-    (let [field-metadatas (lib.metadata.protocols/bulk-metadata (qp.store/metadata-provider) :metadata/column field-ids)]
+    (let [field-metadatas (qp.store/bulk-metadata :metadata/column field-ids)]
       (when-let [remap-field-ids (not-empty (into #{}
                                                   (keep (comp :field-id :lib/external-remap))
                                                   field-metadatas))]
         ;; do a bulk fetch of the remaps.
-        (lib.metadata.protocols/bulk-metadata (qp.store/metadata-provider) :metadata/column remap-field-ids)
+        (qp.store/bulk-metadata :metadata/column remap-field-ids)
         (into {}
               (comp (filter :lib/external-remap)
                     (keep (fn [field]

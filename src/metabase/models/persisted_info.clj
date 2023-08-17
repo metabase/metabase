@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -9,7 +10,6 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -52,25 +52,15 @@
      [:base_type ::lib.schema.common/base-type]
      [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
 
-(def Definition
-  "Definition spec for a cached table."
-  [:map
-   [:table-name        ms/NonBlankString]
-   [:field-definitions [:maybe [:sequential
-                                [:map
-                                 [:field-name ms/NonBlankString]
-                                 ;; TODO check (isa? :type/Integer :type/*)
-                                 [:base-type  ::lib.schema.common/base-type]]]]]])
-
-(mu/defn metadata->definition :- Definition
+(mu/defn metadata->definition :- ::lib.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
   [metadata :- Metadata table-name]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
-(defn query-hash
+(mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query]
+  [query :- :map]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*

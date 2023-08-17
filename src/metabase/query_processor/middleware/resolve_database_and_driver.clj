@@ -9,7 +9,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.metadata :as lib.metadata]))
 
 (declare resolve-database-id)
 
@@ -51,7 +52,7 @@
   Store."
   [qp]
   (fn [query rff context]
-    (let [{:keys [settings], driver :engine} (qp.store/database)]
+    (let [{:keys [settings], driver :engine} (lib.metadata/database (qp.store/metadata-provider))]
       ;; make sure the driver is initialized.
       (try
         (driver/the-initialized-driver driver)

@@ -35,7 +35,7 @@
                              Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"\QTable does not exist, or belongs to a different Database\E"
+           #"\QFailed to fetch :metadata/table\E"
            (resolve-and-return-store-contents
             {:database (mt/id)
              :type     :query

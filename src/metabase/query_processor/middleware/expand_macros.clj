@@ -9,7 +9,6 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
@@ -30,7 +29,7 @@
                                           segment-clauses))]
     (into {}
           (map (juxt :id :definition))
-          (lib.metadata.protocols/bulk-metadata (qp.store/metadata-provider) :metadata/segment segment-ids))))
+          (qp.store/bulk-metadata :metadata/segment segment-ids))))
 
 (defn- replace-segment-clauses [outer-query segment-id->definition]
   (mbql.u/replace-in outer-query [:query]
@@ -77,7 +76,7 @@
                             (log/warn (trs "Invalid metric: {0} reason: {1}" metric errors))
                             errors)))
                 (map (juxt :id #(select-keys % [:id :name :definition]))))
-          (lib.metadata.protocols/bulk-metadata (qp.store/metadata-provider) :metadata/metric metric-ids))))
+          (qp.store/bulk-metadata :metadata/metric metric-ids))))
 
 (mu/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
   [inner-query                :- mbql.s/MBQLQuery

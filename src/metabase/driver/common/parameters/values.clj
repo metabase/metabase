@@ -3,7 +3,7 @@
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
@@ -352,10 +352,10 @@
 (mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters}]
+  [{tags :template-tags, params :parameters} :- :map]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
@@ -365,7 +365,7 @@
                ;; kind of query shouldn't be possible from the frontend anyway
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 {k v})))
+                 [k v])))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)

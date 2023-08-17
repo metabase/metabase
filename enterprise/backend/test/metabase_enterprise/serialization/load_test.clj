@@ -29,7 +29,6 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.models.visualization-settings-test :as mb.viz-test]
    [metabase.test :as mt]
@@ -328,10 +327,6 @@
                                :bigquery-cloud-sdk))
       (premium-features-test/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
-                            (qp.store/fetch-and-store-tables! [table-id
-                                                               table-id-categories
-                                                               table-id-users
-                                                               table-id-checkins])
                             (v1-dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
                                                :only-db-ids #{db-id}})
                             {:query-results (gather-orig-results [card-id

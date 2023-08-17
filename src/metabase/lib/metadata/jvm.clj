@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -60,14 +61,19 @@
   [_metadata-type condition]
   (into []
         (map (fn [database]
-               {:lib/type     :metadata/database
-                :id           (:id database)
-                :engine       (:engine database)
-                :name         (:name database)
-                :dbms-version (:dbms_version database)
-                :details      (:details database)
-                :settings     (:settings database)
-                :is-audit     (:is_audit database)}))
+               (merge
+                {:lib/type     :metadata/database
+                 :id           (:id database)
+                 :engine       (:engine database)
+                 :name         (:name database)
+                 :dbms-version (:dbms_version database)
+                 :settings     (:settings database)
+                 :is-audit     (:is_audit database)}
+                (when-let [details (:details database)]
+                  ;; ignore encrypted details that we cannot decrypt, because that breaks schema
+                  ;; validation
+                  (when (map? details)
+                    {:details details})))))
         (t2/reducible-select :model/Database
                              {:select [:id :engine :name :dbms_version :details :settings :is_audit]
                               :from   [[(t2/table-name :model/Database) :model]]
@@ -93,23 +99,24 @@
         (map (fn [field]
                (let [dimension-type (some-> (:dimension__type field) keyword)]
                  (merge
-                  {:lib/type          :metadata/column
-                   :base-type         (:base_type field)
-                   :coercion-strategy (:coercion_strategy field)
-                   :database-type     (:database_type field)
-                   :description       (:description field)
-                   :display-name      (:display_name field)
-                   :effective-type    (:effective_type field)
-                   :fingerprint       (:fingerprint field)
-                   :id                (:id field)
-                   :name              (:name field)
-                   :nfc-path          (:nfc_path field)
-                   :parent-id         (:parent_id field)
-                   :position          (:position field)
-                   :semantic-type     (:semantic_type field)
-                   :settings          (:settings field)
-                   :table-id          (:table_id field)
-                   :visibility-type   (:visibility_type field)}
+                  {:lib/type           :metadata/column
+                   :base-type          (:base_type field)
+                   :coercion-strategy  (:coercion_strategy field)
+                   :database-type      (:database_type field)
+                   :description        (:description field)
+                   :display-name       (:display_name field)
+                   :effective-type     (:effective_type field)
+                   :fingerprint        (:fingerprint field)
+                   :fk-target-field-id (:fk_target_field_id field)
+                   :id                 (:id field)
+                   :name               (:name field)
+                   :nfc-path           (:nfc_path field)
+                   :parent-id          (:parent_id field)
+                   :position           (:position field)
+                   :semantic-type      (:semantic_type field)
+                   :settings           (:settings field)
+                   :table-id           (:table_id field)
+                   :visibility-type    (:visibility_type field)}
                   (when (and (= dimension-type :external)
                              (:dimension__human_readable_field_id field))
                     {:lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -134,6 +141,7 @@
                                           :model.display_name
                                           :model.effective_type
                                           :model.fingerprint
+                                          :model.fk_target_field_id
                                           :model.id
                                           :model.name
                                           :model.nfc_path
@@ -204,6 +212,12 @@
                               :where     condition})))
 
 (defmulti ^:private bulk-instances
+  "Fetch bulk instances with `metadata-type`. `database-id` is the ID the application database metadata provider was
+  initialized with; it may be `nil` in some situations where it is used outside of the QP (see for
+  example [[metabase.models.segment/warmed-metadata-provider]]). `ids` is a set of IDs to fetch.
+
+  The [[lib.metadata.cached-provider/cached-metadata-provider]] layer on top of this should take care of filtering out
+  and returning `ids` that have already been fetched."
   {:arglists '([metadata-type database-id ids])}
   (fn [metadata-type _database-id _ids]
     (keyword metadata-type)))
@@ -211,7 +225,7 @@
 (mu/defmethod bulk-instances :default
   [metadata-type  :- MetadataType
    _database-id   :- ::lib.schema.id/database
-   ids            :- [:set ::lib.schema.common/positive-int]]
+   ids            :- [:maybe [:set ::lib.schema.common/positive-int]]]
   (when (seq ids)
     (let [model (metadata-type->model metadata-type)]
       (log/debugf "Fetching instances of %s with ID in %s" model (pr-str ids))
@@ -223,9 +237,11 @@
     (let [model (metadata-type->model :metadata/table)]
       (log/debugf "Fetching instances of %s with ID in %s" model (pr-str ids))
       (select :metadata/table
-              [:and
-               [:in :model.id ids]
-               [:= :model.db_id database-id]]))))
+              (if database-id
+                [:and
+                 [:in :model.id ids]
+                 [:= :model.db_id database-id]]
+                [:in :model.id ids])))))
 
 (mu/defn ^:private fetch-instance
   [metadata-type :- MetadataType
@@ -291,16 +307,13 @@
   (pretty [_this]
     (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
 
-(defn application-database-metadata-provider
+(mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
 
   The application database metadata provider implements both of the optional
   protocols, [[metabase.lib.metadata.protocols/CachedMetadataProvider]]
   and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
   operations to pre-warm the cache if you need to."
-  ([]
-   (application-database-metadata-provider nil))
-
-  ([database-id]
-   (lib.metadata.cached-provider/cached-metadata-provider
-    (->UncachedApplicationDatabaseMetadataProvider database-id))))
+  [database-id :- ::lib.schema.id/database]
+  (lib.metadata.cached-provider/cached-metadata-provider
+   (->UncachedApplicationDatabaseMetadataProvider database-id)))

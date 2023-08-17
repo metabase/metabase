@@ -127,7 +127,7 @@
                     Table    [{table-id :id}    {:db_id database-id}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Table does not exist, or belongs to a different Database"
+           #"\QFailed to fetch :metadata/table\E"
            (resolve-joins
             (mt/mbql-query venues
               {:joins [{:source-table table-id

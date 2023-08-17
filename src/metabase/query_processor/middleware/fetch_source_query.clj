@@ -116,9 +116,10 @@
 (mu/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
-  ([card-id :- ms/PositiveInt]
+  ([card-id :- ::lib.schema.id/card]
    (card-id->source-query-and-metadata card-id false))
-  ([card-id :- ms/PositiveInt log? :- :boolean]
+
+  ([card-id :- ::lib.schema.id/card log? :- :boolean]
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
          card           (or (lib.metadata/card (qp.store/metadata-provider) card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
@@ -133,7 +134,7 @@
        (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
                       card-id
                       (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                      (:table_name persisted-info))))
+                      (:table-name persisted-info))))
 
      ;; log the query at this point, it's useful for some purposes
      (log/debug (trs "Fetched source query from Card {0}:" card-id)

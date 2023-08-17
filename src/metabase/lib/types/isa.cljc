@@ -22,7 +22,9 @@
   [category column]
   (let [type-definition (lib.types.constants/type-hierarchies category)
         column          (cond-> column
-                          (not (:effective-type column)) (assoc :effective-type (:base-type column)))]
+                          (and (map? column)
+                               (not (:effective-type column)))
+                          (assoc :effective-type (:base-type column)))]
     (cond
       (nil? column) false
 

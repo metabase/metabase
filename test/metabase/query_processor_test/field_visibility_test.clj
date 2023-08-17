@@ -39,24 +39,24 @@
 (deftest sensitive-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
-      (is (= {:cols (qp.test/expected-cols :users [:id :name :last_login])
-              :rows [[ 1 "Plato Yeshua"]
-                     [ 2 "Felipinho Asklepios"]
-                     [ 3 "Kaneonuskatew Eiran"]
-                     [ 4 "Simcha Yan"]
-                     [ 5 "Quentin Sören"]
-                     [ 6 "Shad Ferdynand"]
-                     [ 7 "Conchúr Tihomir"]
-                     [ 8 "Szymon Theutrich"]
-                     [ 9 "Nils Gotam"]
-                     [10 "Frans Hevel"]
-                     [11 "Spiros Teofil"]
-                     [12 "Kfir Caj"]
-                     [13 "Dwight Gresham"]
-                     [14 "Broen Olujimi"]
-                     [15 "Rüstem Hebel"]]}
-             ;; Filter out the timestamps from the results since they're hard to test :/
-             (mt/format-rows-by [int identity]
-               (qp.test/rows-and-cols
+      (is (=? {:cols (qp.test/expected-cols :users [:id :name :last_login])
+               :rows [[ 1 "Plato Yeshua"]
+                      [ 2 "Felipinho Asklepios"]
+                      [ 3 "Kaneonuskatew Eiran"]
+                      [ 4 "Simcha Yan"]
+                      [ 5 "Quentin Sören"]
+                      [ 6 "Shad Ferdynand"]
+                      [ 7 "Conchúr Tihomir"]
+                      [ 8 "Szymon Theutrich"]
+                      [ 9 "Nils Gotam"]
+                      [10 "Frans Hevel"]
+                      [11 "Spiros Teofil"]
+                      [12 "Kfir Caj"]
+                      [13 "Dwight Gresham"]
+                      [14 "Broen Olujimi"]
+                      [15 "Rüstem Hebel"]]}
+              ;; Filter out the timestamps from the results since they're hard to test :/
+              (mt/format-rows-by [int identity]
+                (qp.test/rows-and-cols
                  (mt/run-mbql-query users
                    {:order-by [[:asc $id]]}))))))))

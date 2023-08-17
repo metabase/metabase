@@ -5,13 +5,13 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.log :as log]))
 
 (def ^:private FieldTypeInfo
   [:map
@@ -41,11 +41,12 @@
                                          (comp (map second)
                                                (filter integer?))
                                          unbucketed-fields))]
-     (into {} (for [{id :id, :as field} (lib.metadata.protocols/bulk-metadata
-                                         (qp.store/metadata-provider)
-                                         :metadata/column
-                                         field-ids)
-                    :when               field]
+     (into {} (for [{id :id, :as field} (try
+                                          (qp.store/bulk-metadata :metadata/column field-ids)
+                                          ;; don't fail if some of the Fields are invalid.
+                                          (catch Throwable e
+                                            (log/errorf e "Error fetching Fields: %s" (ex-message e))
+                                            nil))]
                 [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
 (defn- yyyy-MM-dd-date-string? [x]

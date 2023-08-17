@@ -50,10 +50,7 @@
    to-card   :- ::lib.schema.id/card]
   (let [cards               (into {}
                                   (map (juxt :id :name))
-                                  (lib.metadata.protocols/bulk-metadata
-                                   (qp.store/metadata-provider)
-                                   :metadata/card
-                                   #{from-card to-card}))
+                                  (qp.store/bulk-metadata :metadata/card #{from-card to-card}))
         from-name           (get cards from-card)
         to-name             (get cards to-card)]
     (str

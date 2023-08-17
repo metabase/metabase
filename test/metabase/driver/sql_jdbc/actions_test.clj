@@ -15,7 +15,7 @@
 
 (defn- cast-values [driver column->value table-id]
   (qp.store/with-metadata-provider (mt/id)
-    (#'sql-jdbc.actions/cast-values driver column->value table-id)))
+    (#'sql-jdbc.actions/cast-values driver column->value (mt/id) table-id)))
 
 (deftest cast-values-test
   (binding [hx/*honey-sql-version* 2]

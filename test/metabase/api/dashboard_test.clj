@@ -1710,7 +1710,11 @@
                                                   :ordered_tabs []}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
-            (is (pos? (:id (first resp)))))
+            (is (pos-int? (:id (first resp))))
+
+            (is (pos-int? (:id (first resp))))
+
+                        (is (pos-int? (:id (first resp)))))
           (is (= {:size_x                     4
                   :size_y                     4
                   :col                        4
@@ -3262,24 +3266,27 @@
                      (mt/user-http-request :crowberto :post 500 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
-(deftest dashcard-implicit-action-execution-test
+(deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id model-id
-                                                            :action_id action-id}]]
+                                                            :card_id      model-id
+                                                            :action_id    action-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
-                  new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
-                                                    {:parameters {"name" "Birds"}})
-                              :created-row
-                              (update-keys (comp keyword u/lower-case-en name)))]
+                  response     (mt/user-http-request :crowberto :post 200 execute-path
+                                                     {:parameters {"name" "Birds"}})
+                  new-row      (-> response
+                                   :created-row
+                                   (update-keys (comp keyword u/lower-case-en name)))]
               (testing "Should be able to insert"
-                (is (pos? (:id new-row)))
-                (is (partial= {:name "Birds"}
-                              new-row)))
+                (testing (str "\nresponse =\n" (u/pprint-to-str response))
+                  (is new-row)
+                  (is (pos-int? (:id new-row)))
+                  (is (partial= {:name "Birds"}
+                                new-row))))
               (testing "Extra parameter should fail gracefully"
                 (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
@@ -3287,7 +3294,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {}}))))))))
+                                                    {:parameters {}})))))))))))
+
+(deftest dashcard-implicit-action-execution-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard update"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -3310,7 +3321,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"id" 1}}))))))))
+                                                    {:parameters {"id" 1}})))))))))))
+
+(deftest dashcard-implicit-action-execution-delete-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard delete"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]

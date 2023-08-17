@@ -210,8 +210,7 @@
                       (remap-results
                        {}
                        {:cols (qp.store/with-metadata-provider (mt/id)
-                                (lib.metadata.protocols/bulk-metadata
-                                 (qp.store/metadata-provider)
+                                (qp.store/bulk-metadata
                                  :metadata/column
                                  [(mt/id :venues :id)
                                   (mt/id :venues :name)
@@ -243,8 +242,7 @@
                       (remap-results
                        {}
                        {:cols (qp.store/with-metadata-provider (mt/id)
-                                (lib.metadata.protocols/bulk-metadata
-                                 (qp.store/metadata-provider)
+                                (qp.store/bulk-metadata
                                  :metadata/column
                                  [(mt/id :venues :id)
                                   (mt/id :venues :name)
@@ -283,8 +281,7 @@
                                                                        :human-readable-field-name "category_name"}]}
                      {:cols (let [[venues-id venues-name venues-category-id venues-price]
                                   (qp.store/with-metadata-provider (mt/id)
-                                    (lib.metadata.protocols/bulk-metadata
-                                     (qp.store/metadata-provider)
+                                    (qp.store/bulk-metadata
                                      :metadata/column
                                      [(mt/id :venues :id)
                                       (mt/id :venues :name)

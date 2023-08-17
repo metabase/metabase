@@ -6,16 +6,19 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-implicit-clauses
     :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
@@ -31,31 +34,39 @@
 (defn- join-alias [dest-table-name source-fk-field-name]
   (str dest-table-name "__via__" source-fk-field-name))
 
-(defn- fk-ids->join-infos
+(def ^:private JoinInfo
+  [:map
+   [:source-table ::lib.schema.id/table]
+   [:alias        ::lib.schema.common/non-blank-string]
+   [:fields       [:= :none]]
+   [:strategy     [:= :left-join]]
+   [:condition    mbql.s/=]
+   [:fk-field-id  ::lib.schema.id/field]])
+
+(mu/defn ^:private fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-ids`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
   (when (seq fk-field-ids)
-    (let [infos (mdb.query/query {:select    [[:source-fk.id    :fk-field-id]
-                                              [:source-fk.name  :fk-name]
-                                              [:target-pk.id    :pk-id]
-                                              [:target-table.id :source-table]
-                                              [:target-table.name :table-name]]
-                                  :from      [[:metabase_field :source-fk]]
-                                  :left-join [[:metabase_field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
-                                              [:metabase_table :target-table] [:= :target-pk.table_id :target-table.id]]
-                                  :where     [:and
-                                              [:in :source-fk.id (set fk-field-ids)]
-                                              [:= :target-table.db_id (u/the-id (qp.store/database))]
-                                              (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
-      (for [{:keys [pk-id fk-name table-name fk-field-id], :as info} infos]
-        (let [join-alias (join-alias table-name fk-name)]
-          (-> info
-              (assoc :alias join-alias
-                     :fields :none
-                     :strategy :left-join
-                     :condition [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]])
-              (dissoc :fk-name :table-name :pk-id)
+    (let [fk-fields        (qp.store/bulk-metadata :metadata/column fk-field-ids)
+          target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
+          target-fields    (when (seq target-field-ids)
+                             (qp.store/bulk-metadata :metadata/column fk-field-ids))
+          target-table-ids (into #{} (keep :table-id) target-fields)]
+      ;; this is for cache-warming purposes.
+      (when (seq target-table-ids)
+        (qp.store/bulk-metadata :metadata/table target-table-ids))
+      (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id} fk-fields
+            :when                                                       pk-id]
+        (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
+              {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
+              join-alias               (join-alias table-name fk-name)]
+          (-> {:source-table source-table
+               :alias        join-alias
+               :fields       :none
+               :strategy     :left-join
+               :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]]
+               :fk-field-id  fk-field-id}
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
 (defn- implicitly-joined-fields->joins
@@ -83,17 +94,18 @@
 (defn- distinct-fields [fields]
   (m/distinct-by mbql.u/remove-namespaced-options fields))
 
-(defn- construct-fk-field-id->join-alias
+(mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
+                                                         ::lib.schema.id/field
+                                                         ::lib.schema.common/non-blank-string]
   [form]
   ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
-  (reduce
-   (fn [m {:keys [fk-field-id], join-alias :alias}]
-     (if (or (not fk-field-id)
-             (get m fk-field-id))
-       m
-       (assoc m fk-field-id join-alias)))
-   {}
-   (visible-joins form)))
+  (into {}
+        (comp (map (fn [{:keys [fk-field-id], join-alias :alias}]
+                     (when fk-field-id
+                       [fk-field-id join-alias])))
+              ;; only keep the first alias for each FK Field ID
+              (m/distinct-by first))
+        (visible-joins form)))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
@@ -119,7 +131,12 @@
               (if-not (some #{:source-metadata} &parents)
                 (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
                                      (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                          (pr-str (:source-field opts)))
+                                                          (format "%s %s"
+                                                                  (pr-str (:source-field opts))
+                                                                  (let [field (lib.metadata/field
+                                                                               (qp.store/metadata-provider)
+                                                                               (:source-field opts))]
+                                                                    (pr-str (:display-name field)))))
                                                      {:resolving  &match
                                                       :candidates fk-field-id->join-alias})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])

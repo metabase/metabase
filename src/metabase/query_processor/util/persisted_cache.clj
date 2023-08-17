@@ -4,20 +4,23 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]))
+   [metabase.public-settings :as public-settings]
+   [metabase.util.malli :as mu]))
 
-(defn can-substitute?
+(mu/defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
   persisted version."
-  [card persisted-info]
+  [card           :- lib.metadata/CardMetadata
+   persisted-info :- [:maybe ::lib.metadata/persisted-info]]
   (and persisted-info
        persisted-info/*allow-persisted-substitution*
        (:active persisted-info)
        (= (:state persisted-info) "persisted")
        (:definition persisted-info)
        (:query-hash persisted-info)
-       (= (:query-hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
+       (= (:query-hash persisted-info) (persisted-info/query-hash (:dataset-query card)))
        (= (:definition persisted-info)
           (persisted-info/metadata->definition (:result-metadata card)
                                                (:table-name persisted-info)))))

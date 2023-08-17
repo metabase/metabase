@@ -13,6 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
+   [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -30,7 +31,8 @@
   (reify
     clojure.lang.IDeref
     (deref [_this]
-      (throw (ex-info (tru "Error: Query Processor store is not initialized.") {})))))
+      (throw (ex-info "Error: Query Processor store is not initialized. Initialize it with qp.store/with-metadata-provider"
+                      {})))))
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
@@ -125,7 +127,8 @@
         (lib.metadata/database new-provider)
         (catch Throwable e
           (throw (ex-info (format "Invalid MetadataProvider; failed to return Database: %s" (ex-message e))
-                          {:metadata-provider new-provider}))))
+                          {:metadata-provider new-provider}
+                          e))))
       (store-miscellaneous-value! [::metadata-provider] new-provider))))
 
 (defn do-with-metadata-provider
@@ -148,7 +151,7 @@
   [database-id-or-metadata-provider & body]
   `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
 
-(def ^:private DatabaseInstanceWithRequiredStoreKeys
+(def ^:private LegacyDatabaseMetadata
   [:map
    [:id       ::lib.schema.id/database]
    [:engine   :keyword]
@@ -156,12 +159,12 @@
    [:details  :map]
    [:settings [:maybe :map]]])
 
-(def ^:private TableInstanceWithRequiredStoreKeys
+(def ^:private LegacyTableMetadata
   [:map
    [:schema [:maybe :string]]
    [:name   ms/NonBlankString]])
 
-(def ^:private FieldInstanceWithRequiredStorekeys
+(def ^:private LegacyFieldMetadata
   [:map
    [:name          ms/NonBlankString]
    [:table_id      ::lib.schema.common/positive-int]
@@ -184,28 +187,64 @@
     [:set ::lib.schema.common/positive-int]
     [:sequential ::lib.schema.common/positive-int]]])
 
+(defn- missing-bulk-metadata-error [metadata-type id]
+  (ex-info (tru "Failed to fetch {0} {1}" (pr-str metadata-type) (pr-str id))
+           {:status-code       400
+            :type              qp.error-type/invalid-query
+            :metadata-provider (metadata-provider)
+            :metadata-type     metadata-type
+            :id                id}))
+
+(mu/defn bulk-metadata :- [:maybe [:sequential [:map
+                                                [:lib/type :keyword]
+                                                [:id ::lib.schema.common/positive-int]]]]
+  "Fetch multiple objects in bulk. If our metadata provider is a bulk provider (e.g., the application database metadata
+  provider), does a single fetch with [[lib.metadata.protocols/bulk-metadata]] if not (i.e., if this is a mock
+  provider), fetches them with repeated calls to the appropriate single-object method,
+  e.g. [[lib.metadata.protocols/field]].
+
+  The order objects are returned in is indeterminate, but the response is guaranteed to contain every object referred to
+  by `ids`. Throws an exception if any objects could not be fetched."
+  [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   ids           :- [:maybe
+                     [:or
+                      [:set ::lib.schema.common/positive-int]
+                      [:sequential ::lib.schema.common/positive-int]]]]
+  (when-let [ids (not-empty (set ids))]
+    (let [provider (metadata-provider)
+          objects  (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
+                          (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids))
+                          (let [f (case metadata-type
+                                    :metadata/card    lib.metadata.protocols/card
+                                    :metadata/column  lib.metadata.protocols/field
+                                    :metadata/metric  lib.metadata.protocols/metric
+                                    :metadata/segment lib.metadata.protocols/segment
+                                    :metadata/table   lib.metadata.protocols/table)]
+                            (for [id ids]
+                              (or (f provider id)
+                                  (throw (missing-bulk-metadata-error metadata-type id)))))))]
+      (doseq [id ids]
+        (or (some #(= (u/the-id %) id) objects)
+            (throw (missing-bulk-metadata-error metadata-type id))))
+      objects)))
+
+;;;;
+;;;; DEPRECATED STUFF
+;;;;
+
+;;; TODO -- these should be considered deprecated in favor of [[bulk-metadata]]
 (mu/defn fetch-and-store-tables! :- :nil
-  "Fetch Table(s) from the application database, and store them in the QP Store for the duration of the current query
-  execution. If Table(s) have already been fetched, this function will no-op. Throws an Exception if Table(s) do not
-  exist."
+  "For warming the cache. Fetch Table(s) from the application database, and store them in the QP Store for the duration
+  of the current query execution. If Table(s) have already been fetched, this function will no-op."
   [table-ids :- IDs]
-  (let [fetched-table-ids (into #{} (map :id) (lib.metadata.protocols/bulk-metadata (metadata-provider) :metadata/table table-ids))]
-    (doseq [table-id table-ids]
-      (when-not (contains? fetched-table-ids table-id)
-        (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." table-id)
-                        {:table table-id, :database (u/the-id (lib.metadata/database (metadata-provider)))})))))
+  (bulk-metadata :metadata/table table-ids)
   nil)
 
 (mu/defn fetch-and-store-fields! :- :nil
-  "Fetch Field(s) from the application database, and store them in the QP Store for the duration of the current query
-  execution. If Field(s) have already been fetched, this function will no-op. Throws an Exception if Field(s) do not
-  exist."
+  "For warming the cache. Fetch Field(s) from the application database, and store them in the QP Store for the duration
+  of the current query execution. If Field(s) have already been fetched, this function will no-op."
   [field-ids :- IDs]
-  (let [fetched-field-ids (into #{} (map :id) (lib.metadata.protocols/bulk-metadata (metadata-provider) :metadata/column field-ids))]
-    (doseq [field-id field-ids]
-      (when-not (contains? fetched-field-ids field-id)
-        (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." field-id)
-                        {:field field-id, :database (u/the-id (lib.metadata/database (metadata-provider)))})))))
+  (bulk-metadata :metadata/column field-ids)
   nil)
 
 (defn ->legacy-metadata
@@ -225,7 +264,10 @@
         (update-keys u/->snake_case_en)
         (vary-meta assoc :type model))))
 
-(mu/defn database :- DatabaseInstanceWithRequiredStoreKeys
+;;; TODO -- these should be considered deprecated in favor of using MLv2 metadata directly via
+;;; the [[metabase.lib.metadata]] functions
+
+(mu/defn database :- LegacyDatabaseMetadata
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
   returned."
   []
@@ -235,7 +277,7 @@
                            :type        qp.error-type/invalid-query})))
       ->legacy-metadata))
 
-(mu/defn table :- TableInstanceWithRequiredStoreKeys
+(mu/defn table :- LegacyTableMetadata
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- ::lib.schema.id/table]
   (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
@@ -245,7 +287,7 @@
                            :table-id    table-id})))
       ->legacy-metadata))
 
-(mu/defn field :- FieldInstanceWithRequiredStorekeys
+(mu/defn field :- LegacyFieldMetadata
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- ::lib.schema.id/field]
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)

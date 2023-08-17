@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
@@ -11,6 +12,35 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [schema.core :as s]))
+
+(deftest ^:parallel fk-ids->join-infos-test
+  (testing "mock metadata"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= [{:source-table (meta/id :products)
+               :alias       "PRODUCTS__via__PRODUCT_ID"
+               :fields      :none
+               :strategy    :left-join
+               :condition   [:=
+                             [:field (meta/id :orders :product-id) nil]
+                             [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+               :fk-field-id (meta/id :orders :product-id)}]
+             (#'qp.add-implicit-joins/fk-ids->join-infos #{(meta/id :orders :id)
+                                                           (meta/id :orders :product-id)}))))))
+
+(deftest ^:parallel fk-ids->join-infos-application-database-test
+  (testing "application database metadata provider"
+    (mt/dataset sample-dataset
+      (qp.store/with-metadata-provider (mt/id)
+        (is (= [{:source-table (mt/id :products)
+                 :alias        "PRODUCTS__via__PRODUCT_ID"
+                 :fields       :none
+                 :strategy     :left-join
+                 :condition    [:=
+                                [:field (mt/id :orders :product_id) nil]
+                                [:field (mt/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                 :fk-field-id (mt/id :orders :product_id)}]
+               (#'qp.add-implicit-joins/fk-ids->join-infos #{(mt/id :orders :id)
+                                                             (mt/id :orders :product_id)})))))))
 
 (deftest ^:parallel resolve-implicit-joins-test
   (mt/dataset sample-dataset

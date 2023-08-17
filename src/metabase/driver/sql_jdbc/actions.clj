@@ -6,12 +6,13 @@
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -20,6 +21,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
    (java.sql Connection PreparedStatement)))
@@ -70,14 +72,15 @@
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
-  [driver column->value table-id]
+  [driver column->value database-id table-id]
   (let [type->sql-type (base-type->sql-type-map driver)
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
                           (into {}
                                 (map (juxt :name qp.store/->legacy-metadata))
-                                (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))]
+                                (qp.store/with-metadata-provider database-id
+                                  (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
@@ -212,7 +215,7 @@
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
                          (assoc :update target-table
-                                :set (cast-values driver update-row (get-in query [:query :source-table])))
+                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
@@ -276,7 +279,7 @@
                           (catch-throw e 404))))
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values driver create-row (get-in query [:query :source-table]))])
+                        (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
                         (dissoc :select :from)
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
@@ -386,12 +389,13 @@
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
-(defn- table-id->pk-field-name->id
+(mu/defn ^:private table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id table-id]
+  [database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
   (into {}
         (comp (filter (fn [{:keys [semantic-type], :as _field}]
-                        (mdb.u/isa semantic-type :type/PK)))
+                        (isa? semantic-type :type/PK)))
               (map (juxt :name :id)))
         (qp.store/with-metadata-provider database-id
           (lib.metadata.protocols/fields

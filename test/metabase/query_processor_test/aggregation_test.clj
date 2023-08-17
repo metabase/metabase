@@ -231,43 +231,43 @@
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "w/ breakout on field with distinct values"
-      (is (= {:rows [["Broen Olujimi"        1]
-                     ["Conchúr Tihomir"      2]
-                     ["Dwight Gresham"       3]
-                     ["Felipinho Asklepios"  4]
-                     ["Frans Hevel"          5]
-                     ["Kaneonuskatew Eiran"  6]
-                     ["Kfir Caj"             7]
-                     ["Nils Gotam"           8]
-                     ["Plato Yeshua"         9]
-                     ["Quentin Sören"       10]
-                     ["Rüstem Hebel"        11]
-                     ["Shad Ferdynand"      12]
-                     ["Simcha Yan"          13]
-                     ["Spiros Teofil"       14]
-                     ["Szymon Theutrich"    15]]
-              :cols [(qp.test/breakout-col :users :name)
-                     (qp.test/aggregate-col :cum-count :users :id)]}
-             (qp.test/rows-and-cols
-              (mt/format-rows-by [str int]
-                (mt/run-mbql-query users
-                  {:aggregation [[:cum-count $id]]
-                   :breakout    [$name]}))))))))
+      (is (=? {:rows [["Broen Olujimi"        1]
+                      ["Conchúr Tihomir"      2]
+                      ["Dwight Gresham"       3]
+                      ["Felipinho Asklepios"  4]
+                      ["Frans Hevel"          5]
+                      ["Kaneonuskatew Eiran"  6]
+                      ["Kfir Caj"             7]
+                      ["Nils Gotam"           8]
+                      ["Plato Yeshua"         9]
+                      ["Quentin Sören"       10]
+                      ["Rüstem Hebel"        11]
+                      ["Shad Ferdynand"      12]
+                      ["Simcha Yan"          13]
+                      ["Spiros Teofil"       14]
+                      ["Szymon Theutrich"    15]]
+               :cols [(qp.test/breakout-col :users :name)
+                      (qp.test/aggregate-col :cum-count :users :id)]}
+              (qp.test/rows-and-cols
+               (mt/format-rows-by [str int]
+                 (mt/run-mbql-query users
+                   {:aggregation [[:cum-count $id]]
+                    :breakout    [$name]}))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "w/ breakout on field that requires grouping"
-      (is (= {:cols [(qp.test/breakout-col :venues :price)
-                     (qp.test/aggregate-col :cum-count :venues :id)]
-              :rows [[1 22]
-                     [2 81]
-                     [3 94]
-                     [4 100]]}
-             (qp.test/rows-and-cols
-              (mt/format-rows-by [int int]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:cum-count $id]]
-                   :breakout    [$price]}))))))))
+      (is (=? {:cols [(qp.test/breakout-col :venues :price)
+                      (qp.test/aggregate-col :cum-count :venues :id)]
+               :rows [[1 22]
+                      [2 81]
+                      [3 94]
+                      [4 100]]}
+              (qp.test/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:cum-count $id]]
+                    :breakout    [$price]}))))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"

@@ -345,7 +345,7 @@
             ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
             ;; `qp/query->expected-cols`
             expected-metadata (for [col metadata]
-                                (cond-> (dissoc col :description :source :visibility_type :position)
+                                (cond-> (dissoc col :description :source :visibility_type :position :fk_target_field_id)
                                   ;; for some reason this middleware returns temporal fields with a `:default` unit,
                                   ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
                                   ;; difference, so I haven't looked into why this is the case yet.
