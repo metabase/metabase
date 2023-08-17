@@ -78,6 +78,7 @@
                            :date_joined :date-joined :last_login :dimension-id :human-readable-field-id :timestamp
                            :entity_id}
                          #(str/ends-with? % "_id")
+                         #(str/ends-with? % "_ids")
                          #(str/ends-with? % "_at")))
     data))
 
