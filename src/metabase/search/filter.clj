@@ -13,10 +13,16 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu])
+  (:import
+   (java.time LocalDate)))
+
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
@@ -97,21 +103,10 @@
   [model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod build-optional-filter-query [:created-by "card"]
-  [_filter model query creator-id]
-  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
-
-(defmethod build-optional-filter-query [:created-by "dataset"]
-  [_filter model query creator-id]
-  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
-
-(defmethod build-optional-filter-query [:created-by "dashboard"]
-  [_filter model query creator-id]
-  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
-
-(defmethod build-optional-filter-query [:created-by "action"]
-  [_filter model query creator-id]
-  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
+(doseq [model ["card" "dataset" "dashboard" "action"]]
+  (defmethod build-optional-filter-query [:created-by model]
+    [_filter model query creator-id]
+    (sql.helpers/where query (default-created-by-fitler-clause model creator-id))))
 
 ;; Verified filters
 
@@ -131,6 +126,38 @@
 (defmethod build-optional-filter-query [:verified "dataset"]
   [filter _model query verified]
   (build-optional-filter-query filter "card" query verified))
+
+;; Created at filters
+
+(defn- default-created-at-filter-clause
+  [model created-at]
+  (let [{:keys [start end]} (try
+                             (params.dates/date-string->range created-at {:inclusive-end? false})
+                             (catch Exception _e
+                               (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
+        start               (some-> start u.date/parse)
+        end                 (some-> end u.date/parse)
+        created-at-col      (search.config/column-with-model-alias model :created_at)
+        created-at-col      (if (some #(instance? LocalDate %) [start end])
+                             [:cast created-at-col :date]
+                             created-at-col)]
+    (cond
+     (= start end)
+     [:= created-at-col start]
+
+     (nil? start)
+     [:< created-at-col end]
+
+     (nil? end)
+     [:> created-at-col start]
+
+     :else
+     [:and [:>= created-at-col start] [:< created-at-col end]])))
+
+(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "action"]]
+  (defmethod build-optional-filter-query [:created-at model]
+    [_filter model query created-at]
+    (sql.helpers/where query (default-created-at-filter-clause model created-at))))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
@@ -154,10 +181,12 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context :- SearchContext]
-  (let [{:keys [created-by
+  (let [{:keys [created-at
+                created-by
                 models
                 verified]} search-context]
     (cond-> models
+      (some? created-at) (set/intersection (:created-at (feature->supported-models)))
       (some? created-by) (set/intersection (:created-by (feature->supported-models)))
       (some? verified)   (set/intersection (:verified (feature->supported-models))))))
 
@@ -167,6 +196,7 @@
    model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [archived?
+                created-at
                 created-by
                 search-string
                 verified]}    search-context]
@@ -176,6 +206,9 @@
 
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))
+
+      (some? created-at)
+      (#(build-optional-filter-query :created-at model % created-at))
 
       ;; build optional filters
       (int? created-by)

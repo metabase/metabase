@@ -410,6 +410,7 @@
 
 (mu/defn ^:private search-context
   [{:keys [archived
+           created-at
            created-by
            limit
            models
@@ -420,6 +421,7 @@
                                [:search-string                    [:maybe ms/NonBlankString]]
                                [:models                           [:maybe [:set SearchableModel]]]
                                [:archived        {:optional true} [:maybe :boolean]]
+                               [:created-at      {:optional true} [:maybe ms/NonBlankString]]
                                [:created-by      {:optional true} [:maybe ms/PositiveInt]]
                                [:limit           {:optional true} [:maybe ms/Int]]
                                [:offset          {:optional true} [:maybe ms/Int]]
@@ -434,6 +436,7 @@
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
                         :models             models}
+                 (some? created-at)  (assoc :created-at created-at)
                  (some? created-by)  (assoc :created-by created-by)
                  (some? table-db-id) (assoc :table-db-id table-db-id)
                  (some? limit)       (assoc :limit-int limit)
@@ -443,14 +446,16 @@
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived table-db-id created_by verified]
+  [q archived table-db-id created_at created_by verified]
   {archived    [:maybe ms/BooleanValue]
    table-db-id [:maybe ms/PositiveInt]
+   created_at  [:maybe ms/NonBlankString]
    created_by  [:maybe ms/PositiveInt]
    verified    [:maybe true?]}
   (query-model-set (search-context {:search-string q
                                     :archived      archived
                                     :table-db-id   table-db-id
+                                    :created-at    created_at
                                     :created-by    created_by
                                     :verified      verified
                                     :models        search.config/all-models})))
@@ -464,11 +469,12 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_by table_db_id models verified]
+  [q archived created_at created_by table_db_id models verified]
   {q           [:maybe ms/NonBlankString]
    archived    [:maybe :boolean]
    table_db_id [:maybe ms/PositiveInt]
    models      [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   created_at  [:maybe ms/NonBlankString]
    created_by  [:maybe ms/PositiveInt]
    verified    [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
@@ -480,6 +486,7 @@
         results    (search (search-context
                             {:search-string q
                              :archived      archived
+                             :created-at    created_at
                              :created-by    created_by
                              :table-db-id   table_db_id
                              :models        models-set

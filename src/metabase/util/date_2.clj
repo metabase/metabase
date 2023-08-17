@@ -162,7 +162,8 @@
                             (some-> t class .getCanonicalName))
                        {:t t}))))))
 
-(def ^:private add-units
+(def add-units
+  "A list of units that can be added to a temporal value."
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
 (s/defn add :- Temporal

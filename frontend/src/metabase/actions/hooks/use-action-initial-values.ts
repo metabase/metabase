@@ -29,10 +29,10 @@ export const useActionInitialValues = ({
   const hasPrefetchedValues = Object.keys(prefetchedInitialValues).length > 0;
 
   useEffect(() => {
-    if (shouldPrefetch && !hasPrefetchedValues) {
+    if (shouldPrefetch) {
       prefetchValues();
     }
-  }, [shouldPrefetch, hasPrefetchedValues, prefetchValues]);
+  }, [shouldPrefetch, prefetchValues]);
 
   return {
     error,
