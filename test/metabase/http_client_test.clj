@@ -1,12 +1,13 @@
 (ns ^:mb/once metabase.http-client-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.http-client :as client]))
 
 (deftest build-url-test
   (binding [client/*url-prefix* "/api"]
     (testing "correctly encode all data types"
-      (is (= "http://localhost:3000/api/database/1?int=1&float=1.23&string=a&keyword=b&seq=1&seq=2&seq=3"
+      (is (= (format "http://localhost:%s/api/database/1?int=1&float=1.23&string=a&keyword=b&seq=1&seq=2&seq=3" (config/config-str :mb-jetty-port))
              (client/build-url "database/1" {:int     1
                                              :float   1.23
                                              :string  "a"

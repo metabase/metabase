@@ -67,7 +67,7 @@
                        (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
-            response (mt/client-full-response :post 200 "session" body)]
+            response (mt/client-real-response :post 200 "session" body)]
         ;; clj-http sets :expires key in response when Max-Age attribute is set
         (is (get-in response [:cookies session-cookie :expires])))
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
