@@ -220,7 +220,7 @@ describe("LinkViz", () => {
           tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
-      expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+      expect(screen.getByRole("link")).not.toHaveAttribute("target");
     });
 
     it("sets embedded entity links to not open in new tabs", () => {
@@ -331,17 +331,6 @@ describe("LinkViz", () => {
 
       expect(getIcon("key")).toBeInTheDocument();
       expect(screen.getByText(/don't have permission/i)).toBeInTheDocument();
-    });
-
-    it("should have a link that loads the URL in the same page", () => {
-      setup({
-        isEditing: false,
-        dashcard: tableLinkDashcard,
-        settings:
-          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
-      });
-      expect(screen.getByText("Table Uno")).toBeInTheDocument();
-      expect(screen.getByRole("link")).not.toHaveAttribute("target");
     });
   });
 });
