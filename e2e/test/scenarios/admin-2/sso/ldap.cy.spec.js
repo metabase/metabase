@@ -11,7 +11,7 @@ import {
 import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
-} from "./group-mappings-widget";
+} from "./shared/group-mappings-widget";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
