@@ -7,8 +7,11 @@ export const getTitleOverrides = (): MantineThemeOverride["components"] => ({
         return {
           root: {
             fontWeight: "normal",
-            letterSpacing: "0.7px",
             textTransform: "uppercase",
+
+            "&:dir(ltr)": {
+              letterSpacing: "0.7px",
+            },
           },
         };
       }
