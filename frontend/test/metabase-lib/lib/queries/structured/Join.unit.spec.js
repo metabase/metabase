@@ -467,55 +467,6 @@ describe("Join", () => {
     });
   });
 
-  describe("setOperator", () => {
-    it("changes the operator without fields selected", () => {
-      let join = getJoin({
-        query: getOrdersJoinQuery({}),
-      });
-
-      join = join.setOperator(0, "!=");
-
-      expect(join.getConditions()).toEqual([["!=", null, null]]);
-    });
-
-    it("changes the operator of a single condition join", () => {
-      let join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        }),
-      });
-
-      join = join.setOperator(0, "!=");
-
-      expect(join.getConditions()).toEqual([
-        [
-          "!=",
-          ORDERS_PRODUCT_JOIN_CONDITION[1],
-          ORDERS_PRODUCT_JOIN_CONDITION[2],
-        ],
-      ]);
-    });
-
-    it("changes the operator of a multiple conditions join", () => {
-      let join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        }),
-      });
-
-      join = join.setOperator(1, "!=");
-
-      expect(join.getConditions()).toEqual([
-        ORDERS_PRODUCT_JOIN_CONDITION,
-        [
-          "!=",
-          ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT[1],
-          ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT[2],
-        ],
-      ]);
-    });
-  });
-
   describe("removeCondition", () => {
     it("does nothing when there is no condition", () => {
       let join = getJoin();

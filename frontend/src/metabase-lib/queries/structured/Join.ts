@@ -161,21 +161,6 @@ export default class Join extends MBQLObjectClause {
     return this.setCondition(filteredCondition);
   }
 
-  setOperator(index, operator) {
-    if (index == null || !this.getConditionByIndex(index)) {
-      return this.setConditionByIndex({
-        condition: [operator, null, null],
-      });
-    }
-
-    const [_oldOperator, ...args] = this.getConditionByIndex(index);
-
-    return this.setConditionByIndex({
-      index,
-      condition: [operator, ...args],
-    });
-  }
-
   setDefaultCondition() {
     const { dimensions } = this.parentDimensionOptions();
     // look for foreign keys linking the two tables
