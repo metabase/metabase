@@ -777,6 +777,38 @@
            ~@body)))
     `(do-with-discard-model-updates ~models (fn [] ~@body))))
 
+(deftest with-discard-model-changes-test
+  (t2.with-temp/with-temp
+    [:model/Card      {card-id :id :as card} {:name "A Card"}
+     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
+    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
+
+      (testing "with single model"
+        (with-discard-model-updates [:model/Card]
+          (t2/update! :model/Card card-id {:name "New Card name"})
+          (testing "the changes takes affect inside the macro"
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))))
+
+      (testing "with multiple models"
+        (with-discard-model-updates [:model/Card :model/Dashboard]
+          (testing "the changes takes affect inside the macro"
+            (t2/update! :model/Card card-id {:name "New Card name"})
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
+
+            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
+            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))
+          (is (= dash (t2/select-one :model/Dashboard dash-id)))))
+
+      (testing "make sure that we cleaned up the aux methods after"
+        (is (= count-aux-method-before
+               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
+
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try

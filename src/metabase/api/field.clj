@@ -387,7 +387,9 @@
 
 (defn- search-values-query
   "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
-  differs slightly based on whether the two Fields are the same Field."
+  differs slightly based on whether the two Fields are the same Field.
+
+  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field search-field value limit]
   {:database (db-id field)
    :type     :query
@@ -422,6 +424,7 @@
   ([field search-field value maybe-limit]
    (try
      (let [field   (follow-fks field)
+           search-field (follow-fks search-field)
            limit   (or maybe-limit default-max-field-search-limit)
            results (qp/process-query (search-values-query field search-field value limit))
            rows    (get-in results [:data :rows])]
@@ -437,7 +440,6 @@
      (catch Throwable e
        (log/debug e (trs "Error searching field values"))
        nil))))
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/search/:search-id"
