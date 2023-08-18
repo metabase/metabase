@@ -1,6 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import _ from "underscore";
 import type {
   ConcreteFieldReference,
   Join as JoinObject,
@@ -136,31 +135,6 @@ export default class Join extends MBQLObjectClause {
     const conditions = [...this.condition];
     conditions[index + 1] = condition;
     return this.setCondition(conditions);
-  }
-
-  setDefaultCondition() {
-    const { dimensions } = this.parentDimensionOptions();
-    // look for foreign keys linking the two tables
-    const joinedTable = this.joinedTable();
-
-    if (joinedTable && joinedTable.id != null) {
-      const fk = _.find(dimensions, d => {
-        const { target } = d.field();
-        return target && target.table && target.table.id === joinedTable.id;
-      });
-
-      if (fk) {
-        return this.setParentDimension({
-          index: 0,
-          dimension: fk,
-        }).setJoinDimension({
-          index: 0,
-          dimension: this.joinedDimension(fk.field().target.dimension()),
-        });
-      }
-    }
-
-    return this;
   }
 
   _convertDimensionIntoMBQL(dimension: Dimension | ConcreteFieldReference) {

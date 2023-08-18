@@ -76,20 +76,6 @@ const ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION = [
 ];
 
 describe("Join", () => {
-  describe("setDefaultCondition", () => {
-    it("should set default condition to be fk relationship", () => {
-      let join = getJoin();
-
-      join = join.setDefaultCondition();
-
-      expect(join).toEqual({
-        alias: "Products",
-        condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS_ID,
-      });
-    });
-  });
-
   describe("setParentDimension", () => {
     it("creates a condition if not present", () => {
       let join = getJoin();
