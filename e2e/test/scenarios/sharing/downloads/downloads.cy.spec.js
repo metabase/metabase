@@ -156,29 +156,31 @@ describe("scenarios > question > download", () => {
                 },
               },
             },
+          }).then(({ body: { id } }) => {
+            cy.signIn("nodata");
+            visitDashboard(dashboardId);
+
+            cy.findByLabelText("ID").click();
+            popover().findByPlaceholderText("Enter an ID").type("1");
+            cy.button("Add filter").click();
+
+            cy.findByTestId("legend-caption").contains("20868").click();
+
+            downloadAndAssert(
+              {
+                fileType: "xlsx",
+                questionId,
+                dashboardId,
+                dashcardId: id,
+              },
+              sheet => {
+                expect(sheet["A1"].v).to.eq("ID");
+                expect(sheet["A2"].v).to.eq(1);
+
+                assertSheetRowsCount(1)(sheet);
+              },
+            );
           });
-
-          cy.signIn("nodata");
-          visitDashboard(dashboardId);
-
-          cy.findByLabelText("ID").click();
-          popover().findByPlaceholderText("Enter an ID").type("1");
-          cy.button("Add filter").click();
-
-          cy.findByTestId("legend-caption").contains("20868").click();
-
-          downloadAndAssert(
-            {
-              fileType: "xlsx",
-              questionId,
-            },
-            sheet => {
-              expect(sheet["A1"].v).to.eq("ID");
-              expect(sheet["A2"].v).to.eq(1);
-
-              assertSheetRowsCount(1)(sheet);
-            },
-          );
         });
       });
     });
@@ -297,6 +299,7 @@ function assertOrdersExport(length) {
       questionId: 1,
       dashcardId: 1,
       dashboardId: 1,
+      isDashboard: true,
     },
     sheet => {
       expect(sheet["A1"].v).to.eq("ID");
