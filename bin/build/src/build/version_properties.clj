@@ -1,4 +1,4 @@
-(ns build.version-info
+(ns build.version-properties
   (:require
    [clojure.string :as str]
    [metabuild-common.core :as u]))
@@ -70,10 +70,10 @@
        (format "v%d.%d.%d-SNAPSHOT" major minor patch))
      "UNKNOWN")))
 
-(defn generate-version-info-file!
+(defn generate-version-properties-file!
   "Generate version.properties file"
   ([edition]
-   (generate-version-info-file! edition (current-snapshot-version edition)))
+   (generate-version-properties-file! edition (current-snapshot-version edition)))
 
   ([edition version]
    (u/delete-file-if-exists! version-properties-filename)

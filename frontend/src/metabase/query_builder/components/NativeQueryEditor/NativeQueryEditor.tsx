@@ -66,9 +66,12 @@ import {
   getMaxAutoSizeLines,
 } from "./utils";
 
-import NativeQueryEditorSidebar from "./NativeQueryEditorSidebar";
+import {
+  NativeQueryEditorSidebar,
+  Features as SidebarFeatures,
+} from "./NativeQueryEditorSidebar";
 import { VisibilityToggler } from "./VisibilityToggler";
-import RightClickPopover from "./RightClickPopover";
+import { RightClickPopover } from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";
 
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
@@ -84,20 +87,13 @@ import {
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type SidebarFeatures = {
-  dataReference?: boolean;
-  variables?: boolean;
-  snippets?: boolean;
-  promptInput?: boolean;
-};
-
 type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
   collection_name: string;
 };
 
 type AutocompleteItem = [string, string];
 
-interface OwnProps {
+type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
   query: NativeQuery;
 
@@ -108,7 +104,13 @@ interface OwnProps {
   isOpen?: boolean;
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
-  isRunning?: boolean;
+  isRunnable: boolean;
+  isRunning: boolean;
+  isResultDirty: boolean;
+
+  isShowingDataReference: boolean;
+  isShowingTemplateTagsEditor: boolean;
+  isShowingSnippetSidebar: boolean;
 
   readOnly?: boolean;
   enableRun?: boolean;
@@ -133,13 +135,17 @@ interface OwnProps {
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
   openDataReferenceAtQuestion: (id: CardId) => void;
-  openSnippetModalWithSelectedText?: (text: string) => void;
+  openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
+  onOpenModal: (modalType: string) => void;
+  toggleDataReference: () => void;
+  toggleTemplateTagsEditor: () => void;
+  toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
-}
+};
 
 interface StateProps {
   canUsePromptInput: boolean;

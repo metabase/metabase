@@ -1,0 +1,155 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Stack } from "metabase/ui";
+import { Title } from "./";
+
+export const args = {
+  align: "left",
+  order: 1,
+  underline: false,
+  truncate: false,
+};
+
+export const argTypes = {
+  align: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+  order: {
+    options: [1, 2, 3, 4],
+    control: { type: "inline-radio" },
+  },
+  underline: {
+    control: { type: "boolean" },
+  },
+  truncate: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Typography/Title"
+  component={Title}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Title
+
+Our themed wrapper around [Mantine Title](https://mantine.dev/core/title/).
+
+## When to use Title
+
+TBD
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/SEQS7bshKQ4y4V5FwvdROv/Typography-%2F-Title?type=design&node-id=5-70&mode=design&t=EmLhPoPqbYgYV1aP-0)
+- [Mantine Title Docs](https://mantine.dev/core/title/)
+
+## Caveats
+
+TBD
+
+## Usage guidelines
+
+TBD
+
+## Examples
+
+export const Template = args => (
+  <Stack>
+    <Title {...args} order={1}>
+      Header 1
+    </Title>
+    <Title {...args} order={2}>
+      Header 2
+    </Title>
+    <Title {...args} order={3}>
+      Header 3
+    </Title>
+    <Title {...args} order={4}>
+      Header 4
+    </Title>
+  </Stack>
+);
+
+export const TruncatedTemplate = args => (
+  <Stack>
+    <Box w="6rem">
+      <Title {...args} order={1}>
+        Header 1
+      </Title>
+    </Box>
+    <Box w="5rem">
+      <Title {...args} order={2}>
+        Header 2
+      </Title>
+    </Box>
+    <Box w="4rem">
+      <Title {...args} order={3}>
+        Header 3
+      </Title>
+    </Box>
+    <Box w="3.5rem">
+      <Title {...args} order={4}>
+        Header 4
+      </Title>
+    </Box>
+  </Stack>
+);
+
+export const Default = args => <Title {...args}>Header</Title>;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Left alignment
+
+export const LeftAlignment = args => <Template {...args} />;
+
+<Canvas>
+  <Story name="Left alignment">{LeftAlignment}</Story>
+</Canvas>
+
+### Center alignment
+
+export const CenterAlignment = args => <Template {...args} align="center" />;
+
+<Canvas>
+  <Story name="Center alignment">{CenterAlignment}</Story>
+</Canvas>
+
+### Right alignment
+
+export const RightAlignment = args => <Template {...args} align="right" />;
+
+<Canvas>
+  <Story name="Right alignment">{RightAlignment}</Story>
+</Canvas>
+
+### Underlined
+
+export const Underlined = args => <Template {...args} underline />;
+
+<Canvas>
+  <Story name="Underlined">{Underlined}</Story>
+</Canvas>
+
+### Truncated
+
+export const Truncated = args => <TruncatedTemplate {...args} truncate />;
+
+<Canvas>
+  <Story name="Truncated">{Truncated}</Story>
+</Canvas>
+
+### Truncated and underlined
+
+export const TruncatedAndUnderlined = args => (
+  <TruncatedTemplate {...args} truncate underline />
+);
+
+<Canvas>
+  <Story name="Truncated and underlined">{TruncatedAndUnderlined}</Story>
+</Canvas>
