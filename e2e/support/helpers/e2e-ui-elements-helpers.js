@@ -70,6 +70,10 @@ export function filterWidget() {
   return cy.get("fieldset");
 }
 
+export function clearFilterWidget() {
+  return filterWidget().find(".Icon-close");
+}
+
 export const openQuestionActions = () => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 };

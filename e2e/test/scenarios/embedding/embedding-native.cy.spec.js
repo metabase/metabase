@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   filterWidget,
+  clearFilterWidget,
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
@@ -276,7 +277,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     });
     visitIframe();
     // Remove default filter value
-    cy.get("fieldset .Icon-close").click();
+    clearFilterWidget();
     // The ID default (1, 2) should apply, because it is disabled.
     // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
