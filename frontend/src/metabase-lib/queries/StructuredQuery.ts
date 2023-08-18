@@ -1669,6 +1669,10 @@ class StructuredQueryInner extends AtomicQuery {
     return queries;
   }
 
+  getQueryStageIndex() {
+    return this.queries().length - 1;
+  }
+
   /**
    * Metadata this query needs to display correctly
    */
