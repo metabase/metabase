@@ -30,7 +30,7 @@ describe("issue 16663", () => {
   });
 
   it("should remove filter value from url after going to another dashboard (metabase#16663)", () => {
-    const dahsboardToRedirect = "Orders in a dashboard";
+    const dashboardToRedirect = "Orders in a dashboard";
     const queryParam = "quarter_and_year=Q1";
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
