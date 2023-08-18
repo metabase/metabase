@@ -1377,7 +1377,10 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  joinedDimensions(): Dimension[] {
+  /**
+   * @deprecated use metabase-lib v2' to manage joins
+   */
+  private joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 
