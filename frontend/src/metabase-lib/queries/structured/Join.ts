@@ -639,18 +639,6 @@ export default class Join extends MBQLObjectClause {
     return this._query.removeJoin(this._index);
   }
 
-  hasGaps() {
-    const parentDimensions = this.parentDimensions();
-    const joinDimensions = this.joinDimensions();
-    return (
-      parentDimensions.length === 0 ||
-      joinDimensions.length === 0 ||
-      parentDimensions.length !== joinDimensions.length ||
-      parentDimensions.some(dimension => dimension == null) ||
-      joinDimensions.some(dimension => dimension == null)
-    );
-  }
-
   isValid() {
     // MLv2 should ensure there's a valid condition, etc.
     return !!this.parentTable() && !!this.joinedTable();
