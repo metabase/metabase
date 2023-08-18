@@ -100,11 +100,14 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
-  // FIELDS
-  setFields(fields: JoinFields) {
+  private setFields(fields: JoinFields) {
     return this.set({ ...this, fields });
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   * (still used by metabase-lib/queries/utils/dataset/syncTableColumnsToQuery)
+   */
   addField(field: JoinedFieldReference) {
     if (Array.isArray(this.fields)) {
       return this.setFields([...this.fields, field]);
@@ -113,10 +116,6 @@ export default class Join extends MBQLObjectClause {
     } else {
       return this;
     }
-  }
-
-  clearFields() {
-    return this.setFields("none");
   }
 
   // ALIAS
