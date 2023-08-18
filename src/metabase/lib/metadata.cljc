@@ -95,11 +95,12 @@
   [:map
    {:error/message "Valid column metadata"}
    [:lib/type  [:= :metadata/column]]
-   [:name      ::lib.schema.common/non-blank-string]
+   ;; column names are allowed to be empty strings in SQL Server :/
+   [:name      :string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
    [:id             {:optional true} ::lib.schema.id/field]
-   [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the

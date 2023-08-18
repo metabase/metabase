@@ -477,15 +477,7 @@
   remapped column."
   [{:keys [internal-only-dims]} :- InternalColumnsInfo rf]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
-    (fn
-      ([]
-       (rf))
-
-      ([result]
-       (rf result))
-
-      ([result row]
-       (rf result (remap-fn row))))
+    ((map remap-fn) rf)
     rf))
 
 (defn remap-results
