@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
-   [metabase.driver :as driver]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.collection :as collection]
    [metabase.models.user :as user]
@@ -640,98 +639,18 @@
             (is (= "Actions are not enabled."
                  (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
 
-(mt/defdataset action-error-handling
-  [["group"
-    [{:field-name "name" :base-type :type/Text :not-null? true}
-     {:field-name "ranking" :base-type :type/Integer :not-null? true :unique? true}]
-    [["admin" 1]
-     ["user" 2]]]
-   ["user"
-    [{:field-name "name" :base-type :type/Text :not-null? true}
-     {:field-name "group-id" :base-type :type/Integer :fk "group" :not-null? true}]
-    [["crowberto" 1]
-     ["rasta"     2]
-     ["lucky"     1]]]])
-
+;; This is just to test the flow, a comprehensive tests for error type ares in
+;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/dataset action-error-handling
-      (mt/with-actions-enabled
-        (mt/with-current-user (mt/user->id :crowberto)
-          (mt/with-actions [{_card-id :id}             {:dataset_query (mt/mbql-query group) :dataset true}
-                            {create-group :action-id} {:type :implicit
-                                                       :kind "row/create"}
-                            {update-group :action-id} {:type :implicit
-                                                       :kind "row/update"}
-                            {delete-group :action-id} {:type :implicit
-                                                       :kind "row/delete"}]
-            (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query user) :dataset true}
-                              {create-user :action-id} {:type :implicit
-                                                        :kind "row/create"}
-                              {update-user :action-id} {:type :implicit
-                                                        :kind "row/update"}]
-              (testing "violate not-null constraint"
-                (testing "when creating"
-                  (is (= {:message "Ranking must have values."
-                          :errors {:ranking "You must provide a value."}}
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                               {:parameters {"name" "admin" "ranking" nil}}))))
-                (testing "when updating"
-                  (is (= "Implicit parameters must be provided."
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                               {:parameters {"id" "admin" "ranking" nil}})))))
+    (mt/with-actions-enabled
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query checkins) :dataset true}
+                          {update-action :action-id} {:type :implicit
+                                                      :kind "row/update"}]
+          (testing "an error in SQL will be caught and parsed to a readable erorr message"
 
-              (testing "violate unique constraint"
-                (testing "when creating"
-                  (is (= {:message "Ranking already exists."
-                          :errors {:ranking "This Ranking value already exists."}}
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                               {:parameters {"name" "new" "ranking" 1}}))))
-                (testing "when updating"
-                  (is (= {:message "Ranking already exists."
-                          :errors {:ranking "This Ranking value already exists."}}
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                               {:parameters {"id" 1 "ranking" 2}})))))
-
-              (testing "incorrect type"
-                (testing "when creating"
-                  (is (= (case driver/*driver*
-                           (:h2 :postgres)
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {}}
-
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {:ranking "This value should be of type Integer."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                               {:parameters {"name" "new" "ranking" "S"}}))))
-
-                (testing "when updating"
-                  (is (= (case driver/*driver*
-                           (:h2 :postgres)
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {}}
-
-                           {:message "Some of your values aren’t of the correct type for the database."
-                            :errors {:ranking "This value should be of type Integer."}})
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
-                                               {:parameters {"id" 1 "ranking" "S"}})))))
-
-             (testing "violate fk constraint"
-               (testing "when creating"
-                 (is (= {:message "Unable to create a new record."
-                         :errors {:group_id "This Group-id does not exist."}}
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-user)
-                                              {:parameters {"name" "new user"
-                                                            "group_id" 999}}))))
-
-               (testing "when updating"
-                 (is (= {:message "Unable to update the record."
-                         :errors  {:group_id "This Group-id does not exist."}}
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-user)
-                                              {:parameters {"id"       1
-                                                            "group_id" 999}}))))
-               (testing "when deleting"
-                 (is (= {:message "Other tables rely on this row so it cannot be deleted."
-                         :errors  {}}
-                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-group)
-                                              {:parameters {"id" 1}}))))))))))))
+            (is (= {:message "Unable to update the record."
+                    :errors {:user_id "This User_id does not exist."}}
+                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
+                                         {:parameters {"id" 1 "user_id" 99999}})))))))))

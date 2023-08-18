@@ -357,7 +357,7 @@
             :h2 actions.error/violate-not-null-constraint nil :row/created
             "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])"))))
 
-  (testing "vioalte unique constraint"
+  (testing "violate unique constraint"
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
             :errors {"RANKING" "This Ranking value already exists."}}

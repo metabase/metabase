@@ -557,7 +557,7 @@
             :mysql actions.error/violate-not-null-constraint nil nil
             "Column 'f1' cannot be null"))))
 
-  (testing "vioalte unique constraint"
+  (testing "violate unique constraint"
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Primary already exists.",
             :errors {"PRIMARY" "This Primary value already exists."}}

@@ -809,7 +809,7 @@
             :postgres actions.error/violate-not-null-constraint nil :row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null)."))))
 
-  (testing "vioalte unique constraint"
+  (testing "violate unique constraint"
     (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
               :message "Ranking already exists.",
