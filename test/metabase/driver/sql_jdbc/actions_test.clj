@@ -67,7 +67,9 @@
      ["rasta"     2]
      ["lucky"     1]]]])
 
-(defn- perform-action-ex-data
+(defn perform-action-ex-data
+  "Calls [[actions/perform-action!]] and returns the `ex-data` of exception.
+  Used to test error message when executing implicit action for SQL DBs."
   [& args]
   (try
    (apply actions/perform-action! args)
@@ -75,7 +77,7 @@
      (ex-data e))))
 
 (deftest action-error-handling-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
         (let [db    (mt/db)
