@@ -582,7 +582,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   * @returns alias for addJoin
+   * @deprecated use metabase-lib v2 to manage joins
    */
   join(join) {
     return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
