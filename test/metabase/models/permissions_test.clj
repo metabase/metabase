@@ -695,7 +695,7 @@
                    keys
                    first)))))))
 
-(deftest permissions-monitoring-audit-v2-test
+(deftest permissions-instance-analytics-audit-v2-test
   (when config/ee-available?
     (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (letfn [(perms []

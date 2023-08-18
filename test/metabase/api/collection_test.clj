@@ -318,17 +318,6 @@
 
 (deftest collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
-      (testing "Excludes audit collections"
-        (mt/with-temp* [Collection [a {:name "A"}]
-                        Collection [b {:name "B audit"}]
-                        Collection [c {:name "C audit report"}]]
-          (with-redefs [perms/default-audit-collection-entity-ids        (constantly [(:entity_id b)])
-                        perms/default-audit-collection-report-entity-ids (constantly [(:entity_id c)])]
-            (let [ids      (set (map :id [a b c]))
-                  response (mt/user-http-request :rasta :get 200
-                                                 "collection/tree?exclude-audit-collections=true")]
-              (is (= [{:name "A" :children []}]
-                     (collection-tree-view ids response)))))))
     (testing "Excludes other user collections"
       (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
             lucky-collection (collection/user->personal-collection (mt/user->id :lucky))]

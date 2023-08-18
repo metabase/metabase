@@ -20,7 +20,6 @@ export const collectionsQuery = {
   tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
-  "exclude-audit-collections": true,
 };
 
 export const getIsDirty = createSelector(

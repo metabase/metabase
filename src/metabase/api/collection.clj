@@ -122,10 +122,9 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived exclude-other-user-collections exclude-audit-collections namespace]
+  [exclude-archived exclude-other-user-collections namespace]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
-   exclude-audit-collections      [:maybe :boolean]
    namespace                      [:maybe ms/NonBlankString]}
   (let [exclude-archived? exclude-archived
         exclude-other-user-collections? exclude-other-user-collections
@@ -142,8 +141,6 @@
                            (when exclude-archived?
                              [:= :archived false])
                            [:= :namespace namespace]
-                           (when exclude-audit-collections
-                            [:not [:in :entity_id (concat (perms/default-audit-collection-entity-ids) (perms/default-audit-collection-report-entity-ids))]])
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})

@@ -20,17 +20,11 @@
   []
   13371337)
 
-(defenterprise default-audit-collection-entity-ids
-  "Default audit collection entity ids."
+(defenterprise default-audit-collection-entity-id
+  "Default audit collection entity (instance analytics) id."
   :feature :none
   []
-  ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"])
-
-(defenterprise default-audit-collection-report-entity-ids
-  "Default audit collection report entity ids."
-  :feature :none
-  []
-  ["okNLSZKdSxaoG58JSQY54" "yz5XFcuy-eGq95SYiR9d5" "AHFm6v0B-cb4IfMsshL4h" "UifX7veCwucQN1gC_dtmw"])
+  "vG58R8k-QddHWA7_47umn")
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.

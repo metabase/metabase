@@ -292,16 +292,6 @@
                                              (u/the-id collection)]
                                             :read))))))))
 
-(deftest audit-collection-update-test
-  (testing "Throws exception when we attempt to change the one of the audit collections manuallly."
-    (t2.with-temp/with-temp [Collection collection]
-      (with-redefs [perms/default-audit-collection-entity-ids (constantly [(:entity_id collection)])]
-        (binding [*current-user-id* (mt/user->id :crowberto)]
-          (is (thrown? Exception
-                       (graph/update-graph! (assoc-in (graph :clear-revisions? true)
-                                                      [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
-                                                      :read)))))))))
-
 (deftest collection-namespace-test
   (testing "The permissions graph should be namespace-aware.\n"
     (mt/with-non-admin-groups-no-root-collection-perms

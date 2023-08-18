@@ -149,10 +149,10 @@
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
-     (perms/check-audit-collection-permissions changes)
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
+           (perms/update-audit-collection-permissions group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
                                       (assoc old-graph :namespace collection-namespace) changes))))))

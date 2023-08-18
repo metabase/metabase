@@ -1086,31 +1086,23 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise default-audit-collection-entity-ids
-  "OSS implementation of `audit-db/default-audit-collection-entity-ids`, which is an enterprise feature, so does nothing in the OSS
+(defenterprise default-audit-collection-entity-id
+  "OSS implementation of `audit-db/default-audit-collection-entity-id`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] [])
 
-(defenterprise default-audit-collection-report-entity-ids
-  "OSS implementation of `audit-db/default-audit-collection-report-entity-ids`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] [])
-
-(defn check-audit-collection-permissions
-  "Check that the changes coming in does not attempt to change audit collection permissions. Admins should
-  change these permissions in application monitoring permissions."
-  [changes]
-  (let [audit-collections        (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})
-        audit-collection-reports (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})
-        audit-ids                (into #{} (concat (map :id audit-collections) (map :id audit-collection-reports)))
-        changes-ids              (->> changes
-                                      vals
-                                      (map keys)
-                                      (apply concat))]
-    (when (some #(contains? audit-ids %) changes-ids)
-      (throw (ex-info (tru
-                       (str "Unable to update audit collections, that requires updating through monitoring permissions."))
-                      {:status-code 400})))))
+(defn update-audit-collection-permissions
+  "Will either remove or grant audit (instance analytics) permissions, depending on the config parameter."
+  [group-id changes]
+  (let [audit-collection-id  (->
+                              (t2/select-one ['Collection :id] {:where [:= :entity_id (default-audit-collection-entity-id)]})
+                              :id)]
+    (doseq [[change-id type] changes]
+      (when (and (= change-id audit-collection-id) config/ee-available?)
+        (let [change-permissions! (if (= type :read)
+                                    grant-permissions!
+                                    delete-related-permissions!)]
+          (change-permissions! group-id (str "/db/" (default-audit-db-id) "/schema/")))))))
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
@@ -1125,25 +1117,11 @@
                        (str "Unable to update audit database, that requires updating through monitoring permissions."))
                       {:status-code 400})))))
 
-(defn- config-monitoring-permissions!
-  "Will either remove or grant monitoring (audit) permissions, depending on the config parameter."
-  [group-or-id perm-type config]
-  (when (and (= perm-type :monitoring) config/ee-available?)
-    (let [change-permissions! (if (= config :grant)
-                                grant-permissions!
-                                delete-related-permissions!)]
-      (change-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
-      (doseq [audit-collection (t2/select 'Collection {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
-        (change-permissions! group-or-id (collection-read-path audit-collection)))
-      (doseq [audit-collection-report (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
-        (change-permissions! group-or-id (all-schemas-path audit-collection-report))))))
-
 ; Audit permissions helper fns end
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
-  (config-monitoring-permissions! group-or-id perm-type :revoke)
   (delete-related-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn grant-permissions-for-all-schemas!
@@ -1165,7 +1143,6 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (config-monitoring-permissions! group-or-id perm-type :grant)
   (grant-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
