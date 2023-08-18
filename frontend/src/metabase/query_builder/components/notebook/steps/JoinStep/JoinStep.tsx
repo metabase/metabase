@@ -300,6 +300,7 @@ function JoinCondition({
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
 
+  const isNewCondition = !condition;
   const isComplete = Boolean(lhsColumn && rhsColumn && operator);
 
   const handleOperatorChange = (operator: Lib.FilterOperator) => {
@@ -335,8 +336,9 @@ function JoinCondition({
             stageIndex={stageIndex}
             column={lhsColumn}
             columnGroups={lhsColumnGroup}
+            isNewCondition={isNewCondition}
             label={t`Left column`}
-            isInitiallyVisible={!condition}
+            isInitiallyVisible={isNewCondition}
             withDefaultBucketing={!rhsColumn}
             readOnly={readOnly}
             onSelect={handleLHSColumnChange}
@@ -357,6 +359,7 @@ function JoinCondition({
             stageIndex={stageIndex}
             column={rhsColumn}
             columnGroups={rhsColumnGroup}
+            isNewCondition={isNewCondition}
             label={t`Right column`}
             withDefaultBucketing={!lhsColumn}
             readOnly={readOnly}
