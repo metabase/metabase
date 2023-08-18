@@ -252,10 +252,10 @@
                         [2 "banana" 11 2]
                         [3 "kiwi"   11 2]])))))))
 
-(deftest transform-values-for-col-test
+(deftest ^:parallel transform-values-for-col-test
   (testing "test that different columns types are transformed"
     (is (= (map list [123M 123.0 123N 123 "123"])
-           (map #(#'qp.add-dimension-projections/transform-values-for-col {:base_type %} [123])
+           (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123])
                 [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text])))))
 
 (deftest external-remappings-metadata-test
