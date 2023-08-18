@@ -142,11 +142,10 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: [build, files-changed, test-run-id, download_uberjar]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
+      (needs.download_uberjar.result == 'success' || needs.build.result == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
