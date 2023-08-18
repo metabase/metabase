@@ -6,8 +6,6 @@ import type {
   JoinAlias,
   JoinCondition,
   JoinedFieldReference,
-  TableId,
-  StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
@@ -16,37 +14,31 @@ import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Join extends MBQLObjectClause {
+/**
+ * @deprecated use metabase-lib v2 to manage joins
+ */
+class Join extends MBQLObjectClause {
   alias: JoinAlias | null | undefined;
   condition: JoinCondition | null | undefined;
   fields: JoinFields | null | undefined;
 
-  // "source-query": ?StructuredQueryObject;
-  // "source-table": ?TableId;
   set(join: any): Join {
     return super.set(join);
   }
 
-  displayName() {
-    return this.alias;
+  remove(): StructuredQuery {
+    return this._query.removeJoin(this._index);
   }
 
-  /**
-   * Replaces the aggregation in the parent query and returns the new StructuredQuery
-   */
   replace(join: Join | JoinObject): StructuredQuery {
     return this._query.updateJoin(this._index, join);
   }
 
-  // SOURCE TABLE
-  joinSourceTableId(): TableId | null | undefined {
-    return this["source-table"];
-  }
-
-  // SOURCE QUERY
-  joinSourceQuery(): StructuredQueryObject | null | undefined {
-    return this["source-query"];
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
+  displayName() {
+    return this.alias;
   }
 
   private setFields(fields: JoinFields) {
@@ -55,7 +47,6 @@ export default class Join extends MBQLObjectClause {
 
   /**
    * @deprecated use metabase-lib v2 to manage joins
-   * (still used by metabase-lib/queries/utils/dataset/syncTableColumnsToQuery)
    */
   addField(field: JoinedFieldReference) {
     if (Array.isArray(this.fields)) {
@@ -67,7 +58,12 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
-  getConditions() {
+  private isSingleConditionJoin() {
+    const { condition } = this;
+    return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
+  }
+
+  private getConditions() {
     if (!this.condition) {
       return [];
     }
@@ -80,13 +76,43 @@ export default class Join extends MBQLObjectClause {
     return conditions;
   }
 
-  // CONDITIONS
-  isSingleConditionJoin() {
-    const { condition } = this;
-    return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
+  private joinedQuery() {
+    const sourceTableId = this["source-table"];
+    const sourceQuery = this["source-query"];
+    return sourceTableId
+      ? new StructuredQuery(this.query().question().setDataset(false), {
+          type: "query",
+          query: {
+            "source-table": sourceTableId,
+          },
+        })
+      : sourceQuery
+      ? new StructuredQuery(this.query().question().setDataset(false), {
+          type: "query",
+          query: sourceQuery,
+        })
+      : null;
   }
 
-  // HELPERS
+  private joinedDimension(dimension: Dimension) {
+    if (dimension instanceof FieldDimension) {
+      return dimension.withJoinAlias(this.alias).setQuery(this.query());
+    }
+
+    console.warn("Don't know how to create joined dimension with:", dimension);
+    return dimension;
+  }
+
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
+  joinedTable() {
+    return this?.joinedQuery?.().table?.();
+  }
+
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   getDimensions() {
     const conditions = this.getConditions();
     return conditions.map(condition => {
@@ -100,40 +126,8 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  joinedQuery() {
-    const sourceTable = this.joinSourceTableId();
-    const sourceQuery = this.joinSourceQuery();
-    return sourceTable
-      ? new StructuredQuery(this.query().question().setDataset(false), {
-          type: "query",
-          query: {
-            "source-table": sourceTable,
-          },
-        })
-      : sourceQuery
-      ? new StructuredQuery(this.query().question().setDataset(false), {
-          type: "query",
-          query: sourceQuery,
-        })
-      : null;
-  }
-
-  joinedTable() {
-    const joinedQuery = this.joinedQuery();
-    return joinedQuery && joinedQuery.table();
-  }
-
-  parentQuery() {
-    return this.query();
-  }
-
-  parentTable() {
-    const parentQuery = this.parentQuery();
-    return parentQuery && parentQuery.table();
-  }
-
   /**
-   * All possible joined dimensions
+   * @deprecated use metabase-lib v2 to manage joins
    */
   joinedDimensions() {
     const table = this.joinedTable();
@@ -143,7 +137,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   /**
-   * Currently selected joined dimensions
+   * @deprecated use metabase-lib v2 to manage joins
    */
   fieldsDimensions() {
     if (this.fields === "all") {
@@ -155,6 +149,9 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   joinedDimensionOptions(
     dimensionFilter: (d: Dimension) => boolean = () => true,
   ) {
@@ -168,15 +165,9 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  joinedDimension(dimension: Dimension) {
-    if (dimension instanceof FieldDimension) {
-      return dimension.withJoinAlias(this.alias).setQuery(this.query());
-    }
-
-    console.warn("Don't know how to create joined dimension with:", dimension);
-    return dimension;
-  }
-
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   dependentMetadata() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery
@@ -187,14 +178,14 @@ export default class Join extends MBQLObjectClause {
   }
 
   /**
-   * Removes the aggregation in the parent query and returns the new StructuredQuery
+   * @deprecated use metabase-lib v2 to manage joins
    */
-  remove(): StructuredQuery {
-    return this._query.removeJoin(this._index);
-  }
-
   isValid() {
     // MLv2 should ensure there's a valid condition, etc.
-    return !!this.parentTable() && !!this.joinedTable();
+    const parentTable = parentQuery?.query?.().table?.();
+    return !!parentTable && !!this.joinedTable();
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Join;
