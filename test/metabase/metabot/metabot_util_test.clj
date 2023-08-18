@@ -2,7 +2,9 @@
   (:require
     [clojure.string :as str]
     [clojure.test :refer :all]
+    [malli.core :as mc]
     [metabase.db.query :as mdb.query]
+    [metabase.metabot.inference-ws-client :as inference-ws-client]
     [metabase.metabot.settings :as metabot-settings]
     [metabase.metabot.util :as metabot-util]
     [metabase.models :refer [Card Database Table]]
@@ -149,3 +151,25 @@
              {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
               :sql_name    "MY_MODEL"}
              "SELECT * FROM MY_MODEL")))))
+
+(deftest rank-data-by-prompt-test
+  (with-redefs [inference-ws-client/call-bulk-embeddings-endpoint
+                (fn
+                  ([_base-url args]
+                   (if (mc/validate inference-ws-client/embeddings-schema args)
+                     (update-vals args (fn [_] [0 0.25 0.5 0.25]))
+                     "INVALID ARGUMENTS!"))
+                  ([args]
+                   (if (mc/validate inference-ws-client/embeddings-schema args)
+                     (update-vals args (fn [_] [0 0.25 0.5 0.25]))
+                     "INVALID ARGUMENTS!")))]
+    (is (= [{:object "C", :cosine-similarity 0.5}
+            {:object "B", :cosine-similarity 0.25}
+            {:object "D", :cosine-similarity 0.25}
+            {:object "A", :cosine-similarity 0.0}]
+           (metabot-util/rank-data-by-prompt
+             "This prompt should match C"
+             {"A" [1 0 0 0]
+              "B" [0 1 0 0]
+              "C" [0 0 1 0]
+              "D" [0 0 0 1]})))))

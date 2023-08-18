@@ -20,7 +20,7 @@
   (mc/validate embeddings-schema {"A" "esafs"})
   (mc/validate embeddings-return-schema {"A" [1.0]}))
 
-(defn ^:dynamic bulk-embeddings
+(defn ^:dynamic call-bulk-embeddings-endpoint
   "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."
   ([endpoint obj-strs->encodings]
    (let [request {:method       :post
@@ -31,12 +31,12 @@
      (when (= 200 status)
        (get (json/read-str body) "embeddings"))))
   ([obj-strs->encoddings]
-   (bulk-embeddings
+   (call-bulk-embeddings-endpoint
      (metabot-settings/metabot-inference-ws-url)
      obj-strs->encoddings)))
 
 (comment
-  (bulk-embeddings {"ABC" "123"})
+  (call-bulk-embeddings-endpoint {"ABC" "123"})
   )
 
 (defn keywordize-types
@@ -48,7 +48,7 @@
                      x))
                  mbql))
 
-(defn ^:dynamic infer-dataset-query
+(defn ^:dynamic call-infer-dataset-query-endpoint
   "Infer LLM output from a provided prompt and model.
 
   The prompt is the user prompt and the context is a machine-generated
@@ -61,6 +61,7 @@
   ([endpoint {:keys [user_prompt model] :as args}]
    {:pre [user_prompt (mc/validate metabot-schema/inference-schema args)]}
    (let [request-body {:user_prompt user_prompt :model model}
+         _ (clojure.pprint/pprint request-body)
          url          (format "%s/api/inferDatasetQuery" endpoint)
          _            (log/infof "Inferring mbql for prompt '%s' at %s" user_prompt url)
          request      (cond->
@@ -78,6 +79,6 @@
      (when (= 200 status)
        (keywordize-types body))))
   ([prompt-data]
-   (infer-dataset-query
+   (call-infer-dataset-query-endpoint
      (metabot-settings/metabot-inference-ws-url)
      prompt-data)))

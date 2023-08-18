@@ -1,22 +1,21 @@
 (ns metabase.metabot.precomputes
   (:require
-   [metabase.metabot.protocols :as metabot-protocols]
-   [metabase.metabot.inference-ws.task-impl :as task-impl]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :as models]
-   [toucan2.core :as t2]))
+    [metabase.metabot.inference-ws-client :as inference-ws-client]
+    [metabase.metabot.protocols :as metabot-protocols]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :as models]
+    [toucan2.core :as t2]))
 
 (defrecord AtomicPrecomputes [store])
 
 (defn all-precomputes []
-  (let [embedder       (task-impl/inference-ws-embedder)
-        models         (t2/select models/Card :dataset true :archived false)
+  (let [models         (t2/select models/Card :dataset true :archived false)
         encoded-models (zipmap
                         (map :id models)
                         (map metabot-util/model->summary models))
         ;; TODO -- partition-all X and then this...
         embeddings     (update-keys
-                        (metabot-protocols/bulk embedder encoded-models)
+                        (inference-ws-client/call-bulk-embeddings-endpoint encoded-models)
                         parse-long)]
     {:embeddings    {:card embeddings :table {}}
      :compa-summary {:card encoded-models :table {}}}))

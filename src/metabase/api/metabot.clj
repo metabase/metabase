@@ -5,10 +5,9 @@
     [metabase.metabot :as metabot]
     [metabase.metabot.feedback :as metabot-feedback]
     [metabase.metabot.util :as metabot-util]
-    [metabase.metabot.inference-ws.task-impl :as task-impl]
     [metabase.models :refer [Card]]
     [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
     [metabase.util.schema :as su]
     [toucan2.core :as t2]))
 
@@ -37,7 +36,7 @@
     question)
   (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))
         _     (check-database-support (:database_id model))
-        query (metabot/infer-dataset-query {:model-id model-id} question)]
+        query (metabot/infer-dataset-query {:model-id model-id :user-prompt question})]
     {:card {:dataset_query          query
             :display                :table
             :visualization_settings {}}}))
@@ -52,8 +51,7 @@
     "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
     database-id
     question)
-  (let [embedder (task-impl/inference-ws-embedder)
-        query    (metabot/infer-dataset-query {:embedder embedder} question)]
+  (let [query (metabot/infer-dataset-query {:user-prompt question})]
     {:card {:dataset_query          query
             :display                :table
             :visualization_settings {}}}))
@@ -68,8 +66,7 @@
     "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
     database-id
     question)
-  (let [embedder (task-impl/inference-ws-embedder)
-        query    (metabot/infer-dataset-query {:embedder embedder} question)]
+  (let [query (metabot/infer-dataset-query {:user-prompt question})]
     {:card {:dataset_query          query
             :display                :table
             :visualization_settings {}}}))

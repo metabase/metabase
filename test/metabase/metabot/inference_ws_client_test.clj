@@ -6,7 +6,7 @@
     [metabase.metabot.schema :as metabot-schema]))
 
 (deftest bulk-embeddings-test
-  (with-redefs [inference-ws-client/bulk-embeddings
+  (with-redefs [inference-ws-client/call-bulk-embeddings-endpoint
                 (fn
                   ([_base-url args]
                    (if (mc/validate inference-ws-client/embeddings-schema args)
@@ -18,7 +18,7 @@
                      "INVALID ARGUMENTS!")))]
     (let [input  {"A" "This is a test"
                   "B" "These are some embeddings"}
-          result (inference-ws-client/bulk-embeddings input)]
+          result (inference-ws-client/call-bulk-embeddings-endpoint input)]
       (is (= (keys input) (keys result)))
       (is (true? (mc/validate inference-ws-client/embeddings-return-schema result))))))
 
@@ -27,7 +27,7 @@
     (let [expected {:dataset_query {:source-table "card__1"
                                     :filter       [">" ["field" "TAX" {:base-type :type/Float}] 0]}
                     :model         "replit-code-v1-3b_samples_2023-07-25AM_Python_4"}]
-      (with-redefs [inference-ws-client/infer-dataset-query
+      (with-redefs [inference-ws-client/call-infer-dataset-query-endpoint
                     (fn
                       ([_base-url args]
                        (if (mc/validate metabot-schema/inference-schema args)
@@ -57,17 +57,17 @@
                                          :base_type      :type/Integer,
                                          :effective_type :type/Integer}]}]
           (is (= expected
-                 (inference-ws-client/infer-dataset-query {:user_prompt prompt
-                                                           :model       model})))
+                 (inference-ws-client/call-infer-dataset-query-endpoint {:user_prompt prompt
+                                                           :model                     model})))
           (is (= expected
-                 (inference-ws-client/infer-dataset-query
+                 (inference-ws-client/call-infer-dataset-query-endpoint
                    "http://example.com"
                    {:user_prompt prompt :model model})))
           (is (= "INVALID ARGUMENTS!"
-                 (inference-ws-client/infer-dataset-query {:user_prompt prompt
-                                                           :model       [model]})))
+                 (inference-ws-client/call-infer-dataset-query-endpoint {:user_prompt prompt
+                                                           :model                     [model]})))
           (is (= "INVALID ARGUMENTS!"
-                 (inference-ws-client/infer-dataset-query
+                 (inference-ws-client/call-infer-dataset-query-endpoint
                    "http://example.com"
                    {:user_prompt prompt
                     :context     model}))))))))

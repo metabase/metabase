@@ -2,20 +2,21 @@
   "Functions for denormalizing input, prompt input generation, and sql handing.
   If this grows much, we might want to split these out into separate nses."
   (:require
-   [cheshire.core :as json]
-   [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
-   [honey.sql :as sql]
-   [metabase.db.query :as mdb.query]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [Card Field FieldValues Table]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+    [cheshire.core :as json]
+    [clojure.core.memoize :as memoize]
+    [clojure.string :as str]
+    [honey.sql :as sql]
+    [metabase.db.query :as mdb.query]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.metabot.inference-ws-client :as inference-ws-client]
+    [metabase.metabot.settings :as metabot-settings]
+    [metabase.models :refer [Card Field FieldValues Table]]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.reducible :as qp.reducible]
+    [metabase.query-processor.util.add-alias-info :as add]
+    [metabase.util :as u]
+    [metabase.util.log :as log]
+    [toucan2.core :as t2]))
 
 (defn supported?
   "Is metabot supported for the given database."
@@ -385,3 +386,18 @@
     (if (seq model-description)
       (format "%s: %s: %s" model-name model-description fields-str)
       (format "%s: %s" model-name fields-str))))
+
+(defn rank-data-by-prompt
+  "Return the ranked datasets by the provided prompt.
+
+  The prompt is a string and the datasets are a map of any set of keyed objects
+   to the embedding representing this dataset. Note that values need not be a
+   direct embedding of the keys. The keys can be anything and should be the
+   desired output type to be used when doing rank selection on the dataset."
+  [prompt dataset->embeddings]
+  (letfn [(dot [u v] (reduce + (map * u v)))]
+    (let [embeddings       (inference-ws-client/call-bulk-embeddings-endpoint {prompt prompt})
+          prompt-embedding (get embeddings prompt)]
+      (->> dataset->embeddings
+           (map (fn [[k e]] {:object k :cosine-similarity (dot prompt-embedding e)}))
+           (sort-by (comp - :cosine-similarity))))))
