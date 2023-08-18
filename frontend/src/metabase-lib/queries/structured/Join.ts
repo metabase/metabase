@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import type {
-  ConcreteFieldReference,
   Join as JoinObject,
   JoinFields,
   JoinAlias,
@@ -10,10 +9,6 @@ import type {
   TableId,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
-import {
-  getDatetimeUnit,
-  isDateTimeField,
-} from "metabase-lib/queries/utils/field-ref";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "../StructuredQuery";
@@ -21,8 +16,6 @@ import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];
 
-const PARENT_DIMENSION_INDEX = 1;
-const JOIN_DIMENSION_INDEX = 2;
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Join extends MBQLObjectClause {
   alias: JoinAlias | null | undefined;
@@ -98,49 +91,6 @@ export default class Join extends MBQLObjectClause {
     return Array.isArray(condition) && condition[0] === "and";
   }
 
-  getConditionByIndex(index) {
-    if (!this.condition) {
-      return null;
-    }
-
-    if (this.isSingleConditionJoin() && !index) {
-      return this.condition;
-    }
-
-    if (this.isMultipleConditionsJoin()) {
-      const [, ...conditions] = this.condition;
-      return conditions[index];
-    }
-
-    return null;
-  }
-
-  setCondition(condition: JoinCondition): Join {
-    return this.set({ ...this, condition });
-  }
-
-  setConditionByIndex({ index = 0, condition }): Join {
-    if (!this.condition) {
-      return this.setCondition(condition);
-    }
-
-    if (this.isSingleConditionJoin()) {
-      if (index === 0) {
-        return this.setCondition(condition);
-      } else {
-        return this.setCondition(["and", this.condition, condition]);
-      }
-    }
-
-    const conditions = [...this.condition];
-    conditions[index + 1] = condition;
-    return this.setCondition(conditions);
-  }
-
-  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteFieldReference) {
-    return dimension instanceof Dimension ? dimension.mbql() : dimension;
-  }
-
   _getJoinDimensionFromCondition(condition) {
     const [, , joinDimension] = condition;
     const joinedQuery = this.joinedQuery();
@@ -187,70 +137,6 @@ export default class Join extends MBQLObjectClause {
     return this.isSingleConditionJoin()
       ? [this._getJoinDimensionFromCondition(this.condition)]
       : this._getJoinDimensionsFromMultipleConditions();
-  }
-
-  _isDateTimeDimensionsJoin(d1, d2) {
-    return d1 && d2 && isDateTimeField(d1) && isDateTimeField(d2);
-  }
-
-  _getOperatorOrDefault(condition) {
-    return condition?.[0] ?? "=";
-  }
-
-  _getDateTimeFieldCondition(
-    parentDimension,
-    joinDimension,
-    temporalUnitSource,
-    operator,
-  ) {
-    const temporalUnit = getDatetimeUnit(
-      temporalUnitSource === "parent" ? parentDimension : joinDimension,
-    );
-    const parent = setTemporalUnit(parentDimension, temporalUnit);
-    const join = setTemporalUnit(joinDimension, temporalUnit);
-    return [operator, parent, join];
-  }
-
-  setJoinDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
-    const condition = this.getConditionByIndex(index);
-    const operator = this._getOperatorOrDefault(condition);
-
-    const join = this._convertDimensionIntoMBQL(dimension);
-
-    const parent = condition ? condition[PARENT_DIMENSION_INDEX] : null;
-    const newCondition = this._isDateTimeDimensionsJoin(parent, join)
-      ? this._getDateTimeFieldCondition(
-          parent,
-          join,
-          overwriteTemporalUnit ? "join" : "parent",
-          operator,
-        )
-      : [operator, parent, join];
-    return this.setConditionByIndex({
-      index,
-      condition: newCondition,
-    });
-  }
-
-  setParentDimension({ index = 0, dimension, overwriteTemporalUnit = false }) {
-    const condition = this.getConditionByIndex(index);
-    const operator = this._getOperatorOrDefault(condition);
-
-    const parent = this._convertDimensionIntoMBQL(dimension);
-
-    const join = condition ? condition[JOIN_DIMENSION_INDEX] : null;
-    const newCondition = this._isDateTimeDimensionsJoin(parent, join)
-      ? this._getDateTimeFieldCondition(
-          parent,
-          join,
-          overwriteTemporalUnit ? "parent" : "join",
-          operator,
-        )
-      : [operator, parent, join];
-    return this.setConditionByIndex({
-      index,
-      condition: newCondition,
-    });
   }
 
   // HELPERS
@@ -364,9 +250,4 @@ export default class Join extends MBQLObjectClause {
     // MLv2 should ensure there's a valid condition, etc.
     return !!this.parentTable() && !!this.joinedTable();
   }
-}
-
-function setTemporalUnit(fieldRef, value) {
-  const [field, id, opts] = fieldRef;
-  return [field, id, { ...opts, "temporal-unit": value }];
 }
