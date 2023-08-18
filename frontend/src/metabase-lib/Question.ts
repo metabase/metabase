@@ -316,18 +316,16 @@ class QuestionInner {
 
   maybeResetDisplay(
     data: DatasetData,
-    sensibleDisplays: string[],
-    previousSensibleDisplays: string[] | undefined,
+    previousData?: DatasetData,
+    isSensibleDisplay: (display: string, data: DatasetData) => boolean,
   ): Question {
-    const wasSensible =
-      previousSensibleDisplays == null ||
-      previousSensibleDisplays.includes(this.display());
-    const isSensible = sensibleDisplays.includes(this.display());
-    const shouldUnlock = wasSensible && !isSensible;
+    const isSensible = vizualization.isSensible(data);
+    const wasSensible = previousData && vizualization.isSensible(previousData);
+    const shouldUnlock = (previousData == null || wasSensible) && !isSensible;
     const defaultDisplay = this.setDefaultDisplay().display();
 
     let question;
-    if (isSensible && defaultDisplay === "table") {
+    if (isSensibleDisplay && defaultDisplay === "table") {
       // any sensible display is better than the default table display
       question = this;
     } else if (shouldUnlock && this.displayIsLocked()) {

@@ -8,7 +8,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSensibleDisplays } from "metabase/visualizations";
+import { isSensibleDisplay } from "metabase/visualizations";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
@@ -190,11 +190,7 @@ export const queryCompleted = (question, queryResults) => {
         );
       }
 
-      question = question.maybeResetDisplay(
-        data,
-        getSensibleDisplays(data),
-        prevData && getSensibleDisplays(prevData),
-      );
+      question = question.maybeResetDisplay(data, prevData, isSensibleDisplay);
     }
 
     const card = question.card();

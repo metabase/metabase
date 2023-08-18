@@ -14,16 +14,6 @@ visualizations.get = function (key) {
   );
 };
 
-export function getSensibleDisplays(data: DatasetData) {
-  return Array.from(visualizations)
-    .filter(
-      ([, viz]) =>
-        // don't rule out displays if there's no data
-        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
-    )
-    .map(([display]) => display);
-}
-
 let defaultVisualization: Visualization;
 export function setDefaultVisualization(visualization: Visualization) {
   defaultVisualization = visualization;
@@ -113,6 +103,13 @@ export function getMaxDimensionsSupported(display: string) {
 export function canSavePng(display: string) {
   const visualization = visualizations.get(display);
   return visualization?.canSavePng ?? true;
+}
+
+export function isSensibleDisplay(display: string, data: DatasetData): boolean {
+  const viz = visualizations.get(display);
+  return Boolean(
+    data.rows.length <= 1 || (viz?.isSensible && viz.isSensible(data)),
+  );
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
