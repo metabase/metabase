@@ -97,14 +97,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       // publish the embedded dashboard so that we can directly navigate to its url
       publishChanges(({ request }) => {
-        const actual = request.body.embedding_params;
-
-        const expected = {
+        assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
-        };
-
-        assert.deepEqual(actual, expected);
+        });
       });
 
       // directly navigate to the embedded dashboard
@@ -154,11 +150,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().contains("Disabled").click();
 
       publishChanges(({ request }) => {
-        const actual = request.body.embedding_params;
-
-        const expected = { name: "disabled", id: "disabled" };
-
-        assert.deepEqual(actual, expected);
+        assert.deepEqual(request.body.embedding_params, {
+          name: "disabled",
+          id: "disabled",
+        });
       });
 
       visitIframe();
@@ -262,59 +257,17 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     cy.icon("share").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
-
-    cy.findByRole("heading", { name: "Parameters" })
-      .parent()
-      .as("allParameters")
-      .within(() => {
-        // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should("have.length", 4);
-
-        // select the dropdown next to the Name parameter so that we can set it to editable
-        cy.findByText("Name")
-          .parent()
-          .within(() => {
-            cy.findByText("Disabled").click();
-          });
-      });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Editable").click();
-
-    // publish the embedded dashboard so that we can directly navigate to its url
+    // ID param is disabled by default
+    setParameter("Name", "Editable");
+    setParameter("Source", "Locked");
     publishChanges(({ request }) => {
-      const actual = request.body.embedding_params;
-      const expected = { name: "enabled" };
-      assert.deepEqual(actual, expected);
-    });
-
-    cy.get("@allParameters").within(() => {
-      cy.findByText("Source")
-        .parent()
-        .within(() => {
-          cy.findByText("Disabled").click();
-        });
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Locked").click();
-
-    // publish the embedded dashboard so that we can directly navigate to its url
-    publishChanges(({ request }) => {
-      const actual = request.body.embedding_params;
-
-      const expected = {
+      assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
-      };
-
-      assert.deepEqual(actual, expected);
+      });
     });
-
-    // directly navigate to the embedded dashboard
     visitIframe();
-
-    // The ID default (1, 2) should apply, because it is disabled.
+    // The ID default (1 and 2) should apply, because it is disabled.
     // The Name default ('Lina Heaney') should not apply, because the Name param is editable
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
@@ -339,4 +292,14 @@ function publishChanges(callback) {
     );
     callback && callback(targetXhr);
   });
+}
+
+function setParameter(name, filter) {
+  cy.findByText("Which parameters can users of this embed use?")
+    .parent()
+    .within(() => {
+      cy.findByText(name).siblings("a").click();
+    });
+
+  popover().contains(filter).click();
 }

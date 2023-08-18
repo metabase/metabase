@@ -54,14 +54,14 @@ export const questionDetailsWithDefaults = assocIn(
   assocIn(
     assocIn(
       questionDetails,
-      ["native", "template-tags", "name", "default"],
-      "Lina Heaney", // This is not the name where id=1 or id=2
+      ["native", "template-tags", "id", "default"],
+      [1, 2],
     ),
-    ["native", "template-tags", "id", "default"],
-    [1, 2],
+    ["native", "template-tags", "name", "default"],
+    "Lina Heaney", // This is not the name for id=1 or id=2
   ),
   ["native", "template-tags", "source", "default"],
-  ["Facebook"], // This is not the source where id=1 or id=2
+  ["Facebook"], // This is not the source for id=1 or id=2
 );
 
 // Define dashboard filters
