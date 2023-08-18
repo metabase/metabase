@@ -194,8 +194,6 @@ describe(
       cy.signInAsAdmin();
 
       cy.get("@modelId").then(modelId => {
-        cy.visit(`/model/${modelId}/detail`);
-        cy.wait("@getModel");
         createImplicitActions({ modelId });
         visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         openUpdateObjectModal();
