@@ -22,14 +22,23 @@ class Join extends MBQLObjectClause {
   condition: JoinCondition | null | undefined;
   fields: JoinFields | null | undefined;
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   set(join: any): Join {
     return super.set(join);
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   remove(): StructuredQuery {
     return this._query.removeJoin(this._index);
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   replace(join: Join | JoinObject): StructuredQuery {
     return this._query.updateJoin(this._index, join);
   }

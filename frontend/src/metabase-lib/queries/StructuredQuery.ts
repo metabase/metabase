@@ -599,10 +599,16 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   updateJoin(index, join) {
     return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   removeJoin(index) {
     return this._updateQuery(Q.removeJoin, arguments);
   }
