@@ -400,7 +400,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   private cleanJoins(): StructuredQuery {
-    return query._cleanClauseList("joins");
+    return this._cleanClauseList("joins");
   }
 
   cleanExpressions(): StructuredQuery {
@@ -506,7 +506,7 @@ class StructuredQueryInner extends AtomicQuery {
     const query = this.getMLv2Query();
     const stageIndex = this.getQueryStageIndex();
 
-    const hasJoins = Lib.joins(query, stageIndex).length > 0;
+    const hasJoins = ML.joins(query, stageIndex).length > 0;
 
     return (
       hasJoins ||
