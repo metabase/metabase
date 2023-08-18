@@ -102,9 +102,13 @@ describe(
       });
 
       cy.intercept("GET", "/api/card/*").as("getModel");
+      cy.intercept("GET", "/api/action/*").as("getAction");
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelAction");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+      cy.intercept("GET", "/api/search?*").as("getSearchResults");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -342,6 +346,14 @@ describe(
         cy.findByText("Actions").click();
       });
 
+      cy.wait([
+        "@fetchMetadata",
+        "@fetchMetadata",
+        "@fetchMetadata",
+        "@getModelAction",
+        "@getSearchResults",
+      ]);
+
       createBasicActions();
 
       cy.findByLabelText("Action list").within(() => {
@@ -349,6 +361,8 @@ describe(
       });
 
       runActionFor(actionName);
+
+      cy.wait("@getAction");
 
       modal().within(() => {
         cy.findByLabelText("ID").type("1");
