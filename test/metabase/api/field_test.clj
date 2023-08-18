@@ -767,9 +767,9 @@
                                       nil))))))
 
 (deftest search-values-with-field-and-search-field-is-fk-test
-  (testing "searching on a PK field should works (#32985)"
+  (testing "searching on a PK field should work (#32985)"
     ;; normally PKs are ids so it's not possible to do search, because search are for text fields only
-    ;; but with specical setup you can have a PK that is text. In this case we should be able to search for it
+    ;; but with a special setup you can have a PK that is text. In this case we should be able to search for it
     (mt/with-discard-model-updates [:model/Field]
       ;; Ngoc: users.name is a FK to categories.name ?
       ;; I know this is weird but this test doesn't need to make sense

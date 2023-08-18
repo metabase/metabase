@@ -757,6 +757,7 @@
 (defn do-with-discard-model-updates
   "Impl for `with-discard-model-changes`."
   [models thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
   (if (= (count models) 1)
    (let [model             (first models)
          pk->original      (atom {})

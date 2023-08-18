@@ -378,7 +378,9 @@
 
 (defn- search-values-query
   "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
-  differs slightly based on whether the two Fields are the same Field."
+  differs slightly based on whether the two Fields are the same Field.
+
+  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field search-field value limit]
   {:database (db-id field)
    :type     :query
