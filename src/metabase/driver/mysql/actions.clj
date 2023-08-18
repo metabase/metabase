@@ -5,9 +5,11 @@
    [clojure.string :as str]
    [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-trun tru]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +31,23 @@
         (str/replace "``" "`")
         (str/replace #"^`?(.+?)`?$" "$1"))))
 
+(defn- constraint->column-names
+  "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
+  [database table-name constraint-name]
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
+        sql-args  ["select table_catalog, table_schema, column_name from information_schema.key_column_usage where table_name = ? and constraint_name = ?" table-name constraint-name]]
+    (first
+     (reduce
+      (fn [[columns catalog schema] {:keys [table_catalog table_schema column_name]}]
+        (if (and (or (nil? catalog) (= table_catalog catalog))
+                 (or (nil? schema) (= table_schema schema)))
+          [(conj columns column_name) table_catalog table_schema]
+          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
+                         constraint-name table-name)
+              (reduced nil))))
+      [[] nil nil]
+      (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
+
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
   (or
@@ -44,13 +63,17 @@
       :errors  {column (tru "You must provide a value.")}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
-  [_driver error-type _database _action-type error-message]
-  (when-let [[_match fk]
+  [_driver error-type database _action-type error-message]
+  (when-let [[_match table-and-constraint]
              (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
-    (let [column (last (str/split fk #"\."))]
+    (let [[table constraint] (take-last 2 (str/split table-and-constraint #"\."))
+          columns (constraint->column-names database table constraint)]
       {:type    error-type
-       :message (tru "{0} already exists." (str/capitalize column))
-       :errors  {column (tru "This {0} value already exists." (str/capitalize column))}})))
+       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
+       :errors  (reduce (fn [acc col]
+                          (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
+                        {}
+                        columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]

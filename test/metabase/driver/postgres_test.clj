@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [malli.core :as mc]
-   [metabase.actions :as actions]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -859,13 +858,13 @@
       (drop-if-exists-and-create-db! "not-null-constraint-on-multiple-cols")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
         (doseq [stmt ["CREATE TABLE mytable (id serial PRIMARY KEY,
-                        column1 VARCHAR(50),
-                        column2 VARCHAR(50),
-                        CONSTRAINT unique_columns UNIQUE (column1, column2)
-                        );"
-                        "INSERT INTO mytable (id, column1, column2)
-                        VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
-         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
+                      column1 VARCHAR(50),
+                      column2 VARCHAR(50),
+                      CONSTRAINT unique_columns UNIQUE (column1, column2)
+                      );"
+                      "INSERT INTO mytable (id, column1, column2)
+                      VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
+          (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
         (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
             (sync/sync-database! database)
