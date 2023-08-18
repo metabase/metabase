@@ -31,7 +31,7 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME },
 ];
 
-describe("scenarios > visualizations > pivot tables", () => {
+describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
