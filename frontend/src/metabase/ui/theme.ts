@@ -1,4 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
+import { rem } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import {
   getAccordionOverrides,
@@ -8,6 +9,7 @@ import {
   getMenuOverrides,
   getRadioOverrides,
   getTextOverrides,
+  getTitleOverrides,
 } from "./components";
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
@@ -36,11 +38,31 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     xl: "40px",
   },
   fontSizes: {
-    xs: "11px",
-    sm: "12px",
-    md: "14px",
-    lg: "17px",
-    xl: "21px",
+    xs: rem(11),
+    sm: rem(12),
+    md: rem(14),
+    lg: rem(17),
+    xl: rem(21),
+  },
+  headings: {
+    sizes: {
+      h1: {
+        fontSize: rem(24),
+        lineHeight: rem(24),
+      },
+      h2: {
+        fontSize: rem(20),
+        lineHeight: rem(24),
+      },
+      h3: {
+        fontSize: rem(14),
+        lineHeight: rem(16),
+      },
+      h4: {
+        fontSize: rem(14),
+        lineHeight: rem(16),
+      },
+    },
   },
   fontFamily: "var(--default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
@@ -58,5 +80,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getMenuOverrides(),
     ...getRadioOverrides(),
     ...getTextOverrides(),
+    ...getTitleOverrides(),
   },
 });
