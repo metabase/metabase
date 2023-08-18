@@ -1,1 +1,1 @@
-export { Loader } from "@mantine/core";
+export { Loader } from "./Loader";
