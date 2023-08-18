@@ -52,10 +52,10 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept(
           "GET",
           "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("executePrefetch");
+        ).as("prefetchValues");
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-          "executeAPI",
+          "executeAction",
         );
       });
 
@@ -137,7 +137,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button(ACTION_NAME).click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -173,7 +173,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Save").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
@@ -209,7 +209,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: actionName }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
           // let's check that the existing values are pre-filled correctly
           modal().within(() => {
             cy.findByPlaceholderText("Team Name")
@@ -225,7 +225,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
@@ -268,7 +268,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Delete").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
@@ -302,7 +302,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button("Save").click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
@@ -390,7 +390,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button(ACTION_NAME).click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -449,7 +449,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button(ACTION_NAME).click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -495,7 +495,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update" }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
 
           const oldRow = many_data_types_rows[0];
 
@@ -547,7 +547,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
@@ -618,7 +618,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Save").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
@@ -704,7 +704,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update" }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
 
           const oldRow = many_data_types_rows[0];
           const newTime = "2020-01-10T01:35:55";
@@ -774,7 +774,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
@@ -944,7 +944,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });
 
-          cy.wait("@executeAPI").then(interception => {
+          cy.wait("@executeAction").then(interception => {
             expect(
               Object.values(interception.request.body.parameters)
                 .sort()
@@ -974,10 +974,10 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
 
     cy.intercept("GET", "/api/action").as("getActions");
     cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
-      "executePrefetch",
+      "prefetchValues",
     );
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-      "executeAPI",
+      "executeAction",
     );
   });
 
@@ -994,12 +994,12 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     addWidgetStringFilter("5");
     cy.button(actionName).click();
 
-    cy.wait("@executePrefetch");
+    cy.wait("@prefetchValues");
 
     modal().within(() => {
       cy.findByLabelText("Team Name").clear().type("Kind Koalas");
       cy.button(actionName).click();
-      cy.wait("@executeAPI");
+      cy.wait("@executeAction");
 
       cy.findByLabelText("Team Name").should("not.exist");
       cy.findByLabelText(
