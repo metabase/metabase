@@ -23,6 +23,41 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
     error: jest.fn(),
     trace: jest.fn(),
   };
+} else {
+  const originalConsoleError = console.error;
+  const consoleErrorsBlacklist = [
+    ["findDOMNode inside its render", "Popover"],
+    "Warning: unmountComponentAtNode():",
+  ];
+
+  // It's always easier to hide the problem, but please don't overuse this place and
+  // start with fixing the root cause of the error
+  // TODO: good place to fail `fetch-mock: No fallback response defined for`
+  jest.spyOn(global.console, "error").mockImplementation((...args) => {
+    shouldHideConsoleError(args, consoleErrorsBlacklist) ||
+      originalConsoleError(...args);
+  });
+}
+
+function shouldHideConsoleError(args, blacklist) {
+  return blacklist.some(blacklistedError => {
+    if (Array.isArray(blacklistedError)) {
+      if (typeof args[0] === "string" && typeof args[1] === "string") {
+        const [errorMessage, componentName] = blacklistedError;
+        return (
+          args[0].includes(errorMessage) && args[1].includes(componentName)
+        );
+      }
+
+      return false;
+    }
+
+    if (typeof blacklistedError === "string" && typeof args[0] === "string") {
+      return args[0].includes(blacklistedError);
+    }
+
+    return false;
+  });
 }
 
 // global TextEncoder is not available in jsdom + Jest, see
