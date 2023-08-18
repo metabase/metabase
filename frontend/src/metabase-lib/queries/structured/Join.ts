@@ -86,11 +86,6 @@ export default class Join extends MBQLObjectClause {
     return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
   }
 
-  isMultipleConditionsJoin() {
-    const { condition } = this;
-    return Array.isArray(condition) && condition[0] === "and";
-  }
-
   _getJoinDimensionFromCondition(condition) {
     const [, , joinDimension] = condition;
     const joinedQuery = this.joinedQuery();
