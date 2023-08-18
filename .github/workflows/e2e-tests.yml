@@ -50,11 +50,15 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
+    outputs:
+      enterprise_download_link: ${{ steps.zip_url.outputs.ee_dl }}
+      oss_download_link: ${{ steps.zip_url.outputs.oss_dl }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Artifact zip URL
+        id: zip_url
         run: |
           get_parent () {
             parent_commit=$(git rev-parse $1^)
@@ -80,9 +84,9 @@ jobs:
                 echo "Found metabase-${{ matrix.edition }} uberjar for '$parent_commit'!"
 
                 if [[ "${{ matrix.edition }}" == "ee" ]]; then
-                  echo "enterprise_download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+                  echo "ee_dl=$(echo $zip)" >> $GITHUB_OUTPUT
                 else
-                  echo "oss_download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+                  echo "oss_dl=$(echo $zip)" >> $GITHUB_OUTPUT
                 fi
             elif [[ $current_page -le 5 ]]; then
                 echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
@@ -96,7 +100,6 @@ jobs:
           }
 
           main "HEAD"
-        id: saved_artifact
         shell: bash
 
   build:
@@ -229,9 +232,9 @@ jobs:
         if: needs.download_uberjar.result == 'success'
         run: |
           if [[ "${{ matrix.edition }}" == "ee" ]]; then
-            DOWNLOAD_LINK="${{ steps.saved_artifact.outputs.enterprise_download_link }}"
+            DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.enterprise_download_link }})"
           else
-            DOWNLOAD_LINK="${{ steps.saved_artifact.outputs.oss_download_link }}"
+            DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.oss_download_link }})"
           fi
 
           curl -sL \
