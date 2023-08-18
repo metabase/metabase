@@ -9,7 +9,7 @@ export const getTitleOverrides = (): MantineThemeOverride["components"] => ({
             fontWeight: "normal",
             textTransform: "uppercase",
 
-            "&:dir(ltr)": {
+            "&:lang(en)": {
               letterSpacing: "0.7px",
             },
           },
