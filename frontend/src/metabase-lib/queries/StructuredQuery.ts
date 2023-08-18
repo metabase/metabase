@@ -585,7 +585,7 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns alias for addJoin
    */
   join(join) {
-    return this.addJoin(join);
+    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   // JOINS
@@ -597,10 +597,6 @@ class StructuredQueryInner extends AtomicQuery {
     return Q.getJoins(this.query()).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
-  }
-
-  addJoin(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   updateJoin(index, join) {
