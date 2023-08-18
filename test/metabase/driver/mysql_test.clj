@@ -598,6 +598,8 @@
             :mysql actions.error/violate-foreign-key-constraint nil :row/delete
             "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
+;; this contains specical test cases for mysql
+;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
   (mt/test-driver :mysql
     (testing "violate not-null constraints with multiple columns"
