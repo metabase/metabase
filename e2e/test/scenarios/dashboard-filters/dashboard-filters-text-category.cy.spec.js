@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -42,7 +43,8 @@ describe("scenarios > dashboard > filters > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget();
+        cy.wait("@dashcardQuery1");
       },
     );
   });
@@ -123,8 +125,3 @@ describe("scenarios > dashboard > filters > text/category", () => {
     filterWidget().contains("Arnold Adams");
   });
 });
-
-function clearFilter(index = 0) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}
