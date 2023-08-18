@@ -158,32 +158,6 @@ export default class Join extends MBQLObjectClause {
     );
   }
 
-  // simplified "=" join condition helpers:
-  // NOTE: parentDimension refers to the left-hand side of the join,
-  // and joinDimension refers to the right-hand side
-  // TODO: should we rename them to lhsDimension/rhsDimension etc?
-  _getParentDimensionFromCondition(condition) {
-    const [, parentDimension] = condition;
-    return parentDimension && this.query().parseFieldReference(parentDimension);
-  }
-
-  _getParentDimensionsFromMultipleConditions() {
-    const [, ...conditions] = this.condition;
-    return conditions.map(condition =>
-      this._getParentDimensionFromCondition(condition),
-    );
-  }
-
-  parentDimensions() {
-    if (!this.condition) {
-      return [];
-    }
-
-    return this.isSingleConditionJoin()
-      ? [this._getParentDimensionFromCondition(this.condition)]
-      : this._getParentDimensionsFromMultipleConditions();
-  }
-
   parentDimensionOptions() {
     const query = this.query();
     const dimensions = query.dimensions();

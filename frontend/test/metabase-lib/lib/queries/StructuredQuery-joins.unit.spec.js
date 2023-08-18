@@ -25,16 +25,6 @@ const EXAMPLE_JOIN = {
 };
 
 describe("StructuredQuery nesting", () => {
-  describe("parentDimension", () => {
-    it("should return the correct dimension", () => {
-      const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
-      expect(j.parentDimensions()[0].mbql()).toEqual([
-        "field",
-        ORDERS.PRODUCT_ID,
-        null,
-      ]);
-    });
-  });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
       const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
