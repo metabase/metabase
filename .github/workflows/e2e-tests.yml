@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
       - uses: actions/checkout@v3
