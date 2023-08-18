@@ -609,10 +609,6 @@ class StructuredQueryInner extends AtomicQuery {
     return this._updateQuery(Q.removeJoin, arguments);
   }
 
-  clearJoins() {
-    return this._updateQuery(Q.clearJoins, arguments);
-  }
-
   // AGGREGATIONS
 
   /**
