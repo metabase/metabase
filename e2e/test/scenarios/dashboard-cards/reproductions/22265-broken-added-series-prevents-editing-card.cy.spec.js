@@ -1,4 +1,10 @@
-import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  editDashboard,
+  modal,
+  restore,
+  visitDashboard,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const baseQuestion = {
   name: "Base question",
@@ -25,7 +31,10 @@ describe("issue 22265", () => {
   });
 
   it("should allow editing dashcard series when added series are broken (metabase#22265)", () => {
-    cy.createNativeQuestion(invalidQuestion);
+    cy.createNativeQuestion(invalidQuestion, {
+      wrapId: true,
+      idAlias: "invalidQuestionId",
+    });
     cy.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -41,6 +50,7 @@ describe("issue 22265", () => {
           ],
         });
 
+        cy.wrap(dashboard_id).as("dashboardId");
         visitDashboard(dashboard_id);
       },
     );
@@ -57,6 +67,25 @@ describe("issue 22265", () => {
     });
 
     cy.button("Save").click();
+    cy.button("Saving…").should("not.exist");
+
+    cy.get("@invalidQuestionId").then(invalidQuestionId => {
+      visitQuestion(invalidQuestionId);
+      cy.icon("expand").click();
+      cy.get(".ace_content").type("{backspace}--2");
+      cy.findByTestId("native-query-editor-sidebar")
+        .button("Get Answer")
+        .click();
+      cy.findByText("Save").click();
+    });
+
+    modal().within(() => {
+      cy.findByText("Save").click();
+    });
+
+    cy.get("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
 
     editDashboard();
     cy.findByTestId("add-series-button").click({ force: true });
