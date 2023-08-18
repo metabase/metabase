@@ -1,12 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { t } from "ttag";
 import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
 import type {
   ConcreteFieldReference,
   Join as JoinObject,
-  JoinStrategy,
   JoinFields,
   JoinAlias,
   JoinCondition,
@@ -25,33 +23,10 @@ import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];
 
-const JOIN_STRATEGY_OPTIONS = [
-  {
-    value: "left-join",
-    name: t`Left outer join`,
-    icon: "join_left_outer",
-  }, // default
-  {
-    value: "right-join",
-    name: t`Right outer join`,
-    icon: "join_right_outer",
-  },
-  {
-    value: "inner-join",
-    name: t`Inner join`,
-    icon: "join_inner",
-  },
-  {
-    value: "full-join",
-    name: t`Full outer join`,
-    icon: "join_full_outer",
-  },
-];
 const PARENT_DIMENSION_INDEX = 1;
 const JOIN_DIMENSION_INDEX = 2;
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Join extends MBQLObjectClause {
-  strategy: JoinStrategy | null | undefined;
   alias: JoinAlias | null | undefined;
   condition: JoinCondition | null | undefined;
   fields: JoinFields | null | undefined;
@@ -228,31 +203,6 @@ export default class Join extends MBQLObjectClause {
 
     const [, ...conditions] = this.condition;
     return conditions;
-  }
-
-  // STRATEGY
-  setStrategy(strategy: JoinStrategy) {
-    return this.set({ ...this, strategy });
-  }
-
-  strategyOption() {
-    return this.strategy
-      ? _.findWhere(this.strategyOptions(), {
-          value: this.strategy,
-        })
-      : JOIN_STRATEGY_OPTIONS[0];
-  }
-
-  strategyOptions() {
-    const database = this.query().database();
-
-    if (!database) {
-      return [];
-    }
-
-    return JOIN_STRATEGY_OPTIONS.filter(({ value }) =>
-      database.hasFeature(value),
-    );
   }
 
   // CONDITIONS
