@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import { pluralize } from "metabase/lib/formatting";
 import type {
   ConcreteFieldReference,
   Join as JoinObject,
@@ -58,29 +57,6 @@ export default class Join extends MBQLObjectClause {
     return this["source-query"];
   }
 
-  _uniqueAlias(name: JoinAlias): JoinAlias {
-    const usedAliases = new Set(
-      this.query()
-        .joins()
-        .map(join => join.alias)
-        .filter(alias => alias !== this.alias),
-    );
-    // alias can't be same as parent table name either
-    const parentTable = this.parentTable();
-
-    if (parentTable) {
-      usedAliases.add(parentTable.name);
-    }
-
-    for (let index = 1; ; index++) {
-      const alias = index === 1 ? name : `${name}_${index}`;
-
-      if (!usedAliases.has(alias)) {
-        return alias;
-      }
-    }
-  }
-
   private setFields(fields: JoinFields) {
     return this.set({ ...this, fields });
   }
@@ -97,79 +73,6 @@ export default class Join extends MBQLObjectClause {
     } else {
       return this;
     }
-  }
-
-  // ALIAS
-  setAlias(alias: JoinAlias) {
-    alias = this._uniqueAlias(alias);
-
-    if (alias !== this.alias) {
-      let join = this.set({ ...this, alias });
-      // propagate alias change to join dimension
-      const joinDimensions = join.joinDimensions();
-      joinDimensions.forEach((joinDimension, i) => {
-        if (
-          joinDimension instanceof FieldDimension &&
-          joinDimension.joinAlias() &&
-          joinDimension.joinAlias() === this.alias
-        ) {
-          const newDimension = joinDimension.withJoinAlias(alias);
-          join = join.setJoinDimension({
-            index: i,
-            dimension: newDimension,
-          });
-        }
-      });
-      return join;
-    }
-
-    return this;
-  }
-
-  _getParentDimensionForAlias() {
-    return this.parentDimensions().find(
-      dimension => dimension && dimension.field().isFK(),
-    );
-  }
-
-  setDefaultAlias() {
-    // The Join alias should be "Table - FK Field" if possible. We need both to disamiguate sitatutions where we have
-    // multiple FKs that point to the same Table -- see #8418 and #11452.
-    //
-    // The exception to this rule is cases where the the FK Field is basically the same as the Table name, e.g. a
-    // "Product[s]" Table and a "product_id" FK Field (displayed as "Product"). It looks rediculous having
-    // "Product[s] - Product". So in that case just show one or the other.
-    const table = this.joinedTable();
-
-    if (table && table.isSavedQuestion()) {
-      // NOTE: special case for "Saved Questions" tables
-      return this.setAlias(`Question ${table.savedQuestionId()}`);
-    }
-
-    const tableName = table && table.display_name;
-
-    const parentDimension = this._getParentDimensionForAlias();
-
-    const fieldName =
-      parentDimension && parentDimension.field().targetObjectName();
-    const similarTableAndFieldNames =
-      tableName &&
-      fieldName &&
-      (tableName === fieldName ||
-        pluralize(tableName) === fieldName ||
-        tableName === pluralize(fieldName) ||
-        pluralize(tableName) === pluralize(fieldName));
-    // if for whatever reason we don't have both table *and* field name, fallback to either just field name or just
-    // table name; if the world has gone mad just use 'source' instead of nothing
-    const alias =
-      (tableName &&
-        fieldName &&
-        !similarTableAndFieldNames &&
-        tableName + " - " + fieldName) ||
-      tableName ||
-      fieldName ||
-      "source";
-    return this.setAlias(alias);
   }
 
   getConditions() {

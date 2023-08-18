@@ -5,8 +5,6 @@ import {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({
@@ -77,18 +75,6 @@ const ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION = [
   ORDERS_PRODUCT_JOIN_CONDITION_BY_CREATED_AT,
 ];
 
-const REVIEWS_PRODUCT_ID_FIELD_REF = [
-  "field",
-  REVIEWS.PRODUCT_ID,
-  { "join-alias": "Reviews - Products" },
-];
-
-const ORDERS_REVIEWS_JOIN_CONDITION = [
-  "=",
-  ORDERS_PRODUCT_ID_FIELD_REF,
-  REVIEWS_PRODUCT_ID_FIELD_REF,
-];
-
 describe("Join", () => {
   describe("setDefaultCondition", () => {
     it("should set default condition to be fk relationship", () => {
@@ -99,54 +85,6 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS_ID,
-      });
-    });
-  });
-
-  describe("setDefaultAlias", () => {
-    it("should set default alias to be table + field name and update join condition", () => {
-      let join = getJoin({
-        query: getOrdersJoinQuery({
-          alias: "x",
-          condition: ORDERS_REVIEWS_JOIN_CONDITION,
-          sourceTable: REVIEWS_ID,
-        }),
-      });
-
-      join = join.setDefaultCondition().setDefaultAlias();
-
-      expect(join).toEqual({
-        alias: "Reviews - Product",
-        condition: ORDERS_REVIEWS_JOIN_CONDITION,
-        "source-table": REVIEWS_ID,
-      });
-    });
-
-    it("should set default alias to be table name only if it is similar to field name", () => {
-      let join = getJoin({ query: getOrdersJoinQuery({ alias: "x" }) });
-
-      join = join.setDefaultCondition().setDefaultAlias();
-
-      expect(join).toEqual({
-        alias: "Products",
-        condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS_ID,
-      });
-    });
-
-    it("should set default alias correctly for multi-field joins", () => {
-      let join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        }),
-      });
-
-      join = join.setDefaultCondition().setDefaultAlias();
-
-      expect(join).toEqual({
-        alias: "Products",
-        condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
         "source-table": PRODUCTS_ID,
       });
     });
