@@ -49,6 +49,13 @@ class Join extends MBQLObjectClause {
     }
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
+  clearFields() {
+    return this.setFields("none");
+  }
+
   private isSingleConditionJoin() {
     const { condition } = this;
     return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
