@@ -599,6 +599,10 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
+  updateJoin(index, join) {
+    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
+  }
+
   removeJoin(index) {
     return this._updateQuery(Q.removeJoin, arguments);
   }

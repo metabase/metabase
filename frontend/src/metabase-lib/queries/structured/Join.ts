@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import type {
+  Join as JoinObject,
   JoinFields,
   JoinAlias,
   JoinCondition,
@@ -27,6 +28,10 @@ class Join extends MBQLObjectClause {
 
   remove(): StructuredQuery {
     return this._query.removeJoin(this._index);
+  }
+
+  replace(join: Join | JoinObject): StructuredQuery {
+    return this._query.updateJoin(this._index, join);
   }
 
   /**
