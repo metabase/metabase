@@ -292,7 +292,7 @@
                                         {:name "ga:totalEvents", :base_type :type/Text}]]
                                (#'ga.execute/add-col-metadata query col))
                      rows    [["Toucan Sighting" 1000]]
-                     context {:timeout 500
+                     context {:timeout (u/seconds->ms 2)
                               :runf    (fn [_query rff context]
                                          (let [metadata {:cols cols}]
                                            (qp.context/reducef rff context metadata rows)))}

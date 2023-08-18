@@ -391,7 +391,6 @@
                          {:filter [:is-null $bird_uuid]
                           :fields [$id $name $bird_uuid]})))))
 
-
         (testing "treat null UUID as empty"
           (is (= [[3 "Unlucky Raven" nil]]
                  (rows (mt/run-mbql-query birds
@@ -406,7 +405,7 @@
                           :fields [$id $name $bird_uuid]}))))))))
 
 
-(deftest bson-fn-call-forms-test
+(deftest ^:parallel bson-fn-call-forms-test
   (mt/test-driver :mongo
     (testing "Make sure we can handle arbitarty BSON fn-call forms like ISODate() (#3741, #4448)"
       (letfn [(rows-count [query]
@@ -426,7 +425,7 @@
                (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
                             :collection "checkins"})))))))
 
-(deftest most-common-object-type-test
+(deftest ^:parallel most-common-object-type-test
   (is (= String
          (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
   (testing "make sure it handles `nil` types correctly as well (#6880)"
@@ -463,7 +462,7 @@
                   (select-keys [:columns :rows])))))))))
 
 ;; Make sure we correctly (un-)freeze BSON IDs
-(deftest ObjectId-serialization
+(deftest ^:parallel ObjectId-serialization
   (let [oid (ObjectId. "012345678901234567890123")]
     (is (= oid (nippy/thaw (nippy/freeze oid))))))
 

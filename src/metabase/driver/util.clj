@@ -173,12 +173,12 @@
 
 (def ^:private ^{:arglists '([db-id])} database->driver*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[db-id]]
-                         [(mdb.connection/unique-identifier) db-id])}
-   (mu/fn :- :keyword
-     [db-id :- ::lib.schema.id/database]
-     (qp.store/with-metadata-provider db-id
-       (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
+   (-> (mu/fn :- :keyword
+         [db-id :- ::lib.schema.id/database]
+         (qp.store/with-metadata-provider db-id
+           (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
+       (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
+                                            [(mdb.connection/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver
