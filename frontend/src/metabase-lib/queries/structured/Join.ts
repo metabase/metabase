@@ -395,18 +395,6 @@ export default class Join extends MBQLObjectClause {
       : this._getJoinDimensionsFromMultipleConditions();
   }
 
-  addEmptyDimensionsPair() {
-    if (!this.condition) {
-      return this.setCondition([]);
-    }
-
-    if (this.isSingleConditionJoin()) {
-      return this.setCondition(["and", this.condition, []]);
-    } else {
-      return this.setCondition([...this.condition, []]);
-    }
-  }
-
   _isDateTimeDimensionsJoin(d1, d2) {
     return d1 && d2 && isDateTimeField(d1) && isDateTimeField(d2);
   }
