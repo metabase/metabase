@@ -1,7 +1,7 @@
 import { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockVersionInfo,
-  createMockVersionInfoRecord,
+  createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -18,9 +18,12 @@ const render = ({
   lastAcknowledged = null,
   currentVersion = "v0.48.0",
   versions = [
-    createMockVersionInfoRecord({ version: "v0.48.1" }),
-    createMockVersionInfoRecord({ version: "v0.48.0" }),
-    createMockVersionInfoRecord({ version: "v0.47.0" }),
+    mockVersion({ version: "v0.48.1" }),
+    mockVersion({
+      version: "v0.48.0",
+      releaseNotesUrl: "https://metabase.com/releases/48",
+    }),
+    mockVersion({ version: "v0.47.0" }),
   ],
 }: {
   embedded?: boolean;
@@ -56,27 +59,37 @@ describe("WhatsNewNotification", () => {
       expect(notification()).toBeInTheDocument();
     });
 
+    it("should NOT show the notification if the current version has been acknowledged", () => {
+      render({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
+      expect(notification()).not.toBeInTheDocument();
+    });
+
+    it("should NOT show the notification for releases older than the acknowledged one", () => {
+      render({
+        currentVersion: "v0.48.0",
+        lastAcknowledged: "v0.47.0",
+        versions: [
+          mockVersion({
+            version: "v0.46.0",
+            releaseNotesUrl: "https://metabase.com/releases/46",
+          }),
+        ],
+      });
+      expect(notification()).not.toBeInTheDocument();
+    });
+
     it("should show the notification if the last acknowledged version is more than 1 major old", () => {
       render({ currentVersion: "v0.48.0", lastAcknowledged: "v0.46.0" });
       expect(notification()).toBeInTheDocument();
     });
 
-    it("should NOT show the notification in case of downgrades", () => {
+    it("should NOT show the notification in case of downgrades (releaseNotesUrl only in the future releases)", () => {
       render({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
     });
 
-    it("should NOT show the notification for a minor upgrade", () => {
+    it("should NOT show the notification for a minor upgrade that doesn't have a release url", () => {
       render({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification if the current version is not listed in version-info", () => {
-      render({
-        currentVersion: "v0.48.1 RC 1",
-        lastAcknowledged: null,
-        versions: [createMockVersionInfoRecord({ version: "v0.48.0" })],
-      });
       expect(notification()).not.toBeInTheDocument();
     });
 
@@ -94,6 +107,28 @@ describe("WhatsNewNotification", () => {
     it("should have target blank", () => {
       render({});
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
+
+    it("should link the most recent release if two versions have the release notes", () => {
+      render({
+        currentVersion: "v0.48.0",
+        lastAcknowledged: "v0.46.0",
+        versions: [
+          mockVersion({
+            version: "v0.48.0",
+            releaseNotesUrl: "https://metabase.com/releases/48",
+          }),
+          mockVersion({
+            version: "v0.47.0",
+            releaseNotesUrl: "https://metabase.com/releases/47",
+          }),
+        ],
+      });
+
+      expect(screen.getByRole("link")).toHaveAttribute(
+        "href",
+        "https://metabase.com/releases/48",
+      );
     });
   });
 });

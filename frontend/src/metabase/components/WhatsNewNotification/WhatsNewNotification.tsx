@@ -1,12 +1,13 @@
 import { t } from "ttag";
 import { useMemo } from "react";
+import { isNotFalsy } from "metabase/core/utils/types";
 import { useSelector } from "metabase/lib/redux";
+import { getIsEmbedded } from "metabase/selectors/embed";
 import {
   getLastAcknowledgedVersion,
   getSetting,
 } from "metabase/selectors/settings";
-import { getIsEmbedded } from "metabase/selectors/embed";
-import { isMajorUpdate } from "./utils";
+import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
   const isEmbedded = useSelector(getIsEmbedded);
@@ -14,42 +15,31 @@ export function WhatsNewNotification() {
   const currentVersion = useSelector(state => getSetting(state, "version"));
   const lastAcknowledgedVersion = useSelector(getLastAcknowledgedVersion);
 
-  const currentVersionInfo = useMemo(() => {
-    const versions = [versionInfo?.latest].concat(versionInfo?.older);
-
-    return versions.find(v => v?.version === currentVersion.tag);
-  }, [currentVersion.tag, versionInfo?.latest, versionInfo?.older]);
-
-  const shouldShowNotification = useMemo(() => {
-    if (isEmbedded) {
-      return false;
+  const url: string | undefined = useMemo(() => {
+    if (isEmbedded || currentVersion.tag === undefined) {
+      return undefined;
     }
 
-    if (!currentVersionInfo) {
-      return false;
-    }
+    const versionsList = [versionInfo?.latest]
+      .concat(versionInfo?.older)
+      .filter(isNotFalsy);
 
-    if (lastAcknowledgedVersion == null) {
-      return true;
-    }
+    const lastEligibleVersion = getLatestEligibleReleaseNotes({
+      versions: versionsList,
+      currentVersion: currentVersion.tag,
+      lastAcknowledgedVersion: lastAcknowledgedVersion,
+    });
 
-    return (
-      currentVersion.tag &&
-      isMajorUpdate(currentVersion.tag, lastAcknowledgedVersion)
-    );
+    return lastEligibleVersion?.releaseNotesUrl;
   }, [
-    currentVersion.tag,
-    currentVersionInfo,
+    currentVersion,
     isEmbedded,
     lastAcknowledgedVersion,
+    versionInfo?.latest,
+    versionInfo?.older,
   ]);
 
-  const url =
-    // TODO: use real field: https://github.com/metabase/metabase/issues/33324
-    //currentVersionInfo?.releaseNotesUrl ||
-    "https://www.metabase.com/releases";
-
-  if (!shouldShowNotification) {
+  if (!url) {
     return null;
   }
 

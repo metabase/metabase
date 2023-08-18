@@ -1,23 +1,98 @@
-import { isMajorUpdate } from "./utils";
+import { createMockVersionInfoRecord } from "./../../../metabase-types/api/mocks/settings";
+import { getLatestEligibleReleaseNotes } from "./utils";
 
 describe("What's new - utils", () => {
-  describe("isMajorUpdate", () => {
-    it("detects major updates correctly", () => {
-      expect(isMajorUpdate("v0.15.0", "v0.14.0")).toBe(true);
-      expect(isMajorUpdate("v0.15.1", "v0.14.3")).toBe(true);
-      expect(isMajorUpdate("v0.15.1", "v0.14")).toBe(true);
-      expect(isMajorUpdate("v0.15", "v0.14.1")).toBe(true);
-      expect(isMajorUpdate("v0.17", "v0.14")).toBe(true);
+  describe("getLatestEligibleReleaseNotes", () => {
+    it("doesn't filter old versions if lastAck is null", () => {
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.43",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.48",
+          lastAcknowledgedVersion: null,
+        }),
+      ).toHaveProperty("version", "v0.43");
     });
 
-    it("understands minor updates", () => {
-      expect(isMajorUpdate("v0.14.1", "v0.14.0")).toBe(false);
-      expect(isMajorUpdate("v0.14.5", "v0.14.1")).toBe(false);
+    it("filters out ack versions", () => {
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.47",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.48",
+          lastAcknowledgedVersion: "v0.47",
+        }),
+      ).toBe(undefined);
+
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.46",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.48",
+          lastAcknowledgedVersion: "v0.47",
+        }),
+      ).toBe(undefined);
     });
 
-    it("works without `v` prefix", () => {
-      expect(isMajorUpdate("0.15.0", "0.14.0")).toBe(true);
-      expect(isMajorUpdate("0.14.1", "0.14.0")).toBe(false);
+    it("returns up to the current version", () => {
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.48",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.48",
+          lastAcknowledgedVersion: "v0.47",
+        }),
+      ).not.toBe(undefined);
+    });
+
+    it("filters out future versions", () => {
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.49",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.48",
+          lastAcknowledgedVersion: "v0.47",
+        }),
+      ).toBe(undefined);
+    });
+
+    it("returns last version if more than one are eligible", () => {
+      expect(
+        getLatestEligibleReleaseNotes({
+          versions: [
+            createMockVersionInfoRecord({
+              version: "v0.49.1",
+              releaseNotesUrl: "url",
+            }),
+            createMockVersionInfoRecord({
+              version: "v0.49.0",
+              releaseNotesUrl: "url",
+            }),
+          ],
+          currentVersion: "v0.49.2",
+          lastAcknowledgedVersion: "v0.47",
+        }),
+      ).toHaveProperty("version", "v0.49.1");
     });
   });
 });
