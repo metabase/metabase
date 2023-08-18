@@ -40,7 +40,7 @@
                      :is_superuser false
                      :last_login   true
                      :group_ids    true}]
-                   (-> result :data tu/boolean-ids-and-timestamps)))
+                   (-> result :data tu/boolean-ids-and-timestamps (->> (map #(update % :group_ids seq))))))
             (is (= 1 (:total result)))))))))
 
 (deftest get-user-attributes-test
