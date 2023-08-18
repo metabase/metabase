@@ -39,25 +39,29 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
-      SQLFilter.toggleRequired();
-
-      FieldFilter.openEntryForm({ isFilterRequired: true });
+      // the default value should apply
       FieldFilter.addDefaultStringFilter("2");
-
       SQLFilter.runQuery();
-
       cy.get(".Visualization").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
-      FieldFilter.clearWidgetValue();
+      // default should not apply when value is cleared
+      clearFilterWidget();
+      SQLFilter.runQuery();
+      cy.get(".Visualization").within(() => {
+        cy.findByText("Small Marble Shoes");
+        cy.findByText("Rustic Paper Wallet");
+      });
+
+      // set the value through the
+      SQLFilter.toggleRequired();
       FieldFilter.openEntryForm();
       FieldFilter.addWidgetStringFilter("1");
-
       SQLFilter.runQuery();
-
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
+        cy.findByText("Small Marble Shoes").should("not.exist");
       });
     });
   });
