@@ -459,16 +459,6 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  joinDimensionOptions() {
-    const dimensions = this.joinedDimensions();
-    return new DimensionOptions({
-      count: dimensions.length,
-      dimensions: dimensions,
-      fks: [],
-      preventNumberSubDimensions: true,
-    });
-  }
-
   // HELPERS
   getDimensions() {
     const conditions = this.getConditions();
