@@ -342,9 +342,7 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
+      cy.findByRole("tablist").findByText("Actions").click();
 
       cy.wait([
         "@fetchMetadata",
