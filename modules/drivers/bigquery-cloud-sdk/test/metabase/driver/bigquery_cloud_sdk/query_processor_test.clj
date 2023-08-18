@@ -194,7 +194,7 @@
             "Similar to the above test, but covers a positive offset")))))
 
 ;; if I run a BigQuery query, does it get a remark added to it?
-(defn- query->native [query]
+(defn- query->native! [query]
   (let [native-query (atom nil)]
     (with-redefs [bigquery/process-native* (fn [_ _ sql _ _]
                                              (reset! native-query sql)
@@ -203,7 +203,7 @@
         (qp/process-query query))
       @native-query)))
 
-(deftest ^:parallel remark-test
+(deftest remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
              (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
@@ -216,7 +216,7 @@
                   " `v3_test_data.venues`.`price` AS `price` "
                   "FROM `v3_test_data.venues` "
                   "LIMIT 1"))
-           (query->native
+           (query->native!
             {:database (mt/id)
              :type     :query
              :query    {:source-table (mt/id :venues)
@@ -226,7 +226,7 @@
         "if I run a BigQuery query, does it get a remark added to it?")))
 
 ;; if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?
-(deftest ^:parallel remove-remark-test
+(deftest remove-remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
              (str "SELECT `v3_test_data.venues`.`id` AS `id`,"
@@ -245,7 +245,7 @@
                                     Field    _     {:table_id (u/the-id table)
                                                     :name "name"
                                                     :base_type "type/Text"}]
-             (query->native
+             (query->native!
               {:database (u/the-id db)
                :type     :query
                :query    {:source-table (u/the-id table)
@@ -675,7 +675,7 @@
 (deftest ^:parallel add-interval-honeysql-form-test
   ;; this doesn't test conversion to/from time because there's no unit we can use that works for all for. So we'll
   ;; just test the 3 that support `:day` and that should be proof the logic is working. (The code that actually uses
-  ;; this is tested e2e by `filter-by-relative-date-ranges-test` anyway.)
+  ;; this is tested e2e by [[filter-by-relative-date-ranges-test]] anyway.)
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
       (doseq [initial-type [:date :datetime :timestamp]
@@ -865,7 +865,7 @@
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
 
-(deftest ^:parallel remove-diacriticals-from-field-aliases-test
+(deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (mt/with-bigquery-fks!

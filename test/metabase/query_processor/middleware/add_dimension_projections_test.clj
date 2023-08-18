@@ -11,7 +11,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [metabase.lib.test-metadata :as meta]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -507,3 +508,27 @@
       (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
              (mt/rows results))))))
+
+(deftest ^:parallel different-id-types-test
+  (testing "Make sure different ID types like Integers vs BigDecimals (Oracle) are handled correctly\n"
+    (doseq [{:keys [base-type cast-fn]} [{:base-type :type/Integer,    :cast-fn int}
+                                         {:base-type :type/Integer,    :cast-fn long}
+                                         {:base-type :type/Decimal,    :cast-fn bigdec}
+                                         {:base-type :type/BigInteger, :cast-fn bigint}
+                                         {:base-type :type/Text,       :cast-fn str}]]
+      (testing (format "Base type = %s; IDs in result rows are %s" base-type (class (cast-fn 1)))
+        (let [info (#'qp.add-dimension-projections/col->dim-map
+                    1
+                    (assoc (meta/field-metadata :venues :category-id)
+                           :base-type          base-type
+                           :effective-type     base-type
+                           :lib/internal-remap {:lib/type              :metadata.column.remapping/internal
+                                                :id                    1
+                                                :name                  "Category ID [internal remap]"
+                                                :values                [24]
+                                                :human-readable-values ["Fashion"]}))
+              f    (#'qp.add-dimension-projections/make-row-map-fn [info])]
+          (is (= [["Some store" (cast-fn 1) nil]
+                  ["Another store" (cast-fn 24) "Fashion"]]
+                 (transduce (map f) conj [] [["Some store" (cast-fn 1)]
+                                             ["Another store" (cast-fn 24)]]))))))))

@@ -382,7 +382,6 @@
 
 ;;;; Transform to add additional cols to results
 
-
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
    :id            nil
@@ -396,10 +395,10 @@
    :semantic_type nil})
 
 (defn- transform-values-for-col
-  "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
-  with the values returned from the database for the given `col`."
-  [{:keys [base_type]} values]
-  (let [transform (condp #(isa? %2 %1) base_type
+  "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
+  comparable with the values returned from the database for the given `col`."
+  [{:keys [base-type], :as _column-metadata} values]
+  (let [transform (condp #(isa? %2 %1) base-type
                     :type/Decimal    bigdec
                     :type/Float      double
                     :type/BigInteger bigint
