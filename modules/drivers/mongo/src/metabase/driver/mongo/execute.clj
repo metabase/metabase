@@ -96,11 +96,9 @@
                            (get unescape-map k k))))})))
 
 (defn- result-metadata [unescaped-col-names]
-  {:cols (vec (for [col-name unescaped-col-names]
-                {:name      col-name
-                 ;; actual base type gets inferred later when reducing results. This is a placeholder so the metadata
-                 ;; has the correct shape.
-                 :base_type :type/*}))})
+  {:cols (mapv (fn [col-name]
+                 {:name col-name})
+               unescaped-col-names)})
 
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------

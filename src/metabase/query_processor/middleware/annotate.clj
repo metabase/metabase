@@ -364,9 +364,6 @@
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
-
-;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
-
 (defn- check-correct-number-of-columns-returned [returned-mbql-columns results]
   (let [expected-count (count returned-mbql-columns)
         actual-count   (count (:cols results))]
@@ -553,57 +550,88 @@
   [{:keys [cols]}]
   (apply fingerprinters/col-wise
          (for [{driver-base-type :base_type} cols]
-           (if (contains? #{nil :type/*} driver-base-type)
+           (if (#{nil :type/*} driver-base-type)
              (driver.common/values->base-type)
              (fingerprinters/constant-fingerprinter driver-base-type)))))
 
-(defn- add-column-info-xform
+(defn- inferred-base-type-cols [cols base-types]
+  (map (fn [col base-type]
+         (-> col
+             (assoc :base_type base-type)
+             ;; annotate will add a field ref with type info
+             (dissoc :field_ref)))
+       cols
+       base-types))
+
+(defn- inferred-base-type-metadata [metadata base-types]
+  (update metadata :cols (fn [cols]
+                           (-> cols
+                               (inferred-base-type-cols base-types)
+                               ;; need to call [[annotate-native-calls]] again to update the field refs once we have
+                               ;; correct type info
+                               annotate-native-cols))))
+
+(defn- inferred-base-type-result [query metadata result truncated-rows]
+  (cond-> result
+    (map? result)
+    (assoc-in [:data :cols]
+              (merged-column-info
+               query
+               (assoc metadata :rows truncated-rows)))))
+
+(defn- add-inferred-base-type-xform
   [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(base-type-inferer metadata)
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
-     (let [metadata (update metadata :cols
-                            (comp annotate-native-cols
-                                  (fn [cols]
-                                    (map (fn [col base-type]
-                                           (-> col
-                                               (assoc :base_type base-type)
-                                               ;; annotate will add a field ref with type info
-                                               (dissoc :field_ref)))
-                                         cols
-                                         base-types))))]
-       (rf (cond-> result
-             (map? result)
-             (assoc-in [:data :cols]
-                       (merged-column-info
-                        query
-                        (assoc metadata :rows truncated-rows)))))))))
+     (let [metadata (inferred-base-type-metadata metadata base-types)
+           result   (inferred-base-type-result query metadata result truncated-rows)]
+       (rf result)))))
+
+(defmulti ^:private add-column-info-update-metadata
+  {:arglists '([query metadata])}
+  (fn [query _metadata]
+    (:type query)))
+
+(defmethod add-column-info-update-metadata :query
+  [{{:keys [:metadata/dataset-metadata :alias/escaped->original]} :info, :as query}
+   metadata]
+  (let [query (cond-> query
+                (seq escaped->original) ;; if we replaced aliases, restore them
+                (escape-join-aliases/restore-aliases escaped->original))]
+    (cond-> (assoc metadata :cols (merged-column-info query metadata))
+      (seq dataset-metadata)
+      (update :cols qp.util/combine-metadata dataset-metadata))))
+
+(defmethod add-column-info-update-metadata :native
+  [{{:keys [:metadata/dataset-metadata]} :info, :as _query} metadata]
+  (cond-> (update metadata :cols annotate-native-cols)
+    ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+    (seq dataset-metadata)
+    (update :cols qp.util/combine-metadata dataset-metadata)
+    ;; but we want those column refs removed since they have type info which we don't know yet
+    :always
+    (update :cols (fn [cols] (map #(dissoc % :field_ref) cols)))))
+
+(defn- needs-base-type-inference?
+  "Do we need to do row sampling to infer the base types of result columns? Mostly needed for native MongoDB queries,
+  since we don't get back type metadata (since columns are not strongly typed)."
+  [{query-type :type, :as _outer-query} {:keys [cols], :as _metadata}]
+  (and
+   (= query-type :native)
+   ;; metadata from the driver does not have good base-type info
+   (every? (fn [{base-type :base_type, :as _col}]
+             (and base-type (not= base-type :type/*)))
+           cols)))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [{query-type :type, :as query
-    {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
+  [query rff]
   (fn add-column-info-rff* [metadata]
-    (if (and (= query-type :query)
-             ;; we should have type metadata eiter in the query fields
-             ;; or in the result metadata for the following code to work
-             (or (->> query :query keys (some #{:aggregation :breakout :fields}))
-                 (every? :base_type (:cols metadata))))
-      (let [query (cond-> query
-                    (seq escaped->original) ;; if we replaced aliases, restore them
-                    (escape-join-aliases/restore-aliases escaped->original))]
-        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-               (seq dataset-metadata)
-               (update :cols qp.util/combine-metadata dataset-metadata))))
-      ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
-      ;; queries...
-      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
-                       ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                       (seq dataset-metadata)
-                       (update :cols qp.util/combine-metadata dataset-metadata)
-                       ;; but we want those column refs removed since they have type info which we don't know yet
-                       :always
-                       (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
-        (add-column-info-xform query metadata (rff metadata))))))
+    (let [needs-base-type-inference? (needs-base-type-inference? query metadata)
+          metadata                   (add-column-info-update-metadata query metadata)]
+      (if needs-base-type-inference?
+        (add-inferred-base-type-xform query metadata (rff metadata))
+        (rff metadata)))))

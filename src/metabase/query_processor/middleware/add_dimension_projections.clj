@@ -419,12 +419,21 @@
       (first types)
       :type/*)))
 
+(def ^:private ColumnMetadataWithOptionalBaseType
+  "ColumnMetadata, but `:base-type` is optional, because we may not have that information if this is this is the initial
+  metadata we get back when running a native query against a DB that doesn't return type metadata for query
+  results (such as MongoDB, since it isn't strongly typed)."
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:base-type {:optional true} ::lib.schema.common/base-type]]])
+
 (mu/defn ^:private col->dim-map :- [:maybe InternalDimensionInfo]
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
   [idx :- ::lib.schema.common/int-greater-than-or-equal-to-zero
    {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
-    :as                                                    col} :- lib.metadata/ColumnMetadata]
+    :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
   (when (seq values)
     (let [remap-from (:name col)]
       {:col-index       idx
@@ -449,7 +458,7 @@
 
 (mu/defn ^:private internal-columns-info :- InternalColumnsInfo
   "Info about the internal-only columns we add to the query."
-  [cols :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
+  [cols :- [:maybe [:sequential ColumnMetadataWithOptionalBaseType]]]
   ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
   ;; each one that is `internal` type
   (let [internal-only-dims (keep-indexed col->dim-map cols)]
