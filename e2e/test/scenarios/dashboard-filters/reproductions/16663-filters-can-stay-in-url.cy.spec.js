@@ -1,6 +1,5 @@
 import {
   restore,
-  popover,
   editDashboard,
   saveDashboard,
   visitDashboard,
@@ -23,6 +22,7 @@ const parameters = [
     id: "f8ae0c97",
     type: "date/quarter-year",
     sectionId: "date",
+    default: "Q1-2023",
   },
 ];
 
@@ -35,6 +35,8 @@ describe("issue 16663", () => {
   });
 
   it("should remove filter value from url after going to another dashboard (metabase#16663)", () => {
+    const dahsboardToRedirect = "Orders in a dashboard";
+
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
@@ -45,20 +47,19 @@ describe("issue 16663", () => {
 
     editDashboard();
 
-    cy.get("main header").find(".Icon-gear").click();
-
-    cy.findByLabelText("subscriptions sidebar")
-      .findByText("No default")
-      .click();
-
-    popover().contains("Q1").click();
+    cy.get("main header").icon("gear").click();
 
     saveDashboard();
 
     cy.url().should("include", "quarter_and_year=Q1");
 
-    visitDashboard(1);
+    cy.findByPlaceholderText("Search…").type(dahsboardToRedirect);
 
+    cy.findByTestId("search-results-floating-container")
+      .findByText(dahsboardToRedirect)
+      .click();
+
+    cy.url().should("include", "orders-in-a-dashboard");
     cy.url().should("not.include", "quarter_and_year=Q1");
   });
 });
