@@ -29,7 +29,6 @@ describe(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/card/*").as("getModel");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
