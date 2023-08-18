@@ -60,15 +60,15 @@ jobs:
       - name: Artifact zip URL
         id: zip_url
         run: |
+          current_commit="HEAD"
+
           get_parent () {
             parent_commit=$(git rev-parse $1^)
             echo $parent_commit
           }
 
-          main () {
+          get_download_link () {
             parent_commit=$(get_parent $1)
-            echo $parent_commit
-
             current_page=${2:-1}
 
             artifacts=$(curl -sL \
@@ -91,15 +91,15 @@ jobs:
             elif [[ $current_page -le 5 ]]; then
                 echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
                 current_page=$((++current_page))
-                main $parent_commit $current_page
+                get_download_link $current_commit $current_page
             else
-              parent_commit=$(get_parent $parent_commit)
-              echo "Switching to a new parent $parent_commit"
-              main $parent_commit
+              current_commit=$parent_commit
+              echo "Switching to a new parent"
+              get_download_link $current_commit
             fi
           }
 
-          main "HEAD"
+          get_download_link $current_commit
         shell: bash
 
   build:
