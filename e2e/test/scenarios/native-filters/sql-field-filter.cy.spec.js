@@ -1,6 +1,7 @@
 import {
   restore,
   openNativeEditor,
+  clearFilterWidget,
   filterWidget,
   popover,
 } from "e2e/support/helpers";
@@ -137,7 +138,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
-      clearFilterValue();
+      clearFilterWidget();
       filterWidget().click();
 
       popover().within(() => {
@@ -161,7 +162,3 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
   });
 });
-
-function clearFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}

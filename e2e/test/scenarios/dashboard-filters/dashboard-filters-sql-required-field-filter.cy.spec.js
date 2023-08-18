@@ -1,4 +1,9 @@
-import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  clearFilterWidget,
+  filterWidget,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -70,7 +75,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     filterWidget().contains("Widget");
 
-    removeWidgetFilterValue();
+    clearFilterWidget();
 
     cy.location("search").should("eq", "?category=");
 
@@ -94,7 +99,3 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.location("search").should("eq", "?category=Widget");
   });
 });
-
-function removeWidgetFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}

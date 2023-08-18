@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -50,7 +51,8 @@ describe("scenarios > dashboard > filters > date", () => {
           cy.findByText(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery1");
       },
     );
   });
@@ -194,9 +196,4 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     default:
       throw new Error("Wrong filter type!");
   }
-}
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
 }

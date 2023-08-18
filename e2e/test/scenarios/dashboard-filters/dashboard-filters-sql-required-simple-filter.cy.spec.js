@@ -1,6 +1,6 @@
 import {
+  clearFilterWidget,
   restore,
-  filterWidget,
   sidebar,
   editDashboard,
   saveDashboard,
@@ -74,7 +74,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     cy.findByDisplayValue("Bar");
 
-    removeWidgetFilterValue();
+    clearFilterWidget();
 
     cy.location("search").should("eq", "?text=");
 
@@ -113,10 +113,6 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
   });
 });
-
-function removeWidgetFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}
 
 function openFilterOptions(filterDisplayName) {
   cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();

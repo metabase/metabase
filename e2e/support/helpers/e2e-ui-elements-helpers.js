@@ -70,8 +70,8 @@ export function filterWidget() {
   return cy.get("fieldset");
 }
 
-export function clearFilterWidget() {
-  return filterWidget().find(".Icon-close");
+export function clearFilterWidget(index = 0) {
+  return filterWidget().eq(index).find(".Icon-close").click();
 }
 
 export const openQuestionActions = () => {
