@@ -25,10 +25,6 @@ class Join extends MBQLObjectClause {
     return super.set(join);
   }
 
-  remove(): StructuredQuery {
-    return this._query.removeJoin(this._index);
-  }
-
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */

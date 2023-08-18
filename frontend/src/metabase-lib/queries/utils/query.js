@@ -59,8 +59,6 @@ export { getFilterClause } from "./filter";
 export const getJoins = query => J.getJoins(query.joins);
 export const addJoin = (query, join) =>
   setJoinClause(query, J.addJoin(query.joins, join));
-export const removeJoin = (query, index) =>
-  setJoinClause(query, J.removeJoin(query.joins, index));
 
 // ORDER_BY
 
