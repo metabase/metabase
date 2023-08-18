@@ -79,9 +79,7 @@ describe("issue 22265", () => {
       cy.findByText("Save").click();
     });
 
-    modal().within(() => {
-      cy.findByText("Save").click();
-    });
+    modal().findByText("Save").click();
 
     cy.get("@dashboardId").then(dashboardId => {
       visitDashboard(dashboardId);
