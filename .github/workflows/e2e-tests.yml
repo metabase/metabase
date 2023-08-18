@@ -401,8 +401,11 @@ jobs:
   visual-regression-tests:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    needs: build
-    if: ${{ github.event_name != 'schedule' }}
+    needs: [build, download_uberjar]
+    if: |
+      !cancelled() &&
+      (needs.download_uberjar.result == 'success' || needs.build.result == 'success') &&
+      github.event_name != 'schedule'
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -417,6 +420,36 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Download Metabase uberjar from a previously stored artifact
+        if: needs.download_uberjar.result == 'success'
+        run: |
+          DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.enterprise_download_link }})"
+
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            $DOWNLOAD_LINK \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+      - name: Unzip Metabase artifact containing an uberjar
+        if: needs.download_uberjar.result == 'success'
+        run: unzip mb.zip
+
+      - uses: actions/download-artifact@v3
+        if: needs.build.result == 'success'
+        name: Retrieve uberjar artifact for ee
+        with:
+          name: metabase-ee-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
       - name: Enable Percy recording on master only
         if: github.ref == 'refs/heads/master'
         run: |
@@ -431,14 +464,6 @@ jobs:
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
       - name: Percy Test
         run: yarn run test-visual-run
         env:
