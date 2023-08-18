@@ -78,7 +78,7 @@ jobs:
 
             if [[ $zip ]]; then
                 echo "Found metabase-${{ matrix.edition }} uberjar for '$parent_commit'!"
-                echo "download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+                echo "download_link_${{ matrix.edition }}=$(echo $zip)" >> $GITHUB_OUTPUT
             elif [[ $current_page -le 5 ]]; then
                 echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
                 current_page=$((++current_page))
@@ -93,23 +93,6 @@ jobs:
           main "HEAD"
         id: saved_artifact
         shell: bash
-
-      - name: Download Metabase uberjar from a previously stored artifact
-        run: |
-          curl -sL \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            ${{ steps.saved_artifact.outputs.download_link }} \
-            -o mb.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-
-      - name: Unzip Metabase artifact containing an uberjar
-        run: unzip mb.zip
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
 
   build:
     needs: [download_uberjar, files-changed]
@@ -262,10 +245,28 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      - name: Download Metabase uberjar from a previously stored artifact
+        if: needs.download_uberjar.result == 'success'
+        run: |
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            ${{ steps.saved_artifact.outputs.download_link_${{ matrix.edition }} }} \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+      - name: Unzip Metabase artifact containing an uberjar
+        if: needs.download_uberjar.result == 'success'
+        run: unzip mb.zip
+
       - uses: actions/download-artifact@v3
+        if: needs.build.result == 'success'
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
           name: metabase-${{ matrix.edition }}-uberjar
+
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
