@@ -190,23 +190,38 @@ describe("admin > database > add", () => {
     });
 
     it("should add Mongo database via the connection string", () => {
-      const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const badDBString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}`;
+      const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("MongoDB").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Paste a connection string").click();
-      typeAndBlurUsingLabel("Display name", "QA Mongo4");
-      cy.findByLabelText("Port").should("not.exist");
-      cy.findByLabelText("Paste your connection string").type(
-        connectionString,
-        {
+      popover().findByText("MongoDB").click({ force: true });
+
+      cy.findByTestId("database-form").within(() => {
+        cy.findByText("Paste a connection string").click();
+        typeAndBlurUsingLabel("Display name", "QA Mongo4");
+        cy.findByLabelText("Port").should("not.exist");
+        cy.findByLabelText("Paste your connection string").type(badDBString, {
           delay: 0,
-        },
-      );
+        });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").should("not.be.disabled").click();
+        cy.button("Save").should("not.be.disabled").click();
+        cy.findByText(/No database name specified/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(badPasswordString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+        cy.findByText(/Exception authenticating MongoCredential/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(validConnectionString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+      });
 
       cy.wait("@createDatabase");
 
