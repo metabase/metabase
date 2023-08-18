@@ -45,7 +45,7 @@ describe("issue 16663", () => {
 
     cy.findByPlaceholderText("Search…").type(dashboardToRedirect);
 
-    cy.findByTestId("search-results-floating-container")
+    cy.findByTestId("search-bar-results-container")
       .findByText(dashboardToRedirect)
       .click();
 
