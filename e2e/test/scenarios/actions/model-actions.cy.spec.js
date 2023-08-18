@@ -1,5 +1,6 @@
 import { assocIn } from "icepick";
 import {
+  createImplicitActions,
   setActionsEnabledForDB,
   modal,
   popover,
@@ -338,25 +339,13 @@ describe(
       const actionName = "Update";
 
       cy.get("@modelId").then(modelId => {
+        createImplicitActions({ modelId });
+
         cy.visit(`/model/${modelId}/detail`);
         cy.wait("@getModel");
       });
 
       cy.findByRole("tablist").findByText("Actions").click();
-
-      cy.wait([
-        "@fetchMetadata",
-        "@fetchMetadata",
-        "@fetchMetadata",
-        "@getModelAction",
-        "@getSearchResults",
-      ]);
-
-      createBasicActions();
-
-      cy.findByLabelText("Action list").within(() => {
-        cy.get("li").eq(1).findByText(actionName).should("be.visible");
-      });
 
       runActionFor(actionName);
 
