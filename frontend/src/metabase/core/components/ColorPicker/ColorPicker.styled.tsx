@@ -17,8 +17,8 @@ export const ContentContainer = styled.div`
 
 // react-css inserts inline styles, but it's forbidden with our CSP headers
 // to fix this we copy relevant styles here
-// https://github.com/casesandberg/react-color/blob/master/src/components/common/Hue.js#L78
-// https://github.com/casesandberg/react-color/blob/master/src/components/common/Saturation.js#L105
+// https://github.com/casesandberg/react-color/blob/v2.18.1/src/components/common/Hue.js#L78
+// https://github.com/casesandberg/react-color/blob/v2.18.1/src/components/common/Saturation.js#L94
 export const ControlsRoot = styled.div`
   .hue-horizontal {
     background: linear-gradient(
