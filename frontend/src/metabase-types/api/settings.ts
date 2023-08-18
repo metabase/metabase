@@ -268,6 +268,7 @@ export interface Settings {
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
+  "last-acknowledged-version": string | null;
 }
 
 export type SettingKey = keyof Settings;

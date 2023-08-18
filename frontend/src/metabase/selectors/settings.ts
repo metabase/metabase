@@ -107,3 +107,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getLastAcknowledgedVersion = (state: State) =>
+  getSetting(state, "last-acknowledged-version");
