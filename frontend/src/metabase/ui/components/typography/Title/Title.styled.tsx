@@ -9,6 +9,7 @@ export const getTitleOverrides = (): MantineThemeOverride["components"] => ({
             fontWeight: "normal",
             textTransform: "uppercase",
 
+            // https://developer.mozilla.org/en-US/docs/Web/CSS/letter-spacing#internationalization_concerns
             "&:lang(en)": {
               letterSpacing: "0.7px",
             },
