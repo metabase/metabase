@@ -35,24 +35,6 @@ describe("StructuredQuery nesting", () => {
       ]);
     });
   });
-  describe("parentDimensionOptions", () => {
-    it("should return correct dimensions for a source-table", () => {
-      const j = ordersTable.query().join({ alias: "join0" }).joins()[0];
-      const options = j.parentDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual(["field", ORDERS.ID, null]);
-    });
-    it("should return correct dimensions for a source-query", () => {
-      const j = ordersTable.query().nest().join({ alias: "join0" }).joins()[0];
-      const options = j.parentDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual([
-        "field",
-        "ID",
-        { "base-type": "type/BigInteger" },
-      ]);
-    });
-  });
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
       const q = productsTable.query().join({
