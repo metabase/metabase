@@ -225,31 +225,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: Install Chrome v111
-        uses: browser-actions/setup-chrome@v1
-        with:
-          # https://chromium.cypress.io/linux/stable/111.0.5563.146
-          chrome-version: 1097615
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
-      - name: Record runs using Deploysentinel except for the release branch
-        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
-        run: |
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK ${{ matrix.java-version }}
-        uses: actions/setup-java@v3
-        with:
-          java-version: ${{ matrix.java-version }}
-          distribution: "temurin"
-      - name: Prepare Cypress environment
-        uses: ./.github/actions/prepare-cypress
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
-
       - name: Download Metabase uberjar from a previously stored artifact
         if: needs.download_uberjar.result == 'success'
         run: |
@@ -282,6 +257,31 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
+
+      - name: Install Chrome v111
+        uses: browser-actions/setup-chrome@v1
+        with:
+          # https://chromium.cypress.io/linux/stable/111.0.5563.146
+          chrome-version: 1097615
+        id: setup-chrome
+      - run: |
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
+      - name: Record runs using Deploysentinel except for the release branch
+        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
+        run: |
+          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+      - name: Run Snowplow micro
+        uses: ./.github/actions/run-snowplow-micro
 
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
