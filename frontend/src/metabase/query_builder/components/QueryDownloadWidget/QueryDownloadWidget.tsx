@@ -21,6 +21,8 @@ interface OwnProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
+  dashcardId?: number;
+  dashboardId?: number;
 }
 
 interface DispatchProps {
@@ -37,6 +39,8 @@ const QueryDownloadWidget = ({
   className,
   question,
   result,
+  dashboardId,
+  dashcardId,
   uuid,
   token,
   visualizationSettings,
@@ -48,6 +52,8 @@ const QueryDownloadWidget = ({
         type,
         question,
         result,
+        dashboardId,
+        dashcardId,
         uuid,
         token,
         visualizationSettings,
