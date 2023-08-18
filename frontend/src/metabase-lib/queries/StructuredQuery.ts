@@ -399,7 +399,7 @@ class StructuredQueryInner extends AtomicQuery {
     }
   }
 
-  cleanJoins(): StructuredQuery {
+  private cleanJoins(): StructuredQuery {
     return query._cleanClauseList("joins");
   }
 
