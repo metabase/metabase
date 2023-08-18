@@ -53,25 +53,6 @@ export default class Join extends MBQLObjectClause {
     return this["source-table"];
   }
 
-  setJoinSourceTableId(tableId: TableId) {
-    if (tableId !== this["source-table"]) {
-      const join = this.set({
-        ...this,
-        "source-query": undefined,
-        "source-table": tableId,
-        condition: null,
-      });
-
-      if (!join.alias) {
-        return join.setDefaultAlias();
-      } else {
-        return join;
-      }
-    } else {
-      return this;
-    }
-  }
-
   // SOURCE QUERY
   joinSourceQuery(): StructuredQueryObject | null | undefined {
     return this["source-query"];
