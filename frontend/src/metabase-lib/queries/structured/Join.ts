@@ -86,33 +86,6 @@ export default class Join extends MBQLObjectClause {
     return Array.isArray(condition) && JOIN_OPERATORS.includes(condition[0]);
   }
 
-  _getJoinDimensionFromCondition(condition) {
-    const [, , joinDimension] = condition;
-    const joinedQuery = this.joinedQuery();
-    return (
-      joinedQuery &&
-      joinDimension &&
-      joinedQuery.parseFieldReference(joinDimension)
-    );
-  }
-
-  _getJoinDimensionsFromMultipleConditions() {
-    const [, ...conditions] = this.condition;
-    return conditions.map(condition =>
-      this._getJoinDimensionFromCondition(condition),
-    );
-  }
-
-  joinDimensions() {
-    if (!this.condition) {
-      return [];
-    }
-
-    return this.isSingleConditionJoin()
-      ? [this._getJoinDimensionFromCondition(this.condition)]
-      : this._getJoinDimensionsFromMultipleConditions();
-  }
-
   // HELPERS
   getDimensions() {
     const conditions = this.getConditions();
