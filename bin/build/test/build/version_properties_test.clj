@@ -1,6 +1,6 @@
-(ns build.version-info-test
+(ns build.version-properties-test
   (:require
-   [build.version-info :as version-info]
+   [build.version-properties :as version-properties]
    [clojure.test :refer :all]))
 
 (deftest tag-parts-test
@@ -11,7 +11,7 @@
           tag            [tag (str \v tag)]]
     (testing (str (pr-str (list 'tag-parts tag)) " => " (pr-str expected))
       (is (= expected
-             (#'version-info/tag-parts tag))))))
+             (#'version-properties/tag-parts tag))))))
 
 (deftest current-snapshot-version-test
   (doseq [[branch edition->tag->expected] {"release-x.37.x" {:oss {nil          "UNKNOWN"
@@ -34,4 +34,4 @@
           [tag expected]                  tag->expected]
     (testing (str (pr-str (list 'current-snapshot-version edition branch tag)) " => " (pr-str expected))
       (is (= expected
-             (version-info/current-snapshot-version edition branch tag))))))
+             (version-properties/current-snapshot-version edition branch tag))))))
