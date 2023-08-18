@@ -43,10 +43,10 @@ describe("issue 16663", () => {
 
     cy.url().should("include", queryParam);
 
-    cy.findByPlaceholderText("Search…").type(dahsboardToRedirect);
+    cy.findByPlaceholderText("Search…").type(dashboardToRedirect);
 
     cy.findByTestId("search-results-floating-container")
-      .findByText(dahsboardToRedirect)
+      .findByText(dashboardToRedirect)
       .click();
 
     cy.url().should("include", "orders-in-a-dashboard");
