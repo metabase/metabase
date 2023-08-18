@@ -355,9 +355,9 @@
           #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
-           (client/client :get (response-format->status-code response-format)
-                          (card-query-url card response-format {:params {:venue_id 100}})
-                          {:request-options request-options})))
+           (client/real-client :get (response-format->status-code response-format)
+                               (card-query-url card response-format {:params {:venue_id 100}})
+                               {:request-options request-options})))
 
         (testing "If `:locked` parameter is present in URL params, request should fail"
           (is (= "You can only specify a value for :venue_id in the JWT."

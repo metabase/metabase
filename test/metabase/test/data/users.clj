@@ -161,43 +161,46 @@
                           e)))
         (clear-cached-session-tokens!)
         (binding [*retrying-authentication*  true]
-          (apply client-fn username args))))))
+          (apply client-fn the-client username args))))))
 
 (defn- user-request
-  "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
-  redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
-  password, this function temporarily overrides the password for that User.)"
-  {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                request-options? http-body-map? & {:as query-params}])}
-  [mock? user & args]
-  (let [the-client (if mock? client/client client/real-client)]
-    (if (keyword? user)
-      (do
-       (fetch-user user)
-       (apply client-fn the-client user args))
-      (let [user-id             (u/the-id user)
-            user-email          (t2/select-one-fn :email User :id user-id)
-            [old-password-info] (t2/query {:select [:password :password_salt]
-                                           :from   [:core_user]
-                                           :where  [:= :id user-id]})]
-        (when-not user-email
-          (throw (ex-info "User does not exist" {:user user})))
-        (try
-         (t2/query-one {:update :core_user
-                        :set    {:password      (u.password/hash-bcrypt user-email)
-                                 :password_salt ""}
-                        :where  [:= :id user-id]})
-         (apply the-client {:username user-email, :password user-email} args)
-         (finally
-          (t2/query-one {:update :core_user
-                         :set    old-password-info
-                         :where  [:= :id user-id]})))))))
+  [the-client user & args]
+  (if (keyword? user)
+    (do
+     (fetch-user user)
+     (apply client-fn the-client user args))
+    (let [user-id             (u/the-id user)
+          user-email          (t2/select-one-fn :email User :id user-id)
+          [old-password-info] (t2/query {:select [:password :password_salt]
+                                         :from   [:core_user]
+                                         :where  [:= :id user-id]})]
+      (when-not user-email
+        (throw (ex-info "User does not exist" {:user user})))
+      (try
+       (t2/query-one {:update :core_user
+                      :set    {:password      (u.password/hash-bcrypt user-email)
+                               :password_salt ""}
+                      :where  [:= :id user-id]})
+       (apply the-client {:username user-email, :password user-email} args)
+       (finally
+        (t2/query-one {:update :core_user
+                       :set    old-password-info
+                       :where  [:= :id user-id]}))))))
 
 (def user-http-request
-  (partial user-request true))
+  ^{:doc
+    "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
+    redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
+    password, this function temporarily overrides the password for that User.)"
+    :arglists '([the-client test-user-name-or-user-or-id method expected-status-code? endpoint
+                 request-options? http-body-map? & {:as query-params}])}
+  (partial user-request client/client))
 
 (def user-real-request
-  (partial user-request false))
+  ^{:doc "Like `user-http-request` but instead of calling the app handler, this calls an actually http request."
+    :arglists '([the-client test-user-name-or-user-or-id method expected-status-code? endpoint
+                 request-options? http-body-map? & {:as query-params}])}
+  (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)
