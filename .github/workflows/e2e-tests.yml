@@ -78,7 +78,12 @@ jobs:
 
             if [[ $zip ]]; then
                 echo "Found metabase-${{ matrix.edition }} uberjar for '$parent_commit'!"
-                echo "download_link_${{ matrix.edition }}=$(echo $zip)" >> $GITHUB_OUTPUT
+
+                if [[ "${{ matrix.edition }}" == "ee" ]]; then
+                  echo "enterprise_download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+                else
+                  echo "oss_download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+                fi
             elif [[ $current_page -le 5 ]]; then
                 echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
                 current_page=$((++current_page))
@@ -248,11 +253,17 @@ jobs:
       - name: Download Metabase uberjar from a previously stored artifact
         if: needs.download_uberjar.result == 'success'
         run: |
+          if [[ "${{ matrix.edition }}" == "ee" ]]; then
+            DOWNLOAD_LINK="${{ steps.saved_artifact.outputs.enterprise_download_link }}"
+          else
+            DOWNLOAD_LINK="${{ steps.saved_artifact.outputs.oss_download_link }}"
+          fi
+
           curl -sL \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            ${{ steps.saved_artifact.outputs.download_link_${{ matrix.edition }} }} \
+            $DOWNLOAD_LINK \
             -o mb.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
