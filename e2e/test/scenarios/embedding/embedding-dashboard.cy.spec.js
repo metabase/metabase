@@ -258,7 +258,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     });
   });
 
-  it("card parameter defaults should apply for disabled parameters, but not for editable parameters", () => {
+  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     cy.icon("share").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
@@ -288,12 +288,36 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       assert.deepEqual(actual, expected);
     });
 
+    cy.get("@allParameters").within(() => {
+      cy.findByText("Source")
+        .parent()
+        .within(() => {
+          cy.findByText("Disabled").click();
+        });
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Locked").click();
+
+    // publish the embedded dashboard so that we can directly navigate to its url
+    publishChanges(({ request }) => {
+      const actual = request.body.embedding_params;
+
+      const expected = {
+        source: "locked",
+        name: "enabled",
+      };
+
+      assert.deepEqual(actual, expected);
+    });
+
     // directly navigate to the embedded dashboard
     visitIframe();
 
-    // The Name default should not apply, because the Name param is editable
-    // But the ID default should apply, because it is disabled.
-    // If both applied the result would be 0.
+    // The ID default (1, 2) should apply, because it is disabled.
+    // The Name default ('Lina Heaney') should not apply, because the Name param is editable
+    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+    // If either the Name or Source default applied the result would be 0.
     cy.get(".ScalarValue").invoke("text").should("eq", "2");
   });
 });
