@@ -1,9 +1,4 @@
-import {
-  restore,
-  editDashboard,
-  saveDashboard,
-  visitDashboard,
-} from "e2e/support/helpers";
+import { restore, visitDashboard } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -36,6 +31,7 @@ describe("issue 16663", () => {
 
   it("should remove filter value from url after going to another dashboard (metabase#16663)", () => {
     const dahsboardToRedirect = "Orders in a dashboard";
+    const queryParam = "quarter_and_year=Q1";
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
@@ -45,13 +41,7 @@ describe("issue 16663", () => {
       },
     );
 
-    editDashboard();
-
-    cy.get("main header").icon("gear").click();
-
-    saveDashboard();
-
-    cy.url().should("include", "quarter_and_year=Q1");
+    cy.url().should("include", queryParam);
 
     cy.findByPlaceholderText("Search…").type(dahsboardToRedirect);
 
@@ -60,6 +50,6 @@ describe("issue 16663", () => {
       .click();
 
     cy.url().should("include", "orders-in-a-dashboard");
-    cy.url().should("not.include", "quarter_and_year=Q1");
+    cy.url().should("not.include", queryParam);
   });
 });
