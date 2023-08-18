@@ -3,6 +3,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clj-http.util :as http.util]
    [clojure.core.async :as a]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -12,7 +13,6 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -213,14 +213,14 @@
    (schema/optional-key :query-parameters) (schema/maybe su/Map)
    (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
-(defn- read-streaming-response [streaming-response]
+(defn- read-streaming-response
+  [streaming-response content-type]
   (with-open [os (java.io.ByteArrayOutputStream.)]
     (let [f             (.f streaming-response)
           canceled-chan (a/promise-chan)]
       (f os canceled-chan)
-      ;; not all types need to be converted to string tho
-      ;; should be depended on the content type
-      (String. (.toByteArray os) "UTF-8"))))
+      (cond-> (.toByteArray os)
+        (some #(re-find % content-type) [#"json" #"text"]) (String. "UTF-8")))))
 
 (schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -296,8 +296,9 @@
                                     (with-open [r (io/reader body)]
                                       (slurp r))
 
+                                    ;; Most APIs that execute a request returns a streaming response
                                     (instance? StreamingResponse body)
-                                    (read-streaming-response body)
+                                    (read-streaming-response body (get-in resp [:headers "Content-Type"]))
 
                                     :else
                                     body))))
@@ -315,11 +316,6 @@
     (log/debug :mock-request method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
-
-(let  [url "/auth/sso"]
- (if (= (first url) \/) url (str "/" url)))
-
-#_(metabase.test/set-ns-log-level! *ns* :debug)
 
 (s/def ::http-client-args
   (s/cat
