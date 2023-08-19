@@ -246,3 +246,11 @@
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators (ref->col col-ref)))
                       (lib.filter.operator/operator-def op)))))
+
+(mu/defn combine-conditions :- ::lib.schema.expression/boolean
+  "Combine multiple conditions (filter clauses) into a single filter clause, with `:and`. If there is only one clause,
+  returns it as-is."
+  [conditions :- [:sequential {:min 1} ::lib.schema.expression/boolean]]
+  (if (= (count conditions) 1)
+    (first conditions)
+    (into [:and {:lib/uuid (str (random-uuid))}] conditions)))

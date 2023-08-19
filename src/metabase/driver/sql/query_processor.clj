@@ -199,7 +199,11 @@
   making this easy to override in any places needed for a given driver."
   {:arglists '([driver mbql-expr-or-object])}
   (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+    [(driver/dispatch-on-initialized-driver driver)
+     (if (and (map? x)
+              (:lib/type x))
+       (:lib/type x)
+       (mbql.u/dispatch-by-clause-name-or-class x))])
   :hierarchy #'driver/hierarchy)
 
 (defn compiled
@@ -460,7 +464,7 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
+  {:arglists '([driver top-level-clause honeysql-form query])}
   (fn [driver top-level-clause _ _]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
@@ -757,7 +761,7 @@
 ;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 
-(defn- safe-denominator
+(defn safe-denominator
   "Make sure we're not trying to divide by zero."
   [denominator]
   (cond
@@ -1085,7 +1089,7 @@
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-(defn- like-clause
+(defn like-clause
   "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with.
   If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
   [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
@@ -1152,7 +1156,8 @@
   (assert field)
   [:= (->honeysql driver field) (->honeysql driver value)])
 
-(defn- correct-null-behaviour
+(defn correct-null-behaviour
+  "Handle nils in SQL filters more intuitively (#13477)."
   [driver [op & args :as clause]]
   (if-let [field-arg (mbql.u/match-one args
                        :field          &match)]
@@ -1177,7 +1182,8 @@
   [driver [_ & subclauses]]
   (apply vector :or (mapv (partial ->honeysql driver) subclauses)))
 
-(def ^:private clause-needs-null-behaviour-correction?
+(def clause-needs-null-behaviour-correction?
+  "Clause tags that need [[correct-null-behavior]]."
   (comp #{:contains :starts-with :ends-with} first))
 
 (defmethod ->honeysql [:sql :not]
@@ -1219,7 +1225,7 @@
     :else
     (->honeysql driver (qp.store/table source-table))))
 
-(def ^:private HoneySQLJoin
+(def HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
   [:tuple
    ;;join source and alias
@@ -1266,6 +1272,7 @@
   (letfn [(append-joins [join-by]
             (into (vec join-by)
                   (mapcat (fn [{:keys [strategy], :as join}]
+                            (assert (keyword? strategy))
                             [strategy (join->honeysql driver join)]))
                   joins))]
     (update honeysql-form :join-by append-joins)))
@@ -1411,8 +1418,8 @@
   (cond-> honeysql-form
     (empty? select) (assoc :select (default-select driver honeysql-form))))
 
-(defn- apply-top-level-clauses
-  "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
+(defn apply-top-level-clauses
+  "[[apply-top-level-clause]] for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
   Clauses are applied according to the order in `top-level-clause-application-order`."
   ([driver honeysql-form inner-query]
    (apply-top-level-clauses driver honeysql-form inner-query identity))
