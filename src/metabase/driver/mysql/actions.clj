@@ -33,9 +33,9 @@
 
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
-  [database table-name constraint-name]
+  [database constraint-name]
   (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
-        sql-args  ["select table_catalog, table_schema, column_name from information_schema.key_column_usage where table_name = ? and constraint_name = ?" table-name constraint-name]]
+        sql-args  ["select table_catalog, table_schema, column_name from information_schema.key_column_usage where constraint_name = ?" constraint-name]]
     (first
      (reduce
       (fn [[columns catalog schema] {:keys [table_catalog table_schema column_name]}]
@@ -43,7 +43,7 @@
                  (or (nil? schema) (= table_schema schema)))
           [(conj columns column_name) table_catalog table_schema]
           (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
-                         constraint-name table-name)
+                         constraint-name)
               (reduced nil))))
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
@@ -64,10 +64,10 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
-  (when-let [[_match table-and-constraint]
+  (when-let [[_match constraint]
              (re-find #"Duplicate entry '.+' for key '(.+)'" error-message)]
-    (let [[table constraint] (take-last 2 (str/split table-and-constraint #"\."))
-          columns (constraint->column-names database table constraint)]
+    (let [constraint (last (str/split constraint #"\."))
+          columns (constraint->column-names database constraint)]
       {:type    error-type
        :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
        :errors  (reduce (fn [acc col]
