@@ -33,7 +33,7 @@ const WelcomePage = ({
   }
 
   return (
-    <PageRoot>
+    <PageRoot data-testid="welcome-page">
       <PageMain>
         <LogoIcon height={118} />
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>
