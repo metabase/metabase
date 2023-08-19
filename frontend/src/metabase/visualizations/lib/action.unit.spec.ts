@@ -1,4 +1,4 @@
-import { UrlClickAction } from "metabase/modes/types";
+import type { UrlClickAction } from "metabase/visualizations/types";
 import { performAction } from "./action";
 
 describe("performAction", () => {

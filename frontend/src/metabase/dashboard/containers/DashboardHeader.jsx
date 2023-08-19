@@ -396,7 +396,6 @@ class DashboardHeader extends Component {
             aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
             icon="pencil"
-            className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           />
         </Tooltip>,
