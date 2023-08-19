@@ -22,7 +22,7 @@ import {
 } from "metabase/lib/pulse";
 
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
-
+import { getParameters } from "metabase/dashboard/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import {
@@ -107,6 +107,7 @@ const getEditingPulseWithDefaults = (state, props) => {
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
+  parameters: getParameters(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
 });
@@ -135,6 +136,7 @@ class SharingSidebarInner extends Component {
     initialCollectionId: PropTypes.number,
     isAdmin: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
+    parameters: PropTypes.array.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
@@ -219,7 +221,7 @@ class SharingSidebarInner extends Component {
   };
 
   setPulseWithChannel = type => {
-    const { dashboard, formInput } = this.props;
+    const { dashboard, formInput, parameters } = this.props;
 
     const channelSpec = formInput.channels[type];
     if (!channelSpec) {
@@ -232,6 +234,10 @@ class SharingSidebarInner extends Component {
       ...NEW_PULSE_TEMPLATE,
       channels: [channel],
       cards: getSupportedCardsForSubscriptions(dashboard),
+      parameters: parameters.map(param => ({
+        id: param.id,
+        value: param.default,
+      })),
     };
     this.setPulse(newPulse);
   };

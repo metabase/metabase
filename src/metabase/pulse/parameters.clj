@@ -20,14 +20,14 @@
   without a value"
   [subscription dashboard]
   (filter
-   #(or (:value %) (:default %))
+   :value
    (the-parameters subscription dashboard)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
   [parameter]
   (let [tyype  (:type parameter)
-        values (or (:value parameter) (:default parameter))]
+        values (:value parameter)]
     (try (shared.params/formatted-value tyype values (public-settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))

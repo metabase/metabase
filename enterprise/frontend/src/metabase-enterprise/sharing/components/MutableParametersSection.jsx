@@ -9,23 +9,18 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
-import {
-  getPulseParameters,
-  getActivePulseParameters,
-} from "metabase/lib/pulse";
+import { getPulseParameters } from "metabase/lib/pulse";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
   parameters,
-  defaultParametersById,
   dashboard,
   pulse,
   setPulseParameters,
 }) {
   const pulseParameters = getPulseParameters(pulse);
-  const activeParameters = getActivePulseParameters(pulse, parameters);
-  const pulseParamValuesById = activeParameters.reduce((map, parameter) => {
+  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
@@ -72,7 +67,6 @@ function MutableParametersSection({
 MutableParametersSection.propTypes = {
   className: PropTypes.string,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   pulse: PropTypes.object.isRequired,
   setPulseParameters: PropTypes.func.isRequired,
