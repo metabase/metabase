@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.test-metadata :as meta]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
@@ -11,8 +12,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [metabase.lib.test-metadata :as meta]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
