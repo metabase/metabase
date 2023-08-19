@@ -32,6 +32,7 @@ import {
   testPulse,
 } from "metabase/pulse/actions";
 import { UserApi } from "metabase/services";
+import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -137,6 +138,7 @@ class SharingSidebarInner extends Component {
     isAdmin: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
     parameters: PropTypes.array.isRequired,
+    parameterValues: PropTypes.object.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
@@ -221,7 +223,7 @@ class SharingSidebarInner extends Component {
   };
 
   setPulseWithChannel = type => {
-    const { dashboard, formInput, parameters } = this.props;
+    const { dashboard, formInput, parameters, parameterValues } = this.props;
 
     const channelSpec = formInput.channels[type];
     if (!channelSpec) {
@@ -236,7 +238,10 @@ class SharingSidebarInner extends Component {
       cards: getSupportedCardsForSubscriptions(dashboard),
       parameters: parameters.map(param => ({
         id: param.id,
-        value: param.default,
+        value:
+          PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
+            ? parameterValues[param.id]
+            : param.default,
       })),
     };
     this.setPulse(newPulse);
