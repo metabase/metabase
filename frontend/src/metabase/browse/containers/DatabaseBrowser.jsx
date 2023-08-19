@@ -19,7 +19,7 @@ import { DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {
   return (
-    <div>
+    <div data-testid="database-browser">
       <BrowseHeader crumbs={[{ title: t`Our data` }]} />
 
       <Grid>

@@ -3,12 +3,12 @@ import {
   popover,
   typeAndBlurUsingLabel,
   isEE,
-} from "__support__/e2e/helpers";
+} from "e2e/support/helpers";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
-} from "__support__/e2e/cypress_data";
+} from "e2e/support/cypress_data";
 
 describe("admin > database > add", () => {
   beforeEach(() => {
@@ -20,8 +20,10 @@ describe("admin > database > add", () => {
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?");
-    cy.get("#formField-engine").findByText("PostgreSQL").click();
+
+    cy.findByLabelText("Database type").click();
   });
 
   describe("external databases", { tags: "@external" }, () => {
@@ -36,29 +38,80 @@ describe("admin > database > add", () => {
 
       popover().contains("PostgreSQL").click({ force: true });
 
-      cy.findByText("Show advanced options").click();
-      cy.findByLabelText("Rerun queries for simple explorations").should(
-        "have.attr",
-        "aria-checked",
-        "true",
-      );
-      // Reproduces (metabase#14334)
-      cy.findByText("Additional JDBC connection string options");
-      // Reproduces (metabase#17450)
-      cy.findByLabelText("Choose when syncs and scans happen")
-        .click()
-        .should("have.attr", "aria-checked", "true");
-      cy.findByText("Never, I'll do this manually if I need to")
-        .parent()
-        .should("have.class", "text-brand");
+      cy.findByTestId("database-form").within(() => {
+        cy.findByText("Show advanced options").click();
+        cy.findByLabelText("Rerun queries for simple explorations").should(
+          "have.attr",
+          "aria-checked",
+          "true",
+        );
+        // Reproduces (metabase#14334)
+        cy.findByText("Additional JDBC connection string options");
+        // Reproduces (metabase#17450)
+        cy.findByLabelText("Choose when syncs and scans happen")
+          .click()
+          .should("have.attr", "aria-checked", "true");
+        cy.findByLabelText("Never, I'll do this manually if I need to").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
 
-      // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-      typeAndBlurUsingLabel("Display name", "QA Postgres12");
-      typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-      typeAndBlurUsingLabel("Database name", "sample");
-      typeAndBlurUsingLabel("Username", "metabase");
-      typeAndBlurUsingLabel("Password", "metasample123");
+        // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
+        typeAndBlurUsingLabel("Display name", "QA Postgres12");
+        typeAndBlurUsingLabel("Host", "localhost");
+        typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+        typeAndBlurUsingLabel("Database name", "sample");
+        typeAndBlurUsingLabel("Username", "metabase");
+        typeAndBlurUsingLabel("Password", "metasample123");
+      });
+
+      const confirmSSLFields = (visible, hidden) => {
+        visible.forEach(field => cy.findByText(field));
+        hidden.forEach(field => cy.findByText(field).should("not.exist"));
+      };
+
+      const ssl = "Use a secure connection (SSL)",
+        sslMode = "SSL Mode",
+        useClientCert = "Authenticate client certificate?",
+        clientPemCert = "SSL Client Certificate (PEM)",
+        clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
+        sslRootCert = "SSL Root Certificate (PEM)";
+
+      // initially, all SSL sub-properties should be hidden
+      confirmSSLFields(
+        [ssl],
+        [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
+      );
+
+      toggleFieldWithDisplayName(ssl);
+      // when ssl is enabled, the mode and "enable client cert" options should be shown
+      confirmSSLFields(
+        [ssl, sslMode, useClientCert],
+        [clientPemCert, clientPkcsCert, sslRootCert],
+      );
+
+      toggleFieldWithDisplayName(useClientCert);
+      // when the "enable client cert" option is enabled, its sub-properties should be shown
+      confirmSSLFields(
+        [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
+        [sslRootCert],
+      );
+
+      selectFieldOption(sslMode, "verify-ca");
+      // when the ssl mode is set to "verify-ca", then the root cert option should be shown
+      confirmSSLFields(
+        [
+          ssl,
+          sslMode,
+          useClientCert,
+          clientPemCert,
+          clientPkcsCert,
+          sslRootCert,
+        ],
+        [],
+      );
+      toggleFieldWithDisplayName(ssl);
 
       cy.button("Save").should("not.be.disabled").click();
 
@@ -72,8 +125,10 @@ describe("admin > database > add", () => {
 
       waitForDbSync();
 
-      cy.findByText("We're taking a look at your database!");
-      cy.icon("close").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.icon("close").click();
+      });
 
       cy.findByRole("status").within(() => {
         cy.findByText("Done!");
@@ -89,14 +144,19 @@ describe("admin > database > add", () => {
         "true",
       );
 
-      cy.findByText("Never, I'll do this manually if I need to")
-        .parent()
-        .should("have.class", "text-brand");
+      cy.findByLabelText("Never, I'll do this manually if I need to").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("should add Mongo database and redirect to listing", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MongoDB").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional connection string options");
 
       typeAndBlurUsingLabel("Display name", "QA Mongo4");
@@ -106,14 +166,18 @@ describe("admin > database > add", () => {
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
       typeAndBlurUsingLabel("Authentication database (optional)", "admin");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -132,37 +196,41 @@ describe("admin > database > add", () => {
 
       popover().findByText("MongoDB").click({ force: true });
 
-      cy.findByText("Paste a connection string").click();
-      typeAndBlurUsingLabel("Display name", "QA Mongo4");
-      cy.findByLabelText("Port").should("not.exist");
-      cy.findByLabelText("Paste your connection string").type(badDBString, {
-        delay: 0,
+      cy.findByTestId("database-form").within(() => {
+        cy.findByText("Paste a connection string").click();
+        typeAndBlurUsingLabel("Display name", "QA Mongo4");
+        cy.findByLabelText("Port").should("not.exist");
+        cy.findByLabelText("Paste your connection string").type(badDBString, {
+          delay: 0,
+        });
+
+        cy.button("Save").should("not.be.disabled").click();
+        cy.findByText(/No database name specified/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(badPasswordString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+        cy.findByText(/Exception authenticating MongoCredential/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(validConnectionString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
       });
-
-      cy.button("Save").should("not.be.disabled").click();
-      cy.findByText(/No database name specified/);
-      cy.button("Failed");
-
-      cy.findByLabelText("Paste your connection string")
-        .clear()
-        .type(badPasswordString);
-
-      cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
-      cy.findByText(/Exception authenticating MongoCredential/);
-      cy.button("Failed");
-
-      cy.findByLabelText("Paste your connection string")
-        .clear()
-        .type(validConnectionString);
-
-      cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -175,8 +243,11 @@ describe("admin > database > add", () => {
     });
 
     it("should add MySQL database and redirect to listing", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
       typeAndBlurUsingLabel("Display name", "QA MySQL8");
@@ -192,14 +263,18 @@ describe("admin > database > add", () => {
         "Additional JDBC connection string options",
         "allowPublicKeyRetrieval=true",
       );
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA MySQL8");
@@ -220,8 +295,7 @@ describe("admin > database > add", () => {
 
       chooseDatabase("BigQuery");
       typeAndBlurUsingLabel("Display name", "BQ");
-      cy.findByText("All").click();
-      popover().findByText("Only these...").click();
+      selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
       mockUploadServiceAccountJSON(serviceAccountJSON);
@@ -249,9 +323,17 @@ describe("admin > database > add", () => {
   });
 });
 
+function toggleFieldWithDisplayName(displayName) {
+  cy.findByLabelText(displayName).click();
+}
+
+function selectFieldOption(fieldName, option) {
+  cy.findByLabelText(fieldName).click();
+  popover().contains(option).click({ force: true });
+}
+
 function chooseDatabase(database) {
-  cy.get("#formField-engine").findByText("PostgreSQL").click();
-  popover().findByText(database).click();
+  selectFieldOption("Database type", database);
 }
 
 function mockUploadServiceAccountJSON(fileContents) {
