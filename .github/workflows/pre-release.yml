@@ -141,7 +141,7 @@ jobs:
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: check-uberjar-health
+    needs: [release-artifact, check-uberjar-health]
     strategy:
       matrix:
         edition: [oss, ee]
@@ -165,7 +165,7 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v3
       with:
-        ref: ${{ github.event.inputs.commit }}
+        ref: ${{ needs.release-artifact.outputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK 11
