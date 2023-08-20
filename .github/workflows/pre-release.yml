@@ -1,14 +1,9 @@
 name: Pre-release [WIP]
 
 on:
-  workflow_dispatch:
-    inputs:
-      commit:
-        description: 'A full-length commit SHA-1 hash'
-        required: true
-      version:
-        description: 'Intended version (e.g. v0.46.3)'
-        required: true
+  workflow_run:
+    workflows: [Build for the official Metabase release]
+    types: [completed]
 
 env:
   MAX_HASH_LENGTH: 8
