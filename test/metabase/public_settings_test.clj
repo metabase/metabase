@@ -14,34 +14,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest reset-token-ttl-h-test
-  (testing "reset-token-ttl-h-test"
-    (testing "reset-token-ttl-h-test is set"
-      (mt/discard-setting-changes [reset-token-ttl-h]
-                                  (public-settings/reset-token-ttl-h! 36)
-                                  (is (= 36 (public-settings/reset-token-ttl-h)))))
 
-    (testing "reset-token-ttl-h-test is reset to default when set to negative value"
-      (mt/discard-setting-changes [reset-token-ttl-h]
-                                  (public-settings/reset-token-ttl-h! -1)
-                                  (is (= 48 (public-settings/reset-token-ttl-h)))))
-
-    (testing "reset-token-ttl-h-test is set to zero"
-      (mt/discard-setting-changes [reset-token-ttl-h]
-                                  (public-settings/reset-token-ttl-h! 0)
-                                  (is (= 0 (public-settings/reset-token-ttl-h)))))
-
-    (testing "reset-token-ttl-h-test is set to max"
-      (mt/discard-setting-changes [reset-token-ttl-h]
-                                  (public-settings/reset-token-ttl-h! Integer/MAX_VALUE)
-                                  (is (= Integer/MAX_VALUE (public-settings/reset-token-ttl-h)))))
-
-    (testing "reset-token-ttl-h-test is set to max + 1"
-      (mt/discard-setting-changes [reset-token-ttl-h]
-                                  (public-settings/reset-token-ttl-h! (+ Integer/MAX_VALUE 1) )
-                                  (is (= (+ Integer/MAX_VALUE 1) (public-settings/reset-token-ttl-h)))))
-    )
-  )
 
 (deftest site-url-settings
   (testing "double-check that setting the `site-url` setting will automatically strip off trailing slashes"

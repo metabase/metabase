@@ -15,7 +15,7 @@
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
-   [metabase.models.setting :as setting]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -232,10 +232,17 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
+
+(defsetting reset-token-ttl-hours
+            (deferred-tru "Number of hours a password reset is considered valid.")
+            :visibility :internal
+            :type       :integer
+            :default    48)
+
 (defn reset-token-ttl-ms
-  "Number of milliseconds a password reset is considered valid."
+  "number of milliseconds a password reset is considered valid."
   []
-  (* (metabase.public-settings/reset-token-ttl-h) 60 60 1000))
+  (* (reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."

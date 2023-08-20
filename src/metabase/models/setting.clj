@@ -196,8 +196,7 @@
      site-name
      source-address-header
      start-of-week
-     subscription-allowed-domains
-     reset-token-ttl-h})
+     subscription-allowed-domains})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings

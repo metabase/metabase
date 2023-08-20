@@ -69,17 +69,6 @@
   :type    :boolean
   :default true)
 
-(defsetting reset-token-ttl-h
-  (deferred-tru "Number of hours a password reset is considered valid.")
-  :visibility :settings-manager
-  :type       :integer
-  :default    48
-  :setter (fn  [new-value]
-            (if (>= new-value 0)
-              (setting/set-value-of-type! :integer :reset-token-ttl-h new-value)
-              (setting/set-value-of-type! :integer :reset-token-ttl-h (setting/default-value :reset-token-ttl-h))))
-            )
-
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json

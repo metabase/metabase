@@ -179,11 +179,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Enable X-ray features`,
         type: "boolean",
       },
-      {
-        key: "reset-token-ttl-h",
-        display_name: t`Token Reset Time-To-Live (TTL) in Hours`,
-        type: "number",
-      },
     ],
   },
   updates: {
