@@ -209,6 +209,8 @@ jobs:
         image: registry:2
         ports:
           - 5000:5000
+    outputs:
+      container-image: ${{ steps.target.outputs.image }}
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
@@ -248,12 +250,15 @@ jobs:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Retag and push container image to ${{ github.repository_owner }} staging Docker Hub repo
+      id: target
       run: |
         # SHA-1 truncated to 7 digits should be enough
         SHORT_HASH=${COMMIT:0:7}
 
         IMAGE_TAG=${{ env.VERSION }}-$SHORT_HASH
         CONTAINER_IMAGE=${{ github.repository_owner }}/${{ secrets.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+
+        echo "image=$CONTAINER_IMAGE" >> GITHUB_OUTPUT
 
         echo "Retag local image for staging"
         docker tag localhost:5000/local-metabase:$VERSION $CONTAINER_IMAGE
@@ -275,29 +280,18 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - name: Truncate commit hash
-      run: |
-        commit_id=${{ needs.release-artifact.outputs.commit }}
-        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
-
-        echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
-      shell: bash
     - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Determine the container image to pull
-      run: |
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.STAGING_REPO }}" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}" >> $GITHUB_ENV
     - name: Pull the container image
       run: |
-        echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }} ..."
-        docker pull ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+        echo "Pulling container image ${{ needs.containerize.outputs.container-image }} ..."
+        docker pull ${{ needs.containerize.outputs.container-image }}
         echo "Successful!"
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.container-image }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
