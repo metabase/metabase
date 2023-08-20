@@ -10,6 +10,52 @@ env:
   CUSTOM_REPO: ${{ secrets.CUSTOM_RELEASE_REPO }}
 
 jobs:
+  release-artifact:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    outputs:
+      version: ${{ steps.version-properties.outputs.version }}
+      commit: ${{ steps.version-properties.outputs.commit }}
+    steps:
+      - name: Download Metabase ${{ matrix.edition }} artifact
+        run: |
+          declare -a curlHeaders=('-H' "Accept: application/vnd.github+json" '-H' "Authorization: Bearer $GITHUB_TOKEN" '-H' "X-GitHub-Api-Version: 2022-11-28")
+
+          download_link=$(
+            curl -sL \
+              "${curlHeaders[@]}" \
+              "${{ github.event.workflow_run.artifacts_url }}" \
+              | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name) | .archive_download_url')
+
+          curl -sL "${curlHeaders[@]}" $download_link -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_NAME: metabase-${{ matrix.edition }}-uberjar
+      - name: Unzip Metabase artifact containing an uberjar
+        run: unzip mb.zip
+      - name: Extract the version.properties file from the JAR
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Reveal Metabase ${{ matrix.edition }} properties
+        id: version-properties
+        run: |
+          echo version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2) >> GITHUB_OUTPUT
+          echo commit=$(cat .COMMIT-ID) >> GITHUB_OUTPUT
+        shell: bash
+      - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
+
   check-commit:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -65,58 +111,6 @@ jobs:
           echo "ABORT!."
           exit -1
         fi
-
-  build:
-    if: ${{ github.repository }} != 'metabase/metabase'
-    runs-on: ubuntu-22.04
-    needs: check-commit
-    name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
-    timeout-minutes: 40
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-    - name: Fail early if custom docker release repo is missing
-      if: ${{ env.CUSTOM_REPO == null }}
-      run: exit 1
-    - name: Check out the code
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.inputs.commit }}
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: pre-release-build
-
-    - name: Determine the canonical version ## EE is always v1.x.y, OSS is always v0.x.y
-      uses: actions/github-script@v6
-      id: canonical_version
-      env:
-        INTENDED_VERSION: ${{ github.event.inputs.version }}
-        EDITION: ${{ matrix.edition }}
-      with:
-        result-encoding: string
-        script: |
-          var canonical_version;
-          const ver = process.env.INTENDED_VERSION;
-          if (process.env.EDITION === "ee") {
-            canonical_version = ver.replace(/^v0\./, "v1."); // always e.g. v1.47.2
-          } else {
-            canonical_version = ver.replace(/^v1\./, "v0."); // always e.g. v0.45.6
-          }
-          console.log("The canonical version of this", process.env.EDITION, "edition is", canonical_version);
-          return canonical_version;
-
-    - name: Build
-      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
-
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
 
   check-uberjar-health:
     runs-on: ubuntu-22.04
