@@ -57,20 +57,16 @@ jobs:
             ./SHA256.sum
 
   check-commit:
+    needs: release-artifact
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-    - name: Ensure that the intended version (${{ github.event.inputs.version }}) was never released before
+    - name: Ensure that the intended version ($VERSION) was never released before
       run: |
-        if [[ "${{ github.event.inputs.version }}" = v* ]]; then
-          echo "Checking if ${{ github.event.inputs.version }} conflicts with a past release..."
-        else
-          echo "ERROR: the intended version must start with 'v', e.g. 'v0.46.3."
-          echo "ABORT!"
-          exit -1
-        fi
+        echo "Checking if $VERSION conflicts with a past release..."
+
         CANONICAL_REFS=https://github.com/metabase/metabase/archive/refs
-        URL=${CANONICAL_REFS}/tags/${{ github.event.inputs.version }}.zip
+        URL=${CANONICAL_REFS}/tags/$VERSION.zip
         HTTP_CODE=$(curl -s -L -o /dev/null --head -w "%{HTTP_CODE}" ${URL})
         if [[ $HTTP_CODE =~ "200" ]]; then
           echo "ERROR: that version was already released in the past."
@@ -87,6 +83,8 @@ jobs:
             exit -1
           fi
         fi
+      env:
+        VERSION: ${{ needs.release-artifact.outputs.version }}
 
     - name: Check out the code to verify the release branch
       uses: actions/checkout@v3
@@ -95,7 +93,7 @@ jobs:
     - name: Ensure that the specified commit exists in the latest release branch
       run: |
         echo "Checking if the specified commit is in a release branch..."
-        COMMIT=${{ github.event.inputs.commit }}
+
         git branch -a --contains $COMMIT > branches.txt
         if [[ $(grep -c master branches.txt) =~ 1 ]]; then
           echo "Found in master branch. ABORT!"
@@ -111,6 +109,8 @@ jobs:
           echo "ABORT!."
           exit -1
         fi
+      env:
+        COMMIT: ${{ needs.release-artifact.outputs.commit }}
 
   check-uberjar-health:
     runs-on: ubuntu-22.04
