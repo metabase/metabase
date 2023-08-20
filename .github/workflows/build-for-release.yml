@@ -64,5 +64,17 @@ jobs:
     - name: Build Metabase ${{ steps.canonical_version.outputs.result }}
       run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
 
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
+    - name: Store commit's SHA-1 hash
+      run:  echo ${{ inputs.commit }} > COMMIT-ID
+      shell: bash
+    - name: Calculate SHA256 checksum
+      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+      shell: bash
+    - name: Upload JARs as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+        path: |
+          ./target/uberjar/metabase.jar
+          ./COMMIT-ID
+          ./SHA256.sum
