@@ -269,7 +269,7 @@ jobs:
 
   verify-docker-pull:
     runs-on: ubuntu-22.04
-    needs: containerize
+    needs: [release-artifact, containerize]
     timeout-minutes: 15
     strategy:
       matrix:
@@ -277,7 +277,7 @@ jobs:
     steps:
     - name: Truncate commit hash
       run: |
-        commit_id=${{ github.event.inputs.commit }}
+        commit_id=${{ needs.release-artifact.outputs.commit }}
         truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
 
         echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
