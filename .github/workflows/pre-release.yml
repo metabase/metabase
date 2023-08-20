@@ -200,8 +200,8 @@ jobs:
         if-no-files-found: ignore
 
   containerize:
+    needs: [release-artifact, run-sanity-check]
     runs-on: ubuntu-22.04
-    needs: run-sanity-check
     timeout-minutes: 15
     strategy:
       matrix:
@@ -215,10 +215,10 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v3
       with:
-        ref: ${{ github.event.inputs.commit }}
+        ref: ${{ needs.release-artifact.version-properties.commit }}
     - name: Truncate commit hash
       run: |
-        commit_id=${{ github.event.inputs.commit }}
+        commit_id=${{ needs.release-artifact.version-properties.commit }}
         truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
 
         echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
