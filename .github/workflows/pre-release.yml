@@ -218,13 +218,6 @@ jobs:
       uses: actions/checkout@v3
       with:
         ref: ${{ needs.release-artifact.outputs.commit }}
-    - name: Truncate commit hash
-      run: |
-        commit_id=${{ needs.release-artifact.outputs.commit }}
-        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
-
-        echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
-      shell: bash
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
@@ -242,12 +235,12 @@ jobs:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
+        tags: localhost:5000/local-metabase:${{ needs.release-artifact.outputs.version }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ needs.release-artifact.outputs.version }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -265,7 +258,7 @@ jobs:
     - name: Retag and push container image to Docker Hub
       run: |
         echo "Pushing container image ${{ env.IMAGE_NAME}} to ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ env.IMAGE_NAME }} ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+        docker tag localhost:5000/local-metabase:${{ needs.release-artifact.outputs.version }} ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
         docker push ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
         echo "Finished!"
 
