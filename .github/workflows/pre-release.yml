@@ -113,9 +113,9 @@ jobs:
         COMMIT: ${{ needs.release-artifact.outputs.commit }}
 
   check-uberjar-health:
+    needs: release-artifact
     runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
-    needs: build
     timeout-minutes: 10
     strategy:
       matrix:
