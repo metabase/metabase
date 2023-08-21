@@ -1,4 +1,4 @@
-import { createMockVersionInfoRecord } from "./../../../metabase-types/api/mocks/settings";
+import { createMockVersionInfoRecord } from "metabase-types/api/mocks";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 describe("What's new - utils", () => {
