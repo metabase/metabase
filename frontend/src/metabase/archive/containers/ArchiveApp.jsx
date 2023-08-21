@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -39,94 +39,91 @@ const mapDispatchToProps = {
 
 const ROW_HEIGHT = 68;
 
-class ArchiveApp extends Component {
-  constructor(props) {
-    super(props);
-    this.mainElement = getMainElement();
-  }
+function ArchiveApp({
+  isAdmin,
+  isNavbarOpen,
+  list,
+  reload,
+  selected,
+  deselected,
+  selection,
+  onToggleSelected,
+  onSelectAll,
+  onSelectNone,
+}) {
+  const mainElement = useMemo(() => getMainElement(), []);
 
-  componentDidMount() {
+  useEffect(() => {
     if (!isSmallScreen()) {
-      this.props.openNavbar();
+      openNavbar();
     }
-  }
+  }, []);
 
-  render() {
-    const {
-      isAdmin,
-      isNavbarOpen,
-      list,
-      reload,
-
-      selected,
-      selection,
-      onToggleSelected,
-    } = this.props;
-    return (
-      <ArchiveRoot>
-        <ArchiveHeader>
-          <PageHeading>{t`Archive`}</PageHeading>
-        </ArchiveHeader>
-        <ArchiveBody>
-          <Card
-            style={{
-              height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
-            }}
-          >
-            {list.length > 0 ? (
-              <VirtualizedList
-                scrollElement={this.mainElement}
-                items={list}
-                rowHeight={ROW_HEIGHT}
-                renderItem={({ item }) => (
-                  <ArchivedItem
-                    type={item.type}
-                    name={item.getName()}
-                    icon={item.getIcon().name}
-                    color={item.getColor()}
-                    isAdmin={isAdmin}
-                    onUnarchive={
-                      item.setArchived
-                        ? async () => {
-                            await item.setArchived(false);
-                            reload();
-                          }
-                        : null
-                    }
-                    onDelete={
-                      item.delete
-                        ? async () => {
-                            await item.delete();
-                            reload();
-                          }
-                        : null
-                    }
-                    selected={selection.has(item)}
-                    onToggleSelected={() => onToggleSelected(item)}
-                    showSelect={selected.length > 0}
-                  />
-                )}
-              />
-            ) : (
-              <ArchiveEmptyState>
-                <h2>{t`Items you archive will appear here.`}</h2>
-              </ArchiveEmptyState>
-            )}
-          </Card>
-        </ArchiveBody>
-        <BulkActionBar
-          isNavbarOpen={isNavbarOpen}
-          showing={selected.length > 0}
+  return (
+    <ArchiveRoot>
+      <ArchiveHeader>
+        <PageHeading>{t`Archive`}</PageHeading>
+      </ArchiveHeader>
+      <ArchiveBody>
+        <Card
+          style={{
+            height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
+          }}
         >
-          <ArchiveBarContent>
-            <SelectionControls {...this.props} />
-            <BulkActionControls {...this.props} />
-            <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
-          </ArchiveBarContent>
-        </BulkActionBar>
-      </ArchiveRoot>
-    );
-  }
+          {list.length > 0 ? (
+            <VirtualizedList
+              scrollElement={mainElement}
+              items={list}
+              rowHeight={ROW_HEIGHT}
+              renderItem={({ item }) => (
+                <ArchivedItem
+                  type={item.type}
+                  name={item.getName()}
+                  icon={item.getIcon().name}
+                  color={item.getColor()}
+                  isAdmin={isAdmin}
+                  onUnarchive={
+                    item.setArchived
+                      ? async () => {
+                          await item.setArchived(false);
+                          reload();
+                        }
+                      : null
+                  }
+                  onDelete={
+                    item.delete
+                      ? async () => {
+                          await item.delete();
+                          reload();
+                        }
+                      : null
+                  }
+                  selected={selection.has(item)}
+                  onToggleSelected={() => onToggleSelected(item)}
+                  showSelect={selected.length > 0}
+                />
+              )}
+            />
+          ) : (
+            <ArchiveEmptyState>
+              <h2>{t`Items you archive will appear here.`}</h2>
+            </ArchiveEmptyState>
+          )}
+        </Card>
+      </ArchiveBody>
+      <BulkActionBar isNavbarOpen={isNavbarOpen} showing={selected.length > 0}>
+        <ArchiveBarContent>
+          <SelectionControls
+            deselected={deselected}
+            onSelectAll={onSelectAll}
+            onSelectNone={onSelectNone}
+          />
+          <BulkActionControls selected={selected} reload={reload} />
+          <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
+        </ArchiveBarContent>
+      </BulkActionBar>
+    </ArchiveRoot>
+  );
 }
 
 export default _.compose(
