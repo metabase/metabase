@@ -20,14 +20,14 @@
   without a value"
   [subscription dashboard]
   (filter
-   :value
+   #(or (:value %) (:default %))
    (the-parameters subscription dashboard)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
   [parameter]
   (let [tyype  (:type parameter)
-        values (:value parameter)]
+        values (or (:value parameter) (:default parameter))]
     (try (shared.params/formatted-value tyype values (public-settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))
@@ -38,7 +38,7 @@
   (let [base-url   (urls/dashboard-url dashboard-id)
         url-params (flatten
                     (for [param parameters]
-                      (for [value (u/one-or-many (or (:value param) ""))]
+                      (for [value (u/one-or-many (or (:value param) (:default param)))]
                         (str (codec/url-encode (:slug param))
                              "="
                              (codec/url-encode value)))))]

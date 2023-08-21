@@ -145,19 +145,21 @@ function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
 }
 
 function cleanPulseParameters(parameters: PulseParameter[]) {
-  return parameters.map(parameter => {
-    const { default: defaultValue, name, slug, type, value, id } = parameter;
-    const normalizedValue = normalizeParameterValue(type, value);
+  return parameters
+    .map(parameter => {
+      const { default: defaultValue, name, slug, type, value, id } = parameter;
+      const normalizedValue = normalizeParameterValue(type, value);
 
-    return {
-      default: defaultValue,
-      id,
-      name,
-      slug,
-      type,
-      value: normalizedValue,
-    };
-  });
+      return {
+        default: defaultValue,
+        id,
+        name,
+        slug,
+        type,
+        value: normalizedValue,
+      };
+    })
+    .filter(parameter => parameter.value != null);
 }
 
 type ChannelSpecs = {
