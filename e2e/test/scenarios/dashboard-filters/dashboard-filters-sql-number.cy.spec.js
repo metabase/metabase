@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -53,7 +54,8 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery2");
       },
     );
   });
@@ -76,7 +78,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
       cy.contains("Rustic Paper Wallet").should("not.exist");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     filterWidget().click();
 
@@ -88,8 +90,3 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     });
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}
