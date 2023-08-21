@@ -13,7 +13,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -24,41 +23,75 @@
    [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement SQLException)))
 
 (set! *warn-on-reflection* true)
 
-(defmulti parse-sql-error
-  "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
-  of maps with a :column and :message key indicating what went wrong."
-  {:arglists '([driver database e]), :added "0.44.0"}
-  driver/dispatch-on-initialized-driver
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Error handling                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti maybe-parse-sql-error
+  "Try to parse the SQL error message returned by JDBC driver.
+
+  The methods should returns a map of:
+  - type: the error type. Check [[metabase.actions.error]] for the full list
+  - message: a nice message summarized of what went wrong
+  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error
+    If non per-column error is available, returns an empty map.
+
+  Or return `nil` if the parser doesn't match."
+  {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
+  (fn [driver error-type _database _action-type _error-message]
+   [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
 
-(defn- parse-error
-  "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
-  [driver database e]
-  (let [default-method? (= (get-method parse-sql-error driver)
-                           (get-method parse-sql-error :default))]
-    (if default-method?
-      (ex-data e)
-      (let [message (ex-message e)]
-        (if-let [parsed-errors (when message
-                                 (try
-                                   (parse-sql-error driver database message)
-                                   (catch Throwable e
-                                     (log/error e (trs "Error parsing SQL error message {0}: {1}" (pr-str message) (ex-message e)))
-                                     nil)))]
-          {:errors (into {} (map (juxt :column :message)) parsed-errors)}
-          {:message (or message (pr-str e))})))))
+(defmethod maybe-parse-sql-error :default
+  [_driver _error-type _database _e]
+  nil)
 
-(defn- catch-throw [e status-code & [more-info]]
-  (throw
-   (ex-info (ex-message e)
-            (merge {:exception-data (ex-data e)
-                    :status-code status-code}
-                   more-info)
-            e)))
+(defn- parse-sql-error
+  [driver database action-type e]
+  (let [parsers-for-driver (keep (fn [[[method-driver error-type] method]]
+                                   (when (= method-driver driver)
+                                     (partial method driver error-type)))
+                                 (dissoc (methods maybe-parse-sql-error) :default))]
+    (try
+     (some #(% database action-type (ex-message e)) parsers-for-driver)
+     ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
+     ;; We'll still get the original unparsed error message.
+     (catch Throwable new-e
+       (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
+       nil))))
+
+(defn- do-with-auto-parse-sql-error
+  [driver database action thunk]
+  (try
+   (thunk)
+   (catch SQLException e
+     (throw (ex-info (or (ex-message e) "Error executing action.")
+                     (merge (or (some-> (parse-sql-error driver database action e)
+                                        ;; the columns in error message should match with columns
+                                        ;; in the parameter. It's usually got from calling
+                                        ;; GET /api/action/:id/execute, and in there all column names are slugified
+                                        (m/update-existing :errors update-keys u/slugify))
+                                (assoc (ex-data e) :message (ex-message e)))
+                            {:status-code 400}))))))
+
+(defmacro ^:private with-auto-parse-sql-exception
+  "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
+  [driver database action-type & body]
+  `(do-with-auto-parse-sql-error ~driver ~database ~action-type (fn [] ~@body)))
+
+(defn- mbql-query->raw-hsql
+  [driver {database-id :database, :as query}]
+  (qp.store/with-metadata-provider database-id
+    (sql.qp/mbql->honeysql driver query)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Action Execution                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 
 (defmulti base-type->sql-type-map
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
@@ -169,48 +202,27 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (qp.store/with-metadata-provider database-id
-                      (try
-                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 404))))
+  (let [raw-hsql    (mbql-query->raw-hsql driver query)
         delete-hsql (-> raw-hsql
                         (dissoc :select)
                         (assoc :delete [])
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (try
-        ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-        (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
-          (when-not (= rows-deleted 1)
-            (throw (ex-info (if (zero? rows-deleted)
-                              (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                              (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                            {::incorrect-number-deleted true
-                             :number-deleted            rows-deleted
-                             :query                     query
-                             :sql                       (sql.qp/format-honeysql driver delete-hsql)
-                             :status-code               400})))
-          {:rows-deleted [1]})
-        (catch Exception e
-          (let [e-data (if (::incorrect-number-deleted (ex-data e))
-                         (ex-data e)
-                         (parse-error driver database e))]
-            (throw
-             (ex-info (or (ex-message e) "Delete action error.")
-                      (assoc e-data :status-code 400)))))))))
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-deleted (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-deleted 1)
+          (throw (ex-info (if (zero? rows-deleted)
+                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                          {:staus-code 400})))
+        {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [update-row   (update-keys update-row keyword)
-        raw-hsql     (qp.store/with-metadata-provider database-id
-                       (try
-                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                         (sql.qp/mbql->honeysql driver query)
-                         (catch Exception e
-                           (catch-throw e 404))))
+        raw-hsql     (mbql-query->raw-hsql driver query)
         target-table (first (:from raw-hsql))
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
@@ -219,26 +231,15 @@
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (try
-        ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-        (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
-          (when-not (= rows-updated 1)
-            (throw (ex-info (if (zero? rows-updated)
-                              (tru "Sorry, the row you''re trying to update doesn''t exist")
-                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                            {::incorrect-number-updated true
-                             :number-updated            rows-updated
-                             :query                     query
-                             :sql                       (sql.qp/format-honeysql driver update-hsql)
-                             :status-code               400})))
-          {:rows-updated [1]})
-        (catch Exception e
-          (let [e-data (if (::incorrect-number-updated (ex-data e))
-                         (ex-data e)
-                         (parse-error driver database e))]
-            (throw
-             (ex-info (or (ex-message e) "Update action error.")
-                      (assoc e-data :status-code 400)))))))))
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-updated (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-updated 1)
+          (throw (ex-info (if (zero? rows-updated)
+                            (tru "Sorry, the row you''re trying to update doesn''t exist")
+                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
+                          {:staus-code 400})))
+        {:rows-updated [1]}))))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -271,12 +272,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :row/create]
   [driver action database {database-id :database :keys [create-row] :as query}]
   (let [create-row  (update-keys create-row keyword)
-        raw-hsql    (qp.store/with-metadata-provider database-id
-                      (try
-                        (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 404))))
+        raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
@@ -286,17 +282,12 @@
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
-      (try
-        (let [result (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false})
-              _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
-              row    (select-created-row driver create-hsql conn result)]
-          (log/tracef ":row/create returned row %s" (pr-str row))
-          {:created-row row})
-        (catch Exception e
-          (let [e-data (parse-error driver database e)]
-            (throw (ex-info (or (ex-message e) "Create action error.")
-                            (assoc e-data :status-code 400)
-                            e))))))))
+      (let [result (with-auto-parse-sql-exception driver database action
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false}))
+            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
+            row    (select-created-row driver create-hsql conn result)]
+        (log/tracef ":row/create returned row %s" (pr-str row))
+        {:created-row row}))))
 
 ;;;; Bulk actions
 

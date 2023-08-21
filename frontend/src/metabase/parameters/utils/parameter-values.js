@@ -1,5 +1,4 @@
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 export function getParameterValueFromQueryParams(parameter, queryParams) {
   queryParams = queryParams || {};
@@ -9,11 +8,11 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
   // skip parsing "" because it indicates a forcefully unset parameter
   if (maybeParameterValue === "") {
     return "";
-  } else if (hasParameterValue(maybeParameterValue)) {
+  } else if (maybeParameterValue == null) {
+    return parameter.default;
+  } else {
     const parsedValue = parseParameterValue(maybeParameterValue, parameter);
     return normalizeParameterValueForWidget(parsedValue, parameter);
-  } else {
-    return parameter.default;
   }
 }
 
@@ -90,7 +89,7 @@ function normalizeParameterValueForWidget(value, parameter) {
 function removeAllEmptyStringParameters(pairs) {
   return pairs
     .map(([parameter, value]) => [parameter, value === "" ? undefined : value])
-    .filter(([parameter, value]) => hasParameterValue(value));
+    .filter(([parameter, value]) => value != null);
 }
 
 function removeUndefaultedEmptyStringParameters(pairs) {
@@ -99,7 +98,7 @@ function removeUndefaultedEmptyStringParameters(pairs) {
       parameter,
       value === "" ? parameter.default : value,
     ])
-    .filter(([, value]) => hasParameterValue(value));
+    .filter(([, value]) => value != null);
 }
 
 // when `forcefullyUnsetDefaultedParametersWithEmptyStringValue` is true, we treat defaulted parameters with an empty string value as explecitly unset.

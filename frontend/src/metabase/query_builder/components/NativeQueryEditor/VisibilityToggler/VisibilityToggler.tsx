@@ -1,6 +1,4 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
-
 import { Icon } from "metabase/core/components/Icon";
 import {
   ToggleContent,
@@ -8,19 +6,19 @@ import {
   ToggleText,
 } from "./VisibilityToggler.styled";
 
-const propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  readOnly: PropTypes.bool.isRequired,
-  toggleEditor: PropTypes.func.isRequired,
-  className: PropTypes.string,
-};
+interface VisibilityTogglerProps {
+  isOpen: boolean;
+  readOnly: boolean;
+  toggleEditor: () => void;
+  className?: string;
+}
 
 export const VisibilityToggler = ({
   isOpen,
   readOnly,
   toggleEditor,
   className = "",
-}) => {
+}: VisibilityTogglerProps) => {
   const text = isOpen ? null : t`Open Editor`;
   const icon = isOpen ? "contract" : "expand";
 
@@ -39,5 +37,3 @@ export const VisibilityToggler = ({
     </ToggleRoot>
   );
 };
-
-VisibilityToggler.propTypes = propTypes;
