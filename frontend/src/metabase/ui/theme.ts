@@ -1,18 +1,16 @@
-import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
+import type { ClassNamesContent } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import {
-  getAccordionOverrides,
   getAnchorOverrides,
-  getButtonOverrides,
-  getCheckboxOverrides,
-  getMenuOverrides,
-  getRadioOverrides,
   getTextOverrides,
   getTitleOverrides,
 } from "./components";
 
-export const getThemeOverrides = (): MantineThemeOverride => ({
+export const getThemeOverrides = (
+  styles: ClassNamesContent,
+): MantineThemeOverride => ({
   colors: {
     brand: [color("brand-lighter"), color("focus"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
@@ -66,20 +64,13 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   },
   fontFamily: "var(--default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
-  focusRingStyles: {
-    styles: theme => ({
-      outline: `0.125rem solid ${theme.colors.brand[1]}`,
-      outlineOffset: "0.125rem",
-    }),
-  },
+  focusClassName: styles.css({
+    outline: `0.125rem solid ${color("brand")}`,
+    outlineOffset: "0.125rem",
+  }),
   components: {
-    ...getAccordionOverrides(),
-    ...getAnchorOverrides(),
-    ...getButtonOverrides(),
-    ...getCheckboxOverrides(),
-    ...getMenuOverrides(),
-    ...getRadioOverrides(),
+    ...getAnchorOverrides(styles),
     ...getTextOverrides(),
-    ...getTitleOverrides(),
+    ...getTitleOverrides(styles),
   },
 });

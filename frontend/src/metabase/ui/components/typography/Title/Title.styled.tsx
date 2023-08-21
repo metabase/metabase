@@ -1,11 +1,15 @@
-import type { MantineThemeOverride, TitleStylesParams } from "@mantine/core";
+import { Title } from "@mantine/core";
+import type { MantineThemeComponents } from "@mantine/core";
+import type { ClassNamesContent } from "@emotion/react";
 
-export const getTitleOverrides = (): MantineThemeOverride["components"] => ({
-  Title: {
-    styles: (theme, params: TitleStylesParams) => {
-      if (params.element === "h3") {
+export const getTitleOverrides = ({
+  css,
+}: ClassNamesContent): MantineThemeComponents => ({
+  Title: Title.extend({
+    classNames: (theme, props) => {
+      if (props.order === 3) {
         return {
-          root: {
+          root: css({
             fontWeight: "normal",
             textTransform: "uppercase",
 
@@ -13,11 +17,11 @@ export const getTitleOverrides = (): MantineThemeOverride["components"] => ({
             "&:lang(en)": {
               letterSpacing: "0.7px",
             },
-          },
+          }),
         };
       }
 
-      return { root: {} };
+      return { root: "" };
     },
-  },
+  }),
 });

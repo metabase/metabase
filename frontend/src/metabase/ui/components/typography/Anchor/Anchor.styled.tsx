@@ -1,22 +1,22 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { Anchor } from "@mantine/core";
+import type { MantineThemeComponents } from "@mantine/core";
+import type { ClassNamesContent } from "@emotion/react";
 
-export const getAnchorOverrides = (): MantineThemeOverride["components"] => ({
-  Anchor: {
-    styles: theme => {
+export const getAnchorOverrides = ({
+  css,
+}: ClassNamesContent): MantineThemeComponents => ({
+  Anchor: Anchor.extend({
+    classNames: theme => {
       return {
-        root: {
+        root: css({
           fontFamily: "inherit",
-          color: theme.fn.primaryColor(),
-          "&:focus": {
-            outline: `2px solid ${theme.colors.brand[0]}`,
-            outlineOffset: "2px",
-          },
+          color: theme.primaryColor,
           "&:active": {
             color: theme.colors.text[2],
             textDecoration: "underline",
           },
-        },
+        }),
       };
     },
-  },
+  }),
 });
