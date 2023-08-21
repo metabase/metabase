@@ -45,6 +45,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
     popover().within(() => {
       cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByText(questionDetails.name).click();
     });
