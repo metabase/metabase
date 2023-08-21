@@ -72,9 +72,7 @@
    ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
    :DEFRAG_ALWAYS  true
    ;; LOCK_TIMEOUT=60000 = wait up to one minute to acquire table lock instead of default of 1 second
-   :LOCK_TIMEOUT   60000
-   ;; Tell H2 to handle identifiers in a similar way to postgres. `select id from table` will find TABLE and ID.
-   :CASE_INSENSITIVE_IDENTIFIERS true})
+   :LOCK_TIMEOUT   60000})
 
 (defn- broken-out-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
