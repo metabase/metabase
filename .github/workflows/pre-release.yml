@@ -46,8 +46,8 @@ jobs:
       - name: Reveal Metabase ${{ matrix.edition }} properties
         id: version-properties
         run: |
-          echo version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2) >> GITHUB_OUTPUT
-          echo commit=$(cat ./COMMIT-ID) >> GITHUB_OUTPUT
+          echo "version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
         uses: actions/upload-artifact@v3
