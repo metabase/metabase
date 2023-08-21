@@ -51,6 +51,16 @@ UndoToast.propTypes = {
 };
 
 function UndoToast({ undo, onUndo, onDismiss }) {
+  const getIcon = () => {
+    if (undo.icon) {
+      if (typeof undo.icon === "string") {
+        return <CardIcon name={undo.icon} color="white" />;
+      } else {
+        return undo.icon;
+      }
+    }
+  };
+
   return (
     <Motion
       defaultStyle={{ opacity: 0, translateY: 100 }}
@@ -66,7 +76,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         >
           <CardContent>
             <CardContentSide>
-              {undo.icon && <CardIcon name={undo.icon} color="white" />}
+              {getIcon()}
               {renderMessage(undo)}
             </CardContentSide>
             <CardContentSide>

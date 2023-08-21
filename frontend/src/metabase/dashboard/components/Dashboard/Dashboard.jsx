@@ -102,6 +102,8 @@ class Dashboard extends Component {
     closeNavbar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
     isAutoApplyFilters: PropTypes.bool,
+
+    onSaveAsPDF: PropTypes.func,
   };
 
   static defaultProps = {
@@ -360,6 +362,7 @@ class Dashboard extends Component {
                   addParameter={addParameter}
                   parametersWidget={parametersWidget}
                   onSharingClick={this.onSharingClick}
+                  onSaveAsPDF={this.props.onSaveAsPDF}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (

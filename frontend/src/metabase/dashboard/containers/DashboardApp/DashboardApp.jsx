@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -34,6 +34,10 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Box } from "metabase/ui";
 import * as dashboardActions from "../../actions";
 import {
   getCardData,
@@ -125,6 +129,8 @@ const DashboardApp = props => {
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add && parseInt(options.add);
 
+  const [isWaitingForPDF, setIsWaitingForPDF] = useState(false);
+
   const dispatch = useDispatch();
 
   const { requestPermission, showNotification } = useWebNotification();
@@ -135,7 +141,16 @@ const DashboardApp = props => {
   });
 
   const slowToastId = useUniqueId();
+  const pdfToastID = useUniqueId();
   useBeforeUnload(isEditing && isDirty);
+
+  const saveAsPDF = useCallback(() => {
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackExportDashboardToPDF(dashboard.id);
+    });
+    dispatch(dismissUndo(pdfToastID));
+  }, [dashboard?.id, dashboard?.name, dispatch, pdfToastID]);
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -149,15 +164,23 @@ const DashboardApp = props => {
           t`All questions loaded`,
         );
       }
+
+      if (isWaitingForPDF) {
+        saveAsPDF();
+      }
     }
 
     return () => {
       dispatch(dismissUndo(slowToastId));
+      dispatch(dismissUndo(pdfToastID));
     };
   }, [
     dashboard?.name,
     dispatch,
     isLoadingComplete,
+    isWaitingForPDF,
+    pdfToastID,
+    saveAsPDF,
     showNotification,
     slowToastId,
   ]);
@@ -181,6 +204,39 @@ const DashboardApp = props => {
     }
   }, [dispatch, onConfirmToast, slowToastId]);
 
+  const onCancelPDF = useCallback(() => {
+    setIsWaitingForPDF(false);
+    dispatch(dismissUndo(pdfToastID));
+  }, [dispatch, pdfToastID]);
+
+  const onPDFTimeout = useCallback(() => {
+    if (isLoadingComplete) {
+      saveAsPDF();
+    } else if (!isWaitingForPDF) {
+      setIsWaitingForPDF(true);
+    }
+  }, [isLoadingComplete, isWaitingForPDF, saveAsPDF]);
+
+  useEffect(() => {
+    if (isWaitingForPDF) {
+      dispatch(
+        addUndo({
+          id: pdfToastID,
+          icon: (
+            <Box pr="0.75rem">
+              <LoadingSpinner size={24} />
+            </Box>
+          ),
+          timeout: false,
+          message: t`Waiting for the dashboard to load before exporting…`,
+          canDismiss: true,
+          action: onCancelPDF,
+          actionLabel: t`Cancel`,
+        }),
+      );
+    }
+  }, [dispatch, isWaitingForPDF, onCancelPDF, pdfToastID]);
+
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
@@ -192,6 +248,7 @@ const DashboardApp = props => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        onSaveAsPDF={onPDFTimeout}
         {...props}
       />
       {/* For rendering modal urls */}

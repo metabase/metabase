@@ -5,8 +5,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-
 import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -33,7 +31,6 @@ import {
 } from "metabase/dashboard/actions";
 
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
 import { DashboardHeaderComponent } from "../components/DashboardHeader";
@@ -133,6 +130,8 @@ class DashboardHeader extends Component {
     hideAddParameterPopover: PropTypes.func,
     addParameter: PropTypes.func,
     isHomepageDashboard: PropTypes.bool,
+
+    onSaveAsPDF: PropTypes.func,
   };
 
   handleEdit(dashboard) {
@@ -413,7 +412,7 @@ class DashboardHeader extends Component {
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
-          this.saveAsPDF();
+          this.props.onSaveAsPDF();
         },
       });
 
@@ -471,14 +470,6 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
-
-  saveAsPDF = async () => {
-    const { dashboard } = this.props;
-    const cardNodeSelector = "#Dashboard-Cards-Container";
-    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-      trackExportDashboardToPDF(dashboard.id);
-    });
-  };
 
   render() {
     const {

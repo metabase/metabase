@@ -260,6 +260,81 @@ describe("scenarios > dashboard > download pdf", () => {
 
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
+
+  describe("downloading PDF with slow loading cards", () => {
+    it("should download the PDF once the slow loading cards have loaded", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      const date = Date.now();
+      cy.intercept(
+        {
+          method: "POST",
+          url: "/api/dashboard/*/dashcard/*/card/*/query",
+          middleware: true,
+        },
+        req => {
+          req.on("response", res => {
+            // throttle the response to simulate a mobile 3G connection
+            res.setThrottle(100);
+          });
+        },
+      ).as("getCardQuery");
+
+      cy.createDashboardWithQuestions({
+        dashboardName: `saving pdf dashboard - ${date}`,
+        questions: [canSavePngQuestion, cannotSavePngQuestion],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+
+      cy.wait("@getDashboard");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Export as PDF").click();
+
+      cy.findByTestId("undo-list").findByText(
+        "Waiting for the dashboard to load before exporting…",
+      );
+
+      cy.wait("@getCardQuery");
+
+      cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
+    });
+    it("should not download the PDF if 'Cancel' is clicked", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      const date = Date.now();
+      cy.intercept(
+        {
+          method: "POST",
+          url: "/api/dashboard/*/dashcard/*/card/*/query",
+          middleware: true,
+        },
+        req => {
+          req.on("response", res => {
+            // throttle the response to simulate a mobile 3G connection
+            res.setThrottle(100);
+          });
+        },
+      ).as("getCardQuery");
+
+      cy.createDashboardWithQuestions({
+        dashboardName: `saving pdf dashboard - ${date}`,
+        questions: [canSavePngQuestion, cannotSavePngQuestion],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+
+      cy.wait("@getDashboard");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Export as PDF").click();
+
+      cy.findByTestId("undo-list").findByText("Cancel").click();
+
+      cy.wait("@getCardQuery");
+
+      // verify that the file hasn't been downloaded somehow
+    });
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard > download pdf", () => {
