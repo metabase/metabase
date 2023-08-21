@@ -398,6 +398,25 @@
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (last-edit/with-last-edit-info dashboard :dashboard)))
 
+(comment
+  ;; TODO -- Once we get to step 'Has a tab for each of the 3-5 most interested linked tables (via a reverse FK)'
+  ;; we'll probably want to add entries like so in the :ordered_tabs section of the return map.
+  ;; TODO - Remove before merge to master
+  [{:id           1,
+    :dashboard_id 1,
+    :name         "A",
+    :position     0,
+    :entity_id    "GLKwx6wTRDjrykvpDkItu"}
+   {:id           2,
+    :dashboard_id 1,
+    :name         "B",
+    :position     1,
+    :entity_id    "B7dMSmz0_vN-2HbSjTlS0"}]
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (db/select-one 'User :id 1))]
+    (get-dashboard 1)))
+
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."

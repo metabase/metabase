@@ -112,9 +112,31 @@
   [{:keys [semantic_type] :as field}]
   (cond
     (temporal? field)                   "date/all-options"
+    (isa? semantic_type :type/PK)       "number"
     (isa? semantic_type :type/State)    "location/state"
     (isa? semantic_type :type/Country)  "location/country"
     (isa? semantic_type :type/Category) "category"))
+
+
+(comment
+  ;; TODO - Remove prior to merge with main
+  (qp/process-query
+    {:database   1
+     :parameters [{:type   "number" :value [1]
+                   :id     "740884560"
+                   :target [:dimension [:field "ID" {:base-type "type/BigInteger"}]]}]
+     :query      {:source-table "card__256"
+                  :aggregation  [["count"]]}
+     :type       "query"})
+
+  (qp/process-query
+    {:database   1
+     :parameters [{:type   "category" :value ["Twitter"]
+                   :target [:dimension [:field "SOURCE" {:base-type "type/Text"}]]}]
+     :query      {:source-table "card__256"
+                  :aggregation  [["count"]]}
+     :type       "query"})
+  )
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]

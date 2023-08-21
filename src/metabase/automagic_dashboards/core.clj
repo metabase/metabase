@@ -1084,7 +1084,14 @@
                                      (format "%s#show=all" (:url root)))
                :transient_filters  (:query-filter context)
                :param_fields       (->> context :query-filter (filter-referenced-fields root))
-               :auto_apply_filters true))))
+               :auto_apply_filters true
+               ; TODO - Adding tabs for stage 'Insert an x-ray for each of those as a tab'
+               ; will likely land somewhere around here.
+               ;:ordered_tabs [{:id           -42
+               ;                ;:dashboard_id 1,
+               ;                :name         "A",
+               ;                :position     0}]
+               ))))
 
 
 (defmulti automagic-analysis

@@ -147,13 +147,15 @@
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj
             (merge (card-defaults)
-             {:col                    y
-              :row                    x
-              :size_x                 width
-              :size_y                 height
-              :card                   card
-              :card_id                (:id card)
-              :visualization_settings {}}))))
+                   {
+                    ;:dashboard_tab_id       42
+                    :col                    y
+                    :row                    x
+                    :size_x                 width
+                    :size_y                 height
+                    :card                   card
+                    :card_id                (:id card)
+                    :visualization_settings {}}))))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
@@ -334,7 +336,7 @@
   "Merge dashboards `dashboard` into dashboard `target`."
   ([target dashboard] (merge-dashboards target dashboard {}))
   ([target dashboard {:keys [skip-titles?]}]
-   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+   (let [[parameters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
                                              :ordered_cards
                                              (map #(+ (:row %) (:size_y %)))
@@ -354,7 +356,7 @@
                                                          (for [mapping parameter-mappings]
                                                            (assoc mapping :card_id card-id)))))))]
      (-> target
-         (assoc :parameters paramters)
+         (assoc :parameters parameters)
          (cond->
            (not skip-titles?)
            (add-text-card {:width                  grid-width
