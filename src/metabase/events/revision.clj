@@ -1,74 +1,73 @@
 (ns metabase.events.revision
   (:require
+   [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.revision :refer [push-revision!]]
-   [metabase.models.segment :refer [Segment]]
+   [metabase.models.revision :as revision]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
 
-(def ^:private revisions-topics
-  "The `Set` of event topics which are subscribed to for use in revision tracking."
-  #{:event/card-create
-    :event/card-update
-    :event/dashboard-create
-    :event/dashboard-update
-    :event/dashboard-add-cards
-    :event/dashboard-remove-cards
-    :event/dashboard-reposition-cards
-    :event/dashboard-add-tabs
-    :event/dashboard-remove-tabs
-    :event/dashboard-update-tabs
-    :event/metric-create
-    :event/metric-update
-    :event/metric-delete
-    :event/segment-create
-    :event/segment-update
-    :event/segment-delete})
+(defn- push-revision!
+  [model
+   {revision-message :revision_message, :as event}
+   {:keys [is-creation?]
+    :or   {is-creation? false}
+    :as   _options}]
+  (when event
+    (try
+      (let [id      (or (:id event)
+                        (get event (keyword (str (u/lower-case-en (name model)) "_id")))
+                        (throw (ex-info "Event does not have ID associated with it"
+                                        {:mode model, :event event})))
+            user-id (events/object->user-id event)]
+        (revision/push-revision! :entity       model
+                                 :id           id
+                                 :object       (api/check-404 (t2/select-one model :id id))
+                                 :user-id      user-id
+                                 :is-creation? is-creation?
+                                 :message      revision-message))
+      (catch Throwable e
+        (log/warnf e "Failed to process revision event for model %s" model)))))
 
-(doseq [topic revisions-topics]
-  (derive topic ::event))
+(derive ::card-event ::event)
+(derive :event/card-create ::card-event)
+(derive :event/card-update ::card-event)
 
-(methodical/defmethod events/publish-event! ::event
-  "Handle processing for a single event notification received on the revisions-channel"
-  [topic object]
-  ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
-  (try
-    (when object
-      (let [model            (events/topic->model topic)
-            id               (events/object->model-id topic object)
-            user-id          (events/object->user-id object)
-            revision-message (:revision_message object)]
-        ;; TODO: seems unnecessary to select each entity again, is there a reason we aren't using `object` directly?
-        (case model
-          "card"      (push-revision! :entity       Card,
-                                      :id           id,
-                                      :object       (t2/select-one Card :id id),
-                                      :user-id      user-id,
-                                      :is-creation? (= :event/card-create topic)
-                                      :message      revision-message)
-          "dashboard" (push-revision! :entity       Dashboard,
-                                      :id           id,
-                                      :object       (t2/select-one Dashboard :id id),
-                                      :user-id      user-id,
-                                      :is-creation? (= :event/dashboard-create topic)
-                                      :message      revision-message)
-          "metric"    (push-revision! :entity       Metric,
-                                      :id           id,
-                                      :object       (t2/select-one Metric :id id),
-                                      :user-id      user-id,
-                                      :is-creation? (= :event/metric-create topic)
-                                      :message      revision-message)
-          "segment"   (push-revision! :entity       Segment,
-                                      :id           id,
-                                      :object       (t2/select-one Segment :id id),
-                                      :user-id      user-id,
-                                      :is-creation? (= :event/segment-create topic)
-                                      :message      revision-message))))
-    (catch Throwable e
-      (log/warnf e "Failed to process revision event. %s" topic))))
+(methodical/defmethod events/publish-event! ::card-event
+  [topic event]
+  (push-revision! :model/Card event {:is-creation? (= topic :event/card-create)}))
+
+(derive ::dashboard-event ::event)
+(derive :event/dashboard-create ::dashboard-event)
+(derive :event/dashboard-update ::dashboard-event)
+(derive :event/dashboard-add-cards ::dashboard-event)
+(derive :event/dashboard-remove-cards ::dashboard-event)
+(derive :event/dashboard-reposition-cards ::dashboard-event)
+(derive :event/dashboard-add-tabs ::dashboard-event)
+(derive :event/dashboard-remove-tabs ::dashboard-event)
+(derive :event/dashboard-update-tabs ::dashboard-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-event
+  [topic event]
+  (push-revision! :model/Dashboard event {:is-creation? (= topic  :event/dashboard-create)}))
+
+(derive ::metric-event ::event)
+(derive :event/metric-create ::metric-event)
+(derive :event/metric-update ::metric-event)
+(derive :event/metric-delete ::metric-event)
+
+(methodical/defmethod events/publish-event! ::metric-event
+  [topic event]
+  (push-revision! :model/Metric event {:is-creation? (= topic :event/metric-create)}))
+
+(derive ::segment-event ::event)
+(derive :event/segment-create ::segment-event)
+(derive :event/segment-update ::segment-event)
+(derive :event/segment-delete ::segment-event)
+
+(methodical/defmethod events/publish-event! ::segment-event
+  [topic event]
+  (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))

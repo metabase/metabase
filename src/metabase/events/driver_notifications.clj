@@ -11,14 +11,8 @@
    [methodical.core :as methodical]))
 
 (derive ::event :metabase/event)
-
-(def ^:private driver-notifications-topics
-  "The `Set` of event topics which are subscribed to for use in driver notifications."
-  #{:event/database-update
-    :event/database-delete})
-
-(doseq [topic driver-notifications-topics]
-  (derive topic ::event))
+(derive :event/database-update ::event)
+(derive :event/database-delete ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [topic database]

@@ -8,50 +8,20 @@
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
 
-(def ^:private activity-feed-topics
-  "The set of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:event/alert-create
-    :event/alert-delete
-    :event/card-create
-    :event/card-update
-    :event/card-delete
-    :event/dashboard-create
-    :event/dashboard-delete
-    :event/dashboard-add-cards
-    :event/dashboard-remove-cards
-    :event/install
-    :event/metric-create
-    :event/metric-update
-    :event/metric-delete
-    :event/pulse-create
-    :event/pulse-delete
-    :event/segment-create
-    :event/segment-update
-    :event/segment-delete
-    :event/user-joined
-    :event/user-login})
+(derive ::card-event ::event)
+(derive :event/card-create ::card-event)
+(derive :event/card-update ::card-event)
+(derive :event/card-delete ::card-event)
 
-(doseq [topic activity-feed-topics]
-  (derive topic ::event))
-
-(defmulti ^:private process-activity!
-  {:arglists '([model-name topic object])}
-  (fn [model-name _topic _object]
-    (keyword model-name)))
-
-(defmethod process-activity! :default
-  [model-name _ _]
-  (log/warn (trs "Don''t know how to process event with model {0}" model-name)))
-
-(defmethod process-activity! :card
-  [_ topic {query :dataset_query, dataset? :dataset :as object}]
+(methodical/defmethod events/publish-event! ::card-event
+  [topic {query :dataset_query, dataset? :dataset :as object}]
   (let [details-fn  #(cond-> (select-keys % [:name :description])
                        ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
                        ;; around
@@ -70,8 +40,14 @@
       :database-id database-id
       :table-id    table-id)))
 
-(defmethod process-activity! :dashboard
-  [_ topic object]
+(derive ::dashboard-event ::event)
+(derive :event/dashboard-create ::dashboard-event)
+(derive :event/dashboard-delete ::dashboard-event)
+(derive :event/dashboard-add-cards ::dashboard-event)
+(derive :event/dashboard-remove-cards ::dashboard-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-event
+  [topic object]
   (let [create-delete-details
         #(select-keys % [:description :name])
 
@@ -93,8 +69,13 @@
                     :event/dashboard-add-cards    add-remove-card-details
                     :event/dashboard-remove-cards add-remove-card-details))))
 
-(defmethod process-activity! :metric
-  [_ topic object]
+(derive ::metric-event ::event)
+(derive :event/metric-create ::metric-event)
+(derive :event/metric-update ::metric-event)
+(derive :event/metric-delete ::metric-event)
+
+(methodical/defmethod events/publish-event! ::metric-event
+  [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
@@ -105,16 +86,24 @@
       :database-id database-id
       :table-id    table-id)))
 
-(defmethod process-activity! :pulse
-  [_ topic object]
+(derive ::pulse-event ::event)
+(derive :event/pulse-create ::pulse-event)
+(derive :event/pulse-delete ::pulse-event)
+
+(methodical/defmethod events/publish-event! ::pulse-event
+  [topic object]
   (let [details-fn #(select-keys % [:name])]
     (activity/record-activity!
       :topic      topic
       :object     object
       :details-fn details-fn)))
 
-(defmethod process-activity! :alert
-  [_ topic {:keys [card] :as alert}]
+(derive ::alert-event ::event)
+(derive :event/alert-create ::alert-event)
+(derive :event/alert-delete ::alert-event)
+
+(methodical/defmethod events/publish-event! ::alert-event
+  [topic {:keys [card] :as alert}]
   (let [details-fn #(select-keys (:card %) [:name])]
     (activity/record-activity!
       ;; Alerts are centered around a card/question. Users always interact with the alert via the question
@@ -124,8 +113,13 @@
       :object     alert
       :details-fn details-fn)))
 
-(defmethod process-activity! :segment
-  [_ topic object]
+(derive ::segment-event ::event)
+(derive :event/segment-create ::segment-event)
+(derive :event/segment-update ::segment-event)
+(derive :event/segment-delete ::segment-event)
+
+(methodical/defmethod events/publish-event! ::segment-event
+  [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
@@ -136,25 +130,21 @@
       :database-id database-id
       :table-id    table-id)))
 
-(defmethod process-activity! :user
-  [_ topic object]
-  (when (= :event/user-joined topic)
-    (activity/record-activity!
-      :topic    topic
-      :user-id  (:user-id object)
-      :model-id (:user-id object))))
+(derive ::user-joined-event ::event)
+(derive :event/user-joined ::user-joined-event)
 
-(defmethod process-activity! :install
-  [& _]
+(methodical/defmethod events/publish-event! ::user-joined-event
+  [topic object]
+  {:pre [(pos-int? (:user-id object))]}
+  (activity/record-activity!
+    :topic    topic
+    :user-id  (:user-id object)
+    :model-id (:user-id object)))
+
+(derive ::install-event ::event)
+(derive :event/install ::install-event)
+
+(methodical/defmethod events/publish-event! ::install-event
+  [_topic _event]
   (when-not (t2/exists? Activity :topic "install")
     (t2/insert! Activity, :topic "install", :model "install")))
-
-(methodical/defmethod events/publish-event! ::event
-  [topic object]
-  ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
-  (try
-    (when object
-      (process-activity! (keyword (events/topic->model topic)) topic object))
-    (catch Throwable e
-      (log/warnf e "Failed to process activity event %s" topic)
-      e)))

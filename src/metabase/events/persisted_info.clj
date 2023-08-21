@@ -9,14 +9,8 @@
    [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
-
-(def ^:private persisted-info-topics
-  "The `Set` of event topics which are subscribed to add persisted-info to new models."
-  #{:event/card-create
-    :event/card-update})
-
-(doseq [topic persisted-info-topics]
-  (derive topic ::event))
+(derive :event/card-create ::event)
+(derive :event/card-update ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [topic card]

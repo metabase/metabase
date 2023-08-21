@@ -97,7 +97,7 @@
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
    ex: (record-activity!
-        :topic       :segment-update
+        :topic       :event/segment-update
         :object      segment
         :database-id 1
         :table-id    13

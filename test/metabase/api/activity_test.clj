@@ -149,6 +149,8 @@
     (t2/insert! QueryExecution (:card views))))
 
 (deftest popular-items-test
+  ;; HACK ! Clear out the ViewLog so other stuff in it doesn't mess up the results here.
+  (t2/delete! :model/ViewLog)
   (t2.with-temp/with-temp [Card      card1        {:name                   "rand-name"
                                                    :creator_id             (mt/user->id :crowberto)
                                                    :display                "table"

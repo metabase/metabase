@@ -14,19 +14,11 @@
 
 (derive ::event :metabase/event)
 
-(def ^:private view-log-topics
-  "The `Set` of event topics which we subscribe to for view counting."
-  #{:event/card-create
-    :event/card-read
-    :event/card-query
-    :event/dashboard-read
-    :event/table-read})
-
-(doseq [topic view-log-topics]
-  (derive topic ::event))
-
-
-;;; ## ---------------------------------------- PER-USER VIEWS ----------------------------------------
+(derive :event/card-create ::event)
+(derive :event/card-read ::event)
+(derive :event/card-query ::event)
+(derive :event/dashboard-read ::event)
+(derive :event/table-read ::event)
 
 (defsetting user-recent-views
   (deferred-tru "List of the 10 most recently viewed items for the user.")
@@ -60,8 +52,6 @@
              ;; given a dashboard's ID, save it with a timestamp of 'now', for comparing later in the getter
              (when id
                {:id id, :timestamp (t/zoned-date-time)}))))
-
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
 (defn- record-view!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
