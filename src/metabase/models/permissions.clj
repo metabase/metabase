@@ -1092,17 +1092,20 @@
   metabase-enterprise.audit-db [] [])
 
 (defn update-audit-collection-permissions
-  "Will either remove or grant audit (instance analytics) permissions, depending on the config parameter."
+  "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
   [group-id changes]
-  (let [audit-collection-id  (->
-                              (t2/select-one ['Collection :id] {:where [:= :entity_id (default-audit-collection-entity-id)]})
-                              :id)]
-    (doseq [[change-id type] changes]
-      (when (and (= change-id audit-collection-id) config/ee-available?)
-        (let [change-permissions! (if (= type :read)
-                                    grant-permissions!
-                                    delete-related-permissions!)]
-          (change-permissions! group-id (str "/db/" (default-audit-db-id) "/schema/")))))))
+  (when config/ee-available?
+    (let [audit-collection-id  (-> (t2/select-one 'Collection :entity_id (default-audit-collection-entity-id))
+                                   :id)]
+      (doseq [[change-id type] changes]
+        (when (= change-id audit-collection-id)
+          (let [change-permissions! (case type
+                                      :read  grant-permissions!
+                                      :none  delete-related-permissions!
+                                      :write (throw (ex-info (tru
+                                                              (str "Unable to make audit collections writable."))
+                                                              {:status-code 400})))]
+            (change-permissions! group-id (str "/db/" (default-audit-db-id) "/schema/"))))))))
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should

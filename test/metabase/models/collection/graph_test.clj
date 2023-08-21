@@ -3,20 +3,21 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
+   [metabase.config :as config]
    [metabase.models :refer [User]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.collection.graph :as graph]
-   [metabase.models.permissions :as perms]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -291,6 +292,23 @@
                                              lucky-personal-collection-id
                                              (u/the-id collection)]
                                             :read))))))))
+
+(deftest permissions-instance-analytics-audit-v2-test
+  (when config/ee-available?
+    (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                    Database         [{database-id :id}]
+                    Collection       [{collection-id        :id
+                                       collection-entity-id :entity_id}]]
+      (with-redefs [perms/default-audit-db-id                (constantly database-id)
+                    perms/default-audit-collection-entity-id (constantly collection-entity-id)]
+        (testing "Adding instance analytics adds audit db permissions"
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :read))
+          (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
+            (is (contains? new-perms (str "/db/" database-id "/schema/")))))
+        (testing "Unable to update instance analytics to writable"
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :write))
+          (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
+            (is (contains? new-perms (str "/db/" database-id "/schema/")))))))))
 
 (deftest collection-namespace-test
   (testing "The permissions graph should be namespace-aware.\n"
