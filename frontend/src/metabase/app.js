@@ -28,7 +28,7 @@ import "metabase/plugins/builtin";
 // If EE isn't enabled, it loads an empty file.
 import "ee-plugins"; // eslint-disable-line import/no-duplicates
 
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 
 // router
@@ -66,13 +66,11 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
-
-  let root;
-
   createTracker(store);
 
-  ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+  const root = createRoot(document.getElementById("root"));
+  root.render(
+    <Provider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
@@ -82,7 +80,6 @@ function _init(reducers, getRoutes, callback) {
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </Provider>,
-    document.getElementById("root"),
   );
 
   registerVisualizations();
@@ -91,7 +88,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
