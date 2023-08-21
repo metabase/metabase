@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [clj-http.util :as http.util]
    [clojure.core.async :as a]
    [clojure.edn :as edn]
    [clojure.java.io :as io]

@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- test-endpoint []
-  (format "transform/%s/%s/%s" (mt/id) "PUBLIC" "Test transform"))
+  (format "transform/%s/%s/%s" (mt/id) "PUBLIC" "Test%20transform"))
 
 (deftest transform-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
@@ -27,7 +27,7 @@
                       [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                       [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
                      (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                       (-> (mt/user-real-request :rasta :get 200 (test-endpoint))
+                       (-> (mt/user-http-request :rasta :get 200 (test-endpoint))
                            first
                            :dataset_query
                            qp/process-query)))))))))))
@@ -38,6 +38,6 @@
       (try
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (is (= "You don't have permissions to do that."
-               (mt/user-real-request :rasta :get 403 (test-endpoint))))
+               (mt/user-http-request :rasta :get 403 (test-endpoint))))
         (finally
           (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))))
