@@ -27,6 +27,10 @@ describe("sortActionParams", () => {
     expect(typeof sortFn).toBe("function");
   });
 
+  it("should test if 1 + 1 is 2", () => {
+    expect(1 + 1).toBe(2);
+  });
+
   it("should sort params by the settings-defined field order", () => {
     const sortFn = sortActionParams(formSettings);
 
