@@ -18,7 +18,8 @@
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher
     :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [metabase.util.i18n :as i18n]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,7 +42,7 @@
     (log/info (trs "Loading events namespace:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
     (classloader/require ns-symb)))
 
-(defn initialize-events!
+(defn- initialize-events!
   "Initialize the asynchronous internal events system."
   []
   (when-not @events-initialized?
@@ -103,12 +104,24 @@
 
 (methodical/defmethod publish-event! :around :default
   [topic event]
-  (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
-  (assert (and (qualified-keyword? topic)
-               (isa? topic :metabase/event))
-          (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-  (next-method topic event)
-  event)
+  (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
+  (if-not @events-initialized?
+    ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
+    (do
+      (initialize-events!)
+      (publish-event! topic event))
+    (do
+      (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+      (assert (and (qualified-keyword? topic)
+                   (isa? topic :metabase/event))
+              (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+      (try
+        (next-method topic event)
+        (catch Throwable e
+          (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                          {:topic topic, :event event}
+                          e))))
+      event)))
 
 (mu/defn topic->model :- [:maybe :string]
   "Determine a valid `model` identifier for the given `topic`."

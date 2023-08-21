@@ -25,7 +25,7 @@
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
-(use-fixtures :once (fixtures/initialize :test-users :events))
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- wait-for-result
   "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something

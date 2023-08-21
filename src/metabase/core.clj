@@ -119,9 +119,6 @@
     (init-status/set-progress! 0.6))
   ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
   (config-from-file/init-from-file-if-code-available!)
-  (init-status/set-progress! 0.65)
-  ;; Bootstrap the event system
-  (events/initialize-events!)
   (init-status/set-progress! 0.7)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database

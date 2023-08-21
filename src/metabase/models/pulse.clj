@@ -558,9 +558,8 @@
   Returns the updated Pulse or throws an Exception."
   [pulse]
   (update-notification! pulse)
-  ;; fetch the fully updated pulse and return it (and fire off an event)
-  (->> (retrieve-pulse (u/the-id pulse))
-       (events/publish-event! :event/pulse-update)))
+  ;; fetch the fully updated pulse and return it
+  (retrieve-pulse (u/the-id pulse)))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -576,9 +575,8 @@
   "Updates the given `alert` and returns it"
   [alert]
   (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse and return it (and fire off an event)
-  (->> (retrieve-alert (u/the-id alert))
-       (events/publish-event! :event/pulse-update)))
+  ;; fetch the fully updated pulse and return it
+  (retrieve-alert (u/the-id alert)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

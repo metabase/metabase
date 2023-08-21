@@ -109,20 +109,20 @@
   [_ topic object]
   (let [details-fn #(select-keys % [:name])]
     (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn)))
+      :topic      topic
+      :object     object
+      :details-fn details-fn)))
 
 (defmethod process-activity! :alert
   [_ topic {:keys [card] :as alert}]
   (let [details-fn #(select-keys (:card %) [:name])]
     (activity/record-activity!
       ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-      :model       "card"
-      :model-id    (:id card)
-      :topic       topic
-      :object      alert
-      :details-fn  details-fn)))
+      :model      "card"
+      :model-id   (:id card)
+      :topic      topic
+      :object     alert
+      :details-fn details-fn)))
 
 (defmethod process-activity! :segment
   [_ topic object]
