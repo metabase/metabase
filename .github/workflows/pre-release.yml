@@ -21,6 +21,8 @@ jobs:
       version: ${{ steps.version-properties.outputs.version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
       - name: Download Metabase ${{ matrix.edition }} artifact
         run: |
           declare -a curlHeaders=('-H' "Accept: application/vnd.github+json" '-H' "Authorization: Bearer $GITHUB_TOKEN" '-H' "X-GitHub-Api-Version: 2022-11-28")
