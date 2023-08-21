@@ -343,9 +343,7 @@
   (testing :user-login
     ;; TODO - what's the difference between `user-login` / `user-joined`?
     (mt/with-model-cleanup [Activity]
-      (let [event {:user_id     (mt/user->id :rasta)
-                   :session_id  (str (random-uuid))
-                   :first_login true}]
+      (let [event {:user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/user-login event))))
       (is (= {:topic       :user-joined

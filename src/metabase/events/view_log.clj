@@ -46,13 +46,14 @@
   :user-local :only
   :type :json
   :getter (fn []
+            {:post [((some-fn nil? pos-int?) %)]}
             (let [{:keys [id timestamp] :as value} (setting/get-value-of-type :json :most-recently-viewed-dashboard)
                   yesterday                        (t/minus (t/zoned-date-time) (t/hours 24))]
               ;; If the latest view is older than 24 hours, return 'nil'
               (when (and value (t/after? (t/zoned-date-time timestamp) yesterday))
                 id)))
   :setter (fn [id]
-            {:pre [((some-fn nil? integer?) id)]}
+            {:pre [((some-fn nil? pos-int?) id)]}
             (setting/set-value-of-type!
              :json
              :most-recently-viewed-dashboard

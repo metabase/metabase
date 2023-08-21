@@ -139,22 +139,22 @@
   (letfn [(create! []
             (try
               (t2/with-transaction [_conn]
-               (let [user-info (setup-create-user!
-                                {:email email, :first-name first_name, :last-name last_name, :password password})
-                     db        (setup-create-database! {:name name
-                                                        :driver engine
-                                                        :details details
-                                                        :schedules schedules
-                                                        :database database
-                                                        :creator-id (:user-id user-info)})]
-                 (setup-maybe-create-and-invite-user! {:email invited_email,
-                                                       :first_name invited_first_name,
-                                                       :last_name invited_last_name}
-                                                      {:email email, :first_name first_name})
-                 (setup-set-settings!
-                  request
-                  {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 (assoc user-info :database db)))
+                (let [user-info (setup-create-user!
+                                 {:email email, :first-name first_name, :last-name last_name, :password password})
+                      db        (setup-create-database! {:name name
+                                                         :driver engine
+                                                         :details details
+                                                         :schedules schedules
+                                                         :database database
+                                                         :creator-id (:user-id user-info)})]
+                  (setup-maybe-create-and-invite-user! {:email invited_email,
+                                                        :first_name invited_first_name,
+                                                        :last_name invited_last_name}
+                                                       {:email email, :first_name first_name})
+                  (setup-set-settings!
+                   request
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
@@ -163,8 +163,11 @@
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
-      (events/publish-event! :event/database-create database)
-      (events/publish-event! :event/user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (when database
+        (events/publish-event! :event/database-create database))
+      (->> {:user-id user-id}
+           (events/publish-event! :event/user-login)
+           (events/publish-event! :event/user-joined))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
       (when database (snowplow/track-event! ::snowplow/database-connection-successful
                                             user-id

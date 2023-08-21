@@ -97,12 +97,11 @@
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
    ex: (record-activity!
-         :topic       :segment-update
-         :object      segment
-         :database-id 1
-         :table-id    13
-         :details-fn  #(dissoc % :some-key))"
-  {:style/indent 0}
+        :topic       :segment-update
+        :object      segment
+        :database-id 1
+        :table-id    13
+        :details-fn  #(dissoc % :some-key))"
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]

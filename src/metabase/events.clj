@@ -114,6 +114,8 @@
       (assert (and (qualified-keyword? topic)
                    (isa? topic :metabase/event))
               (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+      (assert (map? event)
+              (format "Invalid event %s: event must be a map." (pr-str event)))
       (try
         (next-method topic event)
         (catch Throwable e

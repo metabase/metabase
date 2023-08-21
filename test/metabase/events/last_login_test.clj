@@ -11,5 +11,5 @@
     (t2.with-temp/with-temp [User {user-id :id, last-login :last_login}]
       (is (= nil
              last-login))
-      (events/publish-event! :event/user-login {:user_id user-id, :session_id "doesntmatter"})
+      (events/publish-event! :event/user-login {:user-id user-id})
       (is (some? (t2/select-one-fn :last_login User :id user-id))))))

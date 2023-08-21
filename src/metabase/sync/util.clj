@@ -98,18 +98,20 @@
         (finally
           (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
-
 (mu/defn ^:private with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
   `database-id`. `f` is executed between the logging of the two events."
   {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
-   (with-sync-events
-    (keyword "event" (str (name event-name-prefix) "-begin"))
-    (keyword "event" (str (name event-name-prefix) "-end"))
-    database-or-id
-    f))
+   (letfn [(event-keyword [prefix suffix]
+             (keyword (or (namespace event-name-prefix) "event")
+                      (str (name prefix) suffix)))]
+     (with-sync-events
+      (event-keyword event-name-prefix "-begin")
+      (event-keyword event-name-prefix "-end")
+      database-or-id
+      f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic

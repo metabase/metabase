@@ -35,7 +35,7 @@
     :event/segment-create
     :event/segment-update
     :event/segment-delete
-    ;; this is only used these days the first time someone logs in to record 'user-joined' events
+    :event/user-joined
     :event/user-login})
 
 (doseq [topic activity-feed-topics]
@@ -138,13 +138,11 @@
 
 (defmethod process-activity! :user
   [_ topic object]
-  ;; we only care about login activity when its the users first session (a.k.a. new user!)
-  (when (and (= :user-login topic)
-             (:first_login object))
+  (when (= :event/user-joined topic)
     (activity/record-activity!
-      :topic    :user-joined
-      :user-id  (:user_id object)
-      :model-id (:user_id object))))
+      :topic    topic
+      :user-id  (:user-id object)
+      :model-id (:user-id object))))
 
 (defmethod process-activity! :install
   [& _]

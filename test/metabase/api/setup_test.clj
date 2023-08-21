@@ -89,12 +89,11 @@
                    (public-settings/admin-email))))
           (testing "Should record :user-joined Activity (#12933)"
             (let [user-id (u/the-id (t2/select-one-pk User :email email))]
-              (is (schema= {:topic         (schema/eq :user-joined)
-                            :model_id      (schema/eq user-id)
-                            :user_id       (schema/eq user-id)
-                            :model         (schema/eq "user")
-                            schema/Keyword schema/Any}
-                           (wait-for-result #(t2/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+              (is (=? {:topic         :user-joined
+                       :model_id      user-id
+                       :user_id       user-id
+                       :model         "user"}
+                      (t2/select-one Activity :topic "user-joined", :user_id user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
