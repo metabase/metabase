@@ -1,4 +1,4 @@
-import { assocIn } from "icepick";
+import { produce } from "immer";
 
 import {
   restore,
@@ -29,11 +29,9 @@ const questionDetails = {
   },
 };
 
-const questionDetailsWithRequiredFilter = assocIn(
-  questionDetails,
-  ["native", "template-tags", "filter", "required"],
-  true,
-);
+const questionDetailsWithRequiredFilter = produce(questionDetails, draft => {
+  draft.native["template-tags"].filter.required = true;
+});
 
 const filter = {
   name: "Category",

@@ -1,4 +1,4 @@
-import { assocIn } from "icepick";
+import { produce } from "immer";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -50,19 +50,12 @@ export const questionDetails = {
   display: "scalar",
 };
 
-export const questionDetailsWithDefaults = assocIn(
-  assocIn(
-    assocIn(
-      questionDetails,
-      ["native", "template-tags", "id", "default"],
-      [1, 2],
-    ),
-    ["native", "template-tags", "name", "default"],
-    "Lina Heaney", // This is not the name for id=1 or id=2
-  ),
-  ["native", "template-tags", "source", "default"],
-  ["Facebook"], // This is not the source for id=1 or id=2
-);
+export const questionDetailsWithDefaults = produce(questionDetails, draft => {
+  const tags = draft.native["template-tags"];
+  tags.id.default = [1, 2];
+  tags.name.default = ["Lina Heaney"];
+  tags.source.default = ["Facebook"];
+});
 
 // Define dashboard filters
 const idFilter = { name: "Id", slug: "id", id: "1", type: "id" };

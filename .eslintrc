@@ -121,11 +121,16 @@
     "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
-    "plugin:import/warnings"
+    "plugin:import/warnings",
+    "plugin:import/typescript"
   ],
   "settings": {
     "import/internal-regex": "^metabase/|^metabase-lib/",
-    "import/resolver": "webpack",
+    "import/resolver": {
+      "webpack": {
+        "typescript": true
+      }
+    },
     "import/ignore": ["\\.css$"],
     "react": {
       "version": "detect"
