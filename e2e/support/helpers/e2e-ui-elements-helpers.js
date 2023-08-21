@@ -71,7 +71,7 @@ export function filterWidget() {
 }
 
 export function clearFilterWidget(index = 0) {
-  return filterWidget().eq(index).find(".Icon-close").click();
+  return filterWidget().eq(index).icon("close").click();
 }
 
 export const openQuestionActions = () => {

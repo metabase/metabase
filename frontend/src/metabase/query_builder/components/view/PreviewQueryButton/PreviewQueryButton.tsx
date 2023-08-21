@@ -10,7 +10,7 @@ interface PreviewQueryButtonProps {
   onOpenModal?: (modalType: string) => void;
 }
 
-const PreviewQueryButton = ({
+export const PreviewQueryButton = ({
   onOpenModal,
 }: PreviewQueryButtonProps): JSX.Element => {
   const handleClick = useCallback(() => {
@@ -39,6 +39,3 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
     query.hasVariableTemplateTags()
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default PreviewQueryButton;

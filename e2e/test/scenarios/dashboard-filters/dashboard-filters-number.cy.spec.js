@@ -45,7 +45,6 @@ describe("scenarios > dashboard > filters > number", () => {
           cy.findByText(representativeResult);
         });
 
-        console.log(cy.state());
         clearFilterWidget(index);
         cy.wait("@dashcardQuery1");
       },

@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilterWidget();
+        clearFilterWidget(index);
         cy.wait("@dashcardQuery1");
       },
     );

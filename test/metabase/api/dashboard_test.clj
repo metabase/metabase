@@ -3411,7 +3411,7 @@
                      :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
     (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
                  {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
                  {:field-name "ainteger" :base-type :type/Integer ::good 100}

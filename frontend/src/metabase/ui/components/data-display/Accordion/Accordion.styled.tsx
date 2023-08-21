@@ -12,7 +12,7 @@ export const getAccordionOverrides =
             },
           },
           label: {
-            color: theme.colors.brand[1],
+            color: theme.fn.primaryColor(),
             fontWeight: 700,
           },
           item: {
