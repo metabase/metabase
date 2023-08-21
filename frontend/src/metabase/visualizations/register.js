@@ -16,6 +16,7 @@ import BarChart from "./visualizations/BarChart";
 import WaterfallChart from "./visualizations/WaterfallChart";
 import RowChart from "./visualizations/RowChart";
 import PieChart from "./visualizations/PieChart";
+import { PieChart as EChartsPie } from "./echarts/visualizations";
 import AreaChart from "./visualizations/AreaChart";
 import ComboChart from "./visualizations/ComboChart";
 import MapViz from "./visualizations/Map";
@@ -42,6 +43,7 @@ export default function () {
   registerVisualization(RowChart);
   registerVisualization(ScatterPlot);
   registerVisualization(PieChart);
+  registerVisualization(EChartsPie);
   registerVisualization(MapViz);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
