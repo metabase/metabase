@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
