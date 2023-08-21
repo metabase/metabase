@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+
+import { useSelector } from "metabase/lib/redux";
 
 import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
@@ -28,18 +29,9 @@ import {
   ArchiveRoot,
 } from "./ArchiveApp.styled";
 
-const mapStateToProps = (state, props) => ({
-  isNavbarOpen: getIsNavbarOpen(state),
-  isAdmin: getUserIsAdmin(state, props),
-});
-
-const mapDispatchToProps = {
-  openNavbar,
-};
-
 const ROW_HEIGHT = 68;
 
-function ArchiveApp({ isAdmin, isNavbarOpen, list, reload }) {
+function ArchiveApp({ list, reload }) {
   const mainElement = useMemo(() => getMainElement(), []);
   useEffect(() => {
     if (!isSmallScreen()) {
@@ -58,6 +50,9 @@ function ArchiveApp({ isAdmin, isNavbarOpen, list, reload }) {
     () => selected.length === list.length,
     [selected, list],
   );
+
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   return (
     <ArchiveRoot>
@@ -132,7 +127,6 @@ export default _.compose(
     reload: true,
     wrapped: true,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
 )(ArchiveApp);
 
 const BulkActionControls = ({ selected, reload }) => (
