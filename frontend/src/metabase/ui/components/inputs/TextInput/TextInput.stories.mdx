@@ -1,0 +1,40 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { TextInput } from "./";
+
+export const args = {
+  disabled: false,
+};
+
+export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Inputs/TextInput"
+  component={TextInput}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# TextInput
+
+Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-input/).
+
+## Examples
+
+export const Default = args => <TextInput {...args} />;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
