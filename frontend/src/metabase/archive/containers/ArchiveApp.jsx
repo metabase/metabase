@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,7 +12,7 @@ import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
 import Search from "metabase/entities/search";
-import listSelect from "metabase/hoc/ListSelect";
+import { useListSelect } from "metabase/hooks/use-list-select";
 
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -39,25 +39,25 @@ const mapDispatchToProps = {
 
 const ROW_HEIGHT = 68;
 
-function ArchiveApp({
-  isAdmin,
-  isNavbarOpen,
-  list,
-  reload,
-  selected,
-  deselected,
-  selection,
-  onToggleSelected,
-  onSelectAll,
-  onSelectNone,
-}) {
+function ArchiveApp({ isAdmin, isNavbarOpen, list, reload }) {
   const mainElement = useMemo(() => getMainElement(), []);
-
   useEffect(() => {
     if (!isSmallScreen()) {
       openNavbar();
     }
   }, []);
+
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
+    useListSelect(item => `${item.model}:${item.id}`);
+
+  const selectAllItems = useCallback(() => {
+    selectOnlyTheseItems(list);
+  }, [list, selectOnlyTheseItems]);
+
+  const allSelected = useMemo(
+    () => selected.length === list.length,
+    [selected, list],
+  );
 
   return (
     <ArchiveRoot>
@@ -98,8 +98,8 @@ function ArchiveApp({
                         }
                       : null
                   }
-                  selected={selection.has(item)}
-                  onToggleSelected={() => onToggleSelected(item)}
+                  selected={getIsSelected(item)}
+                  onToggleSelected={() => toggleItem(item)}
                   showSelect={selected.length > 0}
                 />
               )}
@@ -114,9 +114,9 @@ function ArchiveApp({
       <BulkActionBar isNavbarOpen={isNavbarOpen} showing={selected.length > 0}>
         <ArchiveBarContent>
           <SelectionControls
-            deselected={deselected}
-            onSelectAll={onSelectAll}
-            onSelectNone={onSelectNone}
+            allSelected={allSelected}
+            selectAll={selectAllItems}
+            clear={clear}
           />
           <BulkActionControls selected={selected} reload={reload} />
           <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
@@ -132,7 +132,6 @@ export default _.compose(
     reload: true,
     wrapped: true,
   }),
-  listSelect({ keyForItem: item => `${item.model}:${item.id}` }),
   connect(mapStateToProps, mapDispatchToProps),
 )(ArchiveApp);
 
@@ -165,9 +164,9 @@ const BulkActionControls = ({ selected, reload }) => (
   </span>
 );
 
-const SelectionControls = ({ deselected, onSelectAll, onSelectNone }) =>
-  deselected.length === 0 ? (
-    <StackedCheckBox checked={true} onChange={onSelectNone} />
+const SelectionControls = ({ allSelected, selectAll, clear }) =>
+  allSelected ? (
+    <StackedCheckBox checked={true} onChange={clear} />
   ) : (
-    <StackedCheckBox checked={false} onChange={onSelectAll} />
+    <StackedCheckBox checked={false} onChange={selectAll} />
   );
