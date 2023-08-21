@@ -1880,7 +1880,7 @@
 
 (defn- test-download-response-headers
   [url]
-  (-> (client/client-real-response (test.users/username->token :rasta)
+  (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
                                    :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
       :headers
@@ -1899,7 +1899,7 @@
              (test-download-response-headers (format "card/%d/query/csv" (u/the-id card)))))
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.json\""
-              "Content-Type"        "application/json;charset=utf-8"
+              "Content-Type"        "application/json; charset=utf-8"
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/json" (u/the-id card)))))
