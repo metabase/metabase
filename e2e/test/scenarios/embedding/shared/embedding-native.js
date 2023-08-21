@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -76,13 +75,3 @@ export const questionDetails = {
     type: "native",
   },
 };
-
-export const questionDetailsWithDefaults = assocIn(
-  assocIn(
-    questionDetails,
-    ["native", "template-tags", "id", "default"],
-    [1, 2],
-  ),
-  ["native", "template-tags", "name", "default"],
-  "Lina Heaney", // Lina Heaney has id=3
-);
