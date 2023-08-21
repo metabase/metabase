@@ -1,14 +1,11 @@
 (ns metabase.query-processor.middleware.expand-macros-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- mbql-query [inner-query]
@@ -26,12 +23,10 @@
               :breakout [[:field 17 nil]]}))))))
 
 (deftest segments-test
- (mt/with-temp* [Database [{database-id :id}]
-                 Table    [{table-id :id}     {:db_id database-id}]
-                 Segment  [{segment-1-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
-                 Segment  [{segment-2-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
+ (t2.with-temp/with-temp [:model/Segment {segment-1-id :id} {:table_id   (mt/id :venues)
+                                                             :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}
+                          :model/Segment {segment-2-id :id} {:table_id   (mt/id :venues)
+                                                             :definition {:filter [:and [:is-null [:field 7 nil]]]}}]
    (is (= (mbql-query
            {:filter   [:and
                        [:= [:field 5 nil] "abc"]
@@ -48,14 +43,28 @@
                          [:> [:field 4 nil] 1]]]
              :breakout [[:field 17 nil]]}))))))
 
+(deftest nested-segments-test
+  (t2.with-temp/with-temp
+    [:model/Segment {s1-id :id} {:table_id   (mt/id :venues)
+                                 :definition {:filter [:< (mt/id :venues :price) 3]}}
+     :model/Segment {s2-id :id} {:table_id   (mt/id :venues)
+                                 :definition {:filter [:and [:segment s1-id] [:> (mt/id :venues :price) 1]]}}]
+    (testing "Nested segments are correctly expanded (#30866)"
+      (is (= (mt/mbql-query venues {:filter [:and [:< $price 3] [:> $price 1]]})
+             (#'expand-macros/expand-metrics-and-segments
+              (mt/mbql-query venues {:filter [:segment s2-id]})))))
+    ;; Next line makes temporary segment definitions mutually recursive.
+    (t2/update! :model/Segment :id s1-id {:definition {:filter [:and [:< (mt/id :venues :price) 3] [:segment s2-id]]}})
+    (testing "Expansion of mutually recursive segments causes an exception"
+      (is (thrown? Exception (#'expand-macros/expand-metrics-and-segments
+                              (mt/mbql-query venues {:filter [:segment s2-id]})))))))
+
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}    {:db_id database-id}]
-                    Metric   [{metric-1-id :id} {:name       "Toucans in the rainforest"
-                                                 :table_id   table-id
-                                                 :definition {:aggregation [[:count]]
-                                                              :filter      [:and [:= [:field 5 nil] "abc"]]}}]]
+    (t2.with-temp/with-temp [:model/Metric {metric-1-id :id} {:name       "Toucans in the rainforest"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition {:aggregation [[:count]]
+                                                                           :filter [:and [:= [:field 5 nil] "abc"]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
                :filter      [:and
@@ -72,12 +81,10 @@
 
 (deftest use-metric-filter-definition-test
   (testing "check that when the original filter is empty we simply use our metric filter definition instead"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}    {:db_id database-id}]
-                    Metric   [{metric-1-id :id} {:name       "ABC Fields"
-                                                 :table_id   table-id
-                                                 :definition {:aggregation [[:count]]
-                                                              :filter      [:and [:= [:field 5 nil] "abc"]]}}]]
+    (t2.with-temp/with-temp [:model/Metric {metric-1-id :id} {:name       "ABC Fields"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition {:aggregation [[:count]]
+                                                                           :filter [:and [:= [:field 5 nil] "abc"]]}}]
       (is (= (mbql-query
               {:source-table 1000
                :aggregation  [[:aggregation-options [:count] {:display-name "ABC Fields"}]]
@@ -93,11 +100,9 @@
 
 (deftest metric-with-no-filter-test
   (testing "metric w/ no filter definition"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}    {:db_id database-id}]
-                    Metric   [{metric-1-id :id} {:name       "My Metric"
-                                                 :table_id   table-id
-                                                 :definition {:aggregation [[:count]]}}]]
+    (t2.with-temp/with-temp [:model/Metric {metric-1-id :id} {:name       "My Metric"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition {:aggregation [[:count]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:count] {:display-name "My Metric"}]]
                :filter      [:= [:field 5 nil] "abc"]
@@ -112,18 +117,17 @@
 
 (deftest metric-with-nested-segments-test
   (testing "metric w/ nested segments"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}     {:db_id database-id}]
-                    Segment  [{segment-1-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:between [:field 9 nil] 0 25]]}}]
-                    Segment  [{segment-2-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:is-null [:field 7 nil]]]}}]
-                    Metric   [{metric-1-id :id}  {:name       "My Metric"
-                                                  :table_id   table-id
-                                                  :definition {:aggregation [[:sum [:field 18 nil]]]
-                                                               :filter      [:and
-                                                                             [:= [:field 5 nil] "abc"]
-                                                                             [:segment segment-1-id]]}}]]
+    (t2.with-temp/with-temp [:model/Segment {segment-1-id :id} {:table_id   (mt/id :venues)
+                                                                :definition
+                                                                {:filter [:and [:between [:field 9 nil] 0 25]]}}
+                             :model/Segment {segment-2-id :id} {:table_id   (mt/id :venues)
+                                                                :definition {:filter [:and [:is-null [:field 7 nil]]]}}
+                             :model/Metric {metric-1-id :id} {:name       "My Metric"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition {:aggregation [[:sum [:field 18 nil]]]
+                                                                           :filter      [:and
+                                                                                         [:= [:field 5 nil] "abc"]
+                                                                                         [:segment segment-1-id]]}}]
       (is (= (mbql-query
               {:source-table 1000
                :aggregation  [[:aggregation-options [:sum [:field 18 nil]] {:display-name "My Metric"}]]
@@ -148,9 +152,9 @@
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
     ;; so-called "multiple aggregation syntax" is the norm now -- query normalization will do this automatically
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
-                                              :definition {:aggregation [[:sum [:field (mt/id :venues :price) nil]]]
-                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [:model/Metric metric (mt/$ids venues {:table_id $$venues
+                                                                     :definition {:aggregation [[:sum $price]]
+                                                                                  :filter      [:> $price 1]}})]
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
@@ -181,31 +185,34 @@
 
 (deftest named-metrics-test
   (testing "make sure we can name a :metric"
-    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
+    (t2.with-temp/with-temp [:model/Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "Named Metric"}]]
                :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
-              (mbql-query {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:display-name "Named Metric"}]]
+              (mbql-query {:aggregation [[:aggregation-options
+                                          [:metric (u/the-id metric)] {:display-name "Named Metric"}]]
                            :breakout    [[:field 10 nil]]})))))))
 
 (deftest include-display-name-test
   (testing (str "if the `:metric` is wrapped in aggregation options that do *not* give it a display name, "
                 "`:display-name` should be added to the options")
-    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
+    (t2.with-temp/with-temp [:model/Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]
                               {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
                :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
-              (mbql-query {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
+              (mbql-query {:aggregation [[:aggregation-options
+                                          [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
                            :breakout    [[:field 10 nil]]}))))))
 
   (testing "a Metric whose :aggregation is already named should not get wrapped in an `:aggregation-options` clause"
-    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:aggregation-options
-                                                                        [:sum [:field 20 nil]]
-                                                                        {:display-name "My Cool Aggregation"}]]}}]
+    (t2.with-temp/with-temp [:model/Metric metric {:definition
+                                                   {:aggregation [[:aggregation-options
+                                                                   [:sum [:field 20 nil]]
+                                                                   {:display-name "My Cool Aggregation"}]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
                :breakout    [[:field 10 nil]]})
@@ -214,9 +221,9 @@
                            :breakout    [[:field 10 nil]]}))))))
 
   (testing "...but if it's wrapped in `:aggregation-options`, but w/o given a display name, we should merge the options"
-    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:aggregation-options
-                                                                        [:sum [:field 20 nil]]
-                                                                        {:name "auto_generated_name"}]]}}]
+    (t2.with-temp/with-temp [:model/Metric metric {:definition {:aggregation [[:aggregation-options
+                                                                               [:sum [:field 20 nil]]
+                                                                               {:name "auto_generated_name"}]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]
@@ -228,12 +235,10 @@
 
 (deftest segments-in-share-clauses-test
   (testing "segments in :share clauses"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}     {:db_id database-id}]
-                    Segment  [{segment-1-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
-                    Segment  [{segment-2-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
+    (t2.with-temp/with-temp [:model/Segment {segment-1-id :id} {:table_id   (mt/id :venues)
+                                                                :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}
+                             :model/Segment {segment-2-id :id} {:table_id   (mt/id :venues)
+                                                                :definition {:filter [:and [:is-null [:field 7 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:share [:and
                                       [:= [:field 5 nil] "abc"]
@@ -253,14 +258,14 @@
 
 (deftest expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
-    (mt/with-temp* [Metric [metric (mt/$ids checkins
-                                     {:table_id   $$checkins
-                                      :definition {:source-table $$checkins
-                                                   :aggregation  [[:count]]
-                                                   :filter       [:not-null $id]}})]
-                    Segment [segment (mt/$ids checkins
-                                       {:table_id   $$checkins
-                                        :definition {:filter [:not-null $id]}})]]
+    (t2.with-temp/with-temp [:model/Metric metric (mt/$ids checkins
+                                                           {:table_id   $$checkins
+                                                            :definition {:source-table $$checkins
+                                                                         :aggregation  [[:count]]
+                                                                         :filter       [:not-null $id]}})
+                             :model/Segment segment (mt/$ids checkins
+                                                             {:table_id   $$checkins
+                                                              :definition {:filter [:not-null $id]}})]
       (doseq [[macro-type {:keys [before after]}]
               (mt/$ids checkins
                 {"Metrics"
