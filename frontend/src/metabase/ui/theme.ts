@@ -14,8 +14,9 @@ import {
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
-    brand: [color("brand-lighter"), color("focus"), color("brand")],
+    brand: [color("brand-lighter"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
+    focus: [color("focus")],
     border: [color("border")],
     bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
   },
@@ -68,7 +69,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
-      outline: `0.125rem solid ${theme.colors.brand[1]}`,
+      outline: `0.125rem solid ${theme.colors.focus[0]}`,
       outlineOffset: "0.125rem",
     }),
   },
