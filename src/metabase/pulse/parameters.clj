@@ -38,7 +38,7 @@
   (let [base-url   (urls/dashboard-url dashboard-id)
         url-params (flatten
                     (for [param parameters]
-                      (for [value (u/one-or-many (or (:value param) (:default param)))]
+                      (for [value (u/one-or-many (or (:value param) ""))]
                         (str (codec/url-encode (:slug param))
                              "="
                              (codec/url-encode value)))))]
