@@ -73,14 +73,14 @@ describe("issue 32231", () => {
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("not.exist");
 
-      cy.findByText(incompleteQuestion.name).click();
+      cy.findByLabelText(incompleteQuestion.name).click();
 
       cy.get(".LineAreaBarChart").should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("exist");
       cy.findByText(defaultError).should("not.exist");
 
-      cy.findByText(incompleteQuestion.name).click();
+      cy.findByLabelText(incompleteQuestion.name).click();
 
       cy.get(".LineAreaBarChart").should("exist");
       cy.findByText(issue32231Error).should("not.exist");
