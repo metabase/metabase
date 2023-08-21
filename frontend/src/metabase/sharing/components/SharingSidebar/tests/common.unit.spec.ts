@@ -5,22 +5,50 @@ import { screen } from "__support__/ui";
 import { setup, dashcard, user, hasBasicFilterOptions } from "./setup";
 
 describe("SharingSidebar", () => {
-  it("should have options for email and slack", async () => {
-    setup({ email: true });
+  it("should forward non-admin to email form - when slack is not setup", async () => {
+    setup({ isAdmin: false, email: true, slack: false });
+
+    expect(await screen.findByText("Email this dashboard")).toBeInTheDocument();
+  });
+
+  it("should forward non-admin to slack form - when email is not setup", async () => {
+    setup({ isAdmin: false, email: false, slack: true });
+
+    expect(
+      await screen.findByText("Send this dashboard to Slack"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not forward non-admins - when slack and email are both setup", async () => {
+    setup({ isAdmin: false, email: true, slack: true });
+
+    expect(await screen.findByText("Email it")).toBeInTheDocument();
+    expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
+  });
+
+  it("should not forward admins to email - when slack is not setup", async () => {
+    setup({ isAdmin: true, email: true, slack: false });
+
+    expect(await screen.findByText("Email it")).toBeInTheDocument();
+    expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
+  });
+
+  it("should not forward admins to slack - when email is not setup", async () => {
+    setup({ isAdmin: true, email: false, slack: true });
 
     expect(await screen.findByText("Email it")).toBeInTheDocument();
     expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
   });
 
   it("should disable slack option when slack is not configured", async () => {
-    setup({ email: true, slack: false });
+    setup({ isAdmin: true, email: true, slack: false });
 
     expect(await screen.findByText(/First, you'll have to/i)).toBeVisible();
     expect(await screen.findByText(/configure Slack/i)).toBeVisible();
   });
 
   it("should disable email option when email is not configured", async () => {
-    setup({ email: false, slack: true });
+    setup({ isAdmin: true, email: false, slack: true });
 
     expect(await screen.findByText(/you'll need to/i)).toBeVisible();
     expect(await screen.findByText(/set up Email/i)).toBeVisible();

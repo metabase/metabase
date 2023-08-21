@@ -11,7 +11,6 @@ import {
   addOrUpdateDashboardCard,
   addTextBox,
   setTokenFeatures,
-  main,
   emailSubscriptionRecipients,
   openEmailPage,
   setupSubscriptionWithRecipient,
@@ -19,7 +18,7 @@ import {
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
-const { admin } = USERS;
+const { admin, normal } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
   beforeEach(() => {
@@ -126,11 +125,30 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with existing subscriptions", () => {
-      beforeEach(createEmailSubscription);
       it("should show existing dashboard subscriptions", () => {
+        createEmailSubscription();
         openDashboardSubscriptions();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
+      });
+
+      it("should forward non-admin users to add email form when clicking add", () => {
+        cy.signInAsNormalUser();
+
+        openDashboardSubscriptions();
+
+        sidebar().within(() => {
+          cy.findByPlaceholderText("Enter user names or email addresses")
+            .click()
+            .type(`${normal.first_name} ${normal.last_name}{enter}`);
+          cy.contains("Done")
+            .closest(".Button")
+            .should("not.be.disabled")
+            .click();
+
+          cy.findByLabelText("add icon").click();
+          cy.findByText("Email this dashboard").should("exist");
+        });
       });
     });
 
@@ -157,9 +175,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions(1);
         openPulseSubscription();
 
-        cy.findByLabelText("subscriptions sidebar")
-          .findByText(nonUserEmail)
-          .should("not.exist");
+        sidebar().findByText(nonUserEmail).should("not.exist");
       });
 
       it("should allow non-user to undo-unsubscribe from subscription", () => {
@@ -193,9 +209,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions(1);
         openPulseSubscription();
 
-        cy.findByLabelText("subscriptions sidebar")
-          .findByText(nonUserEmail)
-          .should("exist");
+        sidebar().findByText(nonUserEmail).should("exist");
       });
 
       it("should show 404 page when missing required parameters", () => {
@@ -363,14 +377,11 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("with Slack set up", () => {
     beforeEach(() => {
       mockSlackConfigured();
-      openDashboardSubscriptions();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Send it to Slack").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Send this dashboard to Slack");
     });
 
     it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
+      openSlackCreationForm();
+
       cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
       cy.findByPlaceholderText("Pick a user or channel...").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -379,13 +390,36 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should have 'Send to Slack now' button (metabase#14515)", () => {
-      cy.findAllByRole("button", { name: "Send to Slack now" }).should(
-        "be.disabled",
-      );
-      cy.findByPlaceholderText("Pick a user or channel...").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("#work").click();
-      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
+      openSlackCreationForm();
+
+      sidebar().within(() => {
+        cy.findAllByRole("button", { name: "Send to Slack now" }).should(
+          "be.disabled",
+        );
+        cy.findByPlaceholderText("Pick a user or channel...").click();
+      });
+
+      popover().findByText("#work").click();
+      sidebar()
+        .findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled");
+    });
+
+    it("should forward non-admin users to add slack form when clicking add", () => {
+      cy.signInAsNormalUser();
+      openDashboardSubscriptions();
+
+      sidebar().within(() => {
+        cy.findByPlaceholderText("Pick a user or channel...").click();
+      });
+
+      popover().findByText("#work").click();
+      sidebar().findAllByRole("button", { name: "Done" }).click();
+
+      sidebar().within(() => {
+        cy.findByLabelText("add icon").click();
+        cy.findByText("Send this dashboard to Slack").should("exist");
+      });
     });
   });
 
@@ -516,6 +550,12 @@ function createEmailSubscription() {
   clickButton("Done");
 }
 
+function openSlackCreationForm() {
+  openDashboardSubscriptions();
+  sidebar().findByText("Send it to Slack").click();
+  sidebar().findByText("Send this dashboard to Slack");
+}
+
 function openRecipientsWithUserVisibilitySetting(setting) {
   cy.request("PUT", "/api/setting/user-visibility", {
     value: setting,
@@ -523,10 +563,9 @@ function openRecipientsWithUserVisibilitySetting(setting) {
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 
-  main().within(() => {
-    cy.findByText("Email it").click();
-    cy.findByPlaceholderText("Enter user names or email addresses").click();
-  });
+  sidebar()
+    .findByPlaceholderText("Enter user names or email addresses")
+    .click();
 }
 
 function addParametersToDashboard() {

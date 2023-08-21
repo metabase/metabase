@@ -23,6 +23,9 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+
+import { getPulseFormInput } from "metabase/pulse/selectors";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
@@ -45,6 +48,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
+    formInput: getPulseFormInput(state, props),
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
@@ -60,6 +64,7 @@ const mapDispatchToProps = {
     Bookmark.actions.create({ id, type: "dashboard" }),
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
+  fetchPulseFormInput,
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
@@ -71,12 +76,19 @@ class DashboardHeader extends Component {
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
+  componentDidMount() {
+    this.props.fetchPulseFormInput();
+  }
+
   state = {
     modal: null,
   };
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    fetchPulseFormInput: PropTypes.func.isRequired,
+    formInput: PropTypes.object.isRequired,
+    isAdmin: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
