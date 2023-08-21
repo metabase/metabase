@@ -24,6 +24,15 @@ describe("nav > what's new notification", () => {
     });
   });
 
+  // replace `skip` with `only` to manually test this feature with the mocks set up
+  it.skip("mock setup for manual tests", () => {
+    loadHomepage();
+
+    navigationSidebar().findByText("See what's new");
+
+    cy.pause();
+  });
+
   it("should show a notification with a link to the release notes, and allow the dismissal of it", () => {
     loadHomepage();
 
