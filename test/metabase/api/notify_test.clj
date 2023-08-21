@@ -28,8 +28,8 @@
         (is (= (get mw.util/response-forbidden :body)
                (client/client :post 403 "notify/db/100")))))))
 
-(def api-headers {:headers {"X-METABASE-APIKEY" "test-api-key"
-                            "Content-Type"      "application/json"}})
+(def ^:private api-headers {:headers {"x-metabase-apikey" "test-api-key"
+                                      "content-type"      "application/json"}})
 
 (deftest not-found-test
   (mt/with-temporary-setting-values [api-key "test-api-key"]
@@ -69,7 +69,7 @@
                        ([payload] (post-api payload 200))
                        ([payload expected-code]
                         (mt/with-temporary-setting-values [api-key "test-api-key"]
-                          (mt/real-client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
+                          (mt/client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
                                           {:request-options api-headers}
                                           (merge {:synchronous? true}
                                                  payload)))))]

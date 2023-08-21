@@ -250,6 +250,23 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
+(defn- mock-request-resp
+  [resp]
+  (update resp :body
+          (fn [body]
+            (cond
+             ;; read the text respone
+             (instance? InputStream body)
+             (with-open [r (io/reader body)]
+               (slurp r))
+
+             ;; Most APIs that execute a request returns a streaming response
+             (instance? StreamingResponse body)
+             (read-streaming-response body (get-in resp [:headers "Content-Type"]))
+
+             :else
+             body))))
+
 (schema/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
@@ -266,7 +283,7 @@
                                           .getRawQuery
                                           (str/split #"&"))))
         url         (first (str/split url #"\?")) ;; strip out the query param parts if any
-        request     (-> (merge {:accept       "json"
+        request     (-> (merge {:accept  "json"
                                 :headers (merge
                                           {"content-type" "application/json"}
                                           {@#'mw.session/metabase-session-header (when credentials
@@ -286,21 +303,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (let [resp (handler/app request identity identity)]
-                         (update resp :body
-                                 (fn [body]
-                                   (cond
-                                    ;; read the text respone
-                                    (instance? InputStream body)
-                                    (with-open [r (io/reader body)]
-                                      (slurp r))
-
-                                    ;; Most APIs that execute a request returns a streaming response
-                                    (instance? StreamingResponse body)
-                                    (read-streaming-response body (get-in resp [:headers "Content-Type"]))
-
-                                    :else
-                                    body))))
+                       (handler/app request mock-request-resp (fn [e] (throw e)))
                        (catch clojure.lang.ExceptionInfo e
                          (log/debug e method-name url)
                          (ex-data e))
