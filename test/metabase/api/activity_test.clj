@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
-   [metabase.events.view-log :as view-log]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -37,14 +37,15 @@
     (mt/with-model-cleanup [ViewLog]
       (mt/with-test-user :crowberto
         (mt/with-temporary-setting-values [user-recent-views []]
-          (doseq [event [{:topic :dashboard-read :item dash-1}
-                         {:topic :dashboard-read :item dash-2}
-                         {:topic :dashboard-read :item dash-3}
-                         {:topic :card-query :item card-1}
-                         {:topic :table-read :item table-1}]]
-            (view-log/handle-view-event!
+          (doseq [{:keys [topic item]} [{:topic :event/dashboard-read :item dash-1}
+                                        {:topic :event/dashboard-read :item dash-2}
+                                        {:topic :event/dashboard-read :item dash-3}
+                                        {:topic :event/card-query :item card-1}
+                                        {:topic :event/table-read :item table-1}]]
+            (events/publish-event!
+             topic
              ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-             (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+             (assoc item :actor_id :crowberto)))
           (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
             (is (= dash-3 #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard"))))))
@@ -53,14 +54,13 @@
           (testing "If nothing has been viewed, return a 204"
             (is (nil? (mt/user-http-request :crowberto :get 204
                                             "activity/most_recently_viewed_dashboard"))))
-          (view-log/handle-view-event! {:topic :dashboard-read :item (assoc dash-1 :actor_id (mt/user->id :rasta))})
+          (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :rasta)))
           (testing "Only the user's own views are returned."
             (is (= dash-1
                    (mt/user-http-request :rasta :get 200 "activity/most_recently_viewed_dashboard"))))))
       (mt/with-test-user :rasta
         (mt/with-temporary-setting-values [user-recent-views []]
-          (view-log/handle-view-event! {:topic :dashboard-read
-                                        :item  (assoc dash-1 :actor_id (mt/user->id :rasta))})
+          (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :rasta)))
           (testing "If the user has no permissions for the dashboard, return a 204"
             (mt/with-non-admin-groups-no-root-collection-perms
               (is (nil? (mt/user-http-request :rasta :get 204
@@ -91,20 +91,21 @@
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
           (mt/with-temporary-setting-values [user-recent-views []]
-            (doseq [event [{:topic :card-query :item dataset}
-                           {:topic :card-query :item dataset}
-                           {:topic :card-query :item card1}
-                           {:topic :card-query :item card1}
-                           {:topic :card-query :item card1}
-                           {:topic :dashboard-read :item dash}
-                           {:topic :card-query :item card1}
-                           {:topic :dashboard-read :item dash}
-                           {:topic :table-read :item table1}
-                           {:topic :card-query :item archived}
-                           {:topic :table-read :item hidden-table}]]
-              (view-log/handle-view-event!
+            (doseq [{:keys [topic item]} [{:topic :event/card-query :item dataset}
+                                          {:topic :event/card-query :item dataset}
+                                          {:topic :event/card-query :item card1}
+                                          {:topic :event/card-query :item card1}
+                                          {:topic :event/card-query :item card1}
+                                          {:topic :event/dashboard-read :item dash}
+                                          {:topic :event/card-query :item card1}
+                                          {:topic :event/dashboard-read :item dash}
+                                          {:topic :event/table-read :item table1}
+                                          {:topic :event/card-query :item archived}
+                                          {:topic :event/table-read :item hidden-table}]]
+              (events/publish-event!
+               topic
                ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-               (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+               (assoc item :actor_id (mt/user->id :crowberto))))
             (testing "No duplicates or archived items are returned."
               (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
                 (is (partial=
@@ -115,8 +116,8 @@
                      recent-views))))))
         (mt/with-test-user :rasta
           (mt/with-temporary-setting-values [user-recent-views []]
-            (view-log/handle-view-event! {:topic :card-query :item (assoc dataset :actor_id (mt/user->id :rasta))})
-            (view-log/handle-view-event! {:topic :card-query :item (assoc card1 :actor_id (mt/user->id :crowberto))})
+            (events/publish-event! :events/card-query (assoc dataset :actor_id (mt/user->id :rasta)))
+            (events/publish-event! :events/card-query (assoc card1 :actor_id (mt/user->id :crowberto)))
             (testing "Only the user's own views are returned."
               (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
                 (is (partial=

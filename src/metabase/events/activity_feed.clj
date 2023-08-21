@@ -1,6 +1,5 @@
 (ns metabase.events.activity-feed
   (:require
-   [clojure.core.async :as a]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
@@ -11,41 +10,40 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(derive ::event :metabase/event)
 
 (def ^:private activity-feed-topics
   "The set of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:alert-create
-    :alert-delete
-    :card-create
-    :card-update
-    :card-delete
-    :dashboard-create
-    :dashboard-delete
-    :dashboard-add-cards
-    :dashboard-remove-cards
-    :install
-    :metric-create
-    :metric-update
-    :metric-delete
-    :pulse-create
-    :pulse-delete
-    :segment-create
-    :segment-update
-    :segment-delete
-    :user-login}) ; this is only used these days the first time someone logs in to record 'user-joined' events
+  #{:event/alert-create
+    :event/alert-delete
+    :event/card-create
+    :event/card-update
+    :event/card-delete
+    :event/dashboard-create
+    :event/dashboard-delete
+    :event/dashboard-add-cards
+    :event/dashboard-remove-cards
+    :event/install
+    :event/metric-create
+    :event/metric-update
+    :event/metric-delete
+    :event/pulse-create
+    :event/pulse-delete
+    :event/segment-create
+    :event/segment-update
+    :event/segment-delete
+    ;; this is only used these days the first time someone logs in to record 'user-joined' events
+    :event/user-login})
 
-(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for the activity feed."}
-  activity-feed-channel
-  (a/chan))
-
-;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
+(doseq [topic activity-feed-topics]
+  (derive topic ::event))
 
 (defmulti ^:private process-activity!
   {:arglists '([model-name topic object])}
-  (fn [model-name _ _]
+  (fn [model-name _topic _object]
     (keyword model-name)))
 
 (defmethod process-activity! :default
@@ -90,10 +88,10 @@
       :topic      topic
       :object     object
       :details-fn (case topic
-                    :dashboard-create       create-delete-details
-                    :dashboard-delete       create-delete-details
-                    :dashboard-add-cards    add-remove-card-details
-                    :dashboard-remove-cards add-remove-card-details))))
+                    :event/dashboard-create       create-delete-details
+                    :event/dashboard-delete       create-delete-details
+                    :event/dashboard-add-cards    add-remove-card-details
+                    :event/dashboard-remove-cards add-remove-card-details))))
 
 (defmethod process-activity! :metric
   [_ topic object]
@@ -153,22 +151,12 @@
   (when-not (t2/exists? Activity :topic "install")
     (t2/insert! Activity, :topic "install", :model "install")))
 
-(mu/defn process-activity-event! :- [:or [:= :success] (ms/InstanceOfClass Throwable)]
-  "Handle processing for a single event notification received on the activity-feed-channel. Returns `:success` if
-  processing completed successfully, or an Exception if not."
-  [activity-event]
+(methodical/defmethod events/publish-event! ::event
+  [topic object]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when-let [{topic :topic, object :item} activity-event]
-      (process-activity! (keyword (events/topic->model topic)) topic object)
-      :success)
+    (when object
+      (process-activity! (keyword (events/topic->model topic)) topic object))
     (catch Throwable e
-      (log/warn e (trs "Failed to process activity event {0}" (pr-str (:topic activity-event))))
+      (log/warnf e "Failed to process activity event %s" topic)
       e)))
-
-
-;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
-
-(defmethod events/init! ::ActivityFeed
-  [_]
-  (events/start-event-listener! activity-feed-topics activity-feed-channel process-activity-event!))

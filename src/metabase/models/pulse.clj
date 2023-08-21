@@ -500,7 +500,7 @@
                 (s/optional-key :parameters)          [su/Map]}]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event)
-    (events/publish-event! :pulse-create (retrieve-pulse pulse-id))))
+    (events/publish-event! :event/pulse-create (retrieve-pulse pulse-id))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -509,7 +509,7 @@
                (assoc :skip_if_empty true, :creator_id creator-id)
                (create-notification-and-add-cards-and-channels! [card-id] channels))]
     ;; return the full Pulse (and record our create event)
-    (events/publish-event! :alert-create (retrieve-alert id))))
+    (events/publish-event! :event/alert-create (retrieve-alert id))))
 
 (s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
   [notification-or-id]
@@ -560,7 +560,7 @@
   (update-notification! pulse)
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-pulse (u/the-id pulse))
-       (events/publish-event! :pulse-update)))
+       (events/publish-event! :event/pulse-update)))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -578,7 +578,7 @@
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-alert (u/the-id alert))
-       (events/publish-event! :pulse-update)))
+       (events/publish-event! :event/pulse-update)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

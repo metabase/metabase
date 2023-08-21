@@ -301,18 +301,27 @@
     (or (:settings (t2/select-one [User :settings] :id user-id))
         {})))
 
+(def ^:private ^:dynamic *do-with-current-user-id*
+  "ID we've previously called [[with-current-user]] with. This exists so we can avoid rebinding all the dynamic
+  variables associated with a User if they are already bound, as this can mess things up since things
+  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  nil)
+
 (defn do-with-current-user
-  "Impl for `with-current-user`."
+  "Impl for [[with-current-user]]."
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
-  (binding [*current-user-id*              metabase-user-id
-            i18n/*user-locale*             user-locale
-            *is-group-manager?*            (boolean is-group-manager?)
-            *is-superuser?*                (boolean is-superuser?)
-            *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
-            *user-local-values*            (delay (atom (or settings
-                                                            (user-local-settings metabase-user-id))))]
-    (thunk)))
+  (if (= *do-with-current-user-id* metabase-user-id)
+    (thunk)
+    (binding [*do-with-current-user-id*      metabase-user-id
+              *current-user-id*              metabase-user-id
+              i18n/*user-locale*             user-locale
+              *is-group-manager?*            (boolean is-group-manager?)
+              *is-superuser?*                (boolean is-superuser?)
+              *current-user*                 (delay (find-user metabase-user-id))
+              *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
+              *user-local-values*            (delay (atom (or settings
+                                                              (user-local-settings metabase-user-id))))]
+      (thunk))))
 
 (defmacro ^:private with-current-user-for-request
   [request & body]
@@ -353,14 +362,19 @@
        :permissions-set #{"/"}})
     (fn [] ~@body)))
 
+(defn -with-current-user
+  "Impl for [[with-current-user]]."
+  [current-user-id thunk]
+  (if (= current-user-id *do-with-current-user-id*)
+    (thunk)
+    (do-with-current-user (with-current-user-fetch-user-for-id current-user-id) thunk)))
+
 (defmacro with-current-user
   "Execute code in body with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
   {:style/indent :defn}
   [current-user-id & body]
-  `(do-with-current-user
-    (with-current-user-fetch-user-for-id ~current-user-id)
-    (fn [] ~@body)))
+  `(-with-current-user ~current-user-id (^:once fn* [] ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

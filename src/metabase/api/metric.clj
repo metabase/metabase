@@ -36,7 +36,7 @@
                                                         :name        name
                                                         :description description
                                                         :definition  definition)))]
-    (-> (events/publish-event! :metric-create metric)
+    (-> (events/publish-event! :event/metric-create metric)
         (t2/hydrate :creator))))
 
 (s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
@@ -84,7 +84,7 @@
     (when changes
       (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
-      (events/publish-event! (if archive? :metric-delete :metric-update)
+      (events/publish-event! (if archive? :event/metric-delete :event/metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

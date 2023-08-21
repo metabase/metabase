@@ -101,7 +101,7 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-    (events/publish-event! :dashboard-create dash)
+    (events/publish-event! :event/dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -385,8 +385,8 @@
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
-        (events/publish-event! :card-create card)))
-    (events/publish-event! :dashboard-create dashboard)))
+        (events/publish-event! :event/card-create card)))
+    (events/publish-event! :event/dashboard-create dashboard)))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
@@ -395,7 +395,7 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
+    (events/publish-event! :event/dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (last-edit/with-last-edit-info dashboard :dashboard)))
 
 (defn- check-allowed-to-change-embedding
@@ -447,7 +447,7 @@
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one :model/Dashboard :id id)]
-    (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
+    (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
@@ -462,7 +462,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -598,10 +598,10 @@
                         created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
   (when (seq deleted-dashcards)
-    (events/publish-event! :dashboard-remove-cards
+    (events/publish-event! :event/dashboard-remove-cards
                            {:id dashboard-id :actor_id api/*current-user-id* :dashcards deleted-dashcards}))
   (when (seq created-dashcards)
-    (events/publish-event! :dashboard-add-cards
+    (events/publish-event! :event/dashboard-add-cards
                            {:id dashboard-id :actor_id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
@@ -610,7 +610,7 @@
                              {:dashboard-id dashboard-id :question-id card_id})))
   ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
   (when (seq updated-dashcards)
-    (events/publish-event! :dashboard-reposition-cards
+    (events/publish-event! :event/dashboard-reposition-cards
                            {:id dashboard-id :actor_id api/*current-user-id* :dashcards updated-dashcards}))
 
   ;; Tabs events
@@ -620,7 +620,7 @@
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
                             :total-num-tabs total-num-tabs})
-    (events/publish-event! :dashboard-remove-tabs
+    (events/publish-event! :event/dashboard-remove-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids deleted-tab-ids}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
@@ -628,10 +628,10 @@
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})
-    (events/publish-event! :dashboard-add-tabs
+    (events/publish-event! :event/dashboard-add-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids created-tab-ids}))
   (when (seq updated-tab-ids)
-    (events/publish-event! :dashboard-update-tabs
+    (events/publish-event! :event/dashboard-update-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids updated-tab-ids})))
 
 (api/defendpoint PUT "/:id/cards"
@@ -769,7 +769,7 @@
   {parent-collection-id ms/PositiveInt}
   (collection/check-write-perms-for-collection parent-collection-id)
   (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
-       (events/publish-event! :dashboard-create)))
+       (events/publish-event! :event/dashboard-create)))
 
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
@@ -779,7 +779,7 @@
                                (t2/select-one-fn :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
-         (events/publish-event! :dashboard-create))))
+         (events/publish-event! :event/dashboard-create))))
 
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------

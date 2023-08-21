@@ -407,7 +407,7 @@
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
-      (events/publish-event! :card-create card)
+      (events/publish-event! :event/card-create card)
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- applied-filters-blurb

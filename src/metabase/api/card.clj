@@ -211,7 +211,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
+        (events/publish-event! :event/card-read (assoc <> :actor_id api/*current-user-id*))))))
 
 (defn- card-columns-from-names
   [card names]
@@ -542,7 +542,7 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :card-create card))
+       (events/publish-event! :event/card-create card))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
@@ -615,11 +615,11 @@ saved later when it is ready."
   (let [event (cond
                 ;; card was archived
                 (and archived?
-                     (not (:archived card))) :card-archive
+                     (not (:archived card))) :event/card-archive
                 ;; card was unarchived
                 (and (false? archived?)
-                     (:archived card))       :card-unarchive
-                :else                        :card-update)]
+                     (:archived card))       :event/card-unarchive
+                :else                        :event/card-update)]
     (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
 
 (defn- card-archived? [old-card new-card]
@@ -848,7 +848,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------

@@ -107,7 +107,8 @@
   {:pre [(keyword? topic)]}
   (let [object (or object {})]
     (first (t2/insert-returning-instances! Activity
-                                           :topic       topic
+                                           ;; strip off the `:event/` namespace of the topic, added in 0.48.0
+                                           :topic       (keyword (name topic))
                                            :user_id     (or user-id (events/object->user-id object))
                                            :model       (or model (events/topic->model topic))
                                            :model_id    (or model-id (events/object->model-id topic object))

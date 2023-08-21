@@ -35,7 +35,7 @@
                                                          :name        name
                                                          :description description
                                                          :definition  definition)))]
-    (-> (events/publish-event! :segment-create segment)
+    (-> (events/publish-event! :event/segment-create segment)
         (t2/hydrate :creator))))
 
 (s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
@@ -73,7 +73,7 @@
     (when changes
       (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
-      (events/publish-event! (if archive? :segment-delete :segment-update)
+      (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

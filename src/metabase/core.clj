@@ -131,7 +131,7 @@
       ;; create setup token
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
-      (events/publish-event! :install {}))
+      (events/publish-event! :event/install {}))
     (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
     (if new-install?
