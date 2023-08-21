@@ -18,7 +18,7 @@ const invalidQuestion = {
   name: "Invalid question",
   display: "scalar",
   native: {
-    query: "SELECT --1",
+    query: "SELECT 1",
   },
 };
 
@@ -61,8 +61,7 @@ describe("issue 22265", () => {
 
     cy.findByTestId("add-series-modal").within(() => {
       cy.icon("warning").should("not.exist");
-      cy.findByLabelText(invalidQuestion.name).should("exist");
-      cy.icon("warning").should("not.exist");
+      cy.findByLabelText(invalidQuestion.name).should("exist").click();
       cy.button("Done").click();
     });
 
