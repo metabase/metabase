@@ -258,7 +258,7 @@ jobs:
         IMAGE_TAG=${{ env.VERSION }}-$SHORT_HASH
         CONTAINER_IMAGE=${{ github.repository_owner }}/${{ secrets.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
 
-        echo "image=$CONTAINER_IMAGE" >> GITHUB_OUTPUT
+        echo "image=$CONTAINER_IMAGE" >> $GITHUB_OUTPUT
 
         echo "Retag local image for staging"
         docker tag localhost:5000/local-metabase:$VERSION $CONTAINER_IMAGE
