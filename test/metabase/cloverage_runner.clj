@@ -2,6 +2,10 @@
   (:require
    [cloverage.coverage]))
 
+(def ^:private default-options
+  {:runner :eftest
+   :runner-opts {:multithread? :vars}})
+
 (defn run-project
   "Shim for running tests using Cloverage to get code coverage metrics. See comments in `deps.edn` for more
   information."
@@ -11,6 +15,6 @@
                  (fn [options k]
                    (cond-> options
                      (seq (k options)) (update k (partial map re-pattern))))
-                 options
+                 (merge default-options options)
                  [:ns-regex :ns-exclude-regex])]
     (cloverage.coverage/run-project options)))
