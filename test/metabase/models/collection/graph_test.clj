@@ -1,5 +1,4 @@
 (ns metabase.models.collection.graph-test
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -19,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
