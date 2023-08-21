@@ -1,4 +1,4 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import {
@@ -12,13 +12,30 @@ import {
   getTitleOverrides,
 } from "./components";
 
+type ThemeColors = MantineTheme["colors"]["brand"];
+
+const getThemeColors = (colors: string[]): ThemeColors => {
+  return Array.from(
+    { length: 10 },
+    (_, index) => colors[index] ?? "transparent",
+  ) as ThemeColors;
+};
+
 export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
-    brand: [color("brand-lighter"), color("brand")],
-    text: [color("text-light"), color("text-medium"), color("text-dark")],
-    focus: [color("focus")],
-    border: [color("border")],
-    bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
+    brand: getThemeColors([color("brand-lighter"), color("brand")]),
+    text: getThemeColors([
+      color("text-light"),
+      color("text-medium"),
+      color("text-dark"),
+    ]),
+    focus: getThemeColors([color("focus")]),
+    border: getThemeColors([color("border")]),
+    bg: getThemeColors([
+      color("bg-light"),
+      color("bg-medium"),
+      color("bg-dark"),
+    ]),
   },
   primaryColor: "brand",
   primaryShade: 2,
