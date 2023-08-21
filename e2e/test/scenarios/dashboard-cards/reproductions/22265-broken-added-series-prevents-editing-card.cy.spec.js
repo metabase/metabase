@@ -1,10 +1,4 @@
-import {
-  editDashboard,
-  modal,
-  restore,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
+import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
 
 const baseQuestion = {
   name: "Base question",
@@ -68,17 +62,20 @@ describe("issue 22265", () => {
     cy.button("Save").click();
     cy.button("Saving…").should("not.exist");
 
+    cy.log("Update the added series' question so that it's broken");
+    const questionDetailUpdate = {
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "SELECT --2",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+    };
     cy.get("@invalidQuestionId").then(invalidQuestionId => {
-      visitQuestion(invalidQuestionId);
-      cy.icon("expand").click();
-      cy.get(".ace_content").type("{backspace}--2");
-      cy.findByTestId("native-query-editor-sidebar")
-        .button("Get Answer")
-        .click();
-      cy.findByText("Save").click();
+      cy.request("PUT", `/api/card/${invalidQuestionId}`, questionDetailUpdate);
     });
-
-    modal().findByText("Save").click();
 
     cy.get("@dashboardId").then(dashboardId => {
       visitDashboard(dashboardId);
