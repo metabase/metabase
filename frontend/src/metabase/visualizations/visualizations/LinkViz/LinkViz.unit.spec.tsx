@@ -178,6 +178,13 @@ describe("LinkViz", () => {
 
       expect(screen.getByText("Choose a link")).toBeInTheDocument();
     });
+
+    it("should have a link that loads the URL in a new page", () => {
+      setup({ isEditing: false });
+
+      expect(screen.getByText("https://example23.com")).toBeInTheDocument();
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
   });
 
   describe("entity links", () => {
@@ -213,7 +220,7 @@ describe("LinkViz", () => {
           tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
-      expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+      expect(screen.getByRole("link")).not.toHaveAttribute("target");
     });
 
     it("sets embedded entity links to not open in new tabs", () => {

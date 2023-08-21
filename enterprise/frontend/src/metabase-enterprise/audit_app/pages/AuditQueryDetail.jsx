@@ -25,7 +25,7 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
 
       return (
         <AuditContent
-          title="Query"
+          title={t`Query`}
           subtitle={<OpenInMetabase to={`/question#${serializedHash}`} />}
         >
           <QueryViewer datasetQuery={datasetQuery} />

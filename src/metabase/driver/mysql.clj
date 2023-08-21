@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require
+   [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -656,14 +657,14 @@
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsv (->> values
-                       (map (partial row->tsv (count column-names)))
-                       (str/join "\n"))
-              sql (sql/format {::load   [file-path (keyword table-name)]
-                               :columns (map keyword column-names)}
-                              :quoted true
-                              :dialect (sql.qp/quote-style driver))]
-          (spit file-path tsv)
+        (let [tsvs (map (partial row->tsv (count column-names)) values)
+              sql  (sql/format {::load   [file-path (keyword table-name)]
+                                :columns (map keyword column-names)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver))]
+          (with-open [^java.io.Writer writer (jio/writer file-path)]
+            (doseq [value (interpose \newline tsvs)]
+              (.write writer (str value))))
           (qp.writeback/execute-write-sql! db-id sql))
         (finally
           (.delete temp-file))))))

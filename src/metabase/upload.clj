@@ -252,17 +252,16 @@
     ::datetime    #(parse-datetime (str/trim %))))
 
 (defn- parsed-rows
-  "Returns a vector of parsed rows from a `csv-file`.
+  "Returns a lazy seq of parsed rows from the `reader`.
    Replaces empty strings with nil."
-  [col->upload-type csv-file]
-  (with-open [reader (io/reader csv-file)]
-    (let [[header & rows] (csv/read-csv reader)
-          column-count    (count header)
-          parsers         (map upload-type->parser (vals col->upload-type))]
-      (vec (for [row rows]
-             (for [[value parser] (map vector (pad column-count row) parsers)]
-               (when (not (str/blank? value))
-                 (parser value))))))))
+  [col->upload-type reader]
+  (let [[header & rows] (csv/read-csv reader)
+        column-count    (count header)
+        parsers         (map upload-type->parser (vals col->upload-type))]
+    (for [row rows]
+      (for [[value parser] (map vector (pad column-count row) parsers)]
+        (when (not (str/blank? value))
+          (parser value))))))
 
 ;;;; +------------------+
 ;;;; | Public Functions |
@@ -317,11 +316,12 @@
         column-names       (keys col->upload-type)]
     (driver/create-table! driver db-id table-name col->database-type)
     (try
-      (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into! driver db-id table-name column-names rows)
-        {:num-rows    (count rows)
-         :num-columns (count column-names)
-         :size-mb     (/ (.length csv-file) 1048576.0)})
+      (with-open [reader (io/reader csv-file)]
+        (let [rows (parsed-rows col->upload-type reader)]
+          (driver/insert-into! driver db-id table-name column-names rows)
+          {:num-rows    (count rows)
+           :num-columns (count column-names)
+           :size-mb     (/ (.length csv-file) 1048576.0)}))
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))

@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -42,8 +41,8 @@
 (deftest ^:parallel display-name-from-name-test
   (testing "Use the 'simple humanization' logic to calculate a display name for a Field that doesn't have one"
     (is (= "Venue ID"
-           (lib.metadata.calculation/display-name lib.tu/venues-query -1 {:lib/type :metadata/column
-                                                                          :name     "venue_id"})))))
+           (lib/display-name lib.tu/venues-query -1 {:lib/type :metadata/column
+                                                     :name     "venue_id"})))))
 
 (deftest ^:parallel table-or-card-test
   (are [id expected] (=? expected

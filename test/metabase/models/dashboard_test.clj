@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
-   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.test :as mt]
@@ -93,7 +92,7 @@
 (deftest ^:parallel diff-dashboards-str-test
   (testing "update general info ---"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:name        "Diff Test"
        :description nil
        :cards       []}
@@ -155,7 +154,7 @@
 (deftest ^:parallel diff-dashboards-str-update-cards-test
   (testing "update cards ---"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:cards [{:id 1} {:id 2}]}
       {:cards [{:id 1} {:id 2} {:id 3}]}
       "added a card."
@@ -175,7 +174,7 @@
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
-           (build-sentence
+           (u/build-sentence
              (revision/diff-strings
                Dashboard
                {:name "Apple"}
@@ -185,7 +184,7 @@
     (t2.with-temp/with-temp
       [Collection {coll-id :id} {:name "New collection"}]
       (is (= "moved this Dashboard to New collection."
-             (build-sentence
+             (u/build-sentence
               (revision/diff-strings
                Dashboard
                {:name "Apple"}
@@ -195,7 +194,7 @@
       [Collection {coll-id-1 :id} {:name "Old collection"}
        Collection {coll-id-2 :id} {:name "New collection"}]
       (is (= "moved this Dashboard from Old collection to New collection."
-             (build-sentence
+             (u/build-sentence
               (revision/diff-strings
                Dashboard
                {:name          "Apple"
@@ -206,7 +205,7 @@
 (deftest ^:parallel diff-dashboards-str-update-tabs-test
   (testing "update tabs"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:tabs [{:id 0 :name "First tab" :position 0}]}
       {:tabs [{:id 0 :name "First tab" :position 0}
               {:id 1 :name "Second tab" :position 1}]}
@@ -284,7 +283,7 @@
                 ;; public_uuid will changes and we had a description for it.
                 (when-not (#{:made_public_by_id} col)
                   (testing (format "we should have a revision description for %s" col)
-                    (is (some? (build-sentence
+                    (is (some? (u/build-sentence
                                  (revision/diff-strings
                                    Dashboard
                                    before

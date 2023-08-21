@@ -23,10 +23,6 @@
 ;;;
 ;;; where keys are a map of String ID => metadata
 
-(defn- object-get [obj k]
-  (when obj
-    (gobject/get obj k)))
-
 (defn- obj->clj
   "Convert a JS object of *any* class to a ClojureScript object."
   ([xform obj]
@@ -37,7 +33,7 @@
      (into {} xform obj)
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
      (if-let [plain-object (when use-plain-object?
-                             (some-> (object-get obj "_plainObject")
+                             (some-> (gobject/get obj "_plainObject")
                                      js->clj
                                      not-empty))]
        (into {} xform plain-object)
@@ -46,7 +42,7 @@
        (into {}
              (comp
               (map (fn [k]
-                     [k (object-get obj k)]))
+                     [k (gobject/get obj k)]))
               ;; ignore values that are functions
               (remove (fn [[_k v]]
                         (= (goog/typeOf v) "function")))
@@ -131,7 +127,7 @@
   (let [parse-object (parse-object-fn object-type)]
     (obj->clj (map (fn [[k v]]
                      [(parse-long k) (delay (parse-object v))]))
-              (object-get metadata (parse-objects-default-key object-type)))))
+              (gobject/get metadata (parse-objects-default-key object-type)))))
 
 (defmethod lib-type :database
   [_object-type]
@@ -179,7 +175,7 @@
                               (str/starts-with? k "card__")))
                     (map (fn [[k v]]
                            [(parse-long k) (delay (parse-table v))])))
-              (object-get metadata "tables"))))
+              (gobject/get metadata "tables"))))
 
 (defmethod lib-type :field
   [_object-type]
@@ -218,9 +214,22 @@
       :id                (parse-field-id v)
       v)))
 
-(defmethod parse-objects-default-key :field
-  [_object-type]
-  "fields")
+(defmethod parse-objects :field
+  [object-type metadata]
+  (let [parse-object (parse-object-fn object-type)
+        unparsed-fields (gobject/get metadata "fields")]
+    (obj->clj (keep (fn [[k v]]
+                      ;; Sometimes fields coming from saved questions are only present with their ID
+                      ;; prefixed with "card__<card-id>:". For such keys we parse the field ID from
+                      ;; the suffix and use the entry unless the ID is present in the metadata without
+                      ;; prefix. (The assumption being that the data under the two keys are mostly the
+                      ;; same but the one under the plain key is to be preferred.)
+                      (when-let [field-id (or (parse-long k)
+                                              (when-let [[_ id-str] (re-matches #"card__\d+:(\d+)" k)]
+                                                (and (nil? (gobject/get unparsed-fields id-str))
+                                                     (parse-long id-str))))]
+                        [field-id (delay (parse-object v))])))
+              unparsed-fields)))
 
 (defmethod lib-type :card
   [_object-type]
@@ -261,7 +270,7 @@
   "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
   key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
   [obj]
-  (or (object-get obj "_card")
+  (or (gobject/get obj "_card")
       obj))
 
 (defn- assemble-card
@@ -272,16 +281,16 @@
     ;; in from the table matadata.
     (merge
      (-> metadata
-         (object-get "tables")
-         (object-get (str "card__" id))
+         (gobject/get "tables")
+         (gobject/get (str "card__" id))
          ;; _plainObject can contain field names in the field property
          ;; instead of the field objects themselves.  Ignoring this
          ;; property makes sure we parse the real fields.
          parse-card-ignoring-plain-object
          (assoc :id id))
      (-> metadata
-         (object-get "questions")
-         (object-get (str id))
+         (gobject/get "questions")
+         (gobject/get (str id))
          unwrap-card
          parse-card))))
 
@@ -292,9 +301,9 @@
                [id (delay (assemble-card metadata id))]))
         (-> #{}
             (into (keep lib.util/legacy-string-table-id->card-id)
-                  (gobject/getKeys (object-get metadata "tables")))
+                  (gobject/getKeys (gobject/get metadata "tables")))
             (into (map parse-long)
-                  (gobject/getKeys (object-get metadata "questions"))))))
+                  (gobject/getKeys (gobject/get metadata "questions"))))))
 
 (defmethod lib-type :metric
   [_object-type]

@@ -10,7 +10,11 @@ import Collections, {
 } from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { nonPersonalOrArchivedCollection } from "metabase/collections/utils";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/lib/groups";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
@@ -184,7 +188,7 @@ export const getCollectionsPermissionEditor = createSelector(
 
       return {
         id: group.id,
-        name: group.name,
+        name: getGroupNameLocalized(group),
         permissions: [
           {
             toggleLabel,
@@ -213,7 +217,7 @@ export const getCollectionsPermissionEditor = createSelector(
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
-      columns: [{ name: `Group name` }, { name: t`Collection access` }],
+      columns: [{ name: t`Group name` }, { name: t`Collection access` }],
       entities,
     };
   },
