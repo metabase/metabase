@@ -6,6 +6,7 @@ import {
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -56,11 +57,11 @@ describe("scenarios > question > view", () => {
         },
       });
 
-      addOrUpdateDashboardCard({ dashboard_id: 2, card_id: 4 });
+      addOrUpdateDashboardCard({ dashboard_id: 2, card_id: 5 });
     });
 
-    it("should show filters by search for Vendor", () => {
-      visitQuestion(4);
+    it.only("should show filters by search for Vendor", () => {
+      visitQuestion(5);
 
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
