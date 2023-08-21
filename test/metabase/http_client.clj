@@ -265,9 +265,8 @@
                                   (some-> (java.net.URI. url)
                                           .getRawQuery
                                           (str/split #"&"))))
-        url         (first (str/split url #"\?"))
+        url         (first (str/split url #"\?")) ;; strip out the query param parts if any
         request     (-> (merge {:accept       "json"
-                                :content-type "application/json"
                                 :headers (merge
                                           {"content-type" "application/json"}
                                           {@#'mw.session/metabase-session-header (when credentials
