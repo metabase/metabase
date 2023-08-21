@@ -1,4 +1,5 @@
 (ns metabase.models.collection.graph-test
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
