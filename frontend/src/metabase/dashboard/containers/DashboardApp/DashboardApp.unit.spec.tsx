@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   screen,
@@ -49,6 +50,9 @@ const TEST_TABLE = createMockTable();
 
 async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
   const mockDashboard = createMockDashboard(dashboard);
+
+  const channelData = { channels: {} };
+  fetchMock.get("path:/api/pulse/form_input", channelData);
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
