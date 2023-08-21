@@ -12,14 +12,13 @@
    [clojure.string :as str]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher
     :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]
-   [metabase.util.i18n :as i18n]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +38,7 @@
   []
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.events.")]
-    (log/info (trs "Loading events namespace:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
+    (log/info (i18n/trs "Loading events namespace:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
     (classloader/require ns-symb)))
 
 (defn- initialize-events!
