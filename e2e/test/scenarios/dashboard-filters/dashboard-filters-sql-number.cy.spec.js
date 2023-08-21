@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
       setFilter("Number", filter);
 
-      cy.findByText("Select…").click();
+      clickSelect();
       popover().contains(filter).click();
     });
 
@@ -58,15 +58,13 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Number", "Equal to");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Default value").next().click();
+    cy.get("main").findByText("Default value").next().click();
 
     addWidgetNumberFilter("3.8");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
+    clickSelect();
     popover().contains("Equal to").click();
 
     saveDashboard();
@@ -89,7 +87,73 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   });
 });
 
+describe("scenarios > dashboard > filters > SQL > number", () => {
+  const questionDetails = {
+    name: "Question 1",
+    native: {
+      query:
+        "SELECT * from products where true [[ and price > {{price}}]] [[ and rating > {{rating}} ]] limit 5;",
+      "template-tags": {
+        price: {
+          type: "number",
+          name: "price",
+          id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+          "display-name": "Price",
+        },
+        rating: {
+          type: "number",
+          name: "rating",
+          id: "b22a5ce4-fe1d-44e3-8df4-f8951f7921bc",
+          "display-name": "Rating",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { card_id, dashboard_id } }) => {
+        visitQuestion(card_id);
+
+        visitDashboard(dashboard_id);
+      },
+    );
+
+    editDashboard();
+  });
+
+  it("should keep filter value on blur", () => {
+    setupNumberFilter("Price");
+    setupNumberFilter("Rating");
+
+    saveDashboard();
+
+    cy.findByPlaceholderText("Price").type("95").blur();
+    cy.findByPlaceholderText("Rating").type("3.8").blur();
+
+    cy.findAllByTestId("table-row")
+      .should("have.length", 2)
+      .and("contain", "Doohickey")
+      .and("contain", "Widget");
+  });
+});
+
 function clearFilter(index) {
   filterWidget().eq(index).find(".Icon-close").click();
   cy.wait("@dashcardQuery2");
+}
+
+function setupNumberFilter(name) {
+  setFilter("Number", "Equal to");
+  cy.findByDisplayValue("Equal to").clear().type(name);
+
+  clickSelect();
+  popover().contains(name).click();
+}
+
+function clickSelect() {
+  cy.findByTestId("dashcard").findByText("Select…").click();
 }
