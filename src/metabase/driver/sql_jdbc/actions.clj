@@ -13,6 +13,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -86,6 +87,8 @@
 (defn- mbql-query->raw-hsql
   [driver {database-id :database, :as query}]
   (qp.store/with-metadata-provider database-id
+    ;; catch errors in the query
+    (qp/preprocess query)
     (sql.qp/mbql->honeysql driver query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
