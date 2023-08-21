@@ -1,0 +1,57 @@
+import { navigationSidebar, restore } from "e2e/support/helpers";
+import {
+  createMockVersionInfo,
+  createMockVersionInfoRecord as mockVersion,
+} from "metabase-types/api/mocks";
+
+describe("nav > what's new notification", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    mockVersions({
+      currentVersion: "v0.48.0",
+      versions: [
+        mockVersion({
+          version: "v0.48.0",
+          releaseNotesUrl: "metabase.com/releases/48",
+        }),
+        mockVersion({
+          version: "v0.47.1",
+          releaseNotesUrl: "metabase.com/releases/47",
+        }),
+      ],
+    });
+  });
+
+  it("should show a notification with a link to the release notes, and allow the dismissal of it", () => {
+    loadHomepage();
+
+    navigationSidebar().findByText("See what's new");
+
+    navigationSidebar().findByText("dismiss").click();
+
+    navigationSidebar().findByText("See what's new").should("not.exist");
+
+    loadHomepage();
+
+    navigationSidebar().findByText("See what's new").should("not.exist");
+  });
+});
+
+function mockVersions({ currentVersion, versions = [] }) {
+  const [latest, ...older] = versions;
+  cy.intercept("GET", "/api/session/properties", req => {
+    req.reply(res => {
+      res.body["version"] = { tag: currentVersion };
+      res.body["version-info"] = createMockVersionInfo({ latest, older });
+    });
+  }).as("sessionProperties");
+}
+
+function loadHomepage() {
+  cy.visit("/");
+  cy.findByText("loading").should("not.exist");
+  cy.wait(1000);
+  navigationSidebar().findByText("Home").should("exist");
+}
