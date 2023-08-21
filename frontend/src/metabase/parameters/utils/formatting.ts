@@ -51,7 +51,7 @@ export function formatParameterValue(
     }
 
     // format using the parameter's first targeted field
-    if (parameter.fields.length > 0) {
+    if (parameter.fields?.length > 0) {
       const [firstField] = parameter.fields;
       // when a parameter targets multiple fields we won't know
       // which parameter the value is associated with, meaning we

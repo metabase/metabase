@@ -250,7 +250,7 @@
                  (:dataset maybe-model-def)
                  (contains? maybe-model-def :dataset_query))
           [model-part (drop 2 binding-forms-and-option-maps)]
-          ['[_ {:dataset true :dataset_query (metabase.test.data/mbql-query categories)}]
+          ['[_ {:dataset true :dataset_query (mt/mbql-query categories)}]
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
