@@ -307,9 +307,8 @@
           (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
             (is (contains? new-perms (str "/db/" database-id "/schema/")))))
         (testing "Unable to update instance analytics to writable"
-          (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :write))
-          (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
-            (is (contains? new-perms (str "/db/" database-id "/schema/")))))))))
+          (is (thrown?
+               Exception (graph/update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :write)))))))))
 
 (deftest collection-namespace-test
   (testing "The permissions graph should be namespace-aware.\n"
