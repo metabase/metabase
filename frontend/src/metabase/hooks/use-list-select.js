@@ -4,29 +4,35 @@ export const useListSelect = (keyFn = item => item) => {
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [selected, setSelected] = useState([]);
 
-  const toggleAll = useCallback(
-    items => {
-      const additions = items.filter(item => !selectedKeys.has(keyFn(item)));
-      const deletionsKeys = new Set(
-        items.filter(item => selectedKeys.has(keyFn(item))).map(keyFn),
-      );
+  const getIsSelected = useCallback(
+    item => selectedKeys.has(keyFn(item)),
+    [keyFn, selectedKeys],
+  );
 
-      const newSelected = selected
-        .filter(item => !deletionsKeys.has(keyFn(item)))
-        .concat(additions);
+  const selectOnlyTheseItems = useCallback(
+    items => {
+      const newSelected = items;
       const newSelectedKeys = new Set(newSelected.map(keyFn));
 
       setSelectedKeys(newSelectedKeys);
       setSelected(newSelected);
     },
-    [keyFn, selected, selectedKeys],
+    [keyFn],
   );
 
-  const toggleItem = useCallback(item => toggleAll([item]), [toggleAll]);
+  const toggleItem = useCallback(
+    itemBeingToggled => {
+      const isItemSelected = getIsSelected(itemBeingToggled);
 
-  const getIsSelected = useCallback(
-    item => selectedKeys.has(keyFn(item)),
-    [keyFn, selectedKeys],
+      const newSelected = isItemSelected
+        ? selected.filter(item => keyFn(item) !== keyFn(itemBeingToggled))
+        : [...selected, itemBeingToggled];
+      const newSelectedKeys = new Set(newSelected.map(keyFn));
+
+      setSelectedKeys(newSelectedKeys);
+      setSelected(newSelected);
+    },
+    [keyFn, selected, getIsSelected],
   );
 
   const clear = useCallback(() => {
@@ -35,10 +41,10 @@ export const useListSelect = (keyFn = item => item) => {
   }, []);
 
   return {
-    selected,
-    toggleItem,
-    toggleAll,
-    getIsSelected,
     clear,
+    getIsSelected,
+    selected,
+    selectOnlyTheseItems,
+    toggleItem,
   };
 };
