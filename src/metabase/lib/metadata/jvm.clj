@@ -68,7 +68,8 @@
                  :name         (:name database)
                  :dbms-version (:dbms_version database)
                  :settings     (:settings database)
-                 :is-audit     (:is_audit database)}
+                 :is-audit     (:is_audit database)
+                 :features     (:features database)}
                 (when-let [details (:details database)]
                   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
                   ;; validation

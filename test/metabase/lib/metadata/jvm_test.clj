@@ -19,7 +19,7 @@
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
 
 (deftest ^:parallel fetch-database-test
-  (is (=? {:lib/type :metadata/database}
+  (is (=? {:lib/type :metadata/database, :features set?}
           (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
   (testing "Should return nil correctly"
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))

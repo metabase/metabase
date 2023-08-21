@@ -81,8 +81,7 @@
            (str message))))))
 
 (deftest database-supports?-test
- (mt/test-driver
-    :mongo
+  (mt/test-driver :mongo
     (doseq [{:keys [dbms_version expected]}
             [{:dbms_version {:semantic-version [5 0 0 0]}
               :expected true}
@@ -93,10 +92,11 @@
              {:dbms_version  {:semantic-version [2 2134234]}
               :expected false}]]
       (testing (str "supports with " dbms_version)
-        (is (= expected
-               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
+        (t2.with-temp/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
+          (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
-    (is (= #{:collection} (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+    (is (= #{:collection}
+           (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
 
 
 (def ^:private native-query
