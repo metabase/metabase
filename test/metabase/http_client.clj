@@ -212,15 +212,6 @@
    (schema/optional-key :query-parameters) (schema/maybe su/Map)
    (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
-(defn- read-streaming-response
-  [streaming-response content-type]
-  (with-open [os (java.io.ByteArrayOutputStream.)]
-    (let [f             (.f streaming-response)
-          canceled-chan (a/promise-chan)]
-      (f os canceled-chan)
-      (cond-> (.toByteArray os)
-        (some #(re-find % content-type) [#"json" #"text"]) (String. "UTF-8")))))
-
 (schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
@@ -249,7 +240,17 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
-(defn- mock-request-resp
+(defn- read-streaming-response
+  [streaming-response content-type]
+  (with-open [os (java.io.ByteArrayOutputStream.)]
+    (let [f             (.f streaming-response)
+          canceled-chan (a/promise-chan)]
+      (f os canceled-chan)
+      (cond-> (.toByteArray os)
+        (some #(re-find % content-type) [#"json" #"text"])
+        (String. "UTF-8")))))
+
+(defn- coerce-mock-req-body
   [resp]
   (update resp :body
           (fn [body]
@@ -259,6 +260,10 @@
              (with-open [r (io/reader body)]
                (slurp r))
 
+             ;; read byte array stuffs like image
+             (instance? (Class/forName "[B") body)
+             (String. body "UTF-8")
+
              ;; Most APIs that execute a request returns a streaming response
              (instance? StreamingResponse body)
              (read-streaming-response body (get-in resp [:headers "Content-Type"]))
@@ -266,14 +271,12 @@
              :else
              body))))
 
-(schema/defn ^:private -mock-client
-  ;; Since the params for this function can get a little complicated make sure we validate them
-  [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
-  (initialize/initialize-if-needed! :db :web-server)
+(defn- build-mock-request
+  [{:keys [query-parameters url credentials http-body method request-options]}]
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
-        method-name (u/upper-case-en (name method))
         query-parameters (merge
                           query-parameters
+                          ;; sometimes we include the param in the URL(even though we shouldn't)
                           (reduce (fn [acc query]
                                     (let [[k v] (str/split query #"=")]
                                       (assoc acc k v)))
@@ -281,28 +284,40 @@
                                   (some-> (java.net.URI. url)
                                           .getRawQuery
                                           (str/split #"&"))))
-        url         (first (str/split url #"\?")) ;; strip out the query param parts if any
-        request     (-> (merge {:accept  "json"
-                                :headers (merge
-                                          {"content-type" "application/json"}
-                                          {@#'mw.session/metabase-session-header (when credentials
-                                                                                   (if (map? credentials)
-                                                                                     (authenticate credentials)
-                                                                                     credentials))})
-                                :query-string (build-query-string query-parameters)
-                                :request-method method
-                                :uri (str *url-prefix* (if (= (first url) \/) url (str "/" url)))}
-                               (when (seq http-body)
-                                 {:body http-body})
-                               request-options)
-                        (m/update-existing :body (fn [http-body]
-                                                  (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
-                                                                                                http-body
-                                                                                                (json/generate-string http-body)))))))
+        url             (cond->> (first (str/split url #"\?")) ;; strip out the query param parts if any
+                          (not= (first url) \/)
+                          (str "/"))]
+    (-> (merge
+         {:accept         "json"
+          :headers        {"content-type" "application/json"
+                           @#'mw.session/metabase-session-header (when credentials
+                                                                   (if (map? credentials)
+                                                                     (authenticate credentials)
+                                                                     credentials))}
+          :query-string   (build-query-string query-parameters)
+          :request-method method
+          :uri            (str *url-prefix* url)}
+         (when (seq http-body)
+           {:body http-body})
+         request-options)
+        (m/update-existing :body (fn [http-body]
+                                   (java.io.ByteArrayInputStream.
+                                    (.getBytes (if (string? http-body)
+                                                 http-body
+                                                 (json/generate-string http-body)))))))))
+
+
+(schema/defn ^:private -mock-client
+  ;; Since the params for this function can get a little complicated make sure we validate them
+  [{:keys [method expected-status] :as params} :- ClientParamsMap]
+  (initialize/initialize-if-needed! :db :web-server)
+  (let [method-name (u/upper-case-en (name method))
+        request     (build-mock-request params)
+        url         (:uri request)
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (handler/app request mock-request-resp (fn [e] (throw e)))
+                       (handler/app request coerce-mock-req-body (fn [e] (throw e)))
                        (catch clojure.lang.ExceptionInfo e
                          (log/debug e method-name url)
                          (ex-data e))
@@ -349,7 +364,10 @@
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 
 (defn client-full-response
-  "Identical to `client` except returns the full HTTP response map, not just the body of the response"
+  "Identical to `client` except returns the full response map, not just the body of the response.
+  Note: this does not make an actual http calls, use `client-real-response` for that.
+
+  See `client` docstring for more."
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
@@ -358,7 +376,7 @@
       (-mock-client parsed))))
 
 (defn client-real-response
-  "Identical to `client` except returns the full HTTP response map, not just the body of the response"
+  "Identical to `real-client` except returns the full HTTP response map, not just the body of the response."
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
@@ -367,7 +385,9 @@
       (-client parsed))))
 
 (defn client
-  "Perform an API call and return the response (for test purposes).
+  "Perform a mock API call and return the response body (for test puposes).
+  To make an actual http call use [[real-client]].
+
    The first arg after `url` will be passed as a JSON-encoded body if it is a map.
    Other &rest kwargs will be passed as `GET` parameters.
 
@@ -387,13 +407,16 @@
    *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.
                              The map must be wrapped in `{:request-options}` e.g. `{:request-options {:headers ...}}`
    *  `http-body-map`        Optional map to send as the JSON-serialized HTTP body of the request
-   *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params"
+   *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params
+
+  Note: One benefit of [[client]] over [[real-client]] is the call site and API execution are on the same thread,
+  so it's possible to run a test inside a transaction and bindings will works."
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-full-response args)))
 
 (defn real-client
-  "Like client but it's mocked"
+  "Like [[client]] but making an actual http request."
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-real-response args)))

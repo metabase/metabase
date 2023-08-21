@@ -189,16 +189,18 @@
 
 (def user-http-request
   ^{:doc
-    "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
+    "A version of our test client that issues the request with credentials for a given User. User may be either a
     redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
-    password, this function temporarily overrides the password for that User.)"
-    :arglists '([the-client test-user-name-or-user-or-id method expected-status-code? endpoint
+    password, this function temporarily overrides the password for that User.)
+
+    Note: this makes a mock API call, not than an actual HTTP calls, use [[user-real-request]] for that."
+    :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
 (def user-real-request
   ^{:doc "Like `user-http-request` but instead of calling the app handler, this calls an actually http request."
-    :arglists '([the-client test-user-name-or-user-or-id method expected-status-code? endpoint
+    :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
 
