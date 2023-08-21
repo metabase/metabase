@@ -362,9 +362,9 @@ export default class Popover extends Component {
       target.style.top = this.props.targetEvent.clientY - 3 + "px";
     } else if (this.props.target) {
       if (typeof this.props.target === "function") {
-        target = ReactDOM.findDOMNode(this.props.target());
+        target = this.props.target();
       } else {
-        target = ReactDOM.findDOMNode(this.props.target);
+        target = this.props.target;
       }
     }
     if (target == null) {
