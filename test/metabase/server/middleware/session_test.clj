@@ -84,6 +84,24 @@
                  (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
+(deftest samesite-none-log-warning-test
+  (with-redefs [metabase.config/mb-session-cookie-samesite :none]
+    (let [session {:id   (random-uuid)
+                   :type :normal}
+          request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
+         (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
+           (is (contains? (into #{}
+                                (map (fn [[_log-level _error message]] message))
+                                (mt/with-log-messages-for-level :warn
+                                  (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
+                          "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
+         (testing "should not log a warning over a secure connection."
+           (is (not (contains? (into #{}
+                                     (map (fn [[_log-level _error message]] message))
+                                     (mt/with-log-messages-for-level :warn
+                                       (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
+                               "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
+
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
 (deftest ^:parallel secure-cookie-test
