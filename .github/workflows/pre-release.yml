@@ -217,10 +217,10 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v3
       with:
-        ref: ${{ needs.release-artifact.version-properties.commit }}
+        ref: ${{ needs.release-artifact.outputs.commit }}
     - name: Truncate commit hash
       run: |
-        commit_id=${{ needs.release-artifact.version-properties.commit }}
+        commit_id=${{ needs.release-artifact.outputs.commit }}
         truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
 
         echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
