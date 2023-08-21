@@ -51,7 +51,10 @@ function mockVersions({ currentVersion, versions = [] }) {
 
 function loadHomepage() {
   cy.visit("/");
+
+  // make sure page is loaded
   cy.findByText("loading").should("not.exist");
-  cy.wait(1000);
+  cy.wait("@sessionProperties");
+
   navigationSidebar().findByText("Home").should("exist");
 }
