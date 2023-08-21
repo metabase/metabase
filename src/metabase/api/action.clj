@@ -19,6 +19,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+; test comment for CI workflow
+
 (set! *warn-on-reflection* true)
 
 (def ^:private json-query-schema
@@ -58,9 +60,9 @@
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
-                                              :model_id [:in (map :id models)]
-                                              :archived false)
-                       :creator)
+                                                 :model_id [:in (map :id models)]
+                                                 :archived false)
+                          :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
@@ -180,9 +182,9 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! Action id
-                             {:public_uuid <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                        (t2/update! Action id
+                                    {:public_uuid <>
+                                     :made_public_by_id api/*current-user-id*})))}))
 
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."

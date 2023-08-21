@@ -13,6 +13,8 @@ export interface ExecuteActionOpts {
   parameters: ParametersForActionExecution;
 }
 
+// test comment for CI workflow
+
 export const executeAction =
   ({ action, parameters }: ExecuteActionOpts) =>
   async (dispatch: Dispatch): Promise<ActionFormSubmitResult> => {
