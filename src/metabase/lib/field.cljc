@@ -655,25 +655,19 @@
   [query      :- ::lib.schema/query
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
-  (let [stage  (lib.util/query-stage query stage-number)
-        source (:lib/source column)
-        res (case source
-              (:source/table-defaults
-               :source/breakouts
-               :source/aggregations
-               :source/expressions
-               :source/card
-               :source/previous-stage)    (exclude-field query stage-number column)
-              :source/implicitly-joinable (cond-> query
-                                            ;; If there are fields, exclude this column from it.
-                                            ;; If :fields is implied, then there can't be any implicitly joined fields in it.
-                                            (:fields stage) (exclude-field stage-number column))
-              :source/joins               (remove-field-from-join query stage-number column)
-              :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-              ;; Default case: do nothing and return the query unchaged.
-              ;; Generate a warning - we should aim to capture every `:source/*` value above.
-              (do
-                (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
-                query))]
-    #?(:cljs (js/console.log "remove-field" "query" query "column" column "result" res))
-    res))
+  (let [source (:lib/source column)]
+    (case source
+      (:source/table-defaults
+       :source/breakouts
+       :source/aggregations
+       :source/expressions
+       :source/card
+       :source/previous-stage
+       :source/implicitly-joinable) (exclude-field query stage-number column)
+      :source/joins                 (remove-field-from-join query stage-number column)
+      :source/native                (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
+      ;; Default case: do nothing and return the query unchaged.
+      ;; Generate a warning - we should aim to capture every `:source/*` value above.
+      (do
+        (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+        query))))
