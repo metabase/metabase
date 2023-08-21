@@ -71,7 +71,7 @@
         ;; clj-http sets :expires key in response when Max-Age attribute is set
         (is (get-in response [:cookies session-cookie :expires])))
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
-            response (mt/client-full-response :post 200 "session" body)]
+            response (mt/client-real-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
