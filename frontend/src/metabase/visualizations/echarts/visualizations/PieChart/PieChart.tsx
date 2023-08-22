@@ -3,7 +3,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { EChartsRenderer } from "../../EChartsRenderer";
 import { useEChartsConfig } from "../../use-echarts-config";
-import { pieSeriesMixin } from "./mixins";
+import { pieSeriesMixin, seriesColorMixin } from "./mixins";
 
 Object.assign(PieChart, {
   uiName: "Pie 2",
@@ -16,7 +16,7 @@ export function PieChart(props: VisualizationProps) {
   const config = useEChartsConfig({
     chartType: "pie",
     props,
-    mixins: [pieSeriesMixin],
+    mixins: [pieSeriesMixin, seriesColorMixin],
   });
 
   return (
