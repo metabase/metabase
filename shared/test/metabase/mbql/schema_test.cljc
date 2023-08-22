@@ -90,7 +90,7 @@
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mc/explain schema [:aggregation 0])))
     mbql.s/aggregation
-    mbql.s/AnyReference))
+    mbql.s/FieldOrAggregationReference))
 
 (deftest ^:parallel native-query-test
   (let [parameter-dimension    [:dimension [:template-tag "date_range"]]

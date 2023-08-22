@@ -5,7 +5,9 @@
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
   in [[allowed-parallel-forms]] is not allowed."
-  '#{clojure.core/with-redefs
+  '#{clojure.core/alter-var-root
+     clojure.core/with-redefs
+     clojure.core/with-redefs-fn
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
      metabase.actions.test-util/with-actions-enabled
