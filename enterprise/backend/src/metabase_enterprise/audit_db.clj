@@ -8,7 +8,6 @@
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
-            [metabase.util.files :as u.files]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
@@ -64,7 +63,7 @@
 
 (def analytics-root-dir-resource
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics.zip"))
+  (io/resource "instance_analytics"))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
@@ -75,16 +74,24 @@
     (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
       (do (log/info "Beginning Audit DB Sync...")
           (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
-          (log/info "Audit DB Sync Complete."))
+          (log/info "Audit DB Sync Complete.")
+          ;; We need to move back to a schema that matches the serialized data
+          (when (= :h2 mdb.env/db-type)
+            (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
+            (t2/update! :model/Table {:db_id (:id audit-db)} {:schema [:lower :schema] :name [:lower :name]})
+            (t2/update! :model/Field
+                        {:table_id
+                         [:in
+                          {:select [:id]
+                           :from [(t2/table-name :model/Table)]
+                           :where [:= :db_id (:id audit-db)]}]}
+                        {:name [:lower :name]})))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
       (ee.internal-user/ensure-internal-user-exists!)
       (log/info "Loading Analytics Content...")
-      (log/info "Unzipping analytics to plugins...")
-      (u.files/unzip-file analytics-root-dir-resource "plugins")
-      (log/info "Unzipping done.")
       (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
       ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
       (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
@@ -92,4 +99,15 @@
                                                                          :token-check? false))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))
+          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))
+    (when (= :h2 mdb.env/db-type)
+      (when-let [audit-db-id (t2/select-one-pk :model/Database {:where [:= :is_audit true]})]
+        (t2/update! :model/Database audit-db-id {:engine "h2"})
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Field
+                    {:table_id
+                     [:in
+                      {:select [:id]
+                       :from [(t2/table-name :model/Table)]
+                       :where [:= :db_id audit-db-id]}]}
+                    {:name [:upper :name]})))))
