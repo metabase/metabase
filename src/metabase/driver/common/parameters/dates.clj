@@ -425,7 +425,7 @@
     {:keys [inclusive-start? inclusive-end?]
      :or   {inclusive-start? true inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         now (t/local-date-time (t/zone-id "UTC"))]
+         now     (t/local-date-time (t/zone-id "UTC"))]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
      (or (->> (execute-decoders relative-date-string-decoders :range now date-string)

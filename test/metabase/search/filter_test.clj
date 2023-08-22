@@ -83,49 +83,52 @@
 
 (deftest build-created-at-filter-test
   (testing "created-at filter"
-    (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
-      (are [created-at expected-where]
-           (= expected-where
-              (->> (search.filter/build-filters
-                    base-search-query "card"
-                    (merge default-search-ctx {:created-at created-at}))
-                   :where
-                   ;; drop the first 2 clauses [:and [:= :card.archived false]]
-                   (drop 2)))
-           ;; absolute datetime
-           "Q1-2023"                                 [[:>= [:cast :card.created_at :date] #t "2023-01-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
-           "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                      [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
-           "2016-04-18"                              [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                      [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
-           "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
-           "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
-           "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
-                                                      [:< :card.created_at #t "2016-04-23T11:31:00"]]
-           "2016-04-23T10:00:00"                     [[:>= :card.created_at #t "2016-04-23T10:00"]
-                                                      [:< :card.created_at  #t "2016-04-23T10:01"]]
-           "2016-04-18T10:30:00~"                    [[:> :card.created_at #t "2016-04-18T10:30"]]
-           "~2016-04-18T10:30:00"                    [[:< :card.created_at #t "2016-04-18T10:31"]]
-           ;; relative datetime
-           "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
-           "past3days~"                              [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-           "past3hours~"                             [[:>= :card.created_at #t "2023-05-04T07:00"]
-                                                      [:< :card.created_at #t "2023-05-04T11:00"]]
-           "next3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-05"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
-           "thisminute"                              [[:>= :card.created_at #t "2023-05-04T10:02"]
-                                                      [:< :card.created_at #t "2023-05-04T10:03"]]
-           "lasthour"                                [[:>= :card.created_at #t "2023-05-04T09:00"]
-                                                      [:< :card.created_at #t "2023-05-04T10:00"]]
-           "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
-           "today"                                   [[:>= [:cast :card.created_at :date] #t "2023-05-04"]
-                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-           "yesterday"                               [[:>= [:cast :card.created_at :date] #t "2023-05-03"]
-                                                      [:< [:cast :card.created_at :date] #t "2023-05-04"]]))))
+    ;; testing with different clock to ensure created at filter always built at 'UTC'
+    ;; regardless of what the system timezone is
+    (doseq [clock [#t "2023-05-04T10:02:05Z[UTC]" #t "2023-05-04T19:02:05Z[Asia/Tokyo]"]]
+      (mt/with-clock clock
+        (are [created-at expected-where]
+             (= expected-where
+                (->> (search.filter/build-filters
+                      base-search-query "card"
+                      (merge default-search-ctx {:created-at created-at}))
+                     :where
+                     ;; drop the first 2 clauses [:and [:= :card.archived false]]
+                     (drop 2)))
+             ;; absolute datetime
+             "Q1-2023"                                 [[:>= [:cast :card.created_at :date] #t "2023-01-01"]
+                                                        [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
+             "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                        [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
+             "2016-04-18"                              [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                        [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
+             "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
+             "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
+             "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
+                                                        [:< :card.created_at #t "2016-04-23T11:31:00"]]
+             "2016-04-23T10:00:00"                     [[:>= :card.created_at #t "2016-04-23T10:00"]
+                                                        [:< :card.created_at  #t "2016-04-23T10:01"]]
+             "2016-04-18T10:30:00~"                    [[:> :card.created_at #t "2016-04-18T10:30"]]
+             "~2016-04-18T10:30:00"                    [[:< :card.created_at #t "2016-04-18T10:31"]]
+             ;; relative datetime
+             "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                        [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
+             "past3days~"                              [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                        [:< [:cast :card.created_at :date] #t "2023-05-05"]]
+             "past3hours~"                             [[:>= :card.created_at #t "2023-05-04T07:00"]
+                                                        [:< :card.created_at #t "2023-05-04T11:00"]]
+             "next3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-05"]
+                                                        [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
+             "thisminute"                              [[:>= :card.created_at #t "2023-05-04T10:02"]
+                                                        [:< :card.created_at #t "2023-05-04T10:03"]]
+             "lasthour"                                [[:>= :card.created_at #t "2023-05-04T09:00"]
+                                                        [:< :card.created_at #t "2023-05-04T10:00"]]
+             "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
+                                                        [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
+             "today"                                   [[:>= [:cast :card.created_at :date] #t "2023-05-04"]
+                                                        [:< [:cast :card.created_at :date] #t "2023-05-05"]]
+             "yesterday"                               [[:>= [:cast :card.created_at :date] #t "2023-05-03"]
+                                                        [:< [:cast :card.created_at :date] #t "2023-05-04"]])))))
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"

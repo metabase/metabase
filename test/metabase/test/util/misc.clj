@@ -16,9 +16,27 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.time ZoneId LocalDateTime)))
 
 (set! *warn-on-reflection* true)
+
+(defn change-zone-local-date-time
+  [local-dt clock-zone-id target-zone-id]
+  (-> (.atZone ^LocalDateTime local-dt clock-zone-id)
+      (t/with-zone-same-instant target-zone-id)
+      .toLocalDateTime))
+
+(defn with-local-date-time-at-same-zone
+  [clock-zone-id thunk]
+  (let [original-var t/local-date-time]
+    (with-redefs[t/local-date-time (fn [& args]
+                                     (if (and (= (count args) 1)
+                                              (instance? ZoneId (first args)))
+                                       (change-zone-local-date-time (original-var) clock-zone-id (first args))
+                                       (apply original-var args)))]
+      (thunk))))
 
 (defn do-with-clock [clock thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
@@ -31,7 +49,8 @@
                                                                         (pr-str clock)))))]
       #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
-        (thunk)))))
+        (with-local-date-time-at-same-zone (t/zone-id clock)
+         thunk)))))
 
 (defmacro with-clock
   "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
