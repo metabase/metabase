@@ -73,6 +73,9 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
       },
+      required: {
+        color: theme.colors.error[0],
+      },
     }),
   },
 });
