@@ -862,10 +862,7 @@
   [root
    {rule-name :rule :as rule} :- rules/Rule]
   (log/debugf "Applying rule '%s'" rule-name)
-  (let [rule    (-> rule
-                    (update :dimensions conj {"PK" {:field_type [:type/PK], :score 100}})
-                    (update :dashboard_filters conj "PK"))
-        context (make-context root rule)
+  (let [context (make-context root rule)
         cards   (make-cards context rule)]
     (when (or (not-empty cards)
               (-> rule :cards nil?))
@@ -1053,12 +1050,17 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name] :as root}]
+  [{:keys [rule rules-prefix full-name primary-key] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
-         (apply-rule root rule))
+         (let [rule (if primary-key
+                      (-> rule
+                          (update :dimensions conj {"PK" {:field_type [:type/PK], :score 100}})
+                          (update :dashboard_filters conj "PK"))
+                      rule)]
+           (apply-rule root rule)))
        (matching-rules (rules/get-rules rules-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
                       {:root            root
