@@ -1,14 +1,7 @@
-import {
-  forwardRef,
-  HTMLAttributes,
-  Key,
-  ReactNode,
-  Ref,
-  useCallback,
-  useMemo,
-} from "react";
+import type { HTMLAttributes, Key, ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
-import { RadioColorScheme, RadioVariant } from "./types";
+import type { RadioColorScheme, RadioVariant } from "./types";
 import {
   RadioButton,
   RadioContainerBubble,

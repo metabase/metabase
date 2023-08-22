@@ -14,7 +14,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { CollectionItem, RecentItem } from "metabase-types/api";
+import type { CollectionItem, RecentItem } from "metabase-types/api";
 import SearchBar from "metabase/nav/components/SearchBar";
 import { checkNotNull } from "metabase/core/utils/types";
 import * as domUtils from "metabase/lib/dom";

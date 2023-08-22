@@ -8,14 +8,14 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
   isVariableTarget,
   getTemplateTagFromTarget,
   getTargetFieldFromCard,
 } from "metabase-lib/parameters/utils/targets";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({

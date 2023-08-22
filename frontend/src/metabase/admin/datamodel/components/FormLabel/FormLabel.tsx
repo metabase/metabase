@@ -1,4 +1,5 @@
-import { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import {
   FormLabelContent,
   FormLabelDescription,

@@ -8,10 +8,8 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import {
-  FieldValuesWidget,
-  IFieldValuesWidgetProps,
-} from "metabase/components/FieldValuesWidget";
+import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
 import {
   ORDERS,
@@ -20,7 +18,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import {
   state,

@@ -1,4 +1,4 @@
-import { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, User } from "metabase-types/api";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
 import SearchBar from "../SearchBar";

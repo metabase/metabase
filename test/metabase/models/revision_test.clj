@@ -4,8 +4,9 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
-   [metabase.models.revision.diff :refer [build-sentence]]
+   [metabase.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -18,14 +19,14 @@
 (derive :model/FakedCard :metabase/model)
 
 (defn- do-with-model-i18n-strs! [thunk]
-  (with-redefs [metabase.models.revision.diff/model-str->i18n-str (fn [model-str]
-                                                                    (case model-str
-                                                                      "Dashboard"     (deferred-tru "Dashboard")
-                                                                      "Card"          (deferred-tru "Card")
-                                                                      "Segment"       (deferred-tru "Segment")
-                                                                      "Metric"        (deferred-tru "Metric")
-                                                                      "NonExistModel" "NonExistModel"
-                                                                      "FakeCard"      "FakeCard"))]
+  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+                                                    (case model-str
+                                                      "Dashboard"     (deferred-tru "Dashboard")
+                                                      "Card"          (deferred-tru "Card")
+                                                      "Segment"       (deferred-tru "Segment")
+                                                      "Metric"        (deferred-tru "Metric")
+                                                      "NonExistModel" "NonExistModel"
+                                                      "FakeCard"      "FakeCard"))]
     (thunk)))
 
 (defmethod revision/serialize-instance :model/FakedCard
@@ -67,14 +68,14 @@
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-           (build-sentence
+           (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false}
               {:name "Spots by State", :private false}))))
 
     (is (= "made this Card private."
-           (build-sentence
+           (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
               {:name "Spots by State", :private false}
@@ -83,7 +84,7 @@
 (deftest ^:parallel multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           (build-sentence
+           (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false}
@@ -91,7 +92,7 @@
 
   (testing "Check that several changes are handled nicely"
     (is (= (str "turned this into a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
-           (build-sentence
+           (u/build-sentence
              ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false, :dataset false}

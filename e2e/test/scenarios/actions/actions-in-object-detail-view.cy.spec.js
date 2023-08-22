@@ -30,6 +30,7 @@ describe(
   () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
         "prefetchValues",
       );
@@ -185,6 +186,36 @@ describe(
         });
       },
     );
+
+    it("should show detailed form errors for constraint violations when executing model actions", () => {
+      const actionName = "Update";
+
+      cy.signInAsAdmin();
+
+      cy.get("@modelId").then(modelId => {
+        createImplicitActions({ modelId });
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+        openUpdateObjectModal();
+      });
+
+      actionExecuteModal().within(() => {
+        cy.wait("@prefetchValues");
+
+        actionForm().within(() => {
+          cy.findByLabelText("Team Name").clear().type("Dusty Ducks");
+          cy.findByText(actionName).click();
+        });
+
+        cy.wait("@executeAction");
+
+        cy.findByLabelText("Team Name").should("not.exist");
+        cy.findByLabelText(
+          "Team Name: This Team_name value already exists.",
+        ).should("exist");
+
+        cy.findByText("Team_name already exists.").should("exist");
+      });
+    });
   },
 );
 

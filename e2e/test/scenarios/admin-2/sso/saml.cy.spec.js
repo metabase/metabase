@@ -10,7 +10,7 @@ import {
 import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
-} from "./group-mappings-widget";
+} from "./shared/group-mappings-widget";
 
 describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {

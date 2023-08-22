@@ -1,6 +1,6 @@
-import { TimelineEvent } from "metabase-types/api";
-import { RemappingHydratedDatasetColumn } from "./columns";
-import { ComputedVisualizationSettings } from "./visualization";
+import type { TimelineEvent } from "metabase-types/api";
+import type { RemappingHydratedDatasetColumn } from "./columns";
+import type { ComputedVisualizationSettings } from "./visualization";
 
 export interface DataPoint {
   key: string;

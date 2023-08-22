@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -11,7 +11,7 @@ import type {
   DatasetColumn,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";

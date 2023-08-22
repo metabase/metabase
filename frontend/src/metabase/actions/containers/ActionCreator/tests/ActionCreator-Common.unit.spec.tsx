@@ -11,7 +11,8 @@ import {
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { getDefaultFormSettings } from "metabase/actions/utils";
-import { setup as baseSetup, SetupOpts } from "./common";
+import type { SetupOpts } from "./common";
+import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),

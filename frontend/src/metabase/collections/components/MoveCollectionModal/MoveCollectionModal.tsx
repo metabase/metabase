@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
   collection: Collection;

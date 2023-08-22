@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
-import { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
@@ -33,7 +33,10 @@ import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import { CardSlownessStatus, DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  CardSlownessStatus,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
 import DashCardMenu from "./DashCardMenu";
 import DashCardParameterMapper from "./DashCardParameterMapper";

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { Flex } from "@mantine/core";
 import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar.styled";
-import { SearchModelType } from "metabase-types/api";
+import type { SearchModelType } from "metabase-types/api";
 import { SEARCH_FILTERS } from "metabase/search/constants";
 
 export const TypeSearchSidebar = ({

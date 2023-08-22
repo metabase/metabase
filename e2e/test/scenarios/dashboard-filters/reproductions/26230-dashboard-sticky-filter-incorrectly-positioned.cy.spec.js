@@ -1,5 +1,6 @@
 import {
   addOrUpdateDashboardCard,
+  createTextCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -75,19 +76,10 @@ function createTextDashcard(id) {
   addOrUpdateDashboardCard({
     dashboard_id: id,
     card_id: null,
-    card: {
+    card: createTextCard({
       size_x: 5,
       size_y: 20,
-      visualization_settings: {
-        virtual_card: {
-          name: null,
-          display: "text",
-          visualization_settings: {},
-          dataset_query: {},
-          archived: false,
-        },
-        text: "I am a tall card",
-      },
-    },
+      text: "I am a tall card",
+    }),
   });
 }

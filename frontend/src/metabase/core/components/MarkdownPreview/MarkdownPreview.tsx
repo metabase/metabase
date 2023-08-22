@@ -1,4 +1,4 @@
-import { ComponentProps, LegacyRef } from "react";
+import type { ComponentProps, LegacyRef } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 

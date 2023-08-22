@@ -1,12 +1,13 @@
-/* eslint-disable react/prop-types */
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
+import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
 
-const SQL_EXAMPLES = {
+const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
   variable: {
     database: null,
     type: "native",
@@ -16,7 +17,7 @@ const SQL_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "text",
           required: true,
           default: "Widget",
@@ -33,9 +34,8 @@ const SQL_EXAMPLES = {
         created_at: {
           id: Utils.uuid(),
           name: "created_at",
-          display_name: "Created At",
+          "display-name": "Created At",
           type: "dimension",
-          dimension: null,
           required: false,
         },
       },
@@ -51,7 +51,7 @@ const SQL_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "text",
           required: false,
         },
@@ -68,14 +68,14 @@ const SQL_EXAMPLES = {
         id: {
           id: Utils.uuid(),
           name: "id",
-          display_name: "ID",
+          "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "text",
           required: false,
         },
@@ -92,9 +92,8 @@ const SQL_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "dimension",
-          dimension: null,
           required: false,
         },
       },
@@ -102,7 +101,7 @@ const SQL_EXAMPLES = {
   },
 };
 
-const MONGO_EXAMPLES = {
+const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
   variable: {
     database: null,
     type: "native",
@@ -112,7 +111,7 @@ const MONGO_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "price",
-          display_name: "Price",
+          "display-name": "Price",
           type: "number",
           required: true,
           default: "2",
@@ -129,9 +128,8 @@ const MONGO_EXAMPLES = {
         created_at: {
           id: Utils.uuid(),
           name: "created_at",
-          display_name: "Created At",
+          "display-name": "Created At",
           type: "dimension",
-          dimension: null,
           required: false,
         },
       },
@@ -146,7 +144,7 @@ const MONGO_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "id",
-          display_name: "ID",
+          "display-name": "ID",
           type: "text",
           required: false,
         },
@@ -163,14 +161,14 @@ const MONGO_EXAMPLES = {
         id: {
           id: Utils.uuid(),
           name: "id",
-          display_name: "ID",
+          "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "text",
           required: false,
         },
@@ -186,9 +184,8 @@ const MONGO_EXAMPLES = {
         category: {
           id: Utils.uuid(),
           name: "category",
-          display_name: "Category",
+          "display-name": "Category",
           type: "dimension",
-          dimension: null,
           required: false,
         },
       },
@@ -196,7 +193,12 @@ const MONGO_EXAMPLES = {
   },
 };
 
-const TagExample = ({ datasetQuery, setDatasetQuery }) => (
+interface TagExampleProps {
+  datasetQuery: NativeDatasetQuery;
+  setDatasetQuery?: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
+}
+
+const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
     <p>
@@ -215,19 +217,30 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   </div>
 );
 
-const TagEditorHelp = ({
-  database,
-  setDatasetQuery,
-  sampleDatabaseId,
-  switchToSettings,
-}) => {
-  const driver = database && database.engine;
-  const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = driver === "mongo" ? database.id : sampleDatabaseId;
+interface TagEditorHelpProps {
+  database?: Database | null;
+  sampleDatabaseId: DatabaseId;
+  setDatasetQuery: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
+  switchToSettings: () => void;
+}
 
-  let setQueryWithDatasetId = null;
+export const TagEditorHelp = ({
+  database,
+  sampleDatabaseId,
+  setDatasetQuery,
+  switchToSettings,
+}: TagEditorHelpProps) => {
+  const engine = database?.engine;
+  const examples = engine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
+  const datasetId = engine === "mongo" ? database?.id : sampleDatabaseId;
+
+  let setQueryWithDatasetId;
+
   if (datasetId != null) {
-    setQueryWithDatasetId = (dataset_query, run) => {
+    setQueryWithDatasetId = (
+      dataset_query: NativeDatasetQuery,
+      run?: boolean,
+    ) => {
       setDatasetQuery(
         {
           ...dataset_query,
@@ -306,5 +319,3 @@ const TagEditorHelp = ({
     </div>
   );
 };
-
-export default TagEditorHelp;

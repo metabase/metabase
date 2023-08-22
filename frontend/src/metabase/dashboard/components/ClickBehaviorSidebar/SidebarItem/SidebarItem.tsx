@@ -1,6 +1,7 @@
-import * as React from "react";
+import type * as React from "react";
 
-import { Icon, IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   Name,

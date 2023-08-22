@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   setupDatabasesEndpoints,
@@ -6,10 +7,11 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { TemplateTag } from "metabase-types/api";
+import type { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
+  createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -21,7 +23,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
-import TagEditorParam from "./TagEditorParam";
+import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
   tag?: TemplateTag;
@@ -39,7 +41,10 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
       databases: [database],
     }),
   });
+
   const metadata = getMetadata(state);
+
+  const databaseMetadata = checkNotNull(metadata.database(database.id));
 
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
@@ -51,8 +56,9 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
   renderWithProviders(
     <TagEditorParam
       tag={tag}
-      database={metadata.database(database.id)}
+      database={databaseMetadata}
       databases={metadata.databasesList()}
+      parameter={createMockParameter()}
       setTemplateTag={setTemplateTag}
       setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}

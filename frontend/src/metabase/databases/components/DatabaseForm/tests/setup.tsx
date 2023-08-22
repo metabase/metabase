@@ -1,4 +1,4 @@
-import { Engine, Settings } from "metabase-types/api";
+import type { Engine, Settings } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";

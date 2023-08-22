@@ -1,6 +1,6 @@
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
-import { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 

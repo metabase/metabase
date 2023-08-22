@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
-import { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, User } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import AppBarSmall from "./AppBarSmall";
 import AppBarLarge from "./AppBarLarge";

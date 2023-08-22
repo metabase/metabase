@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import {
+import type {
   Aggregation as AggregationObject,
   FieldId,
   MetricId,
@@ -9,10 +9,11 @@ import {
 import { TYPE } from "metabase-lib/types/constants";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Metric from "metabase-lib/metadata/Metric";
+import type Metric from "metabase-lib/metadata/Metric";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
-import StructuredQuery from "../StructuredQuery";
-import Dimension, { AggregationDimension } from "../../Dimension";
+import type StructuredQuery from "../StructuredQuery";
+import type Dimension from "../../Dimension";
+import { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);

@@ -1,7 +1,7 @@
 import { Group } from "@visx/group";
-import { PositionScale } from "@visx/shape/lib/types";
+import type { PositionScale } from "@visx/shape/lib/types";
 import { LineArea } from "metabase/static-viz/components/XYChart/shapes/LineArea";
-import {
+import type {
   HydratedSeries,
   StackedDatumAccessor,
 } from "metabase/static-viz/components/XYChart/types";

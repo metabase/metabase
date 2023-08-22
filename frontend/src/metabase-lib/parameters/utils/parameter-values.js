@@ -23,10 +23,6 @@ export function hasDefaultParameterValue(parameter) {
   return parameter.default != null;
 }
 
-export function hasParameterValue(value) {
-  return value != null;
-}
-
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
@@ -64,13 +60,13 @@ export function normalizeParameterValue(type, value) {
 }
 
 function removeNilValuedPairs(pairs) {
-  return pairs.filter(([, value]) => hasParameterValue(value));
+  return pairs.filter(([, value]) => value != null);
 }
 
 function removeUndefaultedNilValuedPairs(pairs) {
   return pairs.filter(
     ([parameter, value]) =>
-      hasDefaultParameterValue(parameter) || hasParameterValue(value),
+      hasDefaultParameterValue(parameter) || value != null,
   );
 }
 
@@ -86,9 +82,7 @@ export function getParameterValuesBySlug(
   parameterValuesById = parameterValuesById || {};
   const parameterValuePairs = parameters.map(parameter => [
     parameter,
-    hasParameterValue(parameter.value)
-      ? parameter.value
-      : parameterValuesById[parameter.id],
+    parameter.value ?? parameterValuesById[parameter.id],
   ]);
 
   const transformedPairs = preserveDefaultedParameters

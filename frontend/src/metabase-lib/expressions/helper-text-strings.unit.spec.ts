@@ -1,5 +1,5 @@
 import { createMockDatabase } from "metabase-types/api/mocks/database";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "./helper-text-strings";
 

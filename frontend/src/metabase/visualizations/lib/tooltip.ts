@@ -1,4 +1,4 @@
-import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { formatValue } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 

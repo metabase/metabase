@@ -1,5 +1,5 @@
 import _ from "underscore";
-import {
+import type {
   AggregateFieldReference,
   DimensionReference,
   DimensionReferenceWithOptions,

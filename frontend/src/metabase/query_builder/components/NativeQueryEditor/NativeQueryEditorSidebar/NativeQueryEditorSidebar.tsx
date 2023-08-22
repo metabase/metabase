@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
@@ -7,7 +6,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
-import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQueryButton";
+import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
+
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 
 import {
   Container,
@@ -15,30 +17,41 @@ import {
   SidebarButton,
 } from "./NativeQueryEditorSidebar.styled";
 
-const propTypes = {
-  question: PropTypes.object,
-  cancelQuery: PropTypes.func,
-  isResultDirty: PropTypes.bool,
-  isRunnable: PropTypes.bool,
-  isRunning: PropTypes.bool,
-  isPromptInputVisible: PropTypes.bool,
-  canUsePromptInput: PropTypes.bool,
-  nativeEditorSelectedText: PropTypes.string,
-  runQuery: PropTypes.func,
-  snippetCollections: PropTypes.array,
-  snippets: PropTypes.array,
-  features: PropTypes.shape({
-    dataReference: PropTypes.bool,
-    variables: PropTypes.bool,
-    snippets: PropTypes.bool,
-    promptInput: PropTypes.bool,
-  }),
-  onShowPromptInput: PropTypes.func,
-};
-
 const ICON_SIZE = 18;
 
-const NativeQueryEditorSidebar = props => {
+export type Features = {
+  dataReference?: boolean;
+  variables?: boolean;
+  snippets?: boolean;
+  promptInput?: boolean;
+};
+
+interface NativeQueryEditorSidebarProps {
+  question: Question;
+  nativeEditorSelectedText?: string;
+  features: Features;
+  snippets?: NativeQuerySnippet[];
+  snippetCollections?: Collection[];
+  isRunnable: boolean;
+  isRunning: boolean;
+  isResultDirty: boolean;
+  isShowingDataReference: boolean;
+  isShowingTemplateTagsEditor: boolean;
+  isShowingSnippetSidebar: boolean;
+  isPromptInputVisible?: boolean;
+  canUsePromptInput?: boolean;
+  runQuery?: () => void;
+  cancelQuery?: () => void;
+  onOpenModal: (modalType: string) => void;
+  onShowPromptInput: () => void;
+  toggleDataReference: () => void;
+  toggleTemplateTagsEditor: () => void;
+  toggleSnippetSidebar: () => void;
+}
+
+export const NativeQueryEditorSidebar = (
+  props: NativeQueryEditorSidebarProps,
+) => {
   const {
     question,
     cancelQuery,
@@ -114,7 +127,3 @@ const NativeQueryEditorSidebar = props => {
     </Container>
   );
 };
-
-NativeQueryEditorSidebar.propTypes = propTypes;
-
-export default NativeQueryEditorSidebar;

@@ -1,5 +1,5 @@
-import Field from "metabase-lib/metadata/Field";
-import { FieldPicker } from "./types";
+import type Field from "metabase-lib/metadata/Field";
+import type { FieldPicker } from "./types";
 
 export const getFieldPickerType = (field: Field): FieldPicker => {
   if (field.isBoolean()) {

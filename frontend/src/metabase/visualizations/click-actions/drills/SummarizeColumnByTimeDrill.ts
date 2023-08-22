@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Drill } from "metabase/visualizations/types";
+import type { Drill } from "metabase/visualizations/types";
 import {
   summarizeColumnByTimeDrill,
   summarizeColumnByTimeDrillQuestion,
