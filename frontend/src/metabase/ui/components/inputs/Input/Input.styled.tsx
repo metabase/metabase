@@ -16,6 +16,13 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         "&:disabled": {
           backgroundColor: theme.colors.bg[0],
         },
+        "&[data-invalid]": {
+          color: theme.colors.error[0],
+          borderColor: theme.colors.error[0],
+          "&::placeholder": {
+            color: theme.colors.error[0],
+          },
+        },
       },
       icon: {
         color: theme.colors.text[2],
