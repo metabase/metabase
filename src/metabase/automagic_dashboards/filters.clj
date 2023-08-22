@@ -147,38 +147,36 @@
   (let [fks              (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                                     (:ordered_cards dashboard))))]
                            (->> (t2/select Field :fk_target_field_id [:not= nil]
-                                           :table_id [:in table-ids])
+                                  :table_id [:in table-ids])
                                 field/with-targets))
-        {:keys [pk non-pk]} (->> dimensions
-                                 remove-unqualified
-                                 sort-by-interestingness
-                                 (group-by (fn [{:keys [semantic_type]}]
-                                             (if (= semantic_type :type/PK)
-                                               :pk :non-pk))))
-        retained-filters (into pk (take max-filters non-pk))]
+        {keepers true maybes false} (->> dimensions
+                                         remove-unqualified
+                                         sort-by-interestingness
+                                         (group-by (comp true? :always_keep?)))
+        retained-filters (into keepers (take max-filters maybes))]
     (reduce
-     (fn [dashboard {field-name :name :keys [semantic_type base_type] :as candidate-field}]
-       (let [filter-id     (-> candidate-field ((juxt :id :name :unit)) hash str)
-             candidate     (assoc candidate-field :fk-map (build-fk-map fks candidate-field))
-             dashcards     (:ordered_cards dashboard)
-             dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
+      (fn [dashboard {field-name :name :keys [semantic_type base_type] :as candidate-field}]
+        (let [filter-id     (-> candidate-field ((juxt :id :name :unit)) hash str)
+              candidate     (assoc candidate-field :fk-map (build-fk-map fks candidate-field))
+              dashcards     (:ordered_cards dashboard)
+              dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
           ;; Only add filters that apply to all cards.
-         (if (= (count dashcards) (count dashcards-new))
-           (let [parameter (cond-> {:id   filter-id
-                                    :type (filter-type candidate)
-                                    :name (:display_name candidate)
-                                    :slug (:name candidate)}
-                             (and field_value (= semantic_type :type/PK))
-                             (assoc
-                              :value [field_value]
-                              :target [:dimension [:field field-name
-                                                   {:base-type base_type}]]))]
-             (-> dashboard
-                 (assoc :ordered_cards dashcards-new)
-                 (update :parameters conj parameter)))
-           dashboard)))
-     dashboard
-     retained-filters)))
+          (if (= (count dashcards) (count dashcards-new))
+            (let [parameter (cond-> {:id   filter-id
+                                     :type (filter-type candidate)
+                                     :name (:display_name candidate)
+                                     :slug (:name candidate)}
+                              (and field_value (= semantic_type :type/PK))
+                              (assoc
+                                :value [field_value]
+                                :target [:dimension [:field field-name
+                                                     {:base-type base_type}]]))]
+              (-> dashboard
+                  (assoc :ordered_cards dashcards-new)
+                  (update :parameters conj parameter)))
+            dashboard)))
+      dashboard
+      retained-filters)))
 
 (defn- flatten-filter-clause
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.

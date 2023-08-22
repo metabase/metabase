@@ -1101,17 +1101,18 @@
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
-       (fn [rule]
-         ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
-         (let [rule (if field_name
-                      (-> rule
-                          (update :dimensions conj {field_name {:field_type [:type/PK]
-                                                                  :field_name field_name
-                                                                  :score      100}})
-                          (update :dashboard_filters conj field_name))
-                      rule)]
-           (apply-rule root rule)))
-       (matching-rules (rules/get-rules rules-prefix) root))
+        (fn [rule]
+          ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
+          (let [rule (if field_name
+                       (-> rule
+                           (update :dimensions conj {field_name {:field_type   [:type/PK]
+                                                                 :field_name   field_name
+                                                                 :score        100
+                                                                 :always_keep? true}})
+                           (update :dashboard_filters conj field_name))
+                       rule)]
+            (apply-rule root rule)))
+        (matching-rules (rules/get-rules rules-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
                       {:root            root
                        :available-rules (map :rule (or (some-> rule rules/get-rule vector)

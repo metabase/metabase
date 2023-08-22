@@ -81,6 +81,7 @@
                                       (s/optional-key :links_to)        TableType
                                       (s/optional-key :named)           s/Str
                                       (s/optional-key :field_name)      s/Str
+                                      (s/optional-key :always_keep?)    s/Bool
                                       (s/optional-key :max_cardinality) s/Int}})
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
