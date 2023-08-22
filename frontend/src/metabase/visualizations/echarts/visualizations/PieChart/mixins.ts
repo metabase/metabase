@@ -16,7 +16,23 @@ export const pieSeriesMixin: EChartsMixin = ({ option, props }) => {
   return { option };
 };
 
-// Will later use this changing total on hover
+export const seriesColorMixin: EChartsMixin = ({ option, props }) => {
+  option.series = {
+    ...option.series,
+    // TODO fix type errors
+    data: option?.series?.data.map(d => ({
+      ...d,
+      itemStyle: {
+        ...d.itemStyle,
+        color: props.settings["pie._colors"][d.name],
+      },
+    })),
+  };
+
+  return { option };
+};
+
+// Will later use this for changing total on hover
 export function usePieTotalMixin() {
   const [text, setText] = useState("");
 
