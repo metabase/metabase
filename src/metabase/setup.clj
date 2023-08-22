@@ -4,7 +4,6 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
-   [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
@@ -61,7 +60,7 @@
                     (if (some? possible-override)
                       possible-override
                       (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                          (let [exists? (t2/exists? User {:where [:not= :id config/internal-mb-user-id]})]
+                          (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
                             (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                             exists?))))))
   :doc        false)
