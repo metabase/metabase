@@ -66,6 +66,9 @@ export interface VisualizationProps {
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
 
+  "graph.dimensions"?: string[];
+  "graph.metrics"?: string[];
+
   onAddSeries?: any;
   onEditSeries?: any;
   onRemoveSeries?: any;
