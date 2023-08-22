@@ -409,10 +409,11 @@
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
   {:arglists '([field] [field human-readable-values])}
-  [{field-id :id :as field} & [human-readable-values]]
+  [{field-id :id field-values :values :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (t2/select-one FieldValues :field_id field-id :type :full)]
+    (let [existing (or (not-empty field-values)
+                       (t2/select-one FieldValues :field_id field-id :type :full))]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted
