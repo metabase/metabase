@@ -115,3 +115,10 @@
    ;; definition itself, because it forces us to do i18n in the definition itself; it's nicer to have static
    ;; definitions and only add the display name when we call `display-name` or `display-info`.
    [:display-name-variant :keyword]])
+
+(mr/def ::filter-parts
+  [:map
+   [:lib/type [:= :mbql/filter-parts]]
+   [:operator ::operator]
+   [:options ::common/options]
+   [:args [:sequential :any]]])

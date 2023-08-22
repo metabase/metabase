@@ -189,6 +189,11 @@
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
+(defn- add-column-operators
+  [column]
+  (let [operators (lib.filter.operator/filter-operators column)]
+    (m/assoc-some column :operators (clojure.core/not-empty operators))))
+
 (mu/defn filterable-columns :- [:sequential ColumnWithOperators]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
@@ -209,15 +214,12 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         with-operators (fn [column]
-                          (when-let [operators (clojure.core/not-empty (lib.filter.operator/filter-operators column))]
-                            (assoc column :operators operators)))]
+   (let [stage (lib.util/query-stage query stage-number)]
      (clojure.core/not-empty
-       (into []
-             (keep with-operators)
-             columns)))))
+      (into []
+            (comp (map add-column-operators)
+                  (clojure.core/filter :operators))
+            (lib.metadata.calculation/visible-columns query stage-number stage))))))
 
 (mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
@@ -246,3 +248,27 @@
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators (ref->col col-ref)))
                       (lib.filter.operator/operator-def op)))))
+
+(mu/defn filter-parts :- ::lib.schema.filter/filter-parts
+  "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
+  Might obsolate [[filter-operator]]."
+  ([query a-filter-clause]
+   (filter-parts query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op options first-arg & rest-args] a-filter-clause
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         ref->col (zipmap (map lib.ref/ref columns) columns)
+         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))
+         col (ref->col col-ref)]
+     {:lib/type :mbql/filter-parts
+      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                               (lib.filter.operator/filter-operators col))
+                                 (lib.filter.operator/operator-def op))
+      :options  options
+      :args     (if col
+                  (into [(add-column-operators col)] rest-args)
+                  (get a-filter-clause 2))})))
