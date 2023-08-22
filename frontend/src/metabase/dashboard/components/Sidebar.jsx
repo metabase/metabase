@@ -16,7 +16,6 @@ function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
     <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
-      aria-label="subscriptions sidebar"
     >
       <div className="flex flex-column flex-auto overflow-y-auto">
         {children}

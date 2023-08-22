@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -44,7 +45,8 @@ describe("scenarios > dashboard > filters > number", () => {
           cy.findByText(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery1");
       },
     );
   });
@@ -62,7 +64,7 @@ describe("scenarios > dashboard > filters > number", () => {
       cy.findByText("37.65");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     filterWidget().click();
 
@@ -73,9 +75,3 @@ describe("scenarios > dashboard > filters > number", () => {
     });
   });
 });
-
-function clearFilter(index = 0) {
-  console.log(cy.state());
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}
