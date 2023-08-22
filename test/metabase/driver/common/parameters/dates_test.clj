@@ -4,8 +4,10 @@
    [clojure.test.check :as tc]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [java-time :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]))
 
 (deftest date-string->filter-test
   (testing "year and month"
@@ -394,6 +396,15 @@
          (testing (format "%s with options %s should parse to %s" (pr-str s) (pr-str option) (pr-str ranges))
            (is (= expected-range
                   (params.dates/date-string->range s option)))))))))
+
+(deftest relative-date-string->range-always-at-utc-test
+  (testing "the date range for relative string should always be at UTC regardless of the system-timezone-id"
+    (doseq [date-str ["past5minutes" "thisminute" "next45seconds"]]
+      (testing (format "date-string = %s" date-str)
+        (is (= (mt/with-system-timezone-id "UTC"
+                 (params.dates/date-string->range date-str))
+               (mt/with-system-timezone-id "Asia/Tokyo"
+                 (params.dates/date-string->range date-str))))))))
 
 (deftest relative-dates-with-starting-from-zero-must-match
   (testing "relative dates need to behave the same way, offset or not."

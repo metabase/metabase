@@ -31,6 +31,7 @@
    [metabase.test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
+   [metabase.test.util.datetime :as tu.datetime]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
@@ -243,6 +244,9 @@
  [tu.async
   wait-for-result
   with-open-channels]
+
+ [tu.datetime
+  temporal-close?]
 
  [tu.log
   ns-log-level
