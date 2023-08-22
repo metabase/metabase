@@ -1,5 +1,4 @@
 import type { CSSProperties, ReactNode } from "react";
-// eslint-disable-next-line import/named
 import type { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";

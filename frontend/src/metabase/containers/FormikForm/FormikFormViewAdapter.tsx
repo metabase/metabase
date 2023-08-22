@@ -3,7 +3,6 @@ import type * as React from "react";
 import _ from "underscore";
 import { usePrevious } from "react-use";
 
-// eslint-disable-next-line import/named
 import type { FormikProps } from "formik";
 
 import type { CustomFormProps } from "metabase/components/form/FormikCustomForm";

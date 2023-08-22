@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
 
-// eslint-disable-next-line import/named
 import type { FormikErrors, FormikHelpers } from "formik";
 import { Formik } from "formik";
 
