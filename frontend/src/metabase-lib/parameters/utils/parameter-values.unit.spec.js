@@ -12,8 +12,6 @@ describe("parameters/utils/parameter-values", () => {
   let parameter1;
   let parameter2;
   let parameter3;
-  let parameter4;
-  let parameters;
   let parameterValues;
 
   beforeEach(() => {
@@ -63,11 +61,6 @@ describe("parameters/utils/parameter-values", () => {
       default: "parameter3 default value",
       fields: [field3],
     };
-    parameter4 = {
-      id: 444,
-      slug: "qux",
-    };
-    parameters = [parameter1, parameter2, parameter3, parameter4];
 
     // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
     parameterValues = {
@@ -80,7 +73,7 @@ describe("parameters/utils/parameter-values", () => {
   describe("getValuePopulatedParameters", () => {
     it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map, and null if it doesn't exist", () => {
       expect(
-        getValuePopulatedParameters(parameters, {
+        getValuePopulatedParameters([parameter1, parameter2], {
           [parameter1.id]: "parameter1 value",
           [parameter2.id]: "parameter2 value",
         }),
@@ -93,14 +86,12 @@ describe("parameters/utils/parameter-values", () => {
           ...parameter2,
           value: "parameter2 value",
         },
-        {
-          ...parameter3,
-          value: null,
-        },
-        {
-          ...parameter4,
-          value: null,
-        },
+      ]);
+    });
+
+    it("should return null value if the parameter doesn't exist in the parameterValues arg", () => {
+      expect(getValuePopulatedParameters([parameter1], {})).toEqual([
+        { ...parameter1, value: null },
       ]);
     });
 
@@ -114,27 +105,24 @@ describe("parameters/utils/parameter-values", () => {
           ...parameter2,
           value: null,
         },
-        {
-          ...parameter3,
-          value: null,
-        },
-        {
-          ...parameter4,
-          value: null,
-        },
       ];
-      expect(getValuePopulatedParameters(parameters)).toEqual(
+      expect(getValuePopulatedParameters([parameter1, parameter2])).toEqual(
         parametersWithNulls,
       );
-      expect(getValuePopulatedParameters(parameters, null)).toEqual(
-        parametersWithNulls,
-      );
+      expect(
+        getValuePopulatedParameters([parameter1, parameter2], null),
+      ).toEqual(parametersWithNulls);
     });
   });
 
   describe("getParameterValuesBySlug", () => {
     it("should return a map of defined parameter values keyed by the parameter's slug", () => {
-      expect(getParameterValuesBySlug(parameters, parameterValues)).toEqual({
+      expect(
+        getParameterValuesBySlug(
+          [parameter1, parameter2, parameter3],
+          parameterValues,
+        ),
+      ).toEqual({
         [parameter1.slug]: "parameter1 parameterValue",
         [parameter2.slug]: "parameter2 parameterValue",
         [parameter3.slug]: "parameter3 default value",
@@ -155,7 +143,9 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should handle an undefined parameterValues map", () => {
-      expect(getParameterValuesBySlug(parameters, undefined)).toEqual({});
+      expect(getParameterValuesBySlug([parameter1])).toEqual({
+        [parameter1.slug]: null,
+      });
       expect(
         getParameterValuesBySlug([
           {
@@ -168,7 +158,7 @@ describe("parameters/utils/parameter-values", () => {
       });
     });
 
-    it("should remove any properties with nil values from the map", () => {
+    it("should not remove any properties with nil values from the map", () => {
       const defaultedParameter = {
         id: 999,
         slug: "abc",
@@ -185,6 +175,7 @@ describe("parameters/utils/parameter-values", () => {
       const parameters = [defaultedParameter, defaultedParameterWithValue];
 
       expect(getParameterValuesBySlug(parameters, {})).toEqual({
+        [defaultedParameter.slug]: null,
         [defaultedParameterWithValue.slug]: defaultedParameterWithValue.value,
       });
 

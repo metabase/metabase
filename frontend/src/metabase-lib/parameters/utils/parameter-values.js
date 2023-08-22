@@ -59,7 +59,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,
-      parameter.value ?? parameterValuesById[parameter.id],
+      parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
 }
