@@ -91,9 +91,9 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
-          - "auditing"
           - "actions"
           - "admin"
+          - "admin-2"
           - "binning"
           - "collections"
           - "custom-column"
