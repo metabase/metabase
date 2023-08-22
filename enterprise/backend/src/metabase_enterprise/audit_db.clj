@@ -79,8 +79,7 @@
           ;; We need to move back to a schema that matches the serialized data
           (when (= :h2 mdb.env/db-type)
             (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
-            (t2/update! :model/Table {:db_id (:id audit-db)} {:schema [:lower :schema]
-                                                                 :name [:lower :name]})
+            (t2/update! :model/Table {:db_id (:id audit-db)} {:schema [:lower :schema] :name [:lower :name]})
             (t2/update! :model/Field
                         {:table_id
                          [:in
