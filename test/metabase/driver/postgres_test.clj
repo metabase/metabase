@@ -1218,3 +1218,37 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+
+(deftest privilege-rows-test
+  (mt/test-driver :postgres
+    (testing "`privilege-rows` should return the correct data for current_user and role privileges"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              get-privileges (fn []
+                               (->> (driver/privilege-rows driver/*driver* (mt/db))
+                                    (filter #(= (:role %) "privilege_rows_test_example_role"))))]
+          (try
+            (jdbc/execute! conn-spec (str "CREATE SCHEMA foo;"
+                                          "CREATE TABLE foo.bar (id INTEGER);"
+                                          "CREATE TABLE foo.baz (id INTEGER);"
+                                          "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
+                                          "GRANT SELECT ON foo.baz TO privilege_rows_test_example_role;"))
+            (testing "check that without USAGE privileges, nothing is returned"
+              (is (= []
+                     (get-privileges))))
+            (testing "with USAGE privileges, select is returned"
+              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA foo TO privilege_rows_test_example_role;")
+              (is (= [{:is_current_user false,
+                       :role "privilege_rows_test_example_role",
+                       :schema "foo",
+                       :table "baz",
+                       :select true,
+                       :update false,
+                       :insert false,
+                       :delete false}]
+                     (get-privileges))))
+            (finally
+              (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE foo.baz FROM privilege_rows_test_example_role;"
+                            "REVOKE ALL PRIVILEGES ON SCHEMA foo FROM privilege_rows_test_example_role;"
+                            "DROP ROLE privilege_rows_test_example_role;"]]
+                (jdbc/execute! conn-spec stmt)))))))))
