@@ -1,7 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import type { Clause, ExternalOp } from "./types";
+import type { FilterClause, FilterParts } from "./types";
 
-export function externalOp(clause: Clause): ExternalOp {
-  return ML.external_op(clause);
+export function filterParts(filter: FilterClause): FilterParts {
+  const {
+    args: [column, ...args],
+    ...externalOp
+  } = ML.external_op(filter);
+  return { ...externalOp, column, args };
 }

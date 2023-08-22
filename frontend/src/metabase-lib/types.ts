@@ -150,10 +150,13 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-export type ExternalOp = {
+// Known as `external_op` on the BE side
+// `external_op` returns a column as the first `args` element, but we unpack it for convenience
+export type FilterParts = {
   operator: string;
+  column: ColumnMetadata;
+  args: ExpressionArg[];
   options: Record<string, unknown>;
-  args: [ColumnMetadata, ...ExpressionArg[]];
 };
 
 declare const Join: unique symbol;

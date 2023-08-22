@@ -4,7 +4,6 @@ import type {
   CardMetadata,
   Clause,
   ColumnMetadata,
-  ExternalOp,
   FilterClause,
   FilterOperator,
   Join,
@@ -32,7 +31,7 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: FilterClause[] | ExternalOp[],
+  conditions: FilterClause[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
@@ -62,7 +61,7 @@ export function joinConditions(join: Join): FilterClause[] {
 
 export function withJoinConditions(
   join: Join,
-  newConditions: FilterClause[] | ExternalOp[],
+  newConditions: FilterClause[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }
