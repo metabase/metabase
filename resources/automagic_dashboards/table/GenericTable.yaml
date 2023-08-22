@@ -55,7 +55,6 @@ dimensions:
       field_type: CreationTimestamp
       score: 80
   - FK: FK
-  - PK: PK
   - Long: GenericTable.Longitude
   - Lat: GenericTable.Latitude
 # ignore
@@ -105,7 +104,6 @@ dashboard_filters:
 - Source
 - Country
 - State
-- PK
 cards:
 # Overview
   - Rowcount:

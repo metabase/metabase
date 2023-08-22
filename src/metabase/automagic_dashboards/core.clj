@@ -862,8 +862,11 @@
   [root
    {rule-name :rule :as rule} :- rules/Rule]
   (log/debugf "Applying rule '%s'" rule-name)
-  (let [context   (make-context root rule)
-        cards     (make-cards context rule)]
+  (let [rule    (-> rule
+                    (update :dimensions conj {"PK" {:field_type [:type/PK], :score 100}})
+                    (update :dashboard_filters conj "PK"))
+        context (make-context root rule)
+        cards   (make-cards context rule)]
     (when (or (not-empty cards)
               (-> rule :cards nil?))
       [(assoc (make-dashboard root rule context)
