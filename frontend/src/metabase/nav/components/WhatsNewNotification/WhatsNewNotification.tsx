@@ -14,6 +14,7 @@ import {
 } from "metabase/selectors/settings";
 import { Flex, Stack, Text } from "metabase/ui";
 import { getLatestEligibleReleaseNotes } from "./utils";
+import Sparkles from "./sparkles.svg?component";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
@@ -69,7 +70,7 @@ export function WhatsNewNotification() {
     >
       <Stack spacing="sm">
         <Flex justify="space-between">
-          <Icon name="insight" color={color("brand")} />
+          <Sparkles color={color("brand")} />
           <IconButtonWrapper onClick={dimiss}>
             <Icon name="close" color={color("bg-dark")} />
           </IconButtonWrapper>
