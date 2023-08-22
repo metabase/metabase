@@ -97,12 +97,28 @@ export const Asterisk = args => (
   <Story name="Asterisk">{Asterisk}</Story>
 </Canvas>
 
+### Description
+
+export const Description = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
 ### Disabled
 
 export const Disabled = args => (
   <TextInput
     {...args}
     label={sampleArgs.label}
+    description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     disabled
     withAsterisk
@@ -119,6 +135,7 @@ export const Error = args => (
   <TextInput
     {...args}
     label={sampleArgs.label}
+    description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     error={sampleArgs.error}
     withAsterisk
@@ -135,6 +152,7 @@ export const Icons = args => (
   <TextInput
     {...args}
     label={sampleArgs.label}
+    description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     icon={<Icon name="dashboard" />}
     withAsterisk
@@ -151,6 +169,7 @@ export const RightSection = args => (
   <TextInput
     {...args}
     label={sampleArgs.label}
+    description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     rightSection={<Text color="inherit">⌘+C</Text>}
   />
@@ -166,6 +185,7 @@ export const ReadOnly = args => (
   <TextInput
     {...args}
     label={sampleArgs.label}
+    description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     rightSection={<Text color="inherit">⌘+C</Text>}
     readOnly
