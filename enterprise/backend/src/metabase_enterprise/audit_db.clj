@@ -8,7 +8,6 @@
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
-            [metabase.util.files :as u.files]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
