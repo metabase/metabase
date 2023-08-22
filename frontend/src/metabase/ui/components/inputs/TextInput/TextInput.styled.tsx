@@ -5,7 +5,6 @@ export const getTextInputOverrides =
     TextInput: {
       defaultProps: {
         size: "md",
-        inputWrapperOrder: ["label", "description", "error", "input"],
       },
     },
   });
