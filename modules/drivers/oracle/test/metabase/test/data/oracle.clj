@@ -6,13 +6,10 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [medley.core :as m]
-   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Database Table]]
-   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -23,8 +20,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,52 +106,6 @@
            END⅋"
           session-schema
           (tx/db-qualified-table-name database-name table-name)))
-
-(defonce ^:private oracle-test-dbs-created-by-this-instance (atom #{}))
-
-(defn- destroy-test-database-if-created-in-different-session
-  "For Oracle, we have a randomly selected `session-schema`, in order to allow different test runs to proceed
-  independently. This is basically `PREFIX_N` where `PREFIX` is a fixed prefix, and `N` is a random number.
-
-  Within any given schema, the same `test-data` tables are created, synced, queried in an identical manner, etc.
-  However, if we happen to have a `test-data` `DatabaseInstance` already in our app DB, that was created under a
-  different session, then we should just destroy it so that it can be recreated. That is because the `session-schema`
-  that was in play, when it was created, in all likelihood, does NOT match the current `session-schema` (from this
-  REPL/Metabase instance).
-
-  We won't reliably be able to resync it into the current session, since we didn't control its creation and lifecycle
-  (in fact, some other process may be cleaning it up at the same instant that our tests are running in this instance).
-  Because of this, we should just delete any existing `test-data` instance we find so that our current session can
-  recreate it in a sane and predictable manner.
-
-  Note this does problem not (currently) come into play in the CI environment, since the H2 app DB is created fresh on
-  every driver test run. In that situation, there is no existing `test-data` `DatabaseInstance` in the app DB, because
-  there are NO rows in the app DB at all. So this logic is only to make local REPL testing work properly."
-  [database-name]
-  (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
-    (locking oracle-test-dbs-created-by-this-instance
-      (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db!)                 ; if not already setup
-        (when-let [existing-db (t2/select-one Database :engine "oracle", :name database-name)]
-          (let [existing-db-id (u/the-id existing-db)
-                all-schemas    (t2/select-fn-set :schema Table :db_id existing-db-id)]
-            (when-not (= all-schemas #{session-schema})
-              (log/warn (u/format-color 'yellow
-                                        (str "[oracle] At least one table's schema for the existing '%s' Database"
-                                            " (id %d), which include all of [%s], does not match current session-schema"
-                                            " of %s; deleting this DB so it can be recreated")
-                                        database-name
-                                        existing-db-id
-                                        (str/join "," all-schemas)
-                                        session-schema))
-              (t2/delete! Database :id existing-db-id))))
-        (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
-
-(defmethod data.impl/get-or-create-database! :oracle
-  [driver dbdef]
-  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    (destroy-test-database-if-created-in-different-session database-name)
-    ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef)))
 
 (defmethod sql.tx/create-db-sql :oracle [& _] nil)
 
