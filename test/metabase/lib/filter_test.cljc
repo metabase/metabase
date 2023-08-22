@@ -2,6 +2,8 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -341,3 +343,22 @@
             query'       (lib/replace-clause query filter-clause external-op')]
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
+
+(deftest ^:parallel find-filter-for-legacy-filter-test
+  (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                            (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+        filterable-cols (lib/filterable-columns query)
+        [first-col]     filterable-cols
+        expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
+        query           (->  query
+                             (lib/filter (lib/filter-clause
+                                          (first (lib/filterable-column-operators first-col))
+                                          first-col
+                                          515))
+                             (lib/filter (lib/filter-clause
+                                          (first (lib/filterable-column-operators expr-col))
+                                          expr-col
+                                          (meta/field-metadata :users :last-login))))]
+    (doseq [filter-clause (lib/filters query)]
+      (is (= filter-clause
+             (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause)))))))

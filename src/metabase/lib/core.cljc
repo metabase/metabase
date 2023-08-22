@@ -157,6 +157,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  find-filter-for-legacy-filter
   and
   or
   not

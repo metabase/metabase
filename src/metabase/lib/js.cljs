@@ -385,6 +385,14 @@
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
 
+(defn ^:export find-filter-for-legacy-filter
+  "Return the filter clause in `a-query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  [a-query stage-number legacy-filter]
+  (->> (js->clj legacy-filter :keywordize-keys true)
+       (mbql.normalize/normalize-fragment [:query :filter])
+       (lib.core/find-filter-for-legacy-filter a-query stage-number)))
+
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
   not specified rather than `nil` for JS-friendliness."
