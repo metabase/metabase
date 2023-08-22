@@ -2,14 +2,15 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
+import type { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
-import StructuredQuery, {
-  SegmentOption,
-} from "metabase-lib/queries/StructuredQuery";
+/* eslint-disable import/no-duplicates */
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { SegmentOption } from "metabase-lib/queries/StructuredQuery";
+/* eslint-enable */
 
 import Filter from "metabase-lib/queries/structured/Filter";
-import Dimension from "metabase-lib/Dimension";
+import type Dimension from "metabase-lib/Dimension";
 
 import {
   SelectFilterButton,
