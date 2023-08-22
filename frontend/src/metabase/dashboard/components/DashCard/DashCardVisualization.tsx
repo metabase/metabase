@@ -28,8 +28,8 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Question from "metabase-lib/Question";
-import type Mode from "metabase-lib/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import InternalQuery from "metabase-lib/queries/InternalQuery";
@@ -128,8 +128,8 @@ function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
-      const { disableClickBehavior } =
-        getVisualizationRaw(series).visualization;
+      const disableClickBehavior =
+        getVisualizationRaw(series)?.disableClickBehavior;
       if (isVirtualDashCard(dashcard) || disableClickBehavior) {
         const virtualDashcardType = getVirtualCardType(
           dashcard,

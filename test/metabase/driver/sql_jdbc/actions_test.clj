@@ -4,13 +4,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.models :refer [Field]]
    [metabase.test :as mt]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan2.core :as t2]))
 
 (deftest cast-values-test
   (binding [hx/*honey-sql-version* 2]
@@ -33,8 +35,8 @@
 
 (def ^:private parse-sql-error-called? (atom false))
 
-(defmethod sql-jdbc.actions/parse-sql-error ::parse-sql-error-exception
-  [_driver _database message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [::parse-sql-error-exception actions.error/incorrect-value-type]
+  [_driver _error-type _database _action-type message]
   (reset! parse-sql-error-called? true)
   (throw (ex-info "OOPS I THREW AN EXCEPTION!" {:message message})))
 
@@ -51,3 +53,141 @@
                                             (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
+
+(mt/defdataset action-error-handling
+  [["group"
+    [{:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "ranking" :base-type :type/Integer :not-null? true :unique? true}]
+    [["admin" 1]
+     ["user" 2]]]
+   ["user"
+    [{:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "group-id" :base-type :type/Integer :fk "group" :not-null? true}]
+    [["crowberto" 1]
+     ["rasta"     2]
+     ["lucky"     1]]]])
+
+(defn perform-action-ex-data
+  "Calls [[actions/perform-action!]] and returns the `ex-data` of exception.
+  Used to test error message when executing implicit action for SQL DBs."
+  [& args]
+  (try
+   (apply actions/perform-action! args)
+   (catch Exception e
+     (ex-data e))))
+
+(deftest action-error-handling-test
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
+    (mt/dataset action-error-handling
+      (mt/with-actions-enabled
+        (let [db    (mt/db)
+              db-id (:id db)
+              field-id->name #(keyword (t2/select-one-fn :name :model/Field %))
+              group-name     (field-id->name (mt/id :group :name))
+              group-ranking  (field-id->name (mt/id :group :ranking))
+              user-name      (field-id->name (mt/id :user :name))
+              user-group-id  (field-id->name (mt/id :user :group-id))]
+          (testing "violate not-null constraint"
+            (testing "when creating"
+              (is (= {:message      "Ranking must have values."
+                      :errors      {"ranking" "You must provide a value."}
+                      :type        actions.error/violate-not-null-constraint
+                      :status-code 400}
+                     (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name "admin"}
+                                                                   :database   db-id
+                                                                   :query      {:source-table $$group}
+                                                                   :type       :query})))))
+            (testing "when updating"
+              (is (= {:message      "Ranking must have values."
+                      :errors      {"ranking" "You must provide a value."}
+                      :type        actions.error/violate-not-null-constraint
+                      :status-code 400}
+                     (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking nil}
+                                                                   :database   db-id
+                                                                   :query      {:filter [:= $group.id 1]
+                                                                                :source-table $$group}
+                                                                   :type       :query}))))))
+
+          (testing "violate unique constraint"
+            (testing "when creating"
+              (is (= {:message      "Ranking already exists."
+                      :errors      {"ranking" "This Ranking value already exists."}
+                      :type        actions.error/violate-unique-constraint
+                      :status-code 400}
+                     (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name "new"
+                                                                                group-ranking 1}
+                                                                   :database   db-id
+                                                                   :query      {:source-table $$group}
+                                                                   :type       :query})))))
+            (testing "when updating"
+              (is (= {:message      "Ranking already exists."
+                      :errors      {"ranking" "This Ranking value already exists."}
+                      :type        actions.error/violate-unique-constraint
+                      :status-code 400}
+                     (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking 2}
+                                                                   :database   db-id
+                                                                   :query      {:filter [:= $group.id 1]
+                                                                                :source-table $$group}
+                                                                   :type       :query}))))))
+
+          (testing "incorrect type"
+            (testing "when creating"
+              (is (= (merge
+                      {:message     "Some of your values aren’t of the correct type for the database."
+                       :type        actions.error/incorrect-value-type
+                       :status-code 400}
+                      (case driver/*driver*
+                        (:h2 :postgres)
+                        {:errors {}}
+                        {:errors {"ranking" "This value should be of type Integer."}}))
+                     (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name    "new"
+                                                                                group-ranking "S"}
+                                                                   :database   db-id
+                                                                   :query      {:source-table $$group}
+                                                                   :type       :query})))))
+
+            (testing "when updating"
+              (is (= (merge
+                      {:message     "Some of your values aren’t of the correct type for the database."
+                       :type        actions.error/incorrect-value-type
+                       :status-code 400}
+                      (case driver/*driver*
+                        (:h2 :postgres)
+                        {:errors {}}
+                        {:errors {"ranking" "This value should be of type Integer."}}))
+                     (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking "S"}
+                                                                   :database   db-id
+                                                                   :query      {:filter [:= $group.id 1]
+                                                                                :source-table $$group}
+                                                                   :type       :query}))))))
+
+         (testing "violate fk constraint"
+           (testing "when creating"
+             (is (= {:message     "Unable to create a new record."
+                     :errors      {"group_id" "This Group-id does not exist."}
+                     :type        actions.error/violate-foreign-key-constraint
+                     :status-code 400}
+                    (perform-action-ex-data :row/create (mt/$ids {:create-row {user-name    "new"
+                                                                               user-group-id 999}
+                                                                  :database   db-id
+                                                                  :query      {:source-table $$user}
+                                                                  :type       :query})))))
+           (testing "when updating"
+             (is (= {:message     "Unable to update the record."
+                     :errors      {"group_id" "This Group-id does not exist."}
+                     :type        actions.error/violate-foreign-key-constraint
+                     :status-code 400}
+                    (perform-action-ex-data :row/update (mt/$ids {:update-row {user-group-id 999}
+                                                                  :database   db-id
+                                                                  :query      {:filter [:= $user.id 1]
+                                                                               :source-table $$user}
+                                                                  :type       :query})))))
+           (testing "when deleting"
+             (is (= {:message "Other tables rely on this row so it cannot be deleted."
+                     :errors {}
+                     :type        actions.error/violate-foreign-key-constraint
+                     :status-code 400}
+                    (perform-action-ex-data :row/delete (mt/$ids {:database db-id
+                                                                  :query    {:filter [:= $group.id 1]
+                                                                             :source-table $$group}
+                                                                  :type     :query})))))))))))

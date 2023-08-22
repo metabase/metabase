@@ -16,6 +16,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -24,12 +25,9 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
-import { ButtonProps } from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
-  NewButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -56,22 +54,6 @@ function ItemName({
   );
 }
 
-export const NewCollectionButton = (props: ButtonProps) => {
-  const button = (
-    <NewButton light icon="add" {...props}>
-      {t`New collection`}
-    </NewButton>
-  );
-  // button has to be wrapped in a span when disabled or the tooltip doesn’t show
-  return props.disabled === true ? (
-    <Tooltip tooltip={t`You must first fix the required fields above.`}>
-      <span>{button}</span>
-    </Tooltip>
-  ) : (
-    button
-  );
-};
-
 function FormCollectionPicker({
   className,
   style,
@@ -81,7 +63,6 @@ function FormCollectionPicker({
   type = "collections",
   initialOpenCollectionId,
   onOpenCollectionChange,
-  children,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -118,6 +99,9 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -137,9 +121,12 @@ function FormCollectionPicker({
           showSearch={hasSearch}
           width={width}
           initialOpenCollectionId={initialOpenCollectionId}
-          onOpenCollectionChange={onOpenCollectionChange}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
         >
-          {children}
+          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
         </PopoverItemPicker>
       );
     },
@@ -148,8 +135,8 @@ function FormCollectionPicker({
       type,
       width,
       setValue,
-      children,
       initialOpenCollectionId,
+      openCollectionId,
       onOpenCollectionChange,
     ],
   );

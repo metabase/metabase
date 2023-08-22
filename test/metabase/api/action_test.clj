@@ -9,6 +9,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.user :as user]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
@@ -17,6 +18,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :db :web-server))
 
 (comment api.action/keep-me)
 
@@ -633,3 +638,19 @@
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
                  (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+
+;; This is just to test the flow, a comprehensive tests for error type ares in
+;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest action-error-handling-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-enabled
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query checkins) :dataset true}
+                          {update-action :action-id} {:type :implicit
+                                                      :kind "row/update"}]
+          (testing "an error in SQL will be caught and parsed to a readable erorr message"
+
+            (is (= {:message "Unable to update the record."
+                    :errors {:user_id "This User_id does not exist."}}
+                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
+                                         {:parameters {"id" 1 "user_id" 99999}})))))))))

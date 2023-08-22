@@ -31,7 +31,7 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
       .type(`[ { $count: "Total" } ]`, {
         parseSpecialCharSequences: false,
       });
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
 

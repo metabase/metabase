@@ -1,14 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import ModalContent from "metabase/components/ModalContent";
 import FormProvider from "metabase/core/components/FormProvider/FormProvider";
-import FormCollectionPicker, {
-  NewCollectionButton,
-} from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -18,7 +16,7 @@ import Button from "metabase/core/components/Button";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { Collection, CollectionId } from "metabase-types/api";
+import { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/core/utils/errors";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -131,10 +129,6 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  const [creatingNewCollection, setCreatingNewCollection] = useState(false);
-  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
-  const [stagedValues, setStagedValues] = useState<FormValues | null>(null);
-
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const initialValues: FormValues = {
@@ -150,7 +144,6 @@ export const SaveQuestionModal = ({
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",
-    ...stagedValues,
   };
 
   const questionType = question.isDataset() ? "model" : "question";
@@ -174,89 +167,71 @@ export const SaveQuestionModal = ({
     questionType === "question"
       ? t`What is the name of your question?`
       : t`What is the name of your model?`;
-
-  if (creatingNewCollection && stagedValues) {
-    return (
-      <CreateCollectionModal
-        collectionId={openCollectionId}
-        onClose={() => setCreatingNewCollection(false)}
-        onCreate={(collection: Collection) => {
-          handleSubmit({ ...stagedValues, collection_id: collection.id });
-        }}
-      />
-    );
-  }
-
   return (
-    <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
-      <FormProvider
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
-        validationSchema={SAVE_QUESTION_SCHEMA}
-        enableReinitialize
-      >
-        {({ values, isValid }) => (
-          <Form>
-            {showSaveType && (
-              <FormRadio
-                name="saveType"
-                title={t`Replace or save as new?`}
-                options={[
-                  {
-                    name: t`Replace original question, "${originalQuestion?.displayName()}"`,
-                    value: "overwrite",
-                  },
-                  { name: t`Save as new question`, value: "create" },
-                ]}
-                vertical
-              />
-            )}
-            <TransitionGroup>
-              {values.saveType === "create" && (
-                <CSSTransition
-                  classNames="saveQuestionModalFields"
-                  timeout={{
-                    enter: 500,
-                    exit: 500,
-                  }}
-                >
-                  <div className="saveQuestionModalFields">
-                    <FormInput
-                      autoFocus
-                      name="name"
-                      title={t`Name`}
-                      placeholder={nameInputPlaceholder}
-                    />
-                    <FormTextArea
-                      name="description"
-                      title={t`Description`}
-                      placeholder={t`It's optional but oh, so helpful`}
-                    />
-                    <FormCollectionPicker
-                      onOpenCollectionChange={setOpenCollectionId}
-                      name="collection_id"
-                      title={t`Which collection should this go in?`}
+    <CreateCollectionOnTheGo>
+      {({ resumedValues }) => (
+        <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
+          <FormProvider
+            initialValues={{ ...initialValues, ...resumedValues }}
+            onSubmit={handleSubmit}
+            validationSchema={SAVE_QUESTION_SCHEMA}
+            enableReinitialize
+          >
+            {({ values }) => (
+              <Form>
+                {showSaveType && (
+                  <FormRadio
+                    name="saveType"
+                    title={t`Replace or save as new?`}
+                    options={[
+                      {
+                        name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+                        value: "overwrite",
+                      },
+                      { name: t`Save as new question`, value: "create" },
+                    ]}
+                    vertical
+                  />
+                )}
+                <TransitionGroup>
+                  {values.saveType === "create" && (
+                    <CSSTransition
+                      classNames="saveQuestionModalFields"
+                      timeout={{
+                        enter: 500,
+                        exit: 500,
+                      }}
                     >
-                      <NewCollectionButton
-                        disabled={!isValid}
-                        onClick={() => {
-                          setCreatingNewCollection(true);
-                          setStagedValues(values);
-                        }}
-                      />
-                    </FormCollectionPicker>
-                  </div>
-                </CSSTransition>
-              )}
-            </TransitionGroup>
-            <FormFooter>
-              <FormErrorMessage inline />
-              <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton title={t`Save`} primary />
-            </FormFooter>
-          </Form>
-        )}
-      </FormProvider>
-    </ModalContent>
+                      <div className="saveQuestionModalFields">
+                        <FormInput
+                          autoFocus
+                          name="name"
+                          title={t`Name`}
+                          placeholder={nameInputPlaceholder}
+                        />
+                        <FormTextArea
+                          name="description"
+                          title={t`Description`}
+                          placeholder={t`It's optional but oh, so helpful`}
+                        />
+                        <FormCollectionPicker
+                          name="collection_id"
+                          title={t`Which collection should this go in?`}
+                        />
+                      </div>
+                    </CSSTransition>
+                  )}
+                </TransitionGroup>
+                <FormFooter>
+                  <FormErrorMessage inline />
+                  <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+                  <FormSubmitButton title={t`Save`} primary />
+                </FormFooter>
+              </Form>
+            )}
+          </FormProvider>
+        </ModalContent>
+      )}
+    </CreateCollectionOnTheGo>
   );
 };

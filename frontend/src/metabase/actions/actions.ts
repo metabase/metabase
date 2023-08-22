@@ -27,6 +27,6 @@ export const executeAction =
       return { success: true, message };
     } catch (error) {
       const message = getActionErrorMessage(error);
-      return { success: false, error: message, message };
+      return { success: false, error, message };
     }
   };

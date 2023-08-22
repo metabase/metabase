@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import "./AuditTableVisualization";
+import "../components/AuditTableVisualization";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";

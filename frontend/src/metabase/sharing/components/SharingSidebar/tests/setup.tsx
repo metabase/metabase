@@ -50,16 +50,19 @@ export function setup(
     slack,
     tokenFeatures = {},
     hasEnterprisePlugins = false,
+    isAdmin = false,
   }: {
     email?: boolean;
     slack?: boolean;
     tokenFeatures?: Partial<TokenFeatures>;
     hasEnterprisePlugins?: boolean;
+    isAdmin?: boolean;
   } = {
     email: true,
     slack: true,
     tokenFeatures: {},
     hasEnterprisePlugins: false,
+    isAdmin: false,
   },
 ) {
   const channelData: {
@@ -124,6 +127,9 @@ export function setup(
     {
       storeInitialState: createMockState({
         settings: storeSettings,
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+        }),
         dashboard: {
           dashboardId: dashboard.id,
           dashcards: {

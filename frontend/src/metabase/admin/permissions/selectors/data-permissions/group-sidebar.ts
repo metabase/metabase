@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { State } from "metabase-types/store";
 import { Group } from "metabase-types/api";
+import { getGroupNameLocalized } from "metabase/lib/groups";
 import { RawGroupRouteParams } from "../../types";
 import { getOrderedGroups } from "./groups";
 
@@ -28,11 +29,13 @@ export const getGroupsSidebar = createSelector(
 
     const pinnedGroupItems = pinnedGroups.map(group => ({
       ...group,
+      name: getGroupNameLocalized(group),
       icon: "bolt",
     }));
 
     const unpinnedGroupItems = unpinnedGroups.map(group => ({
       ...group,
+      name: getGroupNameLocalized(group),
       icon: "group",
     }));
 

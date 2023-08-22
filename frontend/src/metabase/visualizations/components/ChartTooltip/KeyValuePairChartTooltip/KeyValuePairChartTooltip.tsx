@@ -1,18 +1,19 @@
 import { isValidElement, useMemo } from "react";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
-import {
+
+import type {
+  ComputedVisualizationSettings,
   DataPoint,
   HoveredDimension,
   HoveredObject,
-  VisualizationSettings,
-} from "../types";
+  RemappingHydratedDatasetColumn,
+} from "metabase/visualizations/types";
 import { formatValueForTooltip } from "../utils";
 import { TooltipTableCell } from "./KeyValuePairChartTooltip.styled";
 
 export interface StackedDataTooltipProps {
   hovered: HoveredObject;
-  settings: VisualizationSettings;
+  settings: ComputedVisualizationSettings;
 }
 
 const KeyValuePairChartTooltip = ({
@@ -42,7 +43,7 @@ export interface TooltipRowProps {
   name?: string;
   value?: any;
   column?: RemappingHydratedDatasetColumn;
-  settings: VisualizationSettings;
+  settings: ComputedVisualizationSettings;
 }
 
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (

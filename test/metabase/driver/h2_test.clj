@@ -3,11 +3,14 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
@@ -343,3 +346,53 @@
           (finally
             (t2/delete! Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
+
+;; API tests are in [[metabase.api.action-test]]
+(deftest actions-maybe-parse-sql-error-test
+  (testing "violate not null constraint"
+    (is (= {:type    :metabase.actions.error/violate-not-null-constraint
+            :message "Ranking must have values."
+            :errors  {"RANKING" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-not-null-constraint nil :row/created
+            "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])"))))
+
+  (testing "violate unique constraint"
+    (is (= {:type :metabase.actions.error/violate-unique-constraint,
+            :message "Ranking already exists.",
+            :errors {"RANKING" "This Ranking value already exists."}}
+           (with-redefs [h2.actions/constraint->column-names (fn [& _args]
+                                                               ["RANKING"])]
+             (sql-jdbc.actions/maybe-parse-sql-error
+              :h2 actions.error/violate-unique-constraint nil nil
+              "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]")))))
+
+  (testing "incorrect type"
+    (is (= {:type :metabase.actions.error/incorrect-value-type,
+            :message "Some of your values aren’t of the correct type for the database.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/incorrect-value-type nil nil
+            "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]"))))
+
+  (testing "violate fk constraints"
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Other tables rely on this row so it cannot be deleted.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
+            "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to create a new record.",
+            :errors {"GROUP-ID" "This Group-id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
+            "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to update the record.",
+            :errors {"GROUP-ID" "This Group-id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/update
+            "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))

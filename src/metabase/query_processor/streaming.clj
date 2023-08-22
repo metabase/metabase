@@ -50,7 +50,7 @@
                   table-columns)
       table-columns)))
 
-(defn- export-column-order
+(defn export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
