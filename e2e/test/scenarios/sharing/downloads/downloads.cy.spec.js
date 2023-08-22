@@ -15,6 +15,7 @@ import {
   resetSnowplow,
   enableTracking,
   addOrUpdateDashboardCard,
+  openDashboardMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -244,7 +245,7 @@ describe("scenarios > dashboard > download pdf", () => {
     cy.signInAsAdmin();
     cy.deleteDownloadsFolder();
   });
-  it("should allow you to download a PDF of a dashboard", () => {
+  it("should allow you to download a PDF of a dashboard without showing 'Waiting' toast", () => {
     const date = Date.now();
     cy.createDashboardWithQuestions({
       dashboardName: `saving pdf dashboard - ${date}`,
@@ -253,87 +254,52 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("dashboard-menu-button").click();
+    openDashboardMenu();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Export as PDF").click();
+    cy.findByTestId("dashboard-export-pdf-button").click();
+
+    cy.findByTestId("undo-list").should("be.empty");
 
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 
-  describe("downloading PDF with slow loading cards", () => {
-    it("should download the PDF once the slow loading cards have loaded", () => {
-      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      const date = Date.now();
-      cy.intercept(
-        {
-          method: "POST",
-          url: "/api/dashboard/*/dashcard/*/card/*/query",
-          middleware: true,
-        },
-        req => {
-          req.on("response", res => {
-            // throttle the response to simulate a mobile 3G connection
-            res.setThrottle(100);
-          });
-        },
-      ).as("getCardQuery");
+  it("should wait for slow cards to load before downloading PDF", () => {
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    const date = Date.now();
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dashboard/*/dashcard/*/card/*/query",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          // throttle the response to simulate a mobile 3G connection
+          res.setThrottle(1000);
+        });
+      },
+    ).as("getCardQuery");
 
-      cy.createDashboardWithQuestions({
-        dashboardName: `saving pdf dashboard - ${date}`,
-        questions: [canSavePngQuestion, cannotSavePngQuestion],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
-      cy.wait("@getDashboard");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Export as PDF").click();
-
-      cy.findByTestId("undo-list").findByText(
-        "Waiting for the dashboard to load before exporting…",
-      );
-
-      cy.wait("@getCardQuery");
-
-      cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
+    cy.createDashboardWithQuestions({
+      dashboardName: `saving pdf dashboard - ${date}`,
+      questions: [canSavePngQuestion, cannotSavePngQuestion],
+    }).then(({ dashboard }) => {
+      // don't use visitDashboard since we don't want to wait for the cards
+      // to load before proceeding
+      cy.visit(`/dashboard/${dashboard.id}`);
     });
-    it("should not download the PDF if 'Cancel' is clicked", () => {
-      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      const date = Date.now();
-      cy.intercept(
-        {
-          method: "POST",
-          url: "/api/dashboard/*/dashcard/*/card/*/query",
-          middleware: true,
-        },
-        req => {
-          req.on("response", res => {
-            // throttle the response to simulate a mobile 3G connection
-            res.setThrottle(100);
-          });
-        },
-      ).as("getCardQuery");
 
-      cy.createDashboardWithQuestions({
-        dashboardName: `saving pdf dashboard - ${date}`,
-        questions: [canSavePngQuestion, cannotSavePngQuestion],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
+    openDashboardMenu();
+    cy.findByTestId("dashboard-export-pdf-button").click();
 
-      cy.wait("@getDashboard");
+    cy.findByTestId("undo-list").findByText(
+      "Waiting for the dashboard to load before exporting…",
+    );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Export as PDF").click();
+    cy.wait("@getDashboard");
+    cy.wait("@getCardQuery");
 
-      cy.findByTestId("undo-list").findByText("Cancel").click();
-
-      cy.wait("@getCardQuery");
-
-      // verify that the file hasn't been downloaded somehow
-    });
+    cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
 
