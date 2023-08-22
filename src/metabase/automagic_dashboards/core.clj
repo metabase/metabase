@@ -418,6 +418,7 @@
 (def ^:private field-filters
   {:fieldspec       fieldspec-matcher
    :named           name-regex-matcher
+   :field_name      (fn [field-name] (fn [{:keys [name]}] (= name field-name)))
    :max-cardinality max-cardinality-matcher})
 
 (defn- filter-fields
@@ -455,7 +456,7 @@
   "Given a context and a dimension definition, find all fields from the context
    that match the definition of this dimension."
   [{{:keys [fields]} :source :keys [tables] :as context}
-   {:keys [field_type links_to named max_cardinality] :as constraints}]
+   {:keys [field_type links_to named field_name max_cardinality] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to tables)
                        (keep :link)
@@ -471,11 +472,13 @@
                            :fields
                            (filter-fields {:fieldspec       fieldspec
                                            :named           named
+                                           :field_name      field_name
                                            :max-cardinality max_cardinality})
                            (map #(assoc % :link (:link table)))))
                 (filter-tables tablespec tables))
         (filter-fields {:fieldspec       tablespec
                         :named           named
+                        :field_name      field_name
                         :max-cardinality max_cardinality}
                        fields)))))
 
@@ -504,8 +507,33 @@
       ancestors for both table and field are counted);
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
       `links_to`, ...) are used;
-   3) if there is still a tie, `score`."
+   3) if there is still a tie, `score`.
+
+   candidate-binding-values is a sequence of maps. Each map is a has a key
+   of dimension spec name to potential dimension binding spec along with a
+   collection of matches, all of which are merges of this spec with the same
+   column.
+
+   Note that it would make a lot more sense to refactor this to return a
+   map of column to potential binding dimensions. This return value is kind of
+   the opposite of what makes sense.
+
+   Here's an example input with :matches updated as just the names of the
+   columns in the matches. IRL, matches are the entire field n times, with
+   each field a merge of the spec with the field.
+
+   ({\"Timestamp\" {:field_type [:type/DateTime],
+                    :score 60,
+                    :matches [\"CREATED_AT\"]}}
+    {\"CreateTimestamp\" {:field_type [:type/CreationTimestamp],
+                          :score 80
+                          :matches [\"CREATED_AT\"]}})
+   "
   [candidate-binding-values]
+  #_(tap>
+     (map (fn [m]
+            (update-vals m (fn [v] (update v :matches #(mapv :name %)))))
+          candidate-binding-values))
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
@@ -513,12 +541,17 @@
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
   [context dimensions]
+  ;; TODO - Fix this so that the intermediate representations aren't so crazy.
+  ;; all-bindings a map of binding dim identifier to binding def which contains
+  ;; field matches which are all the same field except they are merged with the binding.
+  ;; What we want instead is just a map of field to potential bindings.
+  ;; Just rack and stack the bindings then return that with the field or something.
   (let [all-bindings (for [dimension dimensions
                            :let [[identifier definition] (first dimension)]
                            candidate (field-candidates context definition)]
                        {(name identifier)
                         (assoc definition :matches [(merge candidate definition)])})]
-    (group-by (comp id-or-name first :matches val first) all-bindings)))
+    (vals (group-by (comp id-or-name first :matches val first) all-bindings))))
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
@@ -526,14 +559,16 @@
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
   [context dimensions]
-  (->> (candidate-bindings context dimensions)
-       (map (comp most-specific-definition val))
-       (apply merge-with (fn [a b]
-                           (case (compare (:score a) (:score b))
-                             1  a
-                             0  (update a :matches concat (:matches b))
-                             -1 b))
-              {})))
+  (let [bindings (candidate-bindings context dimensions)
+        ;; TODO - Fix this to reduce complexity as well. The mapping is just weird.
+        reduced-bindings (map most-specific-definition bindings)]
+    (apply merge-with (fn [a b]
+                        (case (compare (:score a) (:score b))
+                          1 a
+                          0 (update a :matches concat (:matches b))
+                          -1 b))
+           {}
+           reduced-bindings)))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -1062,18 +1097,18 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name index-name] :as root}]
+  [{:keys [rule rules-prefix full-name field_name] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
          ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
-         (let [rule (if index-name
+         (let [rule (if field_name
                       (-> rule
-                          (update :dimensions conj {"index-name" {:field_type [:type/PK]
-                                                                  :named      index-name
+                          (update :dimensions conj {field_name {:field_type [:type/PK]
+                                                                  :field_name field_name
                                                                   :score      100}})
-                          (update :dashboard_filters conj "index-name"))
+                          (update :dashboard_filters conj field_name))
                       rule)]
            (apply-rule root rule)))
        (matching-rules (rules/get-rules rules-prefix) root))
@@ -1084,7 +1119,7 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name indexed-value] :as root}]
+  [{:keys [show full-name field_value] :as root}]
   (let [[dashboard rule context] (find-first-match-rule root)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
@@ -1097,7 +1132,7 @@
                     (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
-        (populate/create-dashboard {:show show :indexed-value indexed-value})
+        (populate/create-dashboard {:show show :field_value field_value})
         (assoc :related (related context rule)
                :more (when (and (not= show :all)
                                 (-> dashboard :cards count (> show)))
@@ -1112,8 +1147,6 @@
                ;                :name         "A",
                ;                :position     0}]
                ))))
-
-
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
   {:arglists '([entity opts])}
