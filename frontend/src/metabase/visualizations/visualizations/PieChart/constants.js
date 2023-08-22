@@ -9,7 +9,8 @@ import {
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 
-export const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
+export const DEFAULT_SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
+export const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 export const PIE_CHART_SETTINGS = {
   ...columnSettings({ hidden: true }),
@@ -55,7 +56,7 @@ export const PIE_CHART_SETTINGS = {
     section: t`Display`,
     title: t`Minimum slice percentage`,
     widget: "number",
-    default: SLICE_THRESHOLD * 100,
+    default: DEFAULT_SLICE_THRESHOLD * 100,
   },
   "pie.colors": {
     section: t`Display`,

@@ -28,7 +28,11 @@ import {
   formatPercent,
   getTooltipModel,
 } from "./utils";
-import { PIE_CHART_SETTINGS, SLICE_THRESHOLD } from "./constants";
+import {
+  PIE_CHART_SETTINGS,
+  DEFAULT_SLICE_THRESHOLD,
+  OTHER_SLICE_MIN_PERCENTAGE,
+} from "./constants";
 
 const SIDE_PADDING = 24;
 const MAX_LABEL_FONT_SIZE = 20;
@@ -38,7 +42,6 @@ const MAX_PIE_SIZE = 550;
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
-const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 export default class PieChart extends Component {
   constructor(props) {
@@ -195,7 +198,7 @@ export default class PieChart extends Component {
     const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
-        : SLICE_THRESHOLD;
+        : DEFAULT_SLICE_THRESHOLD;
 
     const [slices, others] = _.chain(rows)
       .map((row, index) => ({
