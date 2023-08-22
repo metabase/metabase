@@ -6,6 +6,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       size: "md",
       unstyled: true,
+      inputWrapperOrder: ["label", "description", "error", "input"],
     },
     styles: theme => ({
       wrapper: {
