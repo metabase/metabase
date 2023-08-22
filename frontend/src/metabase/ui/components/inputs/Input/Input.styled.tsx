@@ -9,7 +9,6 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
     styles: theme => ({
       input: {
         color: theme.colors.text[2],
-        paddingLeft: "0.75rem",
         borderRadius: theme.radius.xs,
         "&::placeholder": {
           color: theme.colors.text[0],
@@ -32,15 +31,6 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[0],
       },
     }),
-    sizes: {
-      md: () => ({
-        input: {
-          "&[data-with-icon]": {
-            paddingLeft: "2.5rem",
-          },
-        },
-      }),
-    },
     variants: {
       default: theme => ({
         input: {
