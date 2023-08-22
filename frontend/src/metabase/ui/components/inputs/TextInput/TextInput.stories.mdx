@@ -7,6 +7,15 @@ export const args = {
   disabled: false,
 };
 
+export const sampleArgs = {
+  ...args,
+  value: "Metabase",
+  label: "Company or team name",
+  description: "Name used for this instance",
+  placeholder: "Department of awesome",
+  error: "required",
+};
+
 export const argTypes = {
   label: {
     control: { type: "text" },
@@ -44,10 +53,92 @@ export const Default = args => <TextInput {...args} />;
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Icons
+### Empty
+
+export const Empty = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+<Canvas>
+  <Story name="Empty">{Empty}</Story>
+</Canvas>
+
+### Filled
+
+export const Filled = args => (
+  <TextInput
+    {...args}
+    value={sampleArgs.value}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+<Canvas>
+  <Story name="Filled">{Filled}</Story>
+</Canvas>
+
+### Asterisk
+
+export const Asterisk = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    withAsterisk
+  />
+);
+
+<Canvas>
+  <Story name="Asterisk">{Asterisk}</Story>
+</Canvas>
+
+### Disabled
+
+export const Disabled = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    disabled
+    withAsterisk
+  />
+);
+
+<Canvas>
+  <Story name="Disabled">{Disabled}</Story>
+</Canvas>
+
+### Error
+
+export const Error = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    error={sampleArgs.error}
+    withAsterisk
+  />
+);
+
+<Canvas>
+  <Story name="Error">{Error}</Story>
+</Canvas>
+
+### Icon
 
 export const Icons = args => (
-  <TextInput {...args} icon={<Icon name="dashboard" />} />
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    icon={<Icon name="dashboard" />}
+    withAsterisk
+  />
 );
 
 <Canvas>
@@ -57,9 +148,30 @@ export const Icons = args => (
 ### Right section
 
 export const RightSection = args => (
-  <TextInput {...args} rightSection={<Text color="inherit">⌘+C</Text>} />
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    rightSection={<Text color="inherit">⌘+C</Text>}
+  />
 );
 
 <Canvas>
   <Story name="Right section">{RightSection}</Story>
+</Canvas>
+
+### Read only
+
+export const ReadOnly = args => (
+  <TextInput
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    rightSection={<Text color="inherit">⌘+C</Text>}
+    readOnly
+  />
+);
+
+<Canvas>
+  <Story name="Raed only">{ReadOnly}</Story>
 </Canvas>
