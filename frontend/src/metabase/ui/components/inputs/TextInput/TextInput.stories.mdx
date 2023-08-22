@@ -1,4 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Icon } from "metabase/core/components/Icon";
+import { Text } from "metabase/ui";
 import { TextInput } from "./";
 
 export const args = {
@@ -37,4 +39,24 @@ export const Default = args => <TextInput {...args} />;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Icons
+
+export const Icons = args => (
+  <TextInput {...args} icon={<Icon name="dashboard" />} />
+);
+
+<Canvas>
+  <Story name="Icons">{Icons}</Story>
+</Canvas>
+
+### Right section
+
+export const RightSection = args => (
+  <TextInput {...args} rightSection={<Text color="inherit">⌘+C</Text>} />
+);
+
+<Canvas>
+  <Story name="Right section">{RightSection}</Story>
 </Canvas>
