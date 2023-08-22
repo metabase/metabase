@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'backport, no-backport'
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "backport, no-backport"
           disable-reviews: true
+          pull-request-number: "${{ github.event.pull_request.number }}"
