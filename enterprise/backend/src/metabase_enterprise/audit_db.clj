@@ -78,14 +78,14 @@
           (log/info "Audit DB Sync Complete.")
           ;; We need to move back to a schema that matches the serialized data
           (when (= :h2 mdb.env/db-type)
-            (t2/update! :metabase_database (:id audit-db) {:engine "postgres"})
-            (t2/update! :metabase_table {:db_id (:id audit-db)} {:schema [:lower :schema]
+            (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
+            (t2/update! :model/Table {:db_id (:id audit-db)} {:schema [:lower :schema]
                                                                  :name [:lower :name]})
-            (t2/update! :metabase_field
+            (t2/update! :model/Field
                         {:table_id
                          [:in
                           {:select [:id]
-                           :from [:metabase_table]
+                           :from [(t2/table-name :model/Table)]
                            :where [:= :db_id (:id audit-db)]}]}
                         {:name [:lower :name]})))
       (when (not config/is-prod?)
@@ -104,12 +104,12 @@
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))
     (when (= :h2 mdb.env/db-type)
       (when-let [audit-db-id (t2/select-one-pk :model/Database {:where [:= :is_audit true]})]
-        (t2/update! :metabase_database audit-db-id {:engine "h2"})
-        (t2/update! :metabase_table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-        (t2/update! :metabase_field
+        (t2/update! :model/Database audit-db-id {:engine "h2"})
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Field
                     {:table_id
                      [:in
                       {:select [:id]
-                       :from [:metabase_table]
+                       :from [(t2/table-name :model/Table)]
                        :where [:= :db_id audit-db-id]}]}
                     {:name [:upper :name]})))))
