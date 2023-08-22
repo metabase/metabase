@@ -1,3 +1,5 @@
+import { sidebar } from "e2e/support/helpers";
+
 import { WEBMAIL_CONFIG } from "../cypress_data";
 
 const INBOX_TIMEOUT = 5000;
@@ -84,14 +86,12 @@ export const openAndAddEmailToSubscriptions = recipient => {
 
 export const setupSubscriptionWithRecipient = recipient => {
   openAndAddEmailToSubscriptions(recipient);
-  cy.findByLabelText("subscriptions sidebar").findByText("Done").click();
+  sidebar().findByText("Done").click();
 };
 
 export const openPulseSubscription = () => {
   cy.findByLabelText("subscriptions").click();
-  cy.findByLabelText("subscriptions sidebar")
-    .findByLabelText("Pulse Card")
-    .click();
+  sidebar().findByLabelText("Pulse Card").click();
 };
 
 export const emailSubscriptionRecipients = () => {
