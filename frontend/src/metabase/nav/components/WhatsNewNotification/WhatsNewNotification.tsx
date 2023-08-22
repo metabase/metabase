@@ -1,13 +1,18 @@
+import { Paper } from "@mantine/core";
 import { t } from "ttag";
 import { useCallback, useMemo } from "react";
+import { updateSetting } from "metabase/admin/settings/settings";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Icon } from "metabase/core/components/Icon";
 import { isNotFalsy } from "metabase/core/utils/types";
+import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import {
   getLastAcknowledgedVersion,
   getSetting,
 } from "metabase/selectors/settings";
-import { updateSetting } from "metabase/admin/settings/settings";
+import { Flex, Stack, Text } from "metabase/ui";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
@@ -55,24 +60,32 @@ export function WhatsNewNotification() {
   }
 
   return (
-    // TODO: real UI, this is just a mock
-    <div
-      style={{
-        margin: 8,
-        padding: 12,
-        borderRadius: 12,
-        border: "1px solid red",
-      }}
+    <Paper
+      shadow="md"
+      p="md"
+      m="lg"
+      withBorder
+      style={{ borderColor: "#F0F0F0" }}
     >
-      <a href={url} target="_blank" rel="noreferrer">
-        {t`See what's new`}
-      </a>
+      <Stack spacing="sm">
+        <Flex justify="space-between">
+          <Icon name="insight" color={color("brand")} />
+          <IconButtonWrapper onClick={dimiss}>
+            <Icon name="close" color={color("bg-dark")} />
+          </IconButtonWrapper>
+        </Flex>
 
-      <br />
+        <Text weight="bold" color="text.2">{t`Metabase has been updated`}</Text>
 
-      <button type="button" onClick={dimiss}>
-        dismiss
-      </button>
-    </div>
+        <Text
+          weight="bold"
+          component="a"
+          color="brand"
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+        >{t`See what's new`}</Text>
+      </Stack>
+    </Paper>
   );
 }
