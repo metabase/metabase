@@ -61,7 +61,7 @@
                     (if (some? possible-override)
                       possible-override
                       (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                          (let [exists? (t2/exists? User)]
+                          (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
                             (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                             exists?))))))
   :doc        false)
