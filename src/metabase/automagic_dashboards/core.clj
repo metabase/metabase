@@ -1050,12 +1050,12 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name primary-key] :as root}]
+  [{:keys [rule rules-prefix full-name indexed-value] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
-         (let [rule (if primary-key
+         (let [rule (if indexed-value
                       (-> rule
                           (update :dimensions conj {"PK" {:field_type [:type/PK], :score 100}})
                           (update :dashboard_filters conj "PK"))
@@ -1069,7 +1069,7 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name] :as root}]
+  [{:keys [show full-name indexed-value] :as root}]
   (let [[dashboard rule context] (find-first-match-rule root)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
@@ -1082,13 +1082,13 @@
                     (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
-        (populate/create-dashboard show)
-        (assoc :related            (related context rule)
-               :more               (when (and (not= show :all)
-                                              (-> dashboard :cards count (> show)))
-                                     (format "%s#show=all" (:url root)))
-               :transient_filters  (:query-filter context)
-               :param_fields       (->> context :query-filter (filter-referenced-fields root))
+        (populate/create-dashboard {:show show :indexed-value indexed-value})
+        (assoc :related (related context rule)
+               :more (when (and (not= show :all)
+                                (-> dashboard :cards count (> show)))
+                       (format "%s#show=all" (:url root)))
+               :transient_filters (:query-filter context)
+               :param_fields (->> context :query-filter (filter-referenced-fields root))
                :auto_apply_filters true
                ; TODO - Adding tabs for stage 'Insert an x-ray for each of those as a tab'
                ; will likely land somewhere around here.

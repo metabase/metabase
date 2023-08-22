@@ -156,20 +156,19 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/pk/:primary-key"
+(api/defendpoint GET "/:entity/:entity-id-or-query/pk/:indexed-value"
   "Return an automagic dashboard for an entity detail specified by `entity`
-  with id `id` and a primary key."
-  [entity entity-id-or-query primary-key show]
-  {show        [:maybe [:= "all"]]
-   primary-key :int
-   entity      (mu/with-api-error-message
-                 (into [:enum] entities)
-                 (deferred-tru "Invalid entity type"))}
-  (tap> [entity entity-id-or-query show])
+  with id `id` and a primary key of `indexed-value`."
+  [entity entity-id-or-query indexed-value show]
+  {show          [:maybe [:= "all"]]
+   indexed-value :int
+   entity        (mu/with-api-error-message
+                   (into [:enum] entities)
+                   (deferred-tru "Invalid entity type"))}
   (if (= entity "transform")
     (transform.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
-        (automagic-analysis {:show (keyword show) :primary-key primary-key}))))
+        (automagic-analysis {:show (keyword show) :indexed-value indexed-value}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"

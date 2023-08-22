@@ -279,8 +279,9 @@
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards]} n]
+  ([dashboard] (create-dashboard dashboard {:show :all}))
+  ([{:keys [title transient_title description groups filters cards]}
+    {n :show indexed-value :indexed-value}]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
@@ -305,7 +306,8 @@
                      title
                      (str/join "; " (map :title cards))))
      (cond-> dashboard
-       (not-empty filters) (filters/add-filters filters max-filters)))))
+       (not-empty filters)
+       (filters/add-filters filters max-filters indexed-value)))))
 
 (defn- downsize-titles
   [markdown]
