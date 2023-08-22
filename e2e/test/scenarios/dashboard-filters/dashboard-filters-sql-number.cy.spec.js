@@ -125,7 +125,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     editDashboard();
   });
 
-  it("should keep filter value on blur", () => {
+  it("should keep filter value on blur (metabase#31975)", () => {
     setupNumberFilter("Price");
     setupNumberFilter("Rating");
 
