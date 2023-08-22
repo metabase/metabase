@@ -1,6 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
-import { Stack, Text } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { TextInput } from "./";
 
 export const args = {
@@ -174,22 +174,6 @@ export const Icons = args => (
   <Story name="Icon">{Icons}</Story>
 </Canvas>
 
-### Right section
-
-export const RightSection = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    rightSection={<Text color="inherit">⌘+C</Text>}
-  />
-);
-
-<Canvas>
-  <Story name="Right section">{RightSection}</Story>
-</Canvas>
-
 ### Read only
 
 export const ReadOnly = args => (
@@ -198,7 +182,6 @@ export const ReadOnly = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    rightSection={<Text color="inherit">⌘+C</Text>}
     readOnly
   />
 );

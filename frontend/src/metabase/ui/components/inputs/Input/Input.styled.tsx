@@ -1,5 +1,5 @@
-import { getStylesRef } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
+import { getStylesRef } from "@mantine/core";
 
 export const getInputOverrides = (): MantineThemeOverride["components"] => ({
   Input: {
@@ -34,10 +34,28 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
     variants: {
       default: theme => ({
         input: {
+          paddingLeft: "0.75rem",
           borderColor: theme.colors.border[0],
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
+          "&[data-with-icon]": {
+            paddingLeft: "2.5rem",
+          },
+        },
+        icon: {
+          width: "2.5rem",
+        },
+      }),
+      unstyled: () => ({
+        input: {
+          "&[data-with-icon]": {
+            paddingLeft: "1.75rem",
+          },
+        },
+        icon: {
+          width: "1.75rem",
+          justifyContent: "left",
         },
       }),
     },
