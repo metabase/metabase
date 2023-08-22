@@ -12,7 +12,8 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -38,11 +39,24 @@
         (throw (IllegalArgumentException. (tru "Segment {0} does not exist, or is invalid." segment-id))))))
 
 (mu/defn ^:private expand-segments :- mbql.s/Query
-  [{inner-query :query, :as outer-query} :- mbql.s/Query]
-  (if-let [segments (mbql.u/match inner-query :segment)]
-    (replace-segment-clauses outer-query (segment-clauses->id->definition segments))
-    outer-query))
-
+  "Recursively expand segments in the `query`."
+  [query :- mbql.s/Query]
+  (loop [{inner-query :query :as outer-query} query
+         depth 0]
+    (if-let [segments (mbql.u/match inner-query [:segment (_ :guard (complement mbql.u/ga-id?))])]
+      (let [segment-id->definition (segment-clauses->id->definition segments)
+            expanded-query (replace-segment-clauses outer-query segment-id->definition)]
+        ;; Following line is in place to avoid infinite recursion caused by mutually recursive
+        ;; segment definitions or other unforseen circumstances. Number 41 is arbitrary.
+        (if (or (= expanded-query outer-query) (= depth 41))
+          (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
+                          {:type qp.error-type/invalid-query
+                           :original-query query
+                           :expanded-query expanded-query
+                           :segment-id->definition segment-id->definition
+                           :depth depth}))
+          (recur expanded-query (inc depth))))
+      outer-query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    METRICS                                                     |
