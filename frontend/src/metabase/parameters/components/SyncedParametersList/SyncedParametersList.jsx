@@ -42,7 +42,7 @@ export function SyncedParametersList({
   setEditingParameter,
 }) {
   useSyncedQueryString(
-    () => getParameterValuesBySlug(parameters, undefined),
+    () => getParameterValuesBySlug(parameters),
     [parameters],
   );
 

@@ -123,7 +123,7 @@ describe("parameters/utils/parameter-values", () => {
           value: null,
         },
       ];
-      expect(getValuePopulatedParameters(parameters, undefined)).toEqual(
+      expect(getValuePopulatedParameters(parameters)).toEqual(
         parametersWithNulls,
       );
       expect(getValuePopulatedParameters(parameters, null)).toEqual(
