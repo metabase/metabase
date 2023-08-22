@@ -7,8 +7,9 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-dimension-projections
+    :as qp.add-dimension-projections]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -27,7 +28,7 @@
                        "Category ID [internal remap]"
                        (mt/format-name "category_id")
                        :type/Text)]}
-              (qp.test/rows-and-cols
+              (qp.test-util/rows-and-cols
                (mt/format-rows-by [str int str]
                  (mt/run-mbql-query venues
                    {:fields   [$name $category_id]
@@ -64,7 +65,7 @@
                         {:aggregation [[:count]]
                          :breakout    [$category_id]
                          :limit       3}))
-                    qp.test/rows-and-cols
+                    qp.test-util/rows-and-cols
                     (update :cols (fn [[c1 c2 agg]]
                                     [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)])))))))))
 
@@ -89,7 +90,7 @@
                                      :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
                                      :limit        4}})
                    (mt/format-rows-by [str int str])
-                   qp.test/rows-and-cols))))))
+                   qp.test-util/rows-and-cols))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -97,7 +98,7 @@
   data compared to be smaller and avoid that bug."
   {:style/indent 1}
   [columns-pred results]
-  (let [results-data (qp.test/data results)
+  (let [results-data (qp.test-util/data results)
         col-indexes  (keep-indexed (fn [idx col]
                                      (when (columns-pred (:name col))
                                        idx))

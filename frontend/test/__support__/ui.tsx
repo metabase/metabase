@@ -1,8 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";
-import { createMemoryHistory, History } from "history";
+import type { History } from "history";
+import { createMemoryHistory } from "history";
 import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import type { Store, Reducer } from "@reduxjs/toolkit";

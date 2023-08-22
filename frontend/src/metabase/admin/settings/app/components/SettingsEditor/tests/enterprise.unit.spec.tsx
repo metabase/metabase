@@ -7,7 +7,8 @@ import {
 import { screen } from "__support__/ui";
 import { setupGroupsEndpoint } from "__support__/server-mocks";
 
-import { setup, SetupOpts, EMAIL_URL } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup, EMAIL_URL } from "./setup";
 
 const setupEnterprise = async (opts?: SetupOpts) => {
   await setup({ ...opts, hasEnterprisePlugins: true });

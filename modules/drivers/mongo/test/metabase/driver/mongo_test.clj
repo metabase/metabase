@@ -19,7 +19,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test :refer [rows]]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -30,7 +30,8 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
-  (:import org.bson.types.ObjectId))
+  (:import
+   (org.bson.types ObjectId)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -355,63 +356,63 @@
       (testing "BSON IDs"
         (testing "Check that we support Mongo BSON ID and can filter by it (#1367)"
           (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]
-                          :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "handle null ObjectId queries properly (#11134)"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-null $bird_id]
-                          :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-null $bird_id]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "treat null ObjectId as empty (#15801)"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                        {:filter [:is-empty $bird_id]
-                         :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-empty $bird_id]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "treat non-null ObjectId as not-empty (#15801)"
           (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                   [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-                 (rows (mt/run-mbql-query birds
-                        {:filter [:not-empty $bird_id]
-                         :fields [$id $name $bird_id]}))))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:not-empty $bird_id]
+                             :fields [$id $name $bird_id]}))))))
 
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
           (is (= [[2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-                          :fields [$id $name $bird_uuid]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                             :fields [$id $name $bird_uuid]})))))
 
         (testing "handle null UUID queries properly"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-null $bird_uuid]
-                          :fields [$id $name $bird_uuid]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-null $bird_uuid]
+                             :fields [$id $name $bird_uuid]})))))
 
         (testing "treat null UUID as empty"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-empty $bird_uuid]
-                          :fields [$id $name $bird_uuid]}))))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-empty $bird_uuid]
+                             :fields [$id $name $bird_uuid]}))))))
 
       (testing "treat non-null UUID as not-empty"
         (is (= [[1 "Rasta Toucan" "11111111-1111-1111-1111-111111111111"]
                 [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-               (rows (mt/run-mbql-query birds
-                         {:filter [:not-empty $bird_uuid]
-                          :fields [$id $name $bird_uuid]}))))))))
+               (mt/rows (mt/run-mbql-query birds
+                          {:filter [:not-empty $bird_uuid]
+                           :fields [$id $name $bird_uuid]}))))))))
 
 
 (deftest ^:parallel bson-fn-call-forms-test
   (mt/test-driver :mongo
     (testing "Make sure we can handle arbitarty BSON fn-call forms like ISODate() (#3741, #4448)"
       (letfn [(rows-count [query]
-                (count (rows (qp/process-query {:native   query
-                                                :type     :native
-                                                :database (mt/id)}))))]
+                (count (mt/rows (qp/process-query {:native   query
+                                                   :type     :native
+                                                   :database (mt/id)}))))]
         (mt/dataset with-bson-ids
           (is (= 1
                  (rows-count {:query      "[{\"$match\": {\"bird_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")}}]"
@@ -458,7 +459,7 @@
                   (mt/run-mbql-query categories
                     {:order-by [[:asc $id]]
                      :limit    3})
-                  qp.test/data
+                  qp.test-util/data
                   (select-keys [:columns :rows])))))))))
 
 ;; Make sure we correctly (un-)freeze BSON IDs

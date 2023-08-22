@@ -8,7 +8,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
 import { CardApi } from "metabase/services";
-import {
+import type {
   Card,
   CardId,
   DashboardOrderedCard,

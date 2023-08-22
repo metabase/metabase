@@ -1,11 +1,11 @@
 import { forwardRef, isValidElement } from "react";
 import { Icon } from "metabase/core/components/Icon";
+import type { BorderSide } from "./NotebookCell.styled";
 import {
   NotebookCell as _NotebookCell,
   NotebookCellItemContainer,
   NotebookCellItemContentContainer,
   CONTAINER_PADDING,
-  BorderSide,
 } from "./NotebookCell.styled";
 
 export const NotebookCell = Object.assign(_NotebookCell, {

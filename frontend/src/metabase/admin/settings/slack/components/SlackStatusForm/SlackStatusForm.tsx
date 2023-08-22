@@ -1,4 +1,4 @@
-import { SlackSettings } from "metabase-types/api";
+import type { SlackSettings } from "metabase-types/api";
 import SlackForm from "../SlackForm";
 
 export interface SlackStatusFormProps {

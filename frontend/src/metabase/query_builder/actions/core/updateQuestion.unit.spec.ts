@@ -4,7 +4,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as questionActions from "metabase/questions/actions";
 
-import {
+import type {
   Card,
   ConcreteFieldReference,
   Join,
@@ -13,7 +13,7 @@ import {
   TemplateTag,
   UnsavedCard,
 } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
+import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockDataset,
   createMockNativeDatasetQuery,

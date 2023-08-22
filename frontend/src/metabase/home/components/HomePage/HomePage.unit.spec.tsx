@@ -1,5 +1,5 @@
 import { Route } from "react-router";
-import { DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 import {
   createMockSettingsState,
   createMockState,

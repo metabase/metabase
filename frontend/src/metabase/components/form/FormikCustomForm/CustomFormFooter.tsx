@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";

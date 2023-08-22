@@ -1,8 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 import { useUnmount } from "react-use";
-import Input, { InputProps } from "metabase/core/components/Input";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
 
 /**
  * A small wrapper around <input>, primarily should be used for the

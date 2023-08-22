@@ -7,7 +7,7 @@ import {
   getHasSessionCookies,
   getIsLdapEnabled,
 } from "../../selectors";
-import { LoginData } from "../../types";
+import type { LoginData } from "../../types";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
 import { ActionList, ActionListItem } from "./PasswordPanel.styled";

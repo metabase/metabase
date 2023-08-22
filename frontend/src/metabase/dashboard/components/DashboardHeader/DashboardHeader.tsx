@@ -1,10 +1,10 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
 
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import { useDispatch } from "metabase/lib/redux";

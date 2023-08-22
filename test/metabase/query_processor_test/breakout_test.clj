@@ -6,7 +6,6 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.add-source-metadata
@@ -16,14 +15,14 @@
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
         (is (=? {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
-                 :cols [(qp.test/breakout-col :checkins :user_id)
-                        (qp.test/aggregate-col :count)]}
-                (qp.test/rows-and-cols
+                 :cols [(qp.test-util/breakout-col :checkins :user_id)
+                        (qp.test-util/aggregate-col :count)]}
+                (qp.test-util/rows-and-cols
                  (mt/format-rows-by [int int]
                    (mt/run-mbql-query checkins
                      {:aggregation [[:count]]
@@ -32,22 +31,23 @@
 
       (testing "without breakout"
         (testing "This should act as a \"distinct values\" query and return ordered results"
-          (is (=? {:cols [(qp.test/breakout-col :checkins :user_id)]
+          (is (=? {:cols [(qp.test-util/breakout-col :checkins :user_id)]
                    :rows [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
-                  (qp.test/rows-and-cols
+                  (qp.test-util/rows-and-cols
                    (mt/format-rows-by [int]
                      (mt/run-mbql-query checkins
                        {:breakout [$user_id]
                         :limit    10}))))))))
 
+
     (testing "multiple columns"
       (testing "without explicit order by"
         (testing "Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order-by`"
           (is (=? {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
-                   :cols [(qp.test/breakout-col :checkins :user_id)
-                          (qp.test/breakout-col :checkins :venue_id)
-                          (qp.test/aggregate-col :count)]}
-                  (qp.test/rows-and-cols
+                   :cols [(qp.test-util/breakout-col :checkins :user_id)
+                          (qp.test-util/breakout-col :checkins :venue_id)
+                          (qp.test-util/aggregate-col :count)]}
+                  (qp.test-util/rows-and-cols
                    (mt/format-rows-by [int int int]
                      (mt/run-mbql-query checkins
                        {:aggregation [[:count]]
@@ -57,10 +57,10 @@
       (testing "with explicit order by"
         (testing "`breakout` should not implicitly order by any fields specified in `order-by`"
           (is (=? {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
-                   :cols [(qp.test/breakout-col :checkins :user_id)
-                          (qp.test/breakout-col :checkins :venue_id)
-                          (qp.test/aggregate-col :count)]}
-                  (qp.test/rows-and-cols
+                   :cols [(qp.test-util/breakout-col :checkins :user_id)
+                          (qp.test-util/breakout-col :checkins :venue_id)
+                          (qp.test-util/aggregate-col :count)]}
+                  (qp.test-util/rows-and-cols
                    (mt/format-rows-by [int int int]
                      (mt/run-mbql-query checkins
                        {:aggregation [[:count]]
@@ -71,14 +71,14 @@
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (let [{:keys [rows cols]} (qp.test/rows-and-cols
+      (let [{:keys [rows cols]} (qp.test-util/rows-and-cols
                                  (mt/format-rows-by [int int str]
                                    (mt/run-mbql-query venues
                                      {:aggregation [[:count]]
                                       :breakout    [$category_id]
                                       :limit       5})))]
-        (is (=? [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
-                 (qp.test/aggregate-col :count)
+        (is (=? [(assoc (qp.test-util/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
+                 (qp.test-util/aggregate-col :count)
                  (#'qp.add-dimension-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
                 cols))
         (is (= [[2 8 "American"]
@@ -100,7 +100,7 @@
                  (->> (mt/run-mbql-query venues
                         {:order-by [[sort-order $category_id]]
                          :limit    10})
-                      qp.test/rows
+                      qp.test-util/rows
                       (mapv last)))))))))
 
 (deftest binning-test
@@ -166,12 +166,12 @@
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
-(deftest binning-info-test
+(deftest ^:parallel binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
-        (is (=? (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
+        (is (=? (assoc (dissoc (qp.test-util/breakout-col :venues :latitude) :base_type :effective_type)
                        :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
                        :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :bin-width
                                                                                   :min-value 10.0
@@ -181,12 +181,12 @@
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
-                    qp.test/cols
+                    qp.test-util/cols
                     first
                     (dissoc :base_type :effective_type)))))
 
       (testing "binning-strategy = num-bins: 5"
-        (is (=? (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
+        (is (=? (assoc (dissoc (qp.test-util/breakout-col :venues :latitude) :base_type :effective_type)
                        :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
                        :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :num-bins
                                                                                   :min-value 7.5
@@ -196,7 +196,7 @@
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
-                    qp.test/cols
+                    qp.test-util/cols
                     first
                     (dissoc :base_type :effective_type))))))))
 
@@ -258,11 +258,11 @@
             (is (thrown-with-msg?
                  Exception
                  #"Cannot update binned field: query is missing source-metadata"
-                 (qp.test/rows
+                 (qp.test-util/rows
                   (qp/process-query
                    (nested-venues-query card)))))))))))
 
-(deftest field-in-breakout-and-fields-test
+(deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "if we include a Field in both breakout and fields, does the query still work? (Normalization should "
                   "be taking care of this) (#8760)")

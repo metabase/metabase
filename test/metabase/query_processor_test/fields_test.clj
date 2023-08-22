@@ -2,7 +2,7 @@
   "Tests for the `:fields` clause."
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel fields-clause-test
@@ -22,7 +22,7 @@
                :cols [(mt/col :venues :name)
                       (mt/col :venues :id)]}
               (mt/format-rows-by [str int]
-                (qp.test/rows-and-cols
+                (qp.test-util/rows-and-cols
                  (mt/run-mbql-query venues
                    {:fields   [$name $id]
                     :limit    10

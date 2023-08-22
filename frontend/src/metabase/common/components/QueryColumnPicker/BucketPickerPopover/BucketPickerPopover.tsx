@@ -2,7 +2,7 @@ import * as Lib from "metabase-lib";
 import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
-import { CommonBucketPickerProps } from "./types";
+import type { CommonBucketPickerProps } from "./types";
 
 interface BucketPickerPopoverProps
   extends Omit<CommonBucketPickerProps, "buckets"> {

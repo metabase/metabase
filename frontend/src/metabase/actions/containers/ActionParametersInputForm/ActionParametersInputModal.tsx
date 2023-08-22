@@ -4,9 +4,8 @@ import Modal from "metabase/components/Modal";
 import ModalContent, {
   ModalContentActionIcon,
 } from "metabase/components/ModalContent";
-import ActionParametersInputForm, {
-  ActionParametersInputFormProps,
-} from "./ActionParametersInputForm";
+import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
+import ActionParametersInputForm from "./ActionParametersInputForm";
 
 interface ModalProps {
   title: string;

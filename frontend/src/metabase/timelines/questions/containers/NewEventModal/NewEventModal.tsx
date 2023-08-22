@@ -6,8 +6,8 @@ import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import { Collection, TimelineEvent } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Collection, TimelineEvent } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 interface NewEventModalProps {
   cardId?: number;

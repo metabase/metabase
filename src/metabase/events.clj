@@ -91,6 +91,15 @@
   (doseq [topic topics]
     (subscribe-to-topic! topic channel)))
 
+(defn- run-handler-fn! [handler-fn val]
+  ;; submit this to a fixed threadpool rather than using `future` so we don't spin up like 5 million threads.
+  (let [^Runnable thunk (bound-fn []
+                          (try
+                            (handler-fn val)
+                            (catch Throwable e
+                              (log/error e "Unexpected error listening on events"))))]
+    (.submit clojure.lang.Agent/pooledExecutor thunk)))
+
 (defn start-event-listener!
   "Initialize an event listener which runs on a background thread via `go-loop`."
   [topics channel handler-fn]
@@ -99,12 +108,8 @@
   (subscribe-to-topics! topics channel)
   ;; start listening for events we care about and do something with them
   (a/go-loop []
-    ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
     (when-let [val (a/<! channel)]
-      (try
-        (handler-fn val)
-        (catch Throwable e
-          (log/error e (trs "Unexpected error listening on events"))))
+      (run-handler-fn! handler-fn val)
       (recur))))
 
 

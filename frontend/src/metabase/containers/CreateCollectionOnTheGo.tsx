@@ -1,15 +1,10 @@
-import {
-  useState,
-  useCallback,
-  ReactElement,
-  createContext,
-  useContext,
-} from "react";
+import type { ReactElement } from "react";
+import { useState, useCallback, createContext, useContext } from "react";
 import { t } from "ttag";
 import type { FormikValues } from "formik";
 import { useFormikContext } from "formik";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
 

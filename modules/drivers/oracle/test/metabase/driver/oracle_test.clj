@@ -17,8 +17,8 @@
    [metabase.models.table :refer [Table]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -288,7 +288,7 @@
                                    Field _        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]
             (is (= [[1M "Hello"]
                     [2M nil]]
-                   (qp.test/rows
+                   (mt/rows
                     (qp/process-query
                      {:database (mt/id)
                       :type     :query

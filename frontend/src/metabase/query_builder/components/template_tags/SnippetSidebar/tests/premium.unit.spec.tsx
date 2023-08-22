@@ -2,7 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, queryIcon, screen } from "__support__/ui";
 
-import { SetupOpts, setup as baseSetup } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 async function setup(options: SetupOpts = {}) {
   await baseSetup({

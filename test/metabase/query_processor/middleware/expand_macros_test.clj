@@ -6,7 +6,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -209,7 +208,7 @@
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
-               (qp.test/formatted-rows [int int]
+               (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:metric (u/the-id metric)]]
                     :breakout    [$price]}))))))))

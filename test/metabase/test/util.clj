@@ -1058,7 +1058,7 @@
   "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
-  something in to it.
+  something in to it. The file, if created, will be deleted in a `finally` block after `body` concludes.
 
   DOES NOT CREATE A FILE!
 

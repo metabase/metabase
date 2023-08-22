@@ -1,13 +1,6 @@
-import {
-  forwardRef,
-  HTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-  useCallback,
-  useContext,
-} from "react";
-import { IconName } from "../Icon";
+import type { HTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useContext } from "react";
+import type { IconName } from "../Icon";
 import { TabContext } from "./TabContext";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 import { getTabId, getTabPanelId } from "./utils";

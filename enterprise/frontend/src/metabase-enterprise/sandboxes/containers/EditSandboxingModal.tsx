@@ -9,7 +9,7 @@ import {
   getPolicyRequestState,
 } from "metabase-enterprise/sandboxes/selectors";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import EditSandboxingModal from "../components/EditSandboxingModal";
@@ -19,7 +19,7 @@ import {
   fetchPolicy,
   updateTableSandboxingPermission,
 } from "../actions";
-import { GroupTableAccessPolicyParams, SandboxesState } from "../types";
+import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;

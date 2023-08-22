@@ -8,7 +8,7 @@ import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleFiel
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
-import { EngineFieldOverride } from "./types";
+import type { EngineFieldOverride } from "./types";
 
 export const SAVED_QUESTIONS_DATABASE = {
   id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
