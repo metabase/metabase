@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { Collection, TimelineData } from "metabase-types/api";
+import type { Collection, TimelineData } from "metabase-types/api";
 import ModalContent from "metabase/components/ModalContent";
 import TimelineForm from "../TimelineForm";
 

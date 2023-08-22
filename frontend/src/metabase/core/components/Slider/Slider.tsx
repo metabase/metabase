@@ -1,11 +1,5 @@
-import {
-  ChangeEvent,
-  InputHTMLAttributes,
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-} from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import _ from "underscore";
 
 import {

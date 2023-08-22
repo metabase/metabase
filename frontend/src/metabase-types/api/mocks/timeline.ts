@@ -1,4 +1,4 @@
-import {
+import type {
   TimelineEvent,
   Timeline,
   TimelineData,

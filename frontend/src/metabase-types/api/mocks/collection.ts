@@ -1,4 +1,4 @@
-import { Collection, CollectionItem } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const createMockCollection = (
   opts?: Partial<Collection>,

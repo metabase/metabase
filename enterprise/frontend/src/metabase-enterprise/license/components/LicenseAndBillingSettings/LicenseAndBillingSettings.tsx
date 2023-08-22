@@ -11,10 +11,8 @@ import { getUpgradeUrl } from "metabase/selectors/settings";
 
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 
-import {
-  TokenStatus,
-  useLicense,
-} from "metabase/admin/settings/hooks/use-license";
+import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
+import { useLicense } from "metabase/admin/settings/hooks/use-license";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -24,8 +22,8 @@ import {
 } from "metabase/admin/settings/components/SettingsLicense";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
-import { SettingDefinition } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { SettingDefinition } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import { Text, Anchor } from "metabase/ui";
 
 const HOSTING_FEATURE_KEY = "hosting";

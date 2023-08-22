@@ -4,9 +4,9 @@ import { useMount } from "react-use";
 import Radio from "metabase/core/components/Radio";
 import Fields from "metabase/entities/fields";
 
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
-import { CategoryWidgetProps as CategoryWidgetOwnProps } from "./types";
+import type { CategoryWidgetProps as CategoryWidgetOwnProps } from "./types";
 
 interface CategoryWidgetStateProps {
   fieldValues: unknown[][];

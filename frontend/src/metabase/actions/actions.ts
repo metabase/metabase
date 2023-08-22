@@ -1,11 +1,11 @@
 import { ActionsApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
-import {
+import type {
   ActionFormSubmitResult,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import { Dispatch } from "metabase-types/store";
+import type { Dispatch } from "metabase-types/store";
 import { getActionErrorMessage, getActionExecutionMessage } from "./utils";
 
 export interface ExecuteActionOpts {

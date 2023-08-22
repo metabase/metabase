@@ -1,4 +1,4 @@
-import { DatasetColumn, DatasetData } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 export type RemappingHydratedDatasetColumn = DatasetColumn & {
   remapped_from_index?: number;

@@ -6,7 +6,7 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import {
+import type {
   DatasetColumn,
   DatetimeUnit,
   StructuredDatasetQuery,

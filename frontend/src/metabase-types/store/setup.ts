@@ -1,4 +1,4 @@
-import { DatabaseData } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 
 export interface Locale {
   name: string;

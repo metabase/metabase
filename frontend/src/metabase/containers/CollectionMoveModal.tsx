@@ -7,7 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import CollectionPicker from "metabase/containers/CollectionPicker";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import { ButtonContainer } from "./CollectionMoveModal.styled";
 
 interface CollectionMoveModalProps {

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
-import { Collection, Timeline } from "metabase-types/api";
+import type { Collection, Timeline } from "metabase-types/api";
 import {
   EmptyStateBody,
   EmptyStateChart,

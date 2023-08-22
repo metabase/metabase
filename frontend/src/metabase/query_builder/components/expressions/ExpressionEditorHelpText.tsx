@@ -2,7 +2,7 @@ import * as React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import MetabaseSettings from "metabase/lib/settings";
-import { HelpText } from "metabase-lib/expressions/types";
+import type { HelpText } from "metabase-lib/expressions/types";
 import { getHelpDocsUrl } from "metabase-lib/expressions/helper-text-strings";
 import {
   ArgumentTitle,

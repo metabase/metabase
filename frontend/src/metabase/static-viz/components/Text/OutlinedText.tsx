@@ -1,4 +1,5 @@
-import { Text, TextProps } from "@visx/text";
+import type { TextProps } from "@visx/text";
+import { Text } from "@visx/text";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function OutlinedText(props: TextProps) {

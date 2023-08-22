@@ -1,4 +1,5 @@
-import { ChangeEvent, useCallback, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
@@ -9,8 +10,8 @@ import {
   useDatabaseCandidateListQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import { DatabaseCandidate } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type { DatabaseCandidate } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";

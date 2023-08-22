@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import {
+import type {
   DataPickerDataType,
   DataPickerFilters,
   DataTypeInfoItem,

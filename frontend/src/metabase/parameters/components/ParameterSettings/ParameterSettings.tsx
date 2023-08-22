@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
-import {
+import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,

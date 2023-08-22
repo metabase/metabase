@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import {
   createOrdersTable,
   createPeopleTable,

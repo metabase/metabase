@@ -5,7 +5,8 @@ import { render, screen } from "__support__/ui";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
-import Calendar, { CalendarProps } from "./Calendar";
+import type { CalendarProps } from "./Calendar";
+import Calendar from "./Calendar";
 
 describe("Calendar", () => {
   afterEach(() => {

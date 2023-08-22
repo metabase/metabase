@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import { IndexRedirect, Route } from "react-router";
-import {
+import type {
   SettingDefinition,
   Settings,
   TokenFeatures,

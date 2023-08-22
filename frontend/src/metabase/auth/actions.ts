@@ -17,7 +17,7 @@ import {
   trackLogout,
   trackPasswordReset,
 } from "./analytics";
-import { LoginData } from "./types";
+import type { LoginData } from "./types";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(

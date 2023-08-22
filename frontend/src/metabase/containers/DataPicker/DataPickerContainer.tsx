@@ -11,7 +11,7 @@ import Search from "metabase/entities/search";
 
 import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 
 import {
   getRootCollectionVirtualSchemaId,

@@ -7,10 +7,8 @@ import { Link } from "react-router";
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, {
-  Option,
-  SelectChangeEvent,
-} from "metabase/core/components/Select";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 
