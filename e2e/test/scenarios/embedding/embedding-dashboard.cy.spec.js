@@ -297,9 +297,7 @@ function publishChanges(callback) {
 function setParameter(name, filter) {
   cy.findByText("Which parameters can users of this embed use?")
     .parent()
-    .within(() => {
-      cy.findByText(name).siblings("a").click();
-    });
+    .findByText(name).siblings("a").click();
 
   popover().contains(filter).click();
 }
