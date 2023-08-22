@@ -1,6 +1,10 @@
 import { VersionInfoRecord } from "metabase-types/api";
 import MetabaseUtils from "metabase/lib/utils";
-// //
+/**
+ * Helper function that:
+ * - gets versions > lastAcknowledgedVersion (if not null) & <= currentVersion
+ * - gets the last (more recent) one that has a release notes url and returns it if present
+ */
 export const getLatestEligibleReleaseNotes = ({
   versions,
   currentVersion,
