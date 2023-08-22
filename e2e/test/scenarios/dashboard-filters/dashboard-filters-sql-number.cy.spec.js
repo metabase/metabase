@@ -5,6 +5,7 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
+  getDashboardCard,
   setFilter,
   visitQuestion,
   sidebar,
@@ -153,5 +154,5 @@ function setupNumberFilter(name) {
 }
 
 function clickSelect() {
-  cy.findByTestId("dashcard").findByText("Select…").click();
+  getDashboardCard().findByText("Select…").click();
 }
