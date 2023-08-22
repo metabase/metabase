@@ -13,7 +13,6 @@
    [metabase.driver.postgres]
    [metabase.events :as events]
    [metabase.logger :as mb.logger]
-   [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -26,8 +25,7 @@
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -122,7 +120,7 @@
   (init-status/set-progress! 0.7)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (let [new-install? (not (t2/exists? User))]
+  (let [new-install? (not (setup/has-user-setup))]
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
