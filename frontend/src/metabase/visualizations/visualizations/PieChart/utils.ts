@@ -1,5 +1,11 @@
 import _ from "underscore";
-import type { StackedTooltipModel } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  StackedTooltipModel,
+} from "metabase/visualizations/types";
+import { DatasetColumn } from "metabase-types/api";
+import { formatValue } from "metabase/lib/formatting";
+import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 
 export function getMaxLabelDimension(
   d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,
@@ -65,3 +71,49 @@ export const getTooltipModel = (
     showPercentages: true,
   };
 };
+
+export function formatPercent({
+  percent,
+  decimals,
+  settings,
+  cols,
+}: {
+  percent: number;
+  decimals: number;
+  settings: ComputedVisualizationSettings;
+  cols: DatasetColumn[];
+}) {
+  const metricIndex = settings["pie._metricIndex"];
+
+  return formatValue(percent, {
+    column: cols[metricIndex],
+    // TODO fix type error
+    number_separators: settings.column?.(cols[metricIndex]).number_separators,
+    jsx: true,
+    majorWidth: 0,
+    number_style: "percent",
+    decimals,
+  });
+}
+
+export function computeLegendDecimals({
+  percentages,
+}: {
+  percentages: number[];
+}) {
+  return computeMaxDecimalsForValues(percentages, {
+    style: "percent",
+    maximumSignificantDigits: 3,
+  });
+}
+
+export function computeLabelDecimals({
+  percentages,
+}: {
+  percentages: number[];
+}) {
+  return computeMaxDecimalsForValues(percentages, {
+    style: "percent",
+    maximumSignificantDigits: 2,
+  });
+}

@@ -1,6 +1,11 @@
 import { useState } from "react";
+import type { SunburstSeriesOption } from "echarts";
 
 import type { EChartsMixin } from "metabase/visualizations/types";
+import {
+  computeLabelDecimals,
+  formatPercent,
+} from "metabase/visualizations/visualizations/PieChart/utils";
 
 export const pieSeriesMixin: EChartsMixin = ({ option, props }) => {
   option.series = {
@@ -12,6 +17,35 @@ export const pieSeriesMixin: EChartsMixin = ({ option, props }) => {
       name: r[props.settings["pie._dimensionIndex"]] ?? undefined,
     })),
   };
+
+  return { option };
+};
+
+export const showPercentagesOnChartMixin: EChartsMixin = ({
+  option,
+  props,
+}) => {
+  if (props.settings["pie.percent_visibility"] !== "inside") {
+    return { option };
+  }
+  const metricIndex = props.settings["pie._metricIndex"];
+  // TODO deal with possible null values and fix types
+  const total = props.data.rows.reduce((sum, r) => sum + r[metricIndex], 0);
+  const percentages = props.data.rows.map(r => r[metricIndex] / total);
+  const labelDecimals = computeLabelDecimals({ percentages });
+
+  (option.series as SunburstSeriesOption).data?.forEach((d, index) => {
+    d.label = {
+      ...d.label,
+      formatter: () =>
+        formatPercent({
+          percent: percentages[index],
+          decimals: labelDecimals ?? 0,
+          settings: props.settings,
+          cols: props.data.cols,
+        }),
+    };
+  });
 
   return { option };
 };
