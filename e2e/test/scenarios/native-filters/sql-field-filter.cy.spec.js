@@ -39,14 +39,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
-      // the default value should apply
+      cy.log("the default value should apply");
       FieldFilter.addDefaultStringFilter("2");
       SQLFilter.runQuery();
       cy.get(".Visualization").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
-      // default should not apply when value is cleared
+      cy.log("the default value should not apply when the value is cleared");
       clearFilterWidget();
       SQLFilter.runQuery();
       cy.get(".Visualization").within(() => {
@@ -54,7 +54,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.findByText("Rustic Paper Wallet");
       });
 
-      // set the value through the
+      cy.log("set the value through the filter widget");
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm();
       FieldFilter.addWidgetStringFilter("1");
