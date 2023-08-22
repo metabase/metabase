@@ -1,3 +1,4 @@
+import { getStylesRef } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 export const getInputOverrides = (): MantineThemeOverride["components"] => ({
@@ -57,7 +58,15 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
       inputWrapperOrder: ["label", "description", "error", "input"],
     },
     styles: theme => ({
+      root: {
+        "&:has(input:disabled)": {
+          [`.${getStylesRef("label")}, .${getStylesRef("description")}`]: {
+            color: theme.colors.text[0],
+          },
+        },
+      },
       label: {
+        ref: getStylesRef("label"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
@@ -67,6 +76,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
       description: {
+        ref: getStylesRef("description"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
