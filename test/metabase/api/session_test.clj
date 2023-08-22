@@ -353,23 +353,23 @@
   (testing "Test reset-token-ttl-hours-test"
     (testing "reset-token-ttl-hours-test is reset to default when not set"
       (mt/with-temp-env-var-value [mb-reset-token-ttl-hours nil]
-                                  (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+        (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to positive value"
       (mt/with-temp-env-var-value [mb-reset-token-ttl-hours 36]
-                                  (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+        (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to large positive value"
       (mt/with-temp-env-var-value [mb-reset-token-ttl-hours (+ Integer/MAX_VALUE 1)]
-                                  (is (= (+ Integer/MAX_VALUE 1) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+        (is (= (+ Integer/MAX_VALUE 1) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to zero"
       (mt/with-temp-env-var-value [mb-reset-token-ttl-hours 0]
-                                  (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+        (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to negative value"
       (mt/with-temp-env-var-value [mb-reset-token-ttl-hours -1]
-                                  (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
+        (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
 
 (deftest properties-test
   (testing "GET /session/properties"

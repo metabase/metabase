@@ -14,8 +14,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
-
 (deftest site-url-settings
   (testing "double-check that setting the `site-url` setting will automatically strip off trailing slashes"
     (mt/discard-setting-changes [site-url]

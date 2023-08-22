@@ -234,10 +234,10 @@
 
 
 (defsetting reset-token-ttl-hours
-            (deferred-tru "Number of hours a password reset is considered valid.")
-            :visibility :internal
-            :type       :integer
-            :default    48)
+  (deferred-tru "Number of hours a password reset is considered valid.")
+  :visibility :internal
+  :type       :integer
+  :default    48)
 
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
