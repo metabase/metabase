@@ -29,7 +29,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
       },
       rightSection: {
-        color: theme.colors.text[2],
+        color: theme.colors.text[0],
       },
     }),
     sizes: {
