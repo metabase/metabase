@@ -13,7 +13,7 @@
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util :as u]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
