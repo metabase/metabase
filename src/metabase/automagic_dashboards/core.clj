@@ -454,14 +454,17 @@
 (defn- field-candidates
   "Given a context and a dimension definition, find all fields from the context
    that match the definition of this dimension."
-  [context {:keys [field_type links_to named max_cardinality] :as constraints}]
+  [{{:keys [fields]} :source :keys [tables] :as context}
+   {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to
-    (filter (comp (->> (filter-tables links_to (:tables context))
+    (filter (comp (->> (filter-tables links_to tables)
                        (keep :link)
                        set)
                   u/the-id)
             (field-candidates context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
+      ;; TODO cond with field_spec as well. Field spec should take precedence since it's the most
+      ;; specific in its definition.
       (if fieldspec
         (mapcat (fn [table]
                   (some->> table
@@ -470,11 +473,11 @@
                                            :named           named
                                            :max-cardinality max_cardinality})
                            (map #(assoc % :link (:link table)))))
-                (filter-tables tablespec (:tables context)))
+                (filter-tables tablespec tables))
         (filter-fields {:fieldspec       tablespec
                         :named           named
                         :max-cardinality max_cardinality}
-                       (-> context :source :fields))))))
+                       fields)))))
 
 (defn- score-bindings
   "Assign a value to each potential binding.
@@ -650,23 +653,32 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit query] :as card}]
-  (let [metrics         (map (partial get (:metrics context)) metrics)
-        filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context) (conj {:filter (:query-filter context)}))
-        score           (if query
-                          score
-                          (* (or (->> dimensions
-                                      (map (partial get (:dimensions context)))
-                                      (concat filters metrics)
-                                      (transduce (keep :score) stats/mean))
-                                 rules/max-score)
-                             (/ score rules/max-score)))
-        dimensions      (map (comp (partial into [:dimension]) first) dimensions)
-        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
-        cell-dimension? (->> context :root singular-cell-dimensions)
-        matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
-                                         (comp #(filter-tables % (:tables context)) rules/->entity))
+  [{context-dimensions :dimensions
+    context-metrics    :metrics
+    context-filters    :filters
+    :keys              [tables query-filter]
+    :as                context}
+   {card-dimensions :dimensions
+    card-metrics    :metrics
+    card-filters    :filters
+    :keys           [score limit query] :as card}]
+  (let [metrics            (map (partial get context-metrics) card-metrics)
+        filters            (cond-> (map (partial get context-filters) card-filters)
+                             query-filter
+                             (conj {:filter query-filter}))
+        score              (if query
+                             score
+                             (* (or (->> card-dimensions
+                                         (map (partial get context-dimensions))
+                                         (concat filters metrics)
+                                         (transduce (keep :score) stats/mean))
+                                    rules/max-score)
+                                (/ score rules/max-score)))
+        dimensions         (map (comp (partial into [:dimension]) first) card-dimensions)
+        used-dimensions    (rules/collect-dimensions [dimensions metrics filters query])
+        cell-dimension?    (->> context :root singular-cell-dimensions)
+        matched-dimensions (map (some-fn #(get-in context-dimensions [% :matches])
+                                         (comp #(filter-tables % tables) rules/->entity))
                                 used-dimensions)]
     (->> matched-dimensions
          (apply math.combo/cartesian-product)
@@ -1050,15 +1062,18 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name indexed-value] :as root}]
+  [{:keys [rule rules-prefix full-name index-name] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
-         (let [rule (if indexed-value
+         ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
+         (let [rule (if index-name
                       (-> rule
-                          (update :dimensions conj {"PK" {:field_type [:type/PK], :score 100}})
-                          (update :dashboard_filters conj "PK"))
+                          (update :dimensions conj {"index-name" {:field_type [:type/PK]
+                                                                  :named      index-name
+                                                                  :score      100}})
+                          (update :dashboard_filters conj "index-name"))
                       rule)]
            (apply-rule root rule)))
        (matching-rules (rules/get-rules rules-prefix) root))
