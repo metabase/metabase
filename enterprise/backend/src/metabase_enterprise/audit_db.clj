@@ -82,11 +82,11 @@
             (t2/update! :metabase_table {:db_id (:id audit-db)} {:schema [:lower :schema]
                                                                  :name [:lower :name]})
             (t2/update! :metabase_field
-                        [:and [:in :table_id
-                               {:select [:id]
-                                :from [:metabase_table]
-                                :where [:= :db_id (:id audit-db)]}]
-                         [:= 1 1]]
+                        {:table_id
+                         [:in
+                          {:select [:id]
+                           :from [:metabase_table]
+                           :where [:= :db_id (:id audit-db)]}]}
                         {:name [:lower :name]})))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
@@ -107,9 +107,9 @@
         (t2/update! :metabase_database audit-db-id {:engine "h2"})
         (t2/update! :metabase_table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
         (t2/update! :metabase_field
-                    [:and [:in :table_id
-                           {:select [:id]
-                            :from [:metabase_table]
-                            :where [:= :db_id audit-db-id]}]
-                     [:= 1 1]]
+                    {:table_id
+                     [:in
+                      {:select [:id]
+                       :from [:metabase_table]
+                       :where [:= :db_id audit-db-id]}]}
                     {:name [:upper :name]})))))
