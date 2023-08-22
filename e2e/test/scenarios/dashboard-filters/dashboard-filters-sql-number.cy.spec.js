@@ -60,7 +60,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
   it("should work when set as the default filter", () => {
     setFilter("Number", "Equal to");
-    cy.get("main").findByText("Default value").next().click();
+    sidebar().findByText("Default value").next().click();
 
     addWidgetNumberFilter("3.8");
 
