@@ -1,7 +1,7 @@
 import slugg from "slugg";
 
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
 import { appendSlug } from "./utils";

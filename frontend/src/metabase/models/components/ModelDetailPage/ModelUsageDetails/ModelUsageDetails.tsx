@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 
 import * as Urls from "metabase/lib/urls";
@@ -58,7 +59,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
             to={Urls.question(question.card())}
             aria-label={question.displayName() ?? ""}
           >
-            <Icon name={getQuestionIcon(question.card()).name} />
+            <Icon name={getQuestionIcon(question.card()).name as IconName} />
             <CardTitle>{question.displayName()}</CardTitle>
           </CardListItem>
         </li>

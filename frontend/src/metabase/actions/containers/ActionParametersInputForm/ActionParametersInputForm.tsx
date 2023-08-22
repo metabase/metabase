@@ -51,7 +51,7 @@ function ActionParametersInputForm({
         actions.setErrors({});
         onSubmitSuccess?.(actions);
       } else {
-        throw new Error(error);
+        throw error;
       }
     },
     [onSubmit, onSubmitSuccess],

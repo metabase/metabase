@@ -1,4 +1,5 @@
-import { forwardRef, HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorSelectorPopover from "./ColorSelectorPopover";

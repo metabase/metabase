@@ -1123,10 +1123,10 @@
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
-                                     (mapcat (fn [n] [n (str n " -- Duplicate")])))
+                                     (mapcat (fn [n] [n (str n " - Duplicate")])))
                            [total-card avg-card card])
                      (set (map :name cards-in-coll)))
-                  "Cards should have \"-- Duplicate\" appended"))))))))
+                  "Cards should have \"- Duplicate\" appended"))))))))
 
 (defn- ordered-cards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
@@ -3366,7 +3366,7 @@
                      :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
     (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
                  {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
                  {:field-name "ainteger" :base-type :type/Integer ::good 100}

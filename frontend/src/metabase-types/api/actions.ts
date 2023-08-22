@@ -86,7 +86,7 @@ export type ActionFormInitialValues = ParametersForActionExecution;
 export interface ActionFormSubmitResult {
   success: boolean;
   message?: string;
-  error?: string;
+  error?: unknown;
 }
 
 export type OnSubmitActionForm = (

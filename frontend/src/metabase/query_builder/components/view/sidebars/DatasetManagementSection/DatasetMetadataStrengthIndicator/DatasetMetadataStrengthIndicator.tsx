@@ -5,7 +5,7 @@ import { useHoverDirty } from "react-use";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/metadata/utils/models";
 
 import {

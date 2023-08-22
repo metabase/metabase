@@ -1,5 +1,5 @@
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
-import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import {

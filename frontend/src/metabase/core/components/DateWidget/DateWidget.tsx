@@ -1,11 +1,6 @@
-import {
-  forwardRef,
-  InputHTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
-import { Moment } from "moment-timezone";
+import type { InputHTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
+import type { Moment } from "moment-timezone";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";

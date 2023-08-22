@@ -2,7 +2,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
-import { Group } from "metabase-types/api";
+import type { Group } from "metabase-types/api";
 import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
@@ -11,8 +11,8 @@ import {
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
 import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
-import { ApplicationPermissionsState } from "./types/state";
-import {
+import type { ApplicationPermissionsState } from "./types/state";
+import type {
   ApplicationPermissionKey,
   ApplicationPermissions,
   ApplicationPermissionValue,

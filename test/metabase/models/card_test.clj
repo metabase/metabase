@@ -7,7 +7,6 @@
     :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet Revision]]
    [metabase.models.card :as card]
    [metabase.models.revision :as revision]
-   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -638,7 +637,7 @@
 
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                       (build-sentence (revision/diff-strings :model/Card x y)))
+                       (u/build-sentence (revision/diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -665,7 +664,7 @@
      [Collection {coll-id-1 :id} {:name "Old collection"}
       Collection {coll-id-2 :id} {:name "New collection"}]
      (are [x y expected] (= expected
-                          (build-sentence (revision/diff-strings :model/Card x y)))
+                          (u/build-sentence (revision/diff-strings :model/Card x y)))
 
        {:name "Apple"}
        {:name          "Apple"
@@ -751,7 +750,7 @@
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id} col)
               (testing (format "we should have a revision description for %s" col)
-                (is (some? (build-sentence
+                (is (some? (u/build-sentence
                              (revision/diff-strings
                                Dashboard
                                before
@@ -771,7 +770,7 @@
          (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
 
        (testing "we should have a revision description for :result_metadata on model"
-         (is (some? (build-sentence
+         (is (some? (u/build-sentence
                       (revision/diff-strings
                         Dashboard
                         before

@@ -14,9 +14,10 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { CollectionItem, RecentItem } from "metabase-types/api";
+import type { CollectionItem, RecentItem } from "metabase-types/api";
 import SearchBar from "metabase/nav/components/SearchBar";
 import { checkNotNull } from "metabase/core/utils/types";
+import * as domUtils from "metabase/lib/dom";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",
@@ -94,6 +95,34 @@ describe("SearchBar", () => {
       );
 
       expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
+    });
+  });
+
+  describe("rendering filter button with screen size", () => {
+    it("should not render filter button on small screens", () => {
+      const isSmallScreenMock = jest.spyOn(domUtils, "isSmallScreen");
+      isSmallScreenMock.mockReturnValue(true);
+
+      setup();
+
+      expect(
+        screen.queryByTestId("search-bar-filter-button"),
+      ).not.toBeInTheDocument();
+
+      isSmallScreenMock.mockRestore();
+    });
+
+    it("should render filter button on large screens", () => {
+      const isSmallScreenMock = jest.spyOn(domUtils, "isSmallScreen");
+      isSmallScreenMock.mockReturnValue(false);
+
+      setup();
+
+      expect(
+        screen.getByTestId("search-bar-filter-button"),
+      ).toBeInTheDocument();
+
+      isSmallScreenMock.mockRestore();
     });
   });
 

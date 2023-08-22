@@ -32,7 +32,8 @@
 }
 
 :local(.headerLink) {
-  composes: text-brand ml2 flex-no-shrink from "style";
+  composes: ml2 flex-no-shrink from "style";
+  color: var(--color-brand);
   font-size: 14px;
 }
 
@@ -58,12 +59,6 @@
 
 :local(.itemTitle) {
   composes: text-bold from "style";
-  max-width: 100%;
-  overflow: hidden;
-}
-
-:local(.itemName) {
-  composes: text-brand-hover mr1 from "style";
   max-width: 100%;
   overflow: hidden;
 }

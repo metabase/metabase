@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { Box, Stack } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
-import { Collection } from "metabase-types/api";
-import { FileUpload } from "metabase-types/store/upload";
+import type { Collection } from "metabase-types/api";
+import type { FileUpload } from "metabase-types/store/upload";
 
 import {
   isUploadInProgress,

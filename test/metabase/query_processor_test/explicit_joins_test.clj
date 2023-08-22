@@ -939,3 +939,47 @@
                   ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
                  (mt/formatted-rows [str str str 2.0 4.0]
                    (qp/process-query query)))))))))
+
+(deftest mlv2-references-in-join-conditions-test
+  (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp [:model/Card {card-1-id :id} {:dataset_query
+                                                            (mt/mbql-query reviews
+                                                              {:joins       [{:source-table $$products
+                                                                              :alias        "Products"
+                                                                              :condition    [:= $product_id &Products.products.id]
+                                                                              :fields       :all}]
+                                                               :breakout    [!month.&Products.products.created_at]
+                                                               :aggregation [[:distinct &Products.products.id]]
+                                                               :filter      [:= &Products.products.category "Doohickey"]})}
+                               :model/Card {card-2-id :id} {:dataset_query
+                                                            (mt/mbql-query reviews
+                                                              {:joins       [{:source-table $$products
+                                                                              :alias        "Products"
+                                                                              :condition    [:= $product_id &Products.products.id]
+                                                                              :fields       :all}]
+                                                               :breakout    [!month.&Products.products.created_at]
+                                                               :aggregation [[:distinct &Products.products.id]]
+                                                               :filter      [:= &Products.products.category "Gizmo"]})}]
+        (let [query {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (str "card__" card-1-id)
+                                :joins        [{:fields       :all
+                                                :strategy     :left-join
+                                                :alias        "Card_2"
+                                                :condition    [:=
+                                                               [:field
+                                                                "CREATED_AT"
+                                                                {:base-type :type/DateTime, :temporal-unit :month}]
+                                                               [:field
+                                                                (mt/id :products :created_at)
+                                                                {:base-type     :type/DateTime
+                                                                 :temporal-unit :month
+                                                                 :join-alias    "Card_2"}]]
+                                                :source-table (str "card__" card-2-id)}]
+                                :order-by [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
+                                :limit 2}}]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
+                    ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
+                   (mt/rows (qp/process-query query))))))))))

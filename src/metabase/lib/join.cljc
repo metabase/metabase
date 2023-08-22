@@ -483,19 +483,19 @@
     ;; so we break ties by looking at the poisition of the field reference.
     (mbql.u.match/replace condition
       [op op-opts (lhs :guard lib.util/field-clause?) (rhs :guard lib.util/field-clause?)]
-      (let [lhs-aliased (contains? (lib.options/options lhs) :join-alias)
-            rhs-aliased (contains? (lib.options/options rhs) :join-alias)]
+      (let [lhs-alias (current-join-alias lhs)
+            rhs-alias (current-join-alias rhs)]
         (cond
           ;; no sides obviously belong to joined
-          (not (or lhs-aliased rhs-aliased))
+          (not (or lhs-alias rhs-alias))
           (if (lib.equality/find-closest-matching-ref metadata-providerable rhs home-refs)
             [op op-opts (with-join-alias lhs join-alias) rhs]
             [op op-opts lhs (with-join-alias rhs join-alias)])
 
           ;; both sides seem to belong to joined assuming this resulted from
           ;; overly fuzzy matching, we remove the join alias from the LHS
-          ;; unless the RHS seems to belong to home too while the LHS doen't
-          (and lhs-aliased rhs-aliased)
+          ;; unless the RHS seems to belong to home too while the LHS doesn't
+          (and (= lhs-alias join-alias) (= rhs-alias join-alias))
           (let [bare-lhs (lib.options/update-options lhs dissoc :join-alias)
                 bare-rhs (lib.options/update-options rhs dissoc :join-alias)]
             (if (and (nil? (lib.equality/find-closest-matching-ref metadata-providerable bare-lhs home-refs))
@@ -676,7 +676,13 @@
 (defn- mark-selected-column [metadata-providerable existing-column-or-nil columns]
   (if-not existing-column-or-nil
     columns
-    (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil])))
+    (mapv (fn [column]
+            (if (:selected? column)
+              (lib.temporal-bucket/with-temporal-bucket
+                column
+                (lib.temporal-bucket/temporal-bucket existing-column-or-nil))
+              column))
+          (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil]))))
 
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column

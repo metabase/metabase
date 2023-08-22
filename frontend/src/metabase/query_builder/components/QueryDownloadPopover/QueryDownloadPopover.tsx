@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { exportFormats, exportFormatPng } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
-import { Dataset } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { Dataset } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 import {
   DownloadButtonRoot,
   DownloadButtonText,

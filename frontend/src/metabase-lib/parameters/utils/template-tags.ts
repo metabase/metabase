@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import {
+import type {
   Card,
   Parameter,
   ParameterValuesConfig,
@@ -9,7 +9,6 @@ import {
 } from "metabase-types/api";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
@@ -124,7 +123,7 @@ export function remapParameterValuesToTemplateTags(
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];
-      if (hasParameterValue(parameterValue)) {
+      if (parameterValue != null) {
         parameterValues[templateTagParameter.name] = parameterValue;
       }
     }

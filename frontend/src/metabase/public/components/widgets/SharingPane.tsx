@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
@@ -13,6 +14,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   Description,
   EmbedWidgetHeader,
+  ExtensionOption,
   Header,
   IconContainer,
   PublicEmbedHeader,
@@ -119,12 +121,9 @@ export default function SharingPane({
         {extensions && extensions.length > 0 && (
           <div className="mt1">
             {extensions.map(extension => (
-              <span
+              <ExtensionOption
                 key={extension}
-                className={cx(
-                  "cursor-pointer text-brand-hover text-bold text-uppercase",
-                  extension === extensionState ? "text-brand" : "text-light",
-                )}
+                isSelected={extension === extensionState}
                 onClick={() =>
                   setExtension(extensionState =>
                     extension === extensionState ? null : extension,
@@ -132,7 +131,7 @@ export default function SharingPane({
                 }
               >
                 {extension}{" "}
-              </span>
+              </ExtensionOption>
             ))}
           </div>
         )}

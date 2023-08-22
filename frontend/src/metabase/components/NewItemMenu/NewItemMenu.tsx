@@ -1,4 +1,5 @@
-import { ReactNode, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import type { LocationDescriptor } from "history";
 

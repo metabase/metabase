@@ -6,9 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -21,9 +18,9 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel field-from-results-metadata-test
-  (let [field-metadata (lib.metadata/stage-column (lib/saved-question-query
+  (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card
                                                    meta/metadata-provider
-                                                   meta/saved-question)
+                                                   (:venues lib.tu/mock-cards))
                                                   "ID")]
     (is (=? {:lib/type :metadata/column
              :name     "ID"}
@@ -65,7 +62,7 @@
 
 (deftest ^:parallel col-info-combine-parent-field-names-test
   (letfn [(col-info [a-field-clause]
-            (lib.metadata.calculation/metadata
+            (lib/metadata
              {:lib/type     :mbql/query
               :lib/metadata grandparent-parent-child-metadata-provider
               :database     (meta/id)
@@ -95,7 +92,7 @@
              :display-name  "sum of User ID"
              :base-type     :type/Integer
              :semantic-type :type/FK}
-            (lib.metadata.calculation/metadata
+            (lib/metadata
              lib.tu/native-query
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
@@ -132,7 +129,7 @@
       :default "Name"
       :long    "Categories → Name")
     (is (=? {:display-name "Name"}
-            (lib.metadata.calculation/metadata query -1 field)))))
+            (lib/metadata query -1 field)))))
 
 (deftest ^:parallel legacy-query-joined-field-display-name-test
   (testing "Should calculate correct display names for joined fields when source query is a legacy MBQL query (#31368)"
@@ -150,10 +147,8 @@
                            :dataset-query card-query}
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
-          result-metadata (for [col (lib.metadata.calculation/returned-columns
-                                     (lib/saved-question-query
-                                      meta/metadata-provider
-                                      {:dataset-query card-query}))]
+          result-metadata (for [col (lib/returned-columns
+                                     (lib/query meta/metadata-provider card-query))]
                             (cond-> col
                               (:source-alias col)
                               (update :display-name (fn [display-name]
@@ -164,7 +159,7 @@
                                   "Card with result metadata"
                                   (assoc card-def :result-metadata result-metadata)}]
         (testing (str \newline message)
-          (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+          (let [metadata-provider (lib/composed-metadata-provider
                                    (lib.tu/mock-metadata-provider
                                     {:cards [card-def]})
                                    meta/metadata-provider)
@@ -224,7 +219,7 @@
               :unit     :day-of-month}
              (lib/temporal-bucket field))))
     (is (= "Date: Day of month"
-           (lib.metadata.calculation/display-name query -1 field)))))
+           (lib/display-name query -1 field)))))
 
 (def ^:private temporal-bucketing-mock-metadata
   "Mock metadata for testing temporal bucketing stuff.
@@ -240,7 +235,7 @@
         time-field        (assoc (meta/field-metadata :orders :created-at)
                                  :base-type      :type/Time
                                  :effective-type :type/Time)
-        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+        metadata-provider (lib/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:fields [date-field
                                       time-field]})
@@ -262,7 +257,7 @@
     (testing (str what " unit = " unit "\n\n" (u/pprint-to-str x') "\n")
       (testing "should calculate correct effective type"
         (is (= effective-type
-               (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
+               (lib/type-of (:query temporal-bucketing-mock-metadata) x'))))
       (testing "lib/temporal-bucket should return the option"
         (is (= {:lib/type :option/temporal-bucketing
                 :unit     unit}
@@ -341,14 +336,14 @@
             field))
     (testing "(lib/binning <column-metadata>)"
       (is (=? binning-typed
-              (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
+              (lib/binning (lib/metadata query -1 field)))))
     (testing "(lib/binning <field-ref>)"
       (is (=? binning-typed
               (lib/binning field))))
     #?(:clj
        ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
        (is (= "Subtotal: 10 bins"
-              (lib.metadata.calculation/display-name query -1 field))))))
+              (lib/display-name query -1 field))))))
 
 (deftest ^:parallel with-binning-test
   (doseq [[binning1 binning2] (partition 2 1 [{:strategy :default}
@@ -422,7 +417,7 @@
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
     (let [query (-> lib.tu/venues-query
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/returned-columns query)
+      (is (empty? (->> (lib/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
 
@@ -459,18 +454,16 @@
                         (lib/display-info query))))))))
 
 (deftest ^:parallel joined-field-column-name-test
-  (let [card  {:dataset-query {:database (meta/id)
-                               :type     :query
-                               :query    {:source-table (meta/id :venues)
-                                          :joins        [{:fields       :all
-                                                          :source-table (meta/id :categories)
-                                                          :conditions   [[:=
-                                                                          [:field (meta/id :venues :category-id) nil]
-                                                                          [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
-                                                          :alias        "Cat"}]}}}
-        query (lib/saved-question-query
-               meta/metadata-provider
-               card)]
+  (let [legacy-query {:database (meta/id)
+                      :type     :query
+                      :query    {:source-table (meta/id :venues)
+                                 :joins        [{:fields       :all
+                                                 :source-table (meta/id :categories)
+                                                 :conditions   [[:=
+                                                                 [:field (meta/id :venues :category-id) nil]
+                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
+                                                 :alias        "Cat"}]}}
+        query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
              {:lib/desired-column-alias "CATEGORY_ID"}
@@ -479,7 +472,7 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (lib.metadata.calculation/returned-columns query)))))
+            (lib/returned-columns query)))))
 
 (deftest ^:parallel field-ref-type-of-test
   (testing "Make sure we can calculate field ref type information correctly"
@@ -487,7 +480,7 @@
       (is (= ::lib.schema.expression/type.unknown
              (lib.schema.expression/type-of clause)))
       (is (= :type/BigInteger
-             (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))
+             (lib/type-of lib.tu/venues-query clause))))))
 
 (deftest ^:parallel implicitly-joinable-field-display-name-test
   (testing "Should be able to calculate a display name for an implicitly joinable Field"
@@ -520,7 +513,7 @@
   ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
   ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
-        field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
+        field (lib/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
                                                               :table-id "card__1"))]
     (is (=? {:name           "NAME"
              :display-name   "Name"
@@ -538,7 +531,7 @@
                                              :query    {:source-table (meta/id :checkins)
                                                         :aggregation  [[:count]]
                                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-          metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+          metadata-provider (lib/composed-metadata-provider
                              meta/metadata-provider
                              (lib.tu/mock-metadata-provider
                               {:cards [card-1]}))
@@ -582,14 +575,14 @@
                 :lib/source               :source/aggregations
                 :lib/source-column-alias  "avg"
                 :lib/desired-column-alias "avg"}]
-              (lib.metadata.calculation/returned-columns query))))))
+              (lib/returned-columns query))))))
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> lib.tu/venues-query
                             (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
                             (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)]))
         fields-metadata (fn [query]
-                          (map (partial lib.metadata.calculation/metadata query)
+                          (map (partial lib/metadata query)
                                (lib/fields query)))
         metadatas       (fields-metadata query)]
     (testing "Expressions should be included in :fields by default (#31236)"
@@ -619,7 +612,7 @@
                             (lib/with-fields [(meta/field-metadata :venues :id)])
                             (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         fields-metadata (fn [query]
-                          (map (partial lib.metadata.calculation/metadata query)
+                          (map (partial lib/metadata query)
                                (lib/fields query)))
         metadatas       (fields-metadata query)]
     (testing "Expressions should be included in :fields by default (#31236)"
@@ -677,7 +670,7 @@
                :lib/card-id              3
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
-             (lib.metadata.calculation/returned-columns query)))
+             (lib/returned-columns query)))
       (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
@@ -688,7 +681,7 @@
               :lib/source              :source/card
               :lib/source-column-alias "Field 4"
               :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-             (lib.metadata.calculation/metadata
+             (lib/metadata
               query
               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
@@ -714,7 +707,7 @@
              :lib/desired-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
-      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/returned-columns query))))
+      (is (not-any? :metabase.lib.join/join-alias (lib/returned-columns query))))
     (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
       (is (=? {:lib/type :mbql.stage/mbql,
                :breakout [[:field
@@ -815,7 +808,7 @@
                     fields-of))))
       (testing "when given as a list"
         (is (=? fields
-                (let [returned (lib.metadata.calculation/returned-columns query -1 (first (lib/joins query -1)))]
+                (let [returned (lib/returned-columns query -1 (first (lib/joins query -1)))]
                   (-> query
                       (lib.util/update-query-stage -1 update-in [:joins 0] lib/with-join-fields (take 3 returned))
                       (#'lib.field/populate-fields-for-stage -1)
@@ -864,7 +857,7 @@
   (testing "custom expressions are ignored"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/expression "custom" (lib/* 3 2)))
-          expr-column (->> (lib.metadata.calculation/returned-columns query)
+          expr-column (->> (lib/returned-columns query)
                            (remove :id)
                            first)
           own-columns (filter #(= (:lib/source %) :source/table-defaults)
@@ -884,7 +877,7 @@
                                         (lib/suggested-join-condition <> -1)
                                         vector
                                         (lib/join-clause (meta/table-metadata :people)))))
-          all-columns   (lib.metadata.calculation/returned-columns query)
+          all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)
           join-columns  (filter #(= (:lib/source %) :source/joins) all-columns)]
       ;; Orders has 9 columns, People has 13, for 22 total.
@@ -905,7 +898,7 @@
                          (map lib/ref)
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
-                    (->> (lib.metadata.calculation/returned-columns field-query)
+                    (->> (lib/returned-columns field-query)
                          (map lib/ref)
                          sorted-fields))))
           (testing "properly adds a top-level field"
@@ -916,7 +909,7 @@
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
                     (->> (lib/add-field field-query -1 (nth table-columns 6))
-                         lib.metadata.calculation/returned-columns
+                         lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
 
@@ -931,7 +924,7 @@
                          (map lib/ref)
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
-                    (->> (lib.metadata.calculation/returned-columns join-fields-query)
+                    (->> (lib/returned-columns join-fields-query)
                          (map lib/ref)
                          sorted-fields))))
           (testing "properly adds a join field"
@@ -942,7 +935,7 @@
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
                     (->> (lib/add-field join-fields-query -1 (nth join-columns 6))
-                         lib.metadata.calculation/returned-columns
+                         lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))
           (testing "does nothing if the join field is already selected"
@@ -951,11 +944,11 @@
 
   (testing "adding implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          viz-columns      (lib.metadata.calculation/visible-columns query)
+          viz-columns      (lib/visible-columns query)
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)]
       (is (= (map #(dissoc % :selected?) table-columns)
-             (lib.metadata.calculation/returned-columns query)))
+             (lib/returned-columns query)))
       (testing "with no :fields set"
         (testing "populates the table's fields plus the implicitly joined field"
           (is (=? (->> (concat table-columns
@@ -1027,7 +1020,7 @@
   (testing "custom expressions throw an exception"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/expression "custom" (lib/* 3 2)))
-          expr-column (->> (lib.metadata.calculation/returned-columns query)
+          expr-column (->> (lib/returned-columns query)
                            (remove :id)
                            first)]
       (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Custom expressions cannot be de-selected."
@@ -1039,7 +1032,7 @@
                                         (lib/suggested-join-condition <> -1)
                                         vector
                                         (lib/join-clause (meta/table-metadata :people)))))
-          all-columns   (lib.metadata.calculation/returned-columns query)
+          all-columns   (lib/returned-columns query)
           table-columns (lib/fieldable-columns query -1)
           join-columns  (filter #(= (:lib/source %) :source/joins) all-columns)]
       ;; Orders has 9 columns, People has 13, for 22 total.
@@ -1057,7 +1050,7 @@
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
                     (->> (lib/remove-field field-query -1 (first table-columns))
-                         lib.metadata.calculation/returned-columns
+                         lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))
           (testing "does nothing if field not listed"
@@ -1074,7 +1067,7 @@
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
                     (->> (lib/remove-field query -1 created-at)
-                         lib.metadata.calculation/returned-columns
+                         lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
 
@@ -1090,7 +1083,7 @@
                          (map #(lib.options/update-options % dissoc :lib/uuid))
                          sorted-fields)
                     (->> (lib/remove-field join-fields-query -1 (first join-columns))
-                         lib.metadata.calculation/returned-columns
+                         lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))
           (testing "does nothing if the join field is already selected"
@@ -1099,12 +1092,12 @@
 
   (testing "removing implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          viz-columns      (lib.metadata.calculation/visible-columns query)
+          viz-columns      (lib/visible-columns query)
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)
           implied-query    (lib/add-field query -1 (first implicit-columns))]
       (is (= (map #(dissoc % :selected?) table-columns)
-             (lib.metadata.calculation/returned-columns query)))
+             (lib/returned-columns query)))
       (testing "with no :fields set does nothing"
         (is (=? query
                 (lib/remove-field query -1 (first implicit-columns)))))
@@ -1124,7 +1117,7 @@
 (deftest ^:parallel add-remove-fields-source-card-test
   (testing "query with a source card"
     (let [query   lib.tu/query-with-source-card
-          columns (lib.metadata.calculation/visible-columns query)]
+          columns (lib/visible-columns query)]
       (testing "allows removing each of the fields"
         (is (=? [[:field {} "USER_ID"]]
                 (-> query
@@ -1156,7 +1149,7 @@
                      (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                      lib/append-stage)
           stage1 (lib.util/query-stage query 1)
-          [created-at sum] (lib.metadata.calculation/visible-columns query 1 stage1)]
+          [created-at sum] (lib/visible-columns query 1 stage1)]
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
         (is (=? [[:field {} "CREATED_AT"]
@@ -1192,7 +1185,7 @@
 (deftest ^:parallel add-remove-fields-native-query-test
   (testing "native query"
     (let [native-query   lib.tu/native-query
-          native-columns (lib.metadata.calculation/visible-columns native-query)]
+          native-columns (lib/visible-columns native-query)]
       (testing "throws when editing fields directly"
         (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Fields cannot be adjusted on native queries"
                               (lib/add-field native-query -1 (first native-columns))))
@@ -1201,7 +1194,7 @@
       (testing "with MBQL stage"
         (let [query   (lib/append-stage native-query)
               stage1  (lib.util/query-stage query 1)
-              columns (lib.metadata.calculation/visible-columns query 1 stage1)]
+              columns (lib/visible-columns query 1 stage1)]
           (testing "removing each field"
             (is (=? [[:field {} "sum"]]
                     (-> query
@@ -1232,7 +1225,7 @@
                          (lib/aggregate -1 (lib/sum (meta/field-metadata :orders :subtotal)))
                          (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
           stage      (lib.util/query-stage query -1)
-          columns    (lib.metadata.calculation/returned-columns query)
+          columns    (lib/returned-columns query)
           created-at [:field {} (meta/id :orders :created-at)]
           sum        [:aggregation {} (-> stage :aggregation first lib.options/uuid)]]
       (testing "removing each field"
