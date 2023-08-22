@@ -4,7 +4,6 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
-   [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
