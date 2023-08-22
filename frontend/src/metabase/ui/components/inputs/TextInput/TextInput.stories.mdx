@@ -5,7 +5,13 @@ import { TextInput } from "./";
 
 export const args = {
   variant: "default",
+  size: "md",
+  label: "Label",
+  description: "",
+  error: "",
+  placeholder: "Placeholder",
   disabled: false,
+  withAsterisk: false,
 };
 
 export const sampleArgs = {
@@ -21,6 +27,10 @@ export const argTypes = {
     options: ["default", "unstyled"],
     control: { type: "select" },
   },
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
   label: {
     control: { type: "text" },
   },
@@ -30,11 +40,14 @@ export const argTypes = {
   placeholder: {
     control: { type: "text" },
   },
+  error: {
+    control: { type: "text" },
+  },
   disabled: {
     control: { type: "boolean" },
   },
-  error: {
-    control: { type: "text" },
+  withAsterisk: {
+    control: { type: "boolean" },
   },
 };
 
@@ -51,20 +64,14 @@ Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-inpu
 
 ## Examples
 
+export const Default = args => <TextInput {...args} />;
+
 export const Template = args => (
   <Stack>
     <TextInput {...args} variant="default" />
     <TextInput {...args} variant="unstyled" />
   </Stack>
 );
-
-export const Default = args => <TextInput {...args} />;
-
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Empty
 
 export const Empty = args => (
   <Template
@@ -73,12 +80,6 @@ export const Empty = args => (
     placeholder={sampleArgs.placeholder}
   />
 );
-
-<Canvas>
-  <Story name="Empty">{Empty}</Story>
-</Canvas>
-
-### Filled
 
 export const Filled = args => (
   <Template
@@ -89,12 +90,6 @@ export const Filled = args => (
   />
 );
 
-<Canvas>
-  <Story name="Filled">{Filled}</Story>
-</Canvas>
-
-### Asterisk
-
 export const Asterisk = args => (
   <Template
     {...args}
@@ -104,12 +99,6 @@ export const Asterisk = args => (
   />
 );
 
-<Canvas>
-  <Story name="Asterisk">{Asterisk}</Story>
-</Canvas>
-
-### Description
-
 export const Description = args => (
   <Template
     {...args}
@@ -118,12 +107,6 @@ export const Description = args => (
     placeholder={sampleArgs.placeholder}
   />
 );
-
-<Canvas>
-  <Story name="Description">{Description}</Story>
-</Canvas>
-
-### Disabled
 
 export const Disabled = args => (
   <Template
@@ -136,12 +119,6 @@ export const Disabled = args => (
   />
 );
 
-<Canvas>
-  <Story name="Disabled">{Disabled}</Story>
-</Canvas>
-
-### Error
-
 export const Error = args => (
   <Template
     {...args}
@@ -152,12 +129,6 @@ export const Error = args => (
     withAsterisk
   />
 );
-
-<Canvas>
-  <Story name="Error">{Error}</Story>
-</Canvas>
-
-### Icon
 
 export const Icons = args => (
   <Template
@@ -170,12 +141,6 @@ export const Icons = args => (
   />
 );
 
-<Canvas>
-  <Story name="Icon">{Icons}</Story>
-</Canvas>
-
-### Read only
-
 export const ReadOnly = args => (
   <Template
     {...args}
@@ -187,5 +152,133 @@ export const ReadOnly = args => (
 );
 
 <Canvas>
-  <Story name="Raed only">{ReadOnly}</Story>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = args => <Empty {...args} size="md" />;
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledMd = args => <Filled {...args} size="md" />;
+
+<Canvas>
+  <Story name="Filled, md">{FilledMd}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskMd = args => <Asterisk {...args} size="md" />;
+
+<Canvas>
+  <Story name="Asterisk, md">{AsteriskMd}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionMd = args => <Description {...args} size="md" />;
+
+<Canvas>
+  <Story name="Description, md">{DescriptionMd}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledMd = args => <Disabled {...args} size="md" />;
+
+<Canvas>
+  <Story name="Disabled, md">{Disabled}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorMd = args => <Error {...args} size="md" />;
+
+<Canvas>
+  <Story name="Error, md">{ErrorMd}</Story>
+</Canvas>
+
+#### Icon
+
+export const IconMd = args => <Icons {...args} size="md" />;
+
+<Canvas>
+  <Story name="Icon, md">{IconMd}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
+
+<Canvas>
+  <Story name="Raed only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
+### Size - xs
+
+export const EmptyXs = args => <Empty {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Empty, xs">{EmptyXs}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledXs = args => <Filled {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Filled, xs">{FilledXs}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskXs = args => <Asterisk {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionXs = args => <Description {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Description, xs">{DescriptionXs}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledXs = args => <Disabled {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Disabled, xs">{Disabled}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorXs = args => <Error {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Error, xs">{ErrorXs}</Story>
+</Canvas>
+
+#### Icon
+
+export const IconXs = args => <Icons {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Icon, xs">{IconXs}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyXs = args => <ReadOnly {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Raed only, xs">{ReadOnlyXs}</Story>
 </Canvas>
