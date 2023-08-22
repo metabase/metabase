@@ -38,7 +38,7 @@ describe("nav > what's new notification", () => {
 
     navigationSidebar().findByText("See what's new");
 
-    navigationSidebar().findByText("dismiss").click();
+    navigationSidebar().icon("close").click();
 
     navigationSidebar().findByText("See what's new").should("not.exist");
 
