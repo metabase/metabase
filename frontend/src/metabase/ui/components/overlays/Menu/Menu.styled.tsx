@@ -21,11 +21,11 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         padding: theme.spacing.md,
 
         "&:hover, &:focus": {
-          color: theme.fn.primaryColor(),
+          color: theme.colors.brand[1],
           backgroundColor: theme.colors.bg[0],
 
           [`& .${getStylesRef("itemRightSection")}`]: {
-            color: theme.fn.primaryColor(),
+            color: theme.colors.brand[1],
           },
         },
       },

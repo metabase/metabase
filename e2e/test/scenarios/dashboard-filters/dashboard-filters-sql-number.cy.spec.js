@@ -1,11 +1,13 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
   visitQuestion,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -53,7 +55,8 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery2");
       },
     );
   });
@@ -74,7 +77,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
       cy.contains("Rustic Paper Wallet").should("not.exist");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     filterWidget().click();
 
@@ -140,11 +143,6 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
       .and("contain", "Widget");
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}
 
 function setupNumberFilter(name) {
   setFilter("Number", "Equal to");

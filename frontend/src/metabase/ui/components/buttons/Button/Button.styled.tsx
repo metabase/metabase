@@ -50,29 +50,8 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           borderColor: theme.colors.border[0],
           backgroundColor: theme.white,
           "&:hover": {
-            color: theme.fn.primaryColor(),
+            color: theme.colors.brand[1],
             backgroundColor: theme.colors.bg[0],
-          },
-          "&:disabled": {
-            color: theme.colors.text[0],
-            borderColor: theme.colors.border[0],
-            backgroundColor: theme.colors.bg[0],
-          },
-          "&[data-loading]": {
-            [`& .${getStylesRef("leftIcon")}`]: {
-              color: theme.fn.primaryColor(),
-            },
-          },
-        },
-      }),
-      filled: theme => ({
-        root: {
-          color: theme.white,
-          borderColor: theme.fn.primaryColor(),
-          backgroundColor: theme.fn.primaryColor(),
-          "&:hover": {
-            borderColor: getHoverColor(theme),
-            backgroundColor: getHoverColor(theme),
           },
           "&:disabled": {
             color: theme.colors.text[0],
@@ -86,10 +65,31 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
       }),
+      filled: theme => ({
+        root: {
+          color: theme.white,
+          borderColor: theme.colors.brand[1],
+          backgroundColor: theme.colors.brand[1],
+          "&:hover": {
+            borderColor: getHoverColor(theme),
+            backgroundColor: getHoverColor(theme),
+          },
+          "&:disabled": {
+            color: theme.colors.text[0],
+            borderColor: theme.colors.border[0],
+            backgroundColor: theme.colors.bg[0],
+          },
+          "&[data-loading]": {
+            [`& .${getStylesRef("leftIcon")}`]: {
+              color: theme.colors.focus[0],
+            },
+          },
+        },
+      }),
       outline: theme => ({
         root: {
-          color: theme.fn.primaryColor(),
-          borderColor: theme.fn.primaryColor(),
+          color: theme.colors.brand[1],
+          borderColor: theme.colors.brand[1],
           "&:hover": {
             color: getHoverColor(theme),
             borderColor: getHoverColor(theme),
@@ -104,7 +104,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       }),
       subtle: theme => ({
         root: {
-          color: theme.fn.primaryColor(),
+          color: theme.colors.brand[1],
           "&:hover": {
             color: getHoverColor(theme),
             backgroundColor: "transparent",
@@ -121,5 +121,5 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 });
 
 const getHoverColor = (theme: MantineTheme) => {
-  return theme.fn.rgba(theme.fn.primaryColor(), 0.88);
+  return theme.fn.rgba(theme.colors.brand[1], 0.88);
 };
