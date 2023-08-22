@@ -1,6 +1,6 @@
-import { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 // eslint-disable-next-line import/named
-import { Placement } from "tippy.js";
+import type { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";

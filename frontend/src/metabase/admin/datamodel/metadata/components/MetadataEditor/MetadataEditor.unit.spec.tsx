@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,

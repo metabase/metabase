@@ -1,7 +1,8 @@
-import * as React from "react";
+import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 import Mustache from "mustache";
-import moment, { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone";
+import moment from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
@@ -28,7 +29,7 @@ import { formatNumber } from "./numbers";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 
-import { OptionsType } from "./types";
+import type { OptionsType } from "./types";
 
 const MARKDOWN_RENDERERS = {
   a: ({ href, children }: any) => (

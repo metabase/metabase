@@ -1,4 +1,4 @@
-import {
+import type {
   Card,
   DatasetData,
   RawSeries,
@@ -7,11 +7,11 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
-import { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 import type Query from "metabase-lib/queries/Query";
 
-import { HoveredObject } from "./hover";
-import { RemappingHydratedDatasetColumn } from "./columns";
+import type { HoveredObject } from "./hover";
+import type { RemappingHydratedDatasetColumn } from "./columns";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

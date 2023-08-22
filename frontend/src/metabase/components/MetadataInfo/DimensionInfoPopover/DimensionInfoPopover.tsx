@@ -1,9 +1,8 @@
 import PropTypes from "prop-types";
 import { hideAll } from "tippy.js";
 
-import TippyPopover, {
-  ITippyPopoverProps,
-} from "metabase/components/Popover/TippyPopover";
+import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Dimension from "metabase-lib/Dimension";
 
 import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";

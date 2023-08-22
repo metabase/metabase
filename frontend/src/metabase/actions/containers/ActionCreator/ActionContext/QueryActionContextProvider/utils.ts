@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 type FieldTypeMap = Record<string, ParameterType>;
 type TagTypeMap = Record<string, TemplateTagType>;

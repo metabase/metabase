@@ -22,7 +22,7 @@ import type {
 } from "metabase-types/api";
 
 import { TYPE } from "metabase-lib/types/constants";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import type {
   ActionFormProps,

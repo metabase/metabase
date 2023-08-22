@@ -19,7 +19,7 @@ import {
   canSearchParameterValues,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import type { ValuesMode } from "./types";
 

@@ -1,11 +1,11 @@
-import { NumberLike, StringLike } from "@visx/scale";
-import {
+import type { NumberLike, StringLike } from "@visx/scale";
+import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import {
+import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type {
   ChartTicksFormatters,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";

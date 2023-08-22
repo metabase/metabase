@@ -1,4 +1,5 @@
-import moment, { MomentInput } from "moment-timezone";
+import type { MomentInput } from "moment-timezone";
+import moment from "moment-timezone";
 import { parseTimestamp } from "metabase/lib/time";
 
 export const isWithinWeeks = (

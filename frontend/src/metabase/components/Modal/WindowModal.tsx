@@ -1,13 +1,13 @@
-import { Component, CSSProperties } from "react";
+import type { CSSProperties } from "react";
+import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
 
-import {
-  getModalContent,
+import type {
   ModalSize,
-  modalSizes,
   BaseModalProps,
 } from "metabase/components/Modal/utils";
+import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";

@@ -7,7 +7,7 @@ import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 /* eslint-disable import/no-duplicates */
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { SegmentOption } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable */
+/* eslint-enable import/no-duplicates */
 
 import Filter from "metabase-lib/queries/structured/Filter";
 import type Dimension from "metabase-lib/Dimension";

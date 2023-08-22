@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
-import { ITreeNodeItem } from "metabase/components/tree/types";
+import type { ITreeNodeItem } from "metabase/components/tree/types";
 import { isNotNull } from "metabase/core/utils/types";
 
-import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-import Metadata from "metabase-lib/metadata/Metadata";
-import { EntityId, RawDataRouteParams } from "../../types";
+import type { State } from "metabase-types/store";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type { EntityId, RawDataRouteParams } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,

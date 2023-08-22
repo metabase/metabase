@@ -13,7 +13,10 @@ import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { NotebookStep as INotebookStep, NotebookStepAction } from "../types";
+import type {
+  NotebookStep as INotebookStep,
+  NotebookStepAction,
+} from "../types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";

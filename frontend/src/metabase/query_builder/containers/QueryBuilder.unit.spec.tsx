@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 import fetchMock from "fetch-mock";
-import { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,

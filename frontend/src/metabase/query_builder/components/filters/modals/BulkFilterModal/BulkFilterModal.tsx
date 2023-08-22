@@ -1,4 +1,5 @@
-import { useCallback, KeyboardEvent, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
@@ -8,14 +9,16 @@ import { pluralize } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import { Icon, IconName } from "metabase/core/components/Icon";
-import Question from "metabase-lib/Question";
-import StructuredQuery, {
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import type Question from "metabase-lib/Question";
+import type {
   FilterSection,
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalBody,

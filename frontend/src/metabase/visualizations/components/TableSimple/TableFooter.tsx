@@ -1,4 +1,5 @@
-import { forwardRef, MouseEvent, useCallback, useMemo } from "react";
+import type { MouseEvent } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 

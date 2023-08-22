@@ -3,13 +3,13 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
-import {
+import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export interface DownloadQueryResultsOpts {
   type: string;

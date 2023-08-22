@@ -1,5 +1,5 @@
 import * as measureText from "metabase/lib/measure-text";
-import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 import { TITLE_2_LINES_HEIGHT_THRESHOLD } from "./constants";
 import {

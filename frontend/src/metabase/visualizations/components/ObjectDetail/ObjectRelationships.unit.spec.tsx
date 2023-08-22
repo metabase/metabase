@@ -1,5 +1,5 @@
 import { getMetadata } from "metabase/selectors/metadata";
-import { Database, TableId } from "metabase-types/api";
+import type { Database, TableId } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
 import {
   createOrdersProductIdField,
@@ -17,7 +17,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { ForeignKeyReferences } from "./types";
+import type { ForeignKeyReferences } from "./types";
 import { Relationships } from "./ObjectRelationships";
 
 const SINGLE_TABLE_DATABASE = createSampleDatabase({

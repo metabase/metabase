@@ -1,4 +1,4 @@
-import {
+import type {
   FontStyle,
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
