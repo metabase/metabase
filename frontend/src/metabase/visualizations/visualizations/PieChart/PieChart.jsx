@@ -9,10 +9,7 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
-import {
-  getFriendlyName,
-  computeMaxDecimalsForValues,
-} from "metabase/visualizations/lib/utils";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -25,7 +22,12 @@ import ChartWithLegend from "../../components/ChartWithLegend";
 import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
-import { getTooltipModel } from "./utils";
+import {
+  computeLabelDecimals,
+  computeLegendDecimals,
+  formatPercent,
+  getTooltipModel,
+} from "./utils";
 import { PIE_CHART_SETTINGS, SLICE_THRESHOLD } from "./constants";
 
 const SIDE_PADDING = 24;
@@ -229,29 +231,18 @@ export default class PieChart extends Component {
     }
 
     const percentages = slices.map(s => s.percentage);
-    const legendDecimals = computeMaxDecimalsForValues(percentages, {
-      style: "percent",
-      maximumSignificantDigits: 3,
-    });
-    const labelsDecimals = computeMaxDecimalsForValues(percentages, {
-      style: "percent",
-      maximumSignificantDigits: 2,
-    });
-
-    const formatPercent = (percent, decimals) =>
-      formatValue(percent, {
-        column: cols[metricIndex],
-        number_separators: settings.column(cols[metricIndex]).number_separators,
-        jsx: true,
-        majorWidth: 0,
-        number_style: "percent",
-        decimals,
-      });
+    const legendDecimals = computeLegendDecimals({ percentages });
+    const labelsDecimals = computeLabelDecimals({ percentages });
 
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.percent_visibility"] === "legend"
-        ? formatPercent(slice.percentage, legendDecimals)
+        ? formatPercent({
+            percent: slice.percentage,
+            decimals: legendDecimals,
+            settings,
+            cols,
+          })
         : undefined,
     ]);
     const legendColors = slices.map(slice => slice.color);
@@ -411,10 +402,12 @@ export default class PieChart extends Component {
                 transform={`translate(${outerRadius},${outerRadius})`}
               >
                 {pie(slices).map((slice, index) => {
-                  const label = formatPercent(
-                    slice.data.percentage,
-                    labelsDecimals,
-                  );
+                  const label = formatPercent({
+                    percent: slice.data.percentage,
+                    decimals: labelsDecimals,
+                    settings,
+                    cols,
+                  });
 
                   return (
                     <PieArc
