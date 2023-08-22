@@ -41,68 +41,89 @@ import {
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
 
+<<<<<<< HEAD
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
+=======
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+>>>>>>> 3b7620fa69 (Model Folder)
 
 describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.createQuestion(
+      {
+        name: "Products",
+        query: { "source-table": PRODUCTS_ID },
+      },
+      {
+        wrapId: true,
+        idAlias: "productsQuestionId",
+      },
+    );
   });
 
   it("allows to turn a GUI question into a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      name: "Orders Model",
+    cy.get("@productsQuestionId").then(id => {
+      cy.request("PUT", `/api/card/${id}`, {
+        name: "Products Model",
+      });
+      visitQuestion(id);
+
+      turnIntoModel();
+      openQuestionActions();
+      assertIsModel();
+
+      filter();
+      filterField("Vendor", {
+        operator: "Contains",
+        value: "Fisher",
+      });
+
+      cy.findByTestId("apply-filters").click();
+      cy.wait("@dataset");
+
+      assertQuestionIsBasedOnModel({
+        model: "Products Model",
+        collection: "Our analytics",
+        table: "Products",
+      });
+
+      saveQuestionBasedOnModel({ modelId: id, name: "Q1" });
+
+      assertQuestionIsBasedOnModel({
+        questionName: "Q1",
+        model: "Products Model",
+        collection: "Our analytics",
+        table: "Products",
+      });
+
+      cy.findByTestId("qb-header")
+        .findAllByText("Our analytics")
+        .first()
+        .click();
+      getCollectionItemCard("Products Model").within(() => {
+        cy.icon("model");
+      });
+      getCollectionItemRow("Q1").within(() => {
+        cy.icon("table");
+      });
+
+      cy.url().should("not.include", "/question/" + id);
     });
-    visitQuestion(ORDERS_QUESTION_ID);
-
-    turnIntoModel();
-    openQuestionActions();
-    assertIsModel();
-
-    filter();
-    filterField("Discount", {
-      operator: "Not empty",
-    });
-
-    cy.findByTestId("apply-filters").click();
-    cy.wait("@dataset");
-
-    assertQuestionIsBasedOnModel({
-      model: "Orders Model",
-      collection: "Our analytics",
-      table: "Orders",
-    });
-
-    saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
-
-    assertQuestionIsBasedOnModel({
-      questionName: "Q1",
-      model: "Orders Model",
-      collection: "Our analytics",
-      table: "Orders",
-    });
-
-    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemCard("Orders Model").within(() => {
-      cy.icon("model");
-    });
-    getCollectionItemRow("Q1").within(() => {
-      cy.icon("table");
-    });
-
-    cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
   });
 
   it("allows to turn a native question into a model", () => {
     cy.createNativeQuestion(
       {
-        name: "Orders Model",
+        name: "Product Model",
         native: {
-          query: "SELECT * FROM orders",
+          query: "SELECT * FROM products",
         },
       },
-      { visitQuestion: true },
+      { visitQuestion: true, wrapId: true },
     );
 
     turnIntoModel();
@@ -110,30 +131,33 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    filterField("DISCOUNT", {
-      operator: "Not empty",
+    filterField("VENDOR", {
+      operator: "Contains",
+      value: "Fisher",
     });
 
     cy.findByTestId("apply-filters").click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
-      model: "Orders Model",
+      model: "Product Model",
       collection: "Our analytics",
-      table: "Orders",
+      table: "Products",
     });
 
-    saveQuestionBasedOnModel({ modelId: 4, name: "Q1" });
+    cy.get("@questionId").then(questionId => {
+      saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
+    });
 
     assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      model: "Orders Model",
+      model: "Product Model",
       collection: "Our analytics",
-      table: "Orders",
+      table: "Products",
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemCard("Orders Model").within(() => {
+    getCollectionItemCard("Product Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -524,7 +548,7 @@ describe("scenarios > models", () => {
 
   describe("listing", () => {
     const modelDetails = {
-      name: "Orders Model",
+      name: "Orders Model 2",
       query: {
         "source-table": ORDERS_ID,
         limit: 5,
