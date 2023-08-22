@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Metric } from "metabase-types/api";
+import type { Metric } from "metabase-types/api";
 
 export function setupMetricEndpoint(metric: Metric) {
   fetchMock.get(`path:/api/metric/${metric.id}`, metric);

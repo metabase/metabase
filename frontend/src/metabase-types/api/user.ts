@@ -1,4 +1,4 @@
-import { DashboardId } from "./dashboard";
+import type { DashboardId } from "./dashboard";
 
 export type UserId = number;
 

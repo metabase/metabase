@@ -21,7 +21,8 @@ import {
   ROOT,
   ARG_LIST,
 } from "./syntax";
-import { assert, NodeType, Node, CompileError } from "./types";
+import type { NodeType, Node } from "./types";
+import { assert, CompileError } from "./types";
 
 export type Expr =
   | number
