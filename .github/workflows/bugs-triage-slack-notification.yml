@@ -42,7 +42,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Please, triage ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
                   }
                 }
               ]
