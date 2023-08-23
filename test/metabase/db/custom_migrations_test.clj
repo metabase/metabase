@@ -114,17 +114,17 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-       (testing "visualization_settings are equivalent before and after migration"
-         (is (= (-> visualization-settings
-                    mi/normalize-visualization-settings
-                    (#'mi/migrate-viz-settings))
-                (-> (t2/query-one {:select [:visualization_settings]
-                                   :from   [:report_card]
-                                   :where  [:= :id card-id]})
-                    :visualization_settings
-                    json/parse-string
-                    mi/normalize-visualization-settings
-                    (#'mi/migrate-viz-settings)))))))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     json/parse-string
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
 
 (deftest migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
@@ -244,14 +244,14 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-       (db.setup/migrate! db-type data-source :down 46)
-       (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-         (is (= visualization-settings
-                (-> (t2/query-one {:select [:visualization_settings]
-                                   :from   [:report_card]
-                                   :where  [:= :id card-id]})
-                    :visualization_settings
-                    json/parse-string))))))))
+        (db.setup/migrate! db-type data-source :down 46)
+        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+          (is (= visualization-settings
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     json/parse-string))))))))
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
@@ -283,50 +283,50 @@
                           :visualization_settings {:virtual_card {:display "text"}
                                                    :text         "A text card"}}
             tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab1-id
+                                                                                   :row              0
+                                                                                   :col              0
+                                                                                   :size_x           4
+                                                                                   :size_y           4})))
 
             tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              2
-                                                                                  :col              0
-                                                                                  :size_x           2
-                                                                                  :size_y           6})))
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab1-id
+                                                                                   :row              2
+                                                                                   :col              0
+                                                                                   :size_x           2
+                                                                                   :size_y           6})))
 
             tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab2-id
+                                                                                   :row              0
+                                                                                   :col              0
+                                                                                   :size_x           4
+                                                                                   :size_y           4})))
 
             tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab2-id
+                                                                                   :row              4
+                                                                                   :col              0
+                                                                                   :size_x           4
+                                                                                   :size_y           2})))
             tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab4-id
+                                                                                   :row              0
+                                                                                   :col              0
+                                                                                   :size_x           4
+                                                                                   :size_y           4})))
             tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))]
+                                                                                  default-card
+                                                                                  {:dashboard_tab_id tab4-id
+                                                                                   :row              4
+                                                                                   :col              0
+                                                                                   :size_x           4
+                                                                                   :size_y           2})))]
        (migrate-down! 46)
        (is (= [;; tab 1
                {:id  tab1-card1-id
@@ -477,20 +477,20 @@
               (if (> i num-rows)
                 acc
                 (recur
-                 (inc i)
-                 (+ row size-y)
-                 (concat acc
-                         (loop [col     0
-                                acc-row []]
-                           (let [size-x  (inc (math/round (* 9 (math/random))))
-                                 new-col (+ col size-x)]
-                             ;; we want to ensure we have a card at the end of the row
-                             (if (>= new-col 18)
-                               (cons [col row (- 18 col) size-y] acc-row)
-                               ;; probability of skipping is 5%
-                               (if (> (math/random) 0.95)
-                                 (recur (+ col size-x) acc-row)
-                                 (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
+                  (inc i)
+                  (+ row size-y)
+                  (concat acc
+                          (loop [col     0
+                                 acc-row []]
+                            (let [size-x  (inc (math/round (* 9 (math/random))))
+                                  new-col (+ col size-x)]
+                              ;; we want to ensure we have a card at the end of the row
+                              (if (>= new-col 18)
+                                (cons [col row (- 18 col) size-y] acc-row)
+                                ;; probability of skipping is 5%
+                                (if (> (math/random) 0.95)
+                                  (recur (+ col size-x) acc-row)
+                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
       {:row    row
        :col    col
        :size_x size_x
@@ -699,27 +699,27 @@
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/parse-string))))
-       (testing "legacy column_settings are updated to the current format"
-         (is (= (-> visualization-settings
-                    mi/normalize-visualization-settings
-                    (#'mi/migrate-viz-settings)
-                    walk/stringify-keys)
-                (-> (t2/query-one {:select [:visualization_settings]
-                                   :from   [:report_dashboardcard]
-                                   :where  [:= :id dashcard-id]})
-                    :visualization_settings
-                    json/parse-string))))
-       (testing "visualization_settings are equivalent before and after migration"
-         (is (= (-> visualization-settings
-                    mi/normalize-visualization-settings
-                    (#'mi/migrate-viz-settings))
-                (-> (t2/query-one {:select [:visualization_settings]
-                                   :from   [:report_dashboardcard]
-                                   :where  [:= :id dashcard-id]})
-                    :visualization_settings
-                    json/parse-string
-                    mi/normalize-visualization-settings
-                    (#'mi/migrate-viz-settings)))))))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)
+                     walk/stringify-keys)
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
 
 (deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
