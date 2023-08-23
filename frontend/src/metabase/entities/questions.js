@@ -100,7 +100,14 @@ const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: question => question && question.name,
+    getName: question => {
+      // When a question is from `getObject`, it will be a `metabase-lib/Question` object wrapped in EntityWrapper.
+      if (question?._card) {
+        return question._card.name;
+      }
+
+      return question?.name;
+    },
     getUrl: (question, opts) => question && Urls.question(question, opts),
     getColor: () => color("text-medium"),
     getCollection: question =>
