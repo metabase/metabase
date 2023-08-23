@@ -13,6 +13,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.metric :refer [Metric]]
+   [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
@@ -174,18 +175,25 @@
                              :field_name field-name
                              :field_value field-value}))))
 
-;; TODO - Look up details from model_index_value and fill in the request...
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
   [model-index-id pk-id]
   {model-index-id :int
-   pk-id :int}
+   pk-id          :int}
   ;; Stuff...
-  #_(-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show        (keyword show)
-                           :field_name  field-name
-                           :field_value field-value})))
+  (api/let-404 [model-index       (t2/select-one ModelIndex :id model-index-id)
+                model-index-value (t2/select-one ModelIndexValue
+                                                 :model_index_id model-index-id
+                                                 :model_pk pk-id)]
+    ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+    (api/read-check Card (:model_id model-index))
+    (-> (->entity :model (:model_id model-index))
+        ;; do we care about show :all having any other value?
+        (automagic-analysis {:show     :all
+                             :pk_label (:name model-index-value)
+                             :pk_ref   (:pk_ref model-index)
+                             :pk       pk-id}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
