@@ -123,12 +123,9 @@
                            [:= :moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
 
-(defmethod build-optional-filter-query [:verified "collection"]
-  [_filter model query verified]
-  (assert (true? verified) "filter for non-verified collections is not supported")
-  (if (premium-features/has-feature? :official-collections)
-    (sql.helpers/where query [:= (search.config/column-with-model-alias model :authority_level) "official"])
-    (sql.helpers/where query false-clause)))
+(defmethod build-optional-filter-query [:verified "dataset"]
+  [filter _model query verified]
+  (build-optional-filter-query filter "card" query verified))
 
 ;; Created at filters
 

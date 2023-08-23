@@ -1,13 +1,13 @@
 import DatabaseCandidates from "metabase/entities/database-candidates";
-import {
+import type {
   DatabaseCandidateListQuery,
   DatabaseCandidate,
 } from "metabase-types/api";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "../use-entity-list-query";
+import { useEntityListQuery } from "../use-entity-list-query";
 
 export const useDatabaseCandidateListQuery = (
   props: UseEntityListQueryProps<DatabaseCandidateListQuery> = {},

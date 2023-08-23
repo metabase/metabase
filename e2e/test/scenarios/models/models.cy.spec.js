@@ -17,6 +17,9 @@ import {
   visitCollection,
   undo,
   openQuestionsSidebar,
+  editDashboard,
+  getDashboardCard,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -38,7 +41,7 @@ import {
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
@@ -520,33 +523,43 @@ describe("scenarios > models", () => {
   });
 
   describe("listing", () => {
+    const modelDetails = {
+      name: "Orders Model",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+      dataset: true,
+    };
+
     beforeEach(() => {
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-        name: "Orders Model",
-        dataset: true,
-      });
+      cy.createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
     });
 
     it("should allow adding models to dashboards", () => {
-      cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
-
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
         visitDashboard(dashboardId);
-        cy.icon("pencil").click();
+        editDashboard();
         openQuestionsSidebar();
-        sidebar().findByText("Orders Model").click();
-        cy.button("Save").click();
-        // The first fetch happened when visiting dashboard, and the second one upon saving it.
-        // We need to wait for both.
-        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
-        cy.findByText("Orders Model");
+        sidebar().findByText(modelDetails.name).click();
+        getDashboardCard().within(() => {
+          cy.findByText(modelDetails.name);
+          cy.findByText("37.65");
+        });
+        saveDashboard();
+        getDashboardCard().within(() => {
+          cy.findByText(modelDetails.name);
+          cy.findByText("37.65");
+        });
       });
     });
 
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
-      openNativeEditor().type("select * from {{#1}}", {
-        parseSpecialCharSequences: false,
+      cy.get("@modelId").then(id => {
+        openNativeEditor().type(`select * from {{#${id}}}`, {
+          parseSpecialCharSequences: false,
+        });
       });
       cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@query");

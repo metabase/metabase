@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import ModelCacheControl, {
   toggleModelPersistence,
 } from "./components/ModelCacheControl";

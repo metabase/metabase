@@ -23,6 +23,7 @@ import {
   getQuestion,
   getTimeoutId,
   getIsResultDirty,
+  getOriginalQuestionWithParameterValues,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -176,7 +177,7 @@ export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
-    const originalQuestion = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const isDirty =
       question.query().isEditable() &&
       question.isDirtyComparedTo(originalQuestion);
@@ -189,12 +190,11 @@ export const queryCompleted = (question, queryResults) => {
         );
       }
 
-      question = question
-        .maybeResetDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .switchTableScalar(data);
+      question = question.maybeResetDisplay(
+        data,
+        getSensibleDisplays(data),
+        prevData && getSensibleDisplays(prevData),
+      );
     }
 
     const card = question.card();

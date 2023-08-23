@@ -53,6 +53,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -696,8 +697,8 @@
          {:moderated_item_id   (u/the-id card-or-id)
           :moderated_item_type "card"
           :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status}))
-      (thunk))))
+          :status              status})))
+    (thunk)))
 
 (defmacro with-verified-cards
   "Execute the body with all `card-or-ids` verified."
@@ -799,6 +800,71 @@
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(declare with-discard-model-updates)
+
+(defn do-with-discard-model-updates
+  "Impl for `with-discard-model-changes`."
+  [models thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
+  (if (= (count models) 1)
+   (let [model             (first models)
+         pk->original      (atom {})
+         method-unique-key (str (random-uuid))
+         before-method-fn  (fn [_model row]
+                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             row)]
+     (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
+     (try
+      (thunk)
+      (finally
+       (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
+       (doseq [[id orignal-val] @pk->original]
+         (t2/update! model id orignal-val)))))
+   (with-discard-model-updates (rest models)
+     (thunk))))
+
+(defmacro with-discard-model-updates
+  "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
+  [models & body]
+  (if (> (count models) 1)
+    (let [[model & more] models]
+      `(with-discard-model-updates [~model]
+         (with-discard-model-updates [~@more]
+           ~@body)))
+    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+
+(deftest with-discard-model-changes-test
+  (t2.with-temp/with-temp
+    [:model/Card      {card-id :id :as card} {:name "A Card"}
+     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
+    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
+
+      (testing "with single model"
+        (with-discard-model-updates [:model/Card]
+          (t2/update! :model/Card card-id {:name "New Card name"})
+          (testing "the changes takes affect inside the macro"
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))))
+
+      (testing "with multiple models"
+        (with-discard-model-updates [:model/Card :model/Dashboard]
+          (testing "the changes takes affect inside the macro"
+            (t2/update! :model/Card card-id {:name "New Card name"})
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
+
+            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
+            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))
+          (is (= dash (t2/select-one :model/Dashboard dash-id)))))
+
+      (testing "make sure that we cleaned up the aux methods after"
+        (is (= count-aux-method-before
+               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
@@ -1041,7 +1107,7 @@
   "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
-  something in to it.
+  something in to it. The file, if created, will be deleted in a `finally` block after `body` concludes.
 
   DOES NOT CREATE A FILE!
 

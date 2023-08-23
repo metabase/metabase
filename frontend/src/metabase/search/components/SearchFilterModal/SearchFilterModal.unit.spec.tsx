@@ -4,8 +4,8 @@ import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
-import { SearchModelType } from "metabase-types/api";
-import { SearchFilters } from "metabase/search/types";
+import type { SearchModelType } from "metabase-types/api";
+import type { SearchFilters } from "metabase/search/types";
 
 const TestSearchFilterModal = ({
   initialFilters = {},

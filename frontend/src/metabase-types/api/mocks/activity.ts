@@ -1,4 +1,4 @@
-import { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
+import type { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
 
 export const createMockModelObject = (
   opts?: Partial<ModelObject>,

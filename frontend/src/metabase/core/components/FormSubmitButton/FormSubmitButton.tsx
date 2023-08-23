@@ -1,8 +1,10 @@
-import { forwardRef, Ref } from "react";
+import type { Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
-import Button, { ButtonProps } from "metabase/core/components/Button";
+import type { ButtonProps } from "metabase/core/components/Button";
+import Button from "metabase/core/components/Button";
 import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
-import { FormStatus } from "metabase/core/context/FormContext";
+import type { FormStatus } from "metabase/core/context/FormContext";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   title?: string;

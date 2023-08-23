@@ -201,13 +201,12 @@ describe("scenarios > home > custom homepage", () => {
 
       // Do a page refresh and test dashboard header
       cy.visit("/");
-
       cy.location("pathname").should("equal", "/dashboard/1");
 
-      dashboardHeader().within(() => {
-        cy.icon("pencil").click();
-        cy.findByText(/Remember that this dashboard is set as homepage/);
-      });
+      cy.findByLabelText("Edit dashboard").click();
+      cy.findByTestId("edit-bar").findByText(
+        "You're editing this dashboard. Remember that this dashboard is set as homepage.",
+      );
     });
 
     it("should give you the option to set a custom home page using home page CTA", () => {

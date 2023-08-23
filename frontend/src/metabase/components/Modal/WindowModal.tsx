@@ -1,13 +1,13 @@
-import { Component, CSSProperties } from "react";
+import type { CSSProperties } from "react";
+import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
 
-import {
-  getModalContent,
+import type {
   ModalSize,
-  modalSizes,
   BaseModalProps,
 } from "metabase/components/Modal/utils";
+import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
@@ -43,7 +43,7 @@ export class WindowModal extends Component<WindowModalProps> {
     this._modalElement.className = "ModalContainer";
 
     if (props.zIndex != null) {
-      this._modalElement.setAttribute("style", `z-index:${props.zIndex}`);
+      this._modalElement.style.zIndex = String(props.zIndex);
     }
     document.body.appendChild(this._modalElement);
   }

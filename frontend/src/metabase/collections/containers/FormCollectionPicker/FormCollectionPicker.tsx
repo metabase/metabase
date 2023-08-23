@@ -1,12 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  HTMLAttributes,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
-import { useField, useFormikContext } from "formik";
+import { useField } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
@@ -16,10 +11,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import type {
-  OnClickNewCollection,
-  Values,
-} from "metabase/containers/CreateCollectionOnTheGo";
+import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -31,7 +23,6 @@ import type { CollectionId } from "metabase-types/api";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
-  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -40,10 +31,8 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
-  canCreateNew?: boolean;
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
-  onClickNewCollection?: OnClickNewCollection;
 }
 
 function ItemName({
@@ -67,10 +56,8 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
-  canCreateNew = false,
   initialOpenCollectionId,
   onOpenCollectionChange,
-  onClickNewCollection,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -107,7 +94,6 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
-  const { values } = useFormikContext<Values>();
   const [openCollectionId, setOpenCollectionId] =
     useState<CollectionId>("root");
 
@@ -135,15 +121,7 @@ function FormCollectionPicker({
             setOpenCollectionId(id);
           }}
         >
-          {canCreateNew && (
-            <NewCollectionButton
-              light
-              icon="add"
-              onClick={() => onClickNewCollection?.(values, openCollectionId)}
-            >
-              {t`New collection`}
-            </NewCollectionButton>
-          )}
+          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
         </PopoverItemPicker>
       );
     },
@@ -154,10 +132,7 @@ function FormCollectionPicker({
       setValue,
       initialOpenCollectionId,
       openCollectionId,
-      values,
       onOpenCollectionChange,
-      canCreateNew,
-      onClickNewCollection,
     ],
   );
 

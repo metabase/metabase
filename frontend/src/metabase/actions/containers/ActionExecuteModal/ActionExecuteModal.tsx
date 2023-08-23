@@ -1,7 +1,7 @@
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 
-import {
+import type {
   ParametersForActionExecution,
   WritebackActionId,
 } from "metabase-types/api";

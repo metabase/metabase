@@ -43,6 +43,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
+  FETCH_CARD_DATA_PENDING,
 } from "./actions";
 import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -377,6 +378,15 @@ const loadingDashCards = handleActions(
           loadingIds,
           loadingStatus: loadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
+        };
+      },
+    },
+    [FETCH_CARD_DATA_PENDING]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.concat(dashcard_id);
+        return {
+          ...state,
+          loadingIds,
         };
       },
     },

@@ -1,4 +1,5 @@
-import { lexify, parse, Node } from "metabase-lib/expressions/pratt";
+import type { Node } from "metabase-lib/expressions/pratt";
+import { lexify, parse } from "metabase-lib/expressions/pratt";
 
 describe("metabase-lib/expressions/parser", () => {
   interface AST {

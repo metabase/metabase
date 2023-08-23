@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
-import { FormState } from "metabase/core/context/FormContext";
+import type { FormState } from "metabase/core/context/FormContext";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { FormError } from "./types";
+import type { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
   onSubmit: (values: T, helpers: FormikHelpers<T>) => void;

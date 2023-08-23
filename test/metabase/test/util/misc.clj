@@ -63,7 +63,6 @@
   `(do-with-local-date-time-at-same-zone ~clock-zone-id (fn [] ~@body)))
 
 (defn do-with-clock [clock thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                  (t/clock? clock)           clock

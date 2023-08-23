@@ -1,4 +1,4 @@
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export function getWhiteLabeledLoadingMessage(state: State) {

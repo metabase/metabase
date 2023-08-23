@@ -9,7 +9,7 @@
    [metabase.http-client :as client]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
@@ -133,12 +133,12 @@
     :mysql    ["DELETE FROM `categories` WHERE `id` = 1"]))
 
 (deftest with-actions-test-data-test
-  (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)
+  (datasets/test-drivers (qp.test-util/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]
       (testing (format "Iteration %d" i)
         (with-actions-test-data
           (letfn [(row-count []
-                    (qp.test/rows (data/run-mbql-query categories {:aggregation [[:count]]})))]
+                    (qp.test-util/rows (data/run-mbql-query categories {:aggregation [[:count]]})))]
             (testing "before"
               (is (= [[75]]
                      (row-count))))
@@ -250,7 +250,7 @@
                  (:dataset maybe-model-def)
                  (contains? maybe-model-def :dataset_query))
           [model-part (drop 2 binding-forms-and-option-maps)]
-          ['[_ {:dataset true :dataset_query (metabase.test.data/mbql-query categories)}]
+          ['[_ {:dataset true :dataset_query (mt/mbql-query categories)}]
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)

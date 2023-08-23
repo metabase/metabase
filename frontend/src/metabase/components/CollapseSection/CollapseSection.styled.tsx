@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const HeaderContainer = styled.div<{ role: string; tabIndex?: number }>`
   display: flex;

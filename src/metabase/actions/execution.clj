@@ -39,26 +39,10 @@
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
         (api/throw-403 e)
-        (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
+        (throw (ex-info (format "Error executing Action: %s" (ex-message e))
                         {:action     action
                          :parameters request-parameters}
                         e))))))
-
-(defn- handle-action-execution-error [ex]
-  (log/error ex (tru "Error executing action."))
-  (if-let [ed (ex-data ex)]
-    (let [ed (cond-> ed
-               (and (nil? (:status-code ed))
-                    (= (:type ed) :missing-required-permissions))
-               (assoc :status-code 403)
-
-               (nil? (:message ed))
-               (assoc :message (ex-message ex)))]
-      (if (= (ex-data ex) ed)
-        (throw ex)
-        (throw (ex-info (ex-message ex) ed ex))))
-    {:body {:message (or (ex-message ex) (tru "Error executing action."))}
-     :status 500}))
 
 (defn- implicit-action-table
   [card_id]
@@ -75,14 +59,27 @@
         (actions/check-actions-enabled-for-database!
          (t2/select-one Database :id (:database_id action)))))
     (try
-      (case action-type
-        :query
-        (execute-query-action! action request-parameters)
+     (case action-type
+       :query
+       (execute-query-action! action request-parameters)
 
-        :http
-        (http-action/execute-http-action! action request-parameters))
-      (catch Exception e
-        (handle-action-execution-error e)))))
+       :http
+       (http-action/execute-http-action! action request-parameters))
+     (catch Exception e
+       (log/error e "Error executing action.")
+       (if-let [ed (ex-data e)]
+         (let [ed (cond-> ed
+                    (and (nil? (:status-code ed))
+                         (= (:type ed) :missing-required-permissions))
+                    (assoc :status-code 403)
+
+                    (nil? (:message ed))
+                    (assoc :message (ex-message e)))]
+           (if (= (ex-data e) ed)
+             (throw e)
+             (throw (ex-info (ex-message e) ed e))))
+         {:body {:message (or (ex-message e) (tru "Error executing action."))}
+          :status 500})))))
 
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
@@ -159,11 +156,8 @@
 
                   (= implicit-action :row/update)
                   (assoc :update-row row-parameters))]
-    (try
-      (binding [qp.perms/*card-id* (:model_id action)]
-        (actions/perform-action! implicit-action arg-map))
-      (catch Exception e
-        (handle-action-execution-error e)))))
+    (binding [qp.perms/*card-id* (:model_id action)]
+      (actions/perform-action! implicit-action arg-map))))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."

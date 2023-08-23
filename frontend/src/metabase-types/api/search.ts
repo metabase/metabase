@@ -1,8 +1,8 @@
-import { CardId } from "./card";
-import { Collection } from "./collection";
-import { DatabaseId, InitialSyncStatus } from "./database";
-import { FieldReference } from "./query";
-import { TableId } from "./table";
+import type { CardId } from "./card";
+import type { Collection } from "./collection";
+import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { FieldReference } from "./query";
+import type { TableId } from "./table";
 
 export type SearchModelType =
   | "card"

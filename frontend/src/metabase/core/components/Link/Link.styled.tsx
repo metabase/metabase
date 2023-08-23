@@ -6,8 +6,12 @@ import { color as metabaseColor } from "metabase/lib/colors";
 import { focusOutlineStyle } from "metabase/core/style/input";
 import type { LinkProps } from "./types";
 
+const isLinkPropValid = (propName: PropertyKey) => {
+  return isPropValid(propName) || propName === "activeClassName";
+};
+
 export const LinkRoot = styled(Link, {
-  shouldForwardProp: isPropValid,
+  shouldForwardProp: isLinkPropValid,
 })<LinkProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
   pointer-events: ${props => (props.disabled ? "none" : "")};

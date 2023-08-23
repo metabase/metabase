@@ -13,6 +13,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -401,3 +402,12 @@
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
+
+;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
+
+;; NB: Settings are also defined where they're used, such as in metabase.events.view-log
+
+(defsetting last-acknowledged-version
+  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  :user-local :only
+  :type :string)

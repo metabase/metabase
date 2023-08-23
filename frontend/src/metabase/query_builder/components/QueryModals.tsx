@@ -17,7 +17,7 @@ import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashMod
 
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
 
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -30,16 +30,16 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { Alert, Card, Collection, User } from "metabase-types/api";
-import {
+import type { Alert, Card, Collection, User } from "metabase-types/api";
+import type {
   QueryBuilderMode,
   QueryBuilderUIControls,
   State,
 } from "metabase-types/store";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
-import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Question from "metabase-lib/Question";
+import type { UpdateQuestionOpts } from "../actions/core/updateQuestion";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 import NativeCodePanel from "../NativeCodePanel";
 import {

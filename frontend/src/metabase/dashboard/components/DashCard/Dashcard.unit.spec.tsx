@@ -13,7 +13,8 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 
 import { createMockState } from "metabase-types/store/mocks";
-import Dashcard, { DashCardProps } from "./DashCard";
+import type { DashCardProps } from "./DashCard";
+import Dashcard from "./DashCard";
 
 const dashboard = createMockDashboard();
 
