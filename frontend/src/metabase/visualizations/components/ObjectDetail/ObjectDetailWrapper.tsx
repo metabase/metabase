@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
+import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import {
   PaginationFooter,
   RootModal,

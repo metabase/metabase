@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";

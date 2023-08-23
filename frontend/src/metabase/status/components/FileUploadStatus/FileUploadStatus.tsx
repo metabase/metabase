@@ -1,8 +1,8 @@
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getAllUploads, clearAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
-import { Collection } from "metabase-types/api";
-import { FileUpload } from "metabase-types/store/upload";
+import type { Collection } from "metabase-types/api";
+import type { FileUpload } from "metabase-types/store/upload";
 import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";

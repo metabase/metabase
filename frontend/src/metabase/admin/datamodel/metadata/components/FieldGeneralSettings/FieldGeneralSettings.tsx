@@ -5,12 +5,11 @@ import * as MetabaseCore from "metabase/lib/core";
 import Fields from "metabase/entities/fields";
 import ActionButton from "metabase/components/ActionButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { FieldId, FieldValuesType } from "metabase-types/api";
-import Select, {
-  SelectChangeEvent,
-} from "metabase/core/components/Select/Select";
-import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
+import type { FieldId, FieldValuesType } from "metabase-types/api";
+import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
+import Select from "metabase/core/components/Select/Select";
+import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
 import { discardFieldValues, rescanFieldValues } from "../../actions";
 import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";

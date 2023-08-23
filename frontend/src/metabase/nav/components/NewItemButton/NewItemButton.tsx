@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import NewItemMenu from "metabase/containers/NewItemMenu";
-import { CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 import { NewButton, NewButtonText } from "./NewItemButton.styled";
 
 export interface NewItemButtonProps {

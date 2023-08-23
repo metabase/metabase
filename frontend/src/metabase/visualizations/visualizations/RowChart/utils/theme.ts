@@ -1,5 +1,5 @@
 import { color } from "metabase/lib/colors";
-import { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
+import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
 
 export const getChartTheme = (fontFamily: string = "Lato"): RowChartTheme => {
   return {

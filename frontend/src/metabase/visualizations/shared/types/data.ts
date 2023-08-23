@@ -1,4 +1,4 @@
-import { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 export type SeriesInfo = {
   metricColumn: DatasetColumn;

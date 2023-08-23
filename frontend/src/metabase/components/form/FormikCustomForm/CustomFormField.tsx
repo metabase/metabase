@@ -6,7 +6,7 @@ import { isCustomWidget } from "metabase-types/guards";
 import FormField from "metabase/components/form/FormikFormField";
 import FormWidget from "metabase/components/form/FormWidget";
 
-import {
+import type {
   BaseFieldDefinition,
   StandardFormFieldDefinition,
   FormFieldDefinition,

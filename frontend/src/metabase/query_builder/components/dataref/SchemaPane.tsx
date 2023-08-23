@@ -3,8 +3,8 @@ import { useMemo } from "react";
 
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { State } from "metabase-types/store";
-import Schema from "metabase-lib/metadata/Schema";
+import type { State } from "metabase-types/store";
+import type Schema from "metabase-lib/metadata/Schema";
 import {
   NodeListItemLink,
   NodeListItemName,

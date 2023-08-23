@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { render, screen, cleanup } from "__support__/ui";
-import InputBlurChange, { InputBlurChangeProps } from "./InputBlurChange";
+import type { InputBlurChangeProps } from "./InputBlurChange";
+import InputBlurChange from "./InputBlurChange";
 
 describe("InputBlurChange", () => {
   beforeEach(() => {

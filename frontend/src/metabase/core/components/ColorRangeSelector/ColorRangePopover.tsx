@@ -1,11 +1,5 @@
-import {
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";

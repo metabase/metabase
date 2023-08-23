@@ -5,11 +5,8 @@ import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/ValidationError";
 
-import {
-  ErrorActionButton,
-  BUTTON_ACTIONS,
-  ErrorActionButtonProps,
-} from "./ErrorActionButton";
+import type { ErrorActionButtonProps } from "./ErrorActionButton";
+import { ErrorActionButton, BUTTON_ACTIONS } from "./ErrorActionButton";
 
 function setup({
   error = new ValidationError(

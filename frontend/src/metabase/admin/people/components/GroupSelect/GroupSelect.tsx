@@ -12,7 +12,11 @@ import {
   getGroupColor,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import { GroupIds, UserGroupType, UserGroupsType } from "metabase/admin/types";
+import type {
+  GroupIds,
+  UserGroupType,
+  UserGroupsType,
+} from "metabase/admin/types";
 import GroupSummary from "../GroupSummary";
 
 type GroupSelectProps = {

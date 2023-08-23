@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 import { getEventCount } from "metabase/lib/timelines";
-import { Timeline } from "metabase-types/api";
-import { IconName } from "metabase/core/components/Icon";
+import type { Timeline } from "metabase-types/api";
+import type { IconName } from "metabase/core/components/Icon";
 import {
   CardAside,
   CardBody,

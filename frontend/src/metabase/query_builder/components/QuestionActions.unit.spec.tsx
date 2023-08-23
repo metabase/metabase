@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Database } from "metabase-types/api";
+import type { Card, Database } from "metabase-types/api";
 import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -11,7 +11,7 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import QuestionActions from "./QuestionActions";
 
 const ICON_CASES_CARDS = [

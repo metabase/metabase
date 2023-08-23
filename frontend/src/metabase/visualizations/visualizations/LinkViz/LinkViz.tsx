@@ -33,7 +33,7 @@ import {
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
-import { WrappedUnrestrictedLinkEntity } from "./types";
+import type { WrappedUnrestrictedLinkEntity } from "./types";
 
 const MODELS_TO_SEARCH = [
   "card",

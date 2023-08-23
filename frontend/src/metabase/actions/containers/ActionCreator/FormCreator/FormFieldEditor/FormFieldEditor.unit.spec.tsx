@@ -11,7 +11,8 @@ import {
 import FormProvider from "metabase/core/components/FormProvider";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { FieldSettings } from "metabase-types/api";
-import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";
+import type { FormFieldEditorProps } from "./FormFieldEditor";
+import FormFieldEditor from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
   name: "uuid",

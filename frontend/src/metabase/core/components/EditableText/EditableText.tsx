@@ -1,15 +1,11 @@
-import {
+import type {
   ChangeEvent,
   KeyboardEvent,
-  forwardRef,
   HTMLAttributes,
   Ref,
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
   MouseEvent,
 } from "react";
+import { forwardRef, useCallback, useEffect, useState, useRef } from "react";
 
 import { usePrevious } from "react-use";
 
