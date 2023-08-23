@@ -1,4 +1,9 @@
-import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import { getStylesRef } from "@mantine/core";
+import type {
+  CheckboxStylesParams,
+  MantineTheme,
+  MantineThemeOverride,
+} from "@mantine/core";
 import { CheckboxIcon } from "./CheckboxIcon";
 
 export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
@@ -7,71 +12,48 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       icon: CheckboxIcon,
       size: "md",
     },
-    styles: (theme: MantineTheme, params) => {
-      return {
-        root: {
-          marginBottom: theme.spacing.md,
+    styles: (theme: MantineTheme, { labelPosition }: CheckboxStylesParams) => ({
+      root: {
+        "& + &": {
+          marginTop: theme.spacing.md,
         },
-        label: {
-          fontWeight: 700,
-          color: theme.colors.text[2],
-          [`padding${params.labelPosition === "left" ? "Right" : "Left"}`]:
-            theme.spacing.sm,
-        },
-        input: {
-          borderRadius: theme.radius.xs,
+      },
+      input: {
+        cursor: "pointer",
+        borderRadius: theme.radius.xs,
+        width: "1.25rem",
+        height: "1.25rem",
 
-          "&:focus": {
-            outline: `2px solid ${theme.colors.brand[1]}`,
-          },
-          "&:disabled": {
-            background: theme.colors.border[0],
-            border: 0,
-            "& + svg > *": {
-              fill: theme.colors.text[0],
-            },
-          },
-          cursor: "pointer",
-          ...(params.indeterminate && {
-            background: theme.colors.brand[1],
-            border: `1px solid ${theme.colors.brand[1]}`,
-          }),
-          transform: `scale(0.75)`,
+        "&:checked": {
+          borderColor: theme.colors.brand[1],
+          backgroundColor: theme.colors.brand[1],
         },
-        icon: {
-          ...(params.indeterminate && {
-            "& > *": {
-              fill: theme.white,
-            },
-          }),
-        },
-      };
-    },
-  },
-  CheckboxGroup: {
-    defaultProps: {
-      size: "md",
-    },
-    styles: (theme: MantineTheme) => {
-      /* Note: we need the ':has' selector to target the space just
-       * above the first checkbox since we don't seem to have selector
-       * or a way to use params to detect whether group label/description
-       * exists. This is a bit of a hack, but it works. */
-
-      return {
-        label: {
-          fontWeight: 700,
-          color: theme.colors.text[2],
-          "&:has(+ .mantine-Checkbox-root)": {
-            marginBottom: theme.spacing.md,
+        "&:disabled": {
+          borderColor: theme.colors.border[0],
+          backgroundColor: theme.colors.border[0],
+          [`.${getStylesRef("icon")}`]: {
+            color: theme.colors.text[0],
           },
         },
-        description: {
-          "&:has(+ .mantine-Checkbox-root)": {
-            marginBottom: theme.spacing.md,
-          },
-        },
-      };
-    },
+      },
+      label: {
+        color: theme.colors.text[2],
+        fontSize: theme.fontSizes.md,
+        fontWeight: "bold",
+        lineHeight: "1rem",
+        paddingLeft: labelPosition === "left" ? theme.spacing.sm : undefined,
+        paddingRight: labelPosition === "right" ? theme.spacing.sm : undefined,
+      },
+      description: {
+        color: theme.colors.text[2],
+        fontSize: theme.fontSizes.sm,
+        lineHeight: "1rem",
+        marginTop: theme.spacing.xs,
+      },
+      icon: {
+        ref: getStylesRef("icon"),
+        color: theme.white,
+      },
+    }),
   },
 });
