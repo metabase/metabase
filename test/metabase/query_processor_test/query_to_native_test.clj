@@ -70,7 +70,7 @@
   (testing "If the query is bad in some way it should return a relevant error (?)"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"\QInvalid MetadataProvider; failed to return Database\E"
+         #"\QValid Database metadata\E"
          (compile-with-user-perms
           {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}}
           {:object-perms? true, :native-perms? true})))))

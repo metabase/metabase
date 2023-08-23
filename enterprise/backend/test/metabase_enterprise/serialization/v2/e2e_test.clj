@@ -152,10 +152,8 @@
                                               (many-random-fks
                                                100
                                                {:spec-gen {:dataset_query {:database 1
-                                                                           :query {:source-table 3
-                                                                                   :aggregation [[:count]]
-                                                                                   :breakout [[:field 16 nil]]}
-                                                                           :type :query}
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM whatever;"}}
                                                            :dataset       true}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]

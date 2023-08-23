@@ -497,7 +497,7 @@
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        (partial export-result-metadata card)))
     (catch Exception e
-      (throw (ex-info "Failed to export Card" {:card card} e)))))
+      (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 
 (defmethod serdes/load-xform "Card"
   [card]
