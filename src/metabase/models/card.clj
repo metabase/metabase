@@ -131,9 +131,12 @@
    (when-not mi/*deserializing?*
      (when-let [{:keys [database-id table-id]} (and query-type
                                                     (query/query->database-and-table-ids outer-query))]
-       {:database_id database-id
-        :table_id    table-id
-        :query_type  (keyword query-type)}))))
+       (merge
+        {:query_type (keyword query-type)}
+        (when database-id
+          {:database_id database-id})
+        (when table-id
+          {:table_id table-id}))))))
 
 (defn- populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
