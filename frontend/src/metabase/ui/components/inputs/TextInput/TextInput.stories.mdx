@@ -5,6 +5,7 @@ import { TextInput } from "./";
 
 export const args = {
   variant: "default",
+  type: "text",
   size: "md",
   label: "Label",
   description: "",
@@ -25,7 +26,11 @@ export const sampleArgs = {
 export const argTypes = {
   variant: {
     options: ["default", "unstyled"],
-    control: { type: "select" },
+    control: { type: "inline-radio" },
+  },
+  type: {
+    options: ["text", "password"],
+    control: { type: "inline-radio" },
   },
   size: {
     options: ["xs", "md"],
@@ -61,6 +66,11 @@ export const argTypes = {
 # TextInput
 
 Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-input/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design&node-id=5-70&mode=design&t=dsUIfXbrSyAZT8ku-0)
+- [Mantine TextInput Docs](https://mantine.dev/core/text-input/)
 
 ## Examples
 
