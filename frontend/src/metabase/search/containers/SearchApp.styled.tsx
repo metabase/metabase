@@ -35,12 +35,13 @@ export const SearchBody = styled.div`
 `;
 
 export const SearchMain = styled.div`
-  width: 66.66%;
+  flex: 2;
 `;
 
 export const SearchControls = styled.div`
   padding: 0 1rem 0 1rem;
   margin-left: 0.5rem;
+  flex: 1;
 
   ${breakpointMinSmall} {
     margin-left: 1rem;

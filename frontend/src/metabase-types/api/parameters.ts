@@ -25,6 +25,8 @@ export type DateParameterType =
   | "date/quarter-year";
 ("date/all-options");
 
+// ^^^ IS THAT SUPPOSED TO BE LIKE THAT?
+
 export type ParameterType =
   | StringParameterType
   | NumberParameterType

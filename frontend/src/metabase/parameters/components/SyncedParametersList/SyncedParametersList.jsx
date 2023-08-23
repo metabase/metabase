@@ -51,6 +51,25 @@ export function SyncedParametersList({
     [parameters, dashboard],
   );
 
+  console.log({
+    parameters,
+    editingParameter,
+    question,
+    dashboard,
+
+    className,
+    hideParameters,
+
+    isFullscreen,
+    isNightMode,
+    isEditing,
+    commitImmediately,
+
+    setParameterValue,
+    setParameterIndex,
+    setEditingParameter,
+  });
+
   return (
     <ParametersList
       className={className}

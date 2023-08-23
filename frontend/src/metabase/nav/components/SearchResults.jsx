@@ -82,14 +82,9 @@ export default _.compose(
     wrapped: true,
     reload: true,
     debounced: true,
-    query: (_state, props) => {
-      const searchFilters = props.searchFilters || {};
-      return {
-        q: props.searchText,
-        limit: DEFAULT_SEARCH_LIMIT,
-        ...searchFilters,
-        models: searchFilters.type,
-      };
-    },
+    query: (_state, props) => ({
+      q: props.searchText,
+      limit: DEFAULT_SEARCH_LIMIT,
+    }),
   }),
 )(SearchResults);

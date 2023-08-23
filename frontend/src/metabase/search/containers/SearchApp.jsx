@@ -18,7 +18,6 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
-import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
@@ -30,6 +29,7 @@ import {
   SearchMain,
   SearchRoot,
 } from "./SearchApp.styled";
+import { SearchFilterSidebar } from "metabase/search/components/SearchFilterSidebar/SearchFilterSidebar";
 
 export default function SearchApp({ location }) {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
@@ -39,9 +39,9 @@ export default function SearchApp({ location }) {
     [location],
   );
 
-  const searchFilters = useMemo(() => {
-    return getFiltersFromLocation(location);
-  }, [location]);
+  const [searchFilters, setSearchFilters] = useState(
+    getFiltersFromLocation(location),
+  );
 
   const [selectedSidebarType, setSelectedSidebarType] = useState(null);
 
@@ -97,12 +97,9 @@ export default function SearchApp({ location }) {
                 </Flex>
               </SearchMain>
               <SearchControls>
-                <TypeSearchSidebar
-                  availableModels={getAvailableModels(
-                    metadata.available_models,
-                  )}
-                  selectedType={selectedSidebarType}
-                  onSelectType={onChangeSelectedType}
+                <SearchFilterSidebar
+                  value={searchFilters}
+                  onChangeFilters={setSearchFilters}
                 />
               </SearchControls>
             </SearchBody>
