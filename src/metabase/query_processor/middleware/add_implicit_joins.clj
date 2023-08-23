@@ -65,7 +65,7 @@
                :alias        alias-for-join
                :fields       :none
                :strategy     :left-join
-               :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]]
+               :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]
                :fk-field-id  fk-field-id}
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
