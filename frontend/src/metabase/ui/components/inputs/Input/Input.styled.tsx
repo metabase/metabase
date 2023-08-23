@@ -6,6 +6,9 @@ const SIZES = {
   md: rem(40),
 };
 
+const PADDING = 12;
+const DEFAULT_ICON_WIDTH = 40;
+const UNSTYLED_ICON_WIDTH = 28;
 const BORDER_WIDTH = 1;
 
 export const getInputOverrides = (): MantineThemeOverride["components"] => ({
@@ -46,20 +49,25 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         { withRightSection, rightSectionWidth }: InputStylesParams,
       ) => ({
         input: {
-          paddingLeft: rem(12 - BORDER_WIDTH),
+          paddingLeft: rem(PADDING - BORDER_WIDTH),
           paddingRight: withRightSection
-            ? rightSectionWidth
-            : rem(12 - BORDER_WIDTH),
+            ? typeof rightSectionWidth === "number"
+              ? rem(rightSectionWidth - BORDER_WIDTH)
+              : `calc(${rightSectionWidth} - ${BORDER_WIDTH}px)`
+            : rem(PADDING - BORDER_WIDTH),
           borderColor: theme.colors.border[0],
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
           "&[data-with-icon]": {
-            paddingLeft: rem(40 - BORDER_WIDTH),
+            paddingLeft: rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH),
           },
         },
         icon: {
-          width: rem(40),
+          width: rem(DEFAULT_ICON_WIDTH),
+        },
+        rightSection: {
+          width: rightSectionWidth ?? rem(DEFAULT_ICON_WIDTH),
         },
       }),
       unstyled: (
@@ -69,12 +77,16 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         input: {
           paddingRight: withRightSection ? rightSectionWidth : 0,
           "&[data-with-icon]": {
-            paddingLeft: rem(28),
+            paddingLeft: rem(UNSTYLED_ICON_WIDTH),
           },
         },
         icon: {
-          width: rem(28),
+          width: rem(UNSTYLED_ICON_WIDTH),
           justifyContent: "left",
+        },
+        rightSection: {
+          width: rightSectionWidth ?? rem(UNSTYLED_ICON_WIDTH),
+          justifyContent: "right",
         },
       }),
     },
