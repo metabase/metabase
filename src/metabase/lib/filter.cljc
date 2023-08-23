@@ -271,7 +271,7 @@
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
          ref->col (zipmap (map lib.ref/ref columns) columns)
-         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))
+         col-ref (lib.equality/find-closest-matching-ref query first-arg (keys ref->col))
          col (ref->col col-ref)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
