@@ -11,10 +11,8 @@ import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
 
 import { useJoin } from "./use-join";
 import { useJoinCondition } from "./use-join-condition";
-import {
-  JoinConditionColumnPicker,
-  JoinConditionColumnPickerRef,
-} from "./JoinConditionColumnPicker";
+import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
+import type { JoinConditionColumnPickerRef } from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
