@@ -1,4 +1,4 @@
-import { getStylesRef } from "@mantine/core";
+import { getStylesRef, getSize, rem } from "@mantine/core";
 import type {
   CheckboxStylesParams,
   MantineTheme,
@@ -6,27 +6,42 @@ import type {
 } from "@mantine/core";
 import { CheckboxIcon } from "./CheckboxIcon";
 
+const SIZES = {
+  md: rem(20),
+};
+
 export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
   Checkbox: {
     defaultProps: {
       icon: CheckboxIcon,
       size: "md",
     },
-    styles: (theme: MantineTheme, { labelPosition }: CheckboxStylesParams) => ({
+    styles: (
+      theme: MantineTheme,
+      { labelPosition }: CheckboxStylesParams,
+      { size = "md" },
+    ) => ({
       root: {
         "& + &": {
           marginTop: theme.spacing.md,
         },
       },
+      inner: {
+        width: getSize({ size, sizes: SIZES }),
+        height: getSize({ size, sizes: SIZES }),
+      },
       input: {
+        width: getSize({ size, sizes: SIZES }),
+        height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
-        width: "1.25rem",
-        height: "1.25rem",
 
         "&:checked": {
           borderColor: theme.colors.brand[1],
           backgroundColor: theme.colors.brand[1],
+          [`.${getStylesRef("icon")}`]: {
+            color: theme.white,
+          },
         },
         "&:disabled": {
           borderColor: theme.colors.border[0],
@@ -52,7 +67,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       },
       icon: {
         ref: getStylesRef("icon"),
-        color: theme.white,
+        color: theme.colors.text[0],
       },
     }),
   },
