@@ -8,7 +8,8 @@ import type {
   JoinedFieldReference,
 } from "metabase-types/api";
 import DimensionOptions from "metabase-lib/DimensionOptions";
-import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import type Dimension from "metabase-lib/Dimension";
+import { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "../StructuredQuery";
 import { MBQLObjectClause } from "./MBQLClause";
 
