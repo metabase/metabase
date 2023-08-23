@@ -7,19 +7,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^Long thread-pool-max-size
-  (or (config/config-int :mb-async-query-thread-pool-size)
-      (config/config-int :mb-jetty-maxthreads)
-      50))
-
 (defonce ^:private thread-pool*
   (delay
-    (Executors/newFixedThreadPool thread-pool-max-size
-                                  (.build
-                                   (doto (BasicThreadFactory$Builder.)
-                                     (.namingPattern "streaming-response-thread-pool-%d")
-                                     ;; Daemon threads do not block shutdown of the JVM
-                                     (.daemon true))))))
+    (let [thread-pool-max-size (or (config/config-int :mb-async-query-thread-pool-size)
+                                   (config/config-int :mb-jetty-maxthreads)
+                                   50)]
+      (Executors/newFixedThreadPool thread-pool-max-size
+                                    (.build
+                                     (doto (BasicThreadFactory$Builder.)
+                                       (.namingPattern "streaming-response-thread-pool-%d")
+                                       ;; Daemon threads do not block shutdown of the JVM
+                                       (.daemon true)))))))
 
 (defn thread-pool
   "Thread pool for asynchronously running streaming responses."

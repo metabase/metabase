@@ -57,8 +57,9 @@
                :from [:report_dashboardcard]
                :group-by [:card_id]}])
 
-(def dashboards-ids
+(defn dashboards-ids
   "HoneySQL for a CTE to enumerate the dashboards for a Card. We get the actual ID's"
+  []
   [:dash_card {:select [:card_id [(common/group-concat (h2x/cast
                                                         (if (= (mdb.connection/db-type) :mysql) :char :text)
                                                         :report_dashboard.name)

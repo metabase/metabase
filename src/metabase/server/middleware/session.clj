@@ -81,7 +81,7 @@
 (defmethod default-session-cookie-attributes :normal
   [_ request]
   (merge
-   {:same-site config/mb-session-cookie-samesite
+   {:same-site (config/mb-session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
     ;; up breaking things
     :path      "/" #_(site-path)}
@@ -156,7 +156,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
+    (when (and (= (config/mb-session-cookie-samesite) :none) (request.u/https? request))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "

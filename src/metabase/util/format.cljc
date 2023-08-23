@@ -52,24 +52,17 @@
       (recur (/ n 1024.0) more)
       (format-with-unit n suffix))))
 
-#?(:clj
-   (def ^:private colorize?
-     ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
-     (if (config/config-str :no-color)
-       false
-       (config/config-bool :mb-colorize-logs))))
-
-(def ^{:arglists '(^String [color-symb x])} colorize
+#_{:clj-kondo/ignore #?(:clj [] :cljs [:unused-binding])}
+(defn colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
-  #?(:clj  (if colorize?
-             (fn [color x]
-               (colorize/color (keyword color) (str x)))
-             (fn [_ x]
-               (str x)))
-     :cljs (fn [_ x]
-             (str x))))
+  ^String [color x]
+  #?(:clj  (if (and (not (config/config-str :no-color))
+                    (config/config-bool :mb-colorize-logs))
+             (colorize/color (keyword color) (str x))
+             (str x))
+     :cljs (str x)))
 
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
