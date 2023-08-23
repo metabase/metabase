@@ -37,8 +37,8 @@
     :metadata/segment  :model/Segment))
 
 (defmulti ^:private select
-  {:arglists '([metadata-type condition])}
-  (fn [metadata-type _condition]
+  {:arglists '([metadata-type database-id condition])}
+  (fn [metadata-type _database-id _condition]
     (keyword metadata-type)))
 
 (defn instance->metadata
@@ -50,7 +50,7 @@
       (assoc :lib/type metadata-type)))
 
 (defmethod select :default
-  [metadata-type condition]
+  [metadata-type _database-id condition]
   (into []
         (map #(instance->metadata % metadata-type))
         (let [model (metadata-type->model metadata-type)]
@@ -60,7 +60,7 @@
                                 :where  condition}))))
 
 (defmethod select :metadata/database
-  [_metadata-type condition]
+  [_metadata-type _database-id condition]
   (into []
         (map (fn [database]
                (merge
@@ -82,8 +82,10 @@
                               :from   [[(t2/table-name :model/Database) :model]]
                               :where  condition})))
 
-(defmethod select :metadata/table
-  [_metadata-type condition]
+(mu/defmethod select :metadata/table
+  [_metadata-type
+   database-id :- ::lib.schema.id/database
+   condition]
   (into []
         (map (fn [table]
                {:lib/type     :metadata/table
@@ -94,7 +96,9 @@
         (t2/reducible-select :model/Table
                              {:select [:id :name :display_name :schema]
                               :from   [[(t2/table-name :model/Table) :model]]
-                              :where  condition})))
+                              :where  [:and
+                                       [:= :model.db_id database-id]
+                                       condition]})))
 
 (derive ::Field :model/Field)
 
@@ -103,8 +107,10 @@
   {:model/Dimension   "dimension"
    :model/FieldValues "values"})
 
-(defmethod select :metadata/column
-  [_metadata-type condition]
+(mu/defmethod select :metadata/column
+  [_metadata-type
+   database-id :- ::lib.schema.id/database
+   condition]
   (into []
         (map (fn [field]
                (let [dimension-type (some-> (:dimension/type field) keyword)]
@@ -175,8 +181,12 @@
                                           [(t2/table-name :model/FieldValues) :values]
                                           [:and
                                            [:= :values.field_id :model.id]
-                                           [:= :values.type [:inline "full"]]]]
-                              :where     condition})))
+                                           [:= :values.type [:inline "full"]]]
+                                          [(t2/table-name :model/Table) :table]
+                                          [:= :model.table_id :table.id]]
+                              :where     [:and
+                                          [:= :table.db_id database-id]
+                                          condition]})))
 
 (defn- parse-persisted-info-definition [x]
   ((get-in (t2/transforms :model/PersistedInfo) [:definition :out] identity) x))
@@ -187,8 +197,10 @@
   [_model]
   {:model/PersistedInfo "persisted"})
 
-(defmethod select :metadata/card
-  [_metadata-type condition]
+(mu/defmethod select :metadata/card
+  [_metadata-type
+   database-id :- ::lib.schema.id/database
+   condition]
   (into []
         (map (fn [card]
                (merge
@@ -226,39 +238,22 @@
                               :from      [[(t2/table-name :model/Card) :model]]
                               :left-join [[(t2/table-name :model/PersistedInfo) :persisted_info]
                                           [:= :persisted_info.card_id :model.id]]
-                              :where     condition})))
+                              :where     [:and
+                                          [:= :model.database_id database-id]
+                                          condition]})))
 
-(defmulti ^:private bulk-instances
+(defn- bulk-instances
   "Fetch bulk instances with `metadata-type`. `database-id` is the ID the application database metadata provider was
   initialized with; it may be `nil` in some situations where it is used outside of the QP (see for
   example [[metabase.models.segment/warmed-metadata-provider]]). `ids` is a set of IDs to fetch.
 
   The [[lib.metadata.cached-provider/cached-metadata-provider]] layer on top of this should take care of filtering out
   and returning `ids` that have already been fetched."
-  {:arglists '([metadata-type database-id ids])}
-  (fn [metadata-type _database-id _ids]
-    (keyword metadata-type)))
-
-(mu/defmethod bulk-instances :default
-  [metadata-type  :- MetadataType
-   _database-id   :- ::lib.schema.id/database
-   ids            :- [:maybe [:set ::lib.schema.common/positive-int]]]
+  [metadata-type database-id ids]
   (when (seq ids)
     (let [model (metadata-type->model metadata-type)]
       (log/debugf "Fetching instances of %s with ID in %s" model (pr-str ids))
-      (select metadata-type [:in :model.id ids]))))
-
-(defmethod bulk-instances :metadata/table
-  [_metadata-type database-id ids]
-  (when (seq ids)
-    (let [model (metadata-type->model :metadata/table)]
-      (log/debugf "Fetching instances of %s with ID in %s" model (pr-str ids))
-      (select :metadata/table
-              (if database-id
-                [:and
-                 [:in :model.id ids]
-                 [:= :model.db_id database-id]]
-                [:in :model.id ids])))))
+      (select metadata-type database-id [:in :model.id ids]))))
 
 (mu/defn ^:private fetch-instance
   [metadata-type :- MetadataType
@@ -273,13 +268,23 @@
                             `lib.metadata.protocols/tables
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (log/debugf "Fetching all Tables for Database %d" database-id)
-  (select :metadata/table [:= :model.db_id database-id]))
+  (log/debugf "Fetching all Tables for normally-visible Database %d" database-id)
+  (select :metadata/table
+          database-id
+          [:and
+           [:= :model.active true]
+           [:not-in
+            :model.visibility_type
+            [[:inline "hidden"]
+             [:inline "technical"]
+             [:inline "cruft"]]]]))
 
 (mu/defn ^:private fields
-  [table-id :- ::lib.schema.id/table]
-  (log/debugf "Fetching all Fields for Table %d" table-id)
+  [database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
+  (log/debugf "Fetching all normally-visible Fields for Table %d" table-id)
   (select :metadata/column
+          database-id
           [:and
            [:= :model.table_id table-id]
            [:= :model.active true]
@@ -287,9 +292,10 @@
                                             [:inline "retired"]]]]))
 
 (mu/defn ^:private metrics
-  [table-id :- ::lib.schema.id/table]
+  [database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
   (log/debugf "Fetching all Metrics for Table %d" table-id)
-  (select :metadta/metric [:= :model.table_id table-id]))
+  (select :metadta/metric database-id [:= :model.table_id table-id]))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
@@ -311,10 +317,10 @@
     (tables database-id))
 
   (fields [_this table-id]
-    (fields table-id))
+    (fields database-id table-id))
 
   (metrics [_this table-id]
-    (metrics table-id))
+    (metrics database-id table-id))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

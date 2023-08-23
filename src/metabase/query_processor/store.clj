@@ -282,7 +282,8 @@
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- ::lib.schema.id/table]
   (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
-          (throw (ex-info (tru "Table {0} does not exist." (pr-str table-id))
+          (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database."
+                               (pr-str table-id))
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :table-id    table-id})))
@@ -293,7 +294,8 @@
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- ::lib.schema.id/field]
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
-          (throw (ex-info (tru "Field {0} does not exist." (pr-str field-id))
+          (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database."
+                               (pr-str field-id))
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :field-id    field-id})))
