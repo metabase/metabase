@@ -6,6 +6,8 @@ const SIZES = {
   md: rem(40),
 };
 
+const BORDER_WIDTH = 1;
+
 export const getInputOverrides = (): MantineThemeOverride["components"] => ({
   Input: {
     defaultProps: {
@@ -39,23 +41,33 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     variants: {
-      default: theme => ({
+      default: (
+        theme,
+        { withRightSection, rightSectionWidth }: InputStylesParams,
+      ) => ({
         input: {
-          paddingLeft: rem(11),
+          paddingLeft: rem(12 - BORDER_WIDTH),
+          paddingRight: withRightSection
+            ? rightSectionWidth
+            : rem(12 - BORDER_WIDTH),
           borderColor: theme.colors.border[0],
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
           "&[data-with-icon]": {
-            paddingLeft: rem(39),
+            paddingLeft: rem(40 - BORDER_WIDTH),
           },
         },
         icon: {
           width: rem(40),
         },
       }),
-      unstyled: () => ({
+      unstyled: (
+        theme,
+        { withRightSection, rightSectionWidth }: InputStylesParams,
+      ) => ({
         input: {
+          paddingRight: withRightSection ? rightSectionWidth : 0,
           "&[data-with-icon]": {
             paddingLeft: rem(28),
           },
