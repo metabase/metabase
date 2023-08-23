@@ -85,7 +85,7 @@
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
 (deftest samesite-none-log-warning-test
-  (with-redefs [metabase.config/mb-session-cookie-samesite :none]
+  (with-redefs [config/mb-session-cookie-samesite :none]
     (let [session {:id   (random-uuid)
                    :type :normal}
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
