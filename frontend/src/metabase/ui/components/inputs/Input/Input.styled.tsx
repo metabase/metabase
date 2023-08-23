@@ -97,44 +97,23 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
       inputWrapperOrder: ["label", "description", "error", "input"],
     },
     styles: theme => ({
-      root: {
-        "&:has(input:disabled)": {
-          [`.${getStylesRef("label")}, .${getStylesRef("description")}`]: {
-            color: theme.colors.text[0],
-          },
-        },
-        [`&:has(.${getStylesRef("description")})`]: {
-          [`.${getStylesRef("label")}`]: {
-            marginBottom: 0,
-          },
-        },
-        [`&:has(.${getStylesRef("error")})`]: {
-          [`.${getStylesRef("label")}, .${getStylesRef("description")}`]: {
-            marginBottom: 0,
-          },
-        },
-      },
       label: {
         ref: getStylesRef("label"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
         lineHeight: "1rem",
-        marginBottom: theme.spacing.xs,
       },
       description: {
         ref: getStylesRef("description"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
-        marginBottom: theme.spacing.xs,
       },
       error: {
-        ref: getStylesRef("error"),
         color: theme.colors.error[0],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
-        marginBottom: theme.spacing.xs,
       },
       required: {
         color: theme.colors.error[0],
