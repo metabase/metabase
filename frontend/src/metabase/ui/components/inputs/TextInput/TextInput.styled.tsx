@@ -6,5 +6,10 @@ export const getTextInputOverrides =
       defaultProps: {
         size: "md",
       },
+      styles: theme => ({
+        input: {
+          marginTop: theme.spacing.xs,
+        },
+      }),
     },
   });
