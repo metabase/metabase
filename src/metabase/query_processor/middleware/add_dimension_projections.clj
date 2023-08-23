@@ -103,7 +103,6 @@
     (let [name-generator (mbql.u/unique-name-generator)
           unique-name    (fn [field-id]
                            (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
-                           (qp.store/fetch-and-store-fields! #{field-id})
                            (let [field (qp.store/field field-id)]
                              (name-generator (:name field))))]
       (vec
