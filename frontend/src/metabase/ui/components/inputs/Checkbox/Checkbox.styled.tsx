@@ -63,8 +63,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
         lineHeight: "1rem",
-        paddingLeft: labelPosition === "left" ? theme.spacing.sm : undefined,
-        paddingRight: labelPosition === "right" ? theme.spacing.sm : undefined,
       },
       description: {
         ref: getStylesRef("description"),

@@ -116,6 +116,14 @@ export const Label = args => <Template {...args} />;
   <Story name="Label">{Label}</Story>
 </Canvas>
 
+#### Left label position
+
+export const LabelLeft = args => <Template {...args} labelPosition="left" />;
+
+<Canvas>
+  <Story name="Label, left position">{LabelLeft}</Story>
+</Canvas>
+
 ### Description
 
 export const Description = args => (
@@ -124,6 +132,16 @@ export const Description = args => (
 
 <Canvas>
   <Story name="Description">{Description}</Story>
+</Canvas>
+
+export const DescriptionLeft = args => (
+  <Template {...args} description="Description" labelPosition="left" />
+);
+
+#### Left label position
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
 </Canvas>
 
 ## Related components
