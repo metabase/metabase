@@ -150,12 +150,6 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-export type ExternalOp = {
-  operator: string;
-  options: Record<string, unknown>;
-  args: [ColumnMetadata, ...ExpressionArg[]];
-};
-
 export type FilterParts = {
   operator: FilterOperator;
   options: Record<string, unknown>;
