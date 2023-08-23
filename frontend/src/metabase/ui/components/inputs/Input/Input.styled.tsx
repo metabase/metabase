@@ -1,15 +1,22 @@
-import type { MantineThemeOverride } from "@mantine/core";
-import { getStylesRef } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
+import type { InputStylesParams, MantineThemeOverride } from "@mantine/core";
+
+const SIZES = {
+  xs: rem(28),
+  md: rem(40),
+};
 
 export const getInputOverrides = (): MantineThemeOverride["components"] => ({
   Input: {
     defaultProps: {
       size: "md",
     },
-    styles: theme => ({
+    styles: (theme, { multiline }: InputStylesParams, { size = "md" }) => ({
       input: {
         color: theme.colors.text[2],
         borderRadius: theme.radius.xs,
+        height: multiline ? "auto" : getSize({ size, sizes: SIZES }),
+        minHeight: getSize({ size, sizes: SIZES }),
         "&::placeholder": {
           color: theme.colors.text[0],
         },
@@ -34,27 +41,27 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
     variants: {
       default: theme => ({
         input: {
-          paddingLeft: "0.75rem",
+          paddingLeft: rem(11),
           borderColor: theme.colors.border[0],
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
           "&[data-with-icon]": {
-            paddingLeft: "2.5rem",
+            paddingLeft: rem(39),
           },
         },
         icon: {
-          width: "2.5rem",
+          width: rem(40),
         },
       }),
       unstyled: () => ({
         input: {
           "&[data-with-icon]": {
-            paddingLeft: "1.75rem",
+            paddingLeft: rem(28),
           },
         },
         icon: {
-          width: "1.75rem",
+          width: rem(28),
           justifyContent: "left",
         },
       }),
