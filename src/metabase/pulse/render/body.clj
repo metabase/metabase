@@ -216,7 +216,8 @@
 
 (defn- filter-rows [data table-columns rows]
   (let [column-order      (qp.streaming/export-column-order (:cols data) table-columns)
-        keep-filtered-idx (fn [col] (map #(nth col %) column-order))
+        keep-filtered-idx (fn [row] (let [row-v (into [] row)]
+                                      (for [i column-order] (row-v i))))
         filtered-rows     (map #(update % :row keep-filtered-idx) rows)]
     filtered-rows))
 
