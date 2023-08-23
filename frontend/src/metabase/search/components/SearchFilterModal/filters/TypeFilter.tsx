@@ -30,12 +30,8 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
     <LoadingSpinner />
   ) : (
     <SearchFilterView data-testid={dataTestId} title={t`Type`}>
-      <Checkbox.Group
-        value={value}
-        onChange={onChange}
-        data-testid="type-filter-checkbox-group"
-      >
-        <TypeCheckboxGroupWrapper>
+      <Checkbox.Group value={value} onChange={onChange}>
+        <TypeCheckboxGroupWrapper data-testid="type-filter-checkbox-group">
           {typeFilters.map(model => (
             <Checkbox
               key={model}
