@@ -129,35 +129,66 @@
 
 ;; Created at filters
 
-(defn- default-created-at-filter-clause
-  [model created-at]
+(defn- date-range-filter-clause
+  [dt-col dt-val]
   (let [{:keys [start end]} (try
-                             (params.dates/date-string->range created-at {:inclusive-end? false})
+                             (params.dates/date-string->range dt-val {:inclusive-end? false})
                              (catch Exception _e
-                               (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
+                               (throw (ex-info (tru "Failed to parse created at param: {0}" dt-val) {:status-code 400}))))
         start               (some-> start u.date/parse)
         end                 (some-> end u.date/parse)
-        created-at-col      (search.config/column-with-model-alias model :created_at)
-        created-at-col      (if (some #(instance? LocalDate %) [start end])
-                             [:cast created-at-col :date]
-                             created-at-col)]
+        dt-col              (if (some #(instance? LocalDate %) [start end])
+                                [:cast dt-col :date]
+                                dt-col)]
     (cond
      (= start end)
-     [:= created-at-col start]
+     [:= dt-col start]
 
      (nil? start)
-     [:< created-at-col end]
+     [:< dt-col end]
 
      (nil? end)
-     [:> created-at-col start]
+     [:> dt-col start]
 
      :else
-     [:and [:>= created-at-col start] [:< created-at-col end]])))
+     [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "action"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
-    (sql.helpers/where query (default-created-at-filter-clause model created-at))))
+    (sql.helpers/where query (date-range-filter-clause
+                              (search.config/column-with-model-alias model :created_at)
+                              created-at))))
+
+
+;; Last edited by filter
+
+(defn- search-model->revision-model
+  [model]
+  (case model
+    "datset" (recur "card")
+    (str/capitalize model)))
+
+(doseq [model ["collection" "dashboard" "card" "dataset"]]
+  (defmethod build-optional-filter-query [:last-edited-by model]
+    [_filter model query last-edited-by]
+    (-> query
+        (sql.helpers/join :revision
+                          [:= :revision.model_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :revision.most_recent true]
+                           [:= :revision.model (search-model->revision-model model)]
+                           [:= :revision.user_id last-edited-by])))
+
+  (defmethod build-optional-filter-query [:last-edited-at model]
+    [_filter model query last-edited-at]
+    #p (-> query
+           (sql.helpers/join :revision
+                             [:= :revision.model_id
+                              (search.config/column-with-model-alias model :id)])
+           (sql.helpers/where [:= :revision.most_recent true]
+                              [:= :revision.model (search-model->revision-model model)]
+                              (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
@@ -183,12 +214,16 @@
   [search-context :- SearchContext]
   (let [{:keys [created-at
                 created-by
+                last-edited-at
+                last-edited-by
                 models
                 verified]} search-context]
     (cond-> models
-      (some? created-at) (set/intersection (:created-at (feature->supported-models)))
-      (some? created-by) (set/intersection (:created-by (feature->supported-models)))
-      (some? verified)   (set/intersection (:verified (feature->supported-models))))))
+      (some? created-at)     (set/intersection (:created-at (feature->supported-models)))
+      (some? created-by)     (set/intersection (:created-by (feature->supported-models)))
+      (some? last-edited-at) (set/intersection (:last-edited-at (feature->supported-models)))
+      (some? last-edited-by) (set/intersection (:last-edited-by (feature->supported-models)))
+      (some? verified)       (set/intersection (:verified (feature->supported-models))))))
 
 (mu/defn build-filters :- map?
   "Build the search filters for a model."
@@ -198,6 +233,8 @@
   (let [{:keys [archived?
                 created-at
                 created-by
+                last-edited-at
+                last-edited-by
                 search-string
                 verified]}    search-context]
     (cond-> honeysql-query
@@ -207,12 +244,19 @@
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))
 
+      ;; build optional filters
       (some? created-at)
       (#(build-optional-filter-query :created-at model % created-at))
 
-      ;; build optional filters
       (int? created-by)
       (#(build-optional-filter-query :created-by model % created-by))
+
+      (some? last-edited-at)
+      (#(build-optional-filter-query :last-edited-at model % last-edited-at))
+
+
+      (int? last-edited-by)
+      (#(build-optional-filter-query :last-edited-by model % last-edited-by))
 
       (some? verified)
       (#(build-optional-filter-query :verified model % verified)))))

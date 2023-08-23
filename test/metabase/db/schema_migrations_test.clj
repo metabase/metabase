@@ -1115,3 +1115,53 @@
         ;; Only the sandbox with a corresponding `Permissions` row is present
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+(deftest add-revision-most-recent-test
+  (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
+    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+      (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
+            rev-dash-1-first (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                              {:model       "dashboard"
+                                                               :model_id    1
+                                                               :user_id     user-id
+                                                               :object      "{}"
+                                                               :is_creation true
+                                                               :timestamp   :%now}))
+            rev-dash-1-second (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                               {:model       "dashboard"
+                                                                :model_id    1
+                                                                :user_id     user-id
+                                                                :object      "{}"
+                                                                :timestamp   :%now}))
+            rev-dash-2-first (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                              {:model       "dashboard"
+                                                               :model_id    2
+                                                               :user_id     user-id
+                                                               :object      "{}"
+                                                               :is_creation true
+                                                               :timestamp   :%now}))
+            rev-dash-2-second (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                               {:model       "dashboard"
+                                                                :model_id    2
+                                                                :user_id     user-id
+                                                                :object      "{}"
+                                                                :timestamp   :%now}))
+
+            rev-card-1-first (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                              {:model       "card"
+                                                               :model_id    1
+                                                               :user_id     user-id
+                                                               :object      "{}"
+                                                               :is_creation true
+                                                               :timestamp   :%now}))
+            rev-card-1-second (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                               {:model       "card"
+                                                                :model_id    1
+                                                                :user_id     user-id
+                                                                :object      "{}"
+                                                                :timestamp   :%now}))]
+        (migrate!)
+        (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                          :id [:in [rev-dash-1-first rev-dash-2-first rev-card-1-first]])))
+        (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                         :id [:in [rev-dash-1-second rev-dash-2-second rev-card-1-second]])))))))

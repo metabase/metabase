@@ -15159,6 +15159,37 @@ databaseChangeLog:
               column:
                 name: action_id
 
+  - changeSet:
+      id: v48.00-007
+      author: qnkhuat
+      comment: Added 0.48.0 - Add revision.most_recent
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: most_recent
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Whether a revision is the most recent one'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v48.00-008
+      author: qnkhuat
+      comment: Added 0.48.0 - Set revision.most_recent = true for latest revisions
+      changes:
+        - sql:
+            sql: >-
+              UPDATE revision r
+              SET most_recent = true
+              WHERE (model, model_id, timestamp) IN (
+                                 SELECT model, model_id, MAX(timestamp)
+                                 FROM revision
+                                 GROUP BY model, model_id);
+      rollback: # nothing to do since the most_recent will be dropped anyway
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
