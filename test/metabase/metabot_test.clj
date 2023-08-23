@@ -2,14 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
    [metabase.metabot :as metabot]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
+   [metabase.models :refer [Card]]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def test-prompt-templates
