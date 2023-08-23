@@ -1,11 +1,11 @@
-import { forwardRef, RefObject } from "react";
+import { forwardRef } from "react";
+import type { RefObject } from "react";
 import { t } from "ttag";
 
 import { Text } from "metabase/ui";
-import TippyPopoverWithTrigger, {
-  TippyPopoverWithTriggerRef,
-} from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import {
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import type { TippyPopoverWithTriggerRef } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import type {
   QueryColumnPickerProps,
   ColumnListItem,
 } from "metabase/common/components/QueryColumnPicker";
