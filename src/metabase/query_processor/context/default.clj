@@ -16,7 +16,7 @@
   ;; code
   (cond
     config/is-prod? (u/minutes->ms 20)
-    config/is-test? (u/seconds->ms 60)
+    config/is-test? (u/seconds->ms 120)
     config/is-dev?  (u/minutes->ms 3)))
 
 (defn default-rff
