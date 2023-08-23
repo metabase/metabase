@@ -147,7 +147,7 @@ describe("scenarios > question > joined questions", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
     cy.get("@questionId").then(questionId => {
       cy.findByText(`Question ${questionId} → B Column`);
     });
