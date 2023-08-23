@@ -27,7 +27,9 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
 
     it(`can query ${database} database`, () => {
       cy.get("@schema").then(({ body }) => {
-        const tabelId = body.find(table => table.name === "ORDERS").id;
+        const tabelId = body.find(
+          table => table.name.toLowerCase() === "orders",
+        ).id;
         openTable({
           database: WRITABLE_DB_ID,
           table: tabelId,

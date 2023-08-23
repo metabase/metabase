@@ -41,11 +41,7 @@ import {
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
 
-<<<<<<< HEAD
-const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
-=======
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
->>>>>>> 3b7620fa69 (Model Folder)
+const { PRODUCTS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
