@@ -5,6 +5,7 @@ import {
   computeLabelDecimals,
   formatPercent,
 } from "metabase/visualizations/visualizations/PieChart/utils";
+import { formatValue } from "metabase/lib/formatting";
 import { getSlices } from "./utils";
 
 export const pieSeriesMixin: EChartsMixin = ({ option, props }) => {
@@ -58,10 +59,15 @@ export const totalMixin: EChartsMixin = ({ option, props }) => {
   if (!props.settings["pie.show_total"]) {
     return { option };
   }
-  const total = props.data.rows.reduce(
-    (sum, row) => sum + row[props.settings["pie._metricIndex"]],
-    0,
-  );
+
+  // TODO common function for metricIndex
+  const metricIndex = props.settings["pie._metricIndex"];
+  const total = props.data.rows.reduce((sum, row) => sum + row[metricIndex], 0);
+  const formattedTotal = formatValue(total, {
+    ...props.settings.column?.(props.data.cols[metricIndex]),
+    jsx: true,
+    majorWidth: 0,
+  });
 
   option.graphic = {
     type: "group",
@@ -76,7 +82,7 @@ export const totalMixin: EChartsMixin = ({ option, props }) => {
           fill: "#000",
           font: "bold 26px sans-serif",
           textAlign: "center",
-          text: total,
+          text: formattedTotal,
         },
       },
       {
