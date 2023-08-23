@@ -49,8 +49,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Embed in your application").click();
+      cy.get(".Modal--full").findByText("Embed in your application").click();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -67,27 +66,22 @@ describe("scenarios > embedding > dashboard parameters", () => {
             });
         });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Editable").click();
+      popover().findByText("Editable").click();
 
-      cy.get("@allParameters").within(() => {
-        cy.findByText("Id")
-          .parent()
-          .within(() => {
-            cy.findByText("Disabled").click();
-          });
-      });
+      cy.get("@allParameters")
+        .findByText("Id")
+        .parent()
+        .findByText("Disabled")
+        .click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Locked").click();
+      popover().findByText("Locked").click();
 
       // set the locked parameter's value
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview Locked Parameters")
+      cy.findByTestId("embedding-settings")
+        .findByText("Preview Locked Parameters")
         .parent()
-        .within(() => {
-          cy.findByText("Id").click();
-        });
+        .findByText("Id")
+        .click();
 
       cy.findByPlaceholderText("Search by Name or enter an ID").type(
         "1{enter}3{enter}",
@@ -112,17 +106,16 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get(".ScalarValue").invoke("text").should("eq", "2");
 
       // verify that disabled filters don't show up
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Source").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("User").should("not.exist");
+      cy.findByTestId("dashboard-parameters-widget-container").within(() => {
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+      });
 
       // only Name parameter should be visible
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Lina Heaney").click();
+      popover().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -138,15 +131,12 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Embed in your application").click();
+      cy.get(".Modal--full").findByText("Embed in your application").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Locked").click();
+      cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Editable").click();
+      cy.get("@allParameters").findByText("Editable").click();
       popover().contains("Disabled").click();
 
       publishChanges(({ request }) => {
@@ -297,7 +287,9 @@ function publishChanges(callback) {
 function setParameter(name, filter) {
   cy.findByText("Which parameters can users of this embed use?")
     .parent()
-    .findByText(name).siblings("a").click();
+    .findByText(name)
+    .siblings("a")
+    .click();
 
   popover().contains(filter).click();
 }
