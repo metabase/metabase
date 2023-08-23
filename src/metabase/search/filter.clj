@@ -182,13 +182,13 @@
 
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
-    #p (-> query
-           (sql.helpers/join :revision
-                             [:= :revision.model_id
-                              (search.config/column-with-model-alias model :id)])
-           (sql.helpers/where [:= :revision.most_recent true]
-                              [:= :revision.model (search-model->revision-model model)]
-                              (date-range-filter-clause :revision.timestamp last-edited-at)))))
+    (-> query
+        (sql.helpers/join :revision
+                          [:= :revision.model_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :revision.most_recent true]
+                           [:= :revision.model (search-model->revision-model model)]
+                           (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
