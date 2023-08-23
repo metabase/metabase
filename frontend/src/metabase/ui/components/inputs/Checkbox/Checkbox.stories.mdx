@@ -64,13 +64,20 @@ export const Template = args => (
     />
     <Checkbox {...args} label="Checked checkbox" checked />
     <Checkbox {...args} label="Disabled checkbox" disabled />
-    <Checkbox {...args} label="Disabled checked checkbox" disabled checked />
     <Checkbox
       {...args}
-      label="Disabled indeterminate checkbox"
+      label="Disabled intermediate checkbox"
       disabled
+      intermediate
+    />
+    <Checkbox
+      {...args}
+      label="Disabled indeterminate checked checkbox"
+      disabled
+      checked
       indeterminate
     />
+    <Checkbox {...args} label="Disabled checked checkbox" disabled checked />
   </Stack>
 );
 
