@@ -1,4 +1,4 @@
-import { GroupsPermissions, SettingDefinition } from "metabase-types/api";
+import type { GroupsPermissions, SettingDefinition } from "metabase-types/api";
 
 export type AdminPathKey =
   | "data-model"

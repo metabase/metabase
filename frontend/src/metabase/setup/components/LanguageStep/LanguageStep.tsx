@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
-import { Locale } from "metabase-types/store";
+import type { Locale } from "metabase-types/store";
 import { selectStep, updateLocale } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {

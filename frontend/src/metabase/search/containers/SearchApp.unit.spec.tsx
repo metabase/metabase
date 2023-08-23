@@ -12,9 +12,9 @@ import {
   createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { SearchResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
-import { SearchFilters } from "metabase/search/types";
+import type { SearchFilters } from "metabase/search/types";
 import { checkNotNull } from "metabase/core/utils/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test

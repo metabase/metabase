@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
-import {
+import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,

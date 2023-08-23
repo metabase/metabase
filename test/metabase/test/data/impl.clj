@@ -1,26 +1,18 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
-   [clojure.string :as str]
-   [clojure.tools.reader.edn :as edn]
-   [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
-   [metabase.models.humanization :as humanization]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
-   [metabase.sync :as sync]
-   [metabase.sync.util :as sync-util]
    [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
-   [metabase.test.initialize :as initialize]
-   [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [potemkin :as p]
    [toucan.db :as db]
    [toucan2.core :as t2]))
@@ -32,155 +24,30 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          get-or-create-database!; db                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-
-(defonce ^:private ^{:arglists '([driver]), :doc "We'll have a very bad time if any sort of test runs that calls
-  `data/db` for the first time calls it multiple times in parallel -- for example my Oracle test that runs 30 sync
-  calls at the same time to make sure nothing explodes and cursors aren't leaked. To make sure this doesn't happen
-  we'll keep a map of driver->lock and only allow a given driver to create one Database at a time. Because each DB has
-  its own lock we can still create different DBs for different drivers at the same time."}
-  driver->create-database-lock
-  (let [locks (atom {})]
-    (fn [driver]
-      (let [driver (driver/the-driver driver)]
-        (or
-         (@locks driver)
-         (locking driver->create-database-lock
-           (or
-            (@locks driver)
-            (do
-              (swap! locks update driver #(or % (Object.)))
-              (@locks driver)))))))))
-
 (defmulti get-or-create-database!
-  "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
+  "Create data warehouse database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
   and sync the Database. `driver` is a keyword name of a driver that implements test extension methods (as defined in
-  the `metabase.test.data.interface` namespace); `driver` defaults to `driver/*driver*` if bound, or `:h2` if not.
-  `database-definition` is anything that implements the `tx/get-database-definition` method."
+  the [[metabase.test.data.interface]] namespace); `driver` defaults to [[metabase.driver/*driver*]] if bound, or
+  `:h2` if not. `database-definition` is anything that implements
+  the [[metabase.test.data.interface/get-dataset-definition]] method."
   {:arglists '([driver database-definition])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- add-extra-metadata!
-  "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} db]
-  {:pre [(seq table-definitions)]}
-  (doseq [{:keys [table-name], :as table-definition} table-definitions]
-    (let [table (delay (or (tx/metabase-instance table-definition db)
-                           (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
-                                                      table-name
-                                                      (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (t2/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
-        (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
-                                                          field-name
-                                                          (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
-            (when-let [v (get field-definition property)]
-              (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
-
-(def ^:private create-database-timeout-ms
-  "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (u/minutes->ms 30)) ; Redshift is slow
-
-(def ^:private sync-timeout-ms
-  "Max amount of time to wait for sync to complete."
-  (u/minutes->ms 15))
-
-(defonce ^:private reference-sync-durations
-  (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
-
-(defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
-          "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
-  (try
-    (u/with-timeout sync-timeout-ms
-      (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                   "NONE")
-            full-sync?         (#{"test-data" "sample-dataset"} database-name)]
-        (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                           (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-          ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-          (binding [sync-util/*log-exceptions-and-continue?* false]
-            (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
-          ;; add extra metadata for fields
-          (try
-            (add-extra-metadata! database-definition db)
-            (catch Throwable e
-              (log/error e "Error adding extra metadata"))))))
-    (catch Throwable e
-      (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
-            e       (ex-info message
-                             {:driver             driver
-                              :database-name      database-name
-                              :connection-details connection-details}
-                             e)]
-        (log/error e message)
-        (t2/delete! Database :id (u/the-id db))
-        (throw e)))))
-
-(defn- create-database! [driver {:keys [database-name], :as database-definition}]
-  {:pre [(seq database-name)]}
-  (try
-    ;; Create the database and load its data
-    ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id "UTC"
-        (tx/create-db! driver database-definition)))
-    ;; Add DB object to Metabase DB
-    (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (first (t2/insert-returning-instances! Database
-                                                                    :name    database-name
-                                                                    :engine  (u/qualified-name driver)
-                                                                    :details connection-details))]
-      (sync-newly-created-database! driver database-definition connection-details db)
-      ;; make sure we're returing an up-to-date copy of the DB
-      (t2/select-one Database :id (u/the-id db)))
-    (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
-      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
-                      {:driver        driver
-                       :database-name database-name}
-                      e)))))
-
 (defmethod get-or-create-database! :default
   [driver dbdef]
-  (initialize/initialize-if-needed! :plugins :db)
-  (let [dbdef (tx/get-dataset-definition dbdef)]
-    (or
-     (tx/metabase-instance dbdef driver)
-     (locking (driver->create-database-lock driver)
-       (or
-        (tx/metabase-instance dbdef driver)
-        ;; make sure report timezone isn't bound, possibly causing weird things to happen when data is loaded -- this
-        ;; code may run inside of some other block that sets report timezone
-        ;;
-        ;; require/resolve used here to avoid circular refs
-        (letfn [(thunk []
-                  (binding [api/*current-user-id*              nil
-                            api/*current-user-permissions-set* nil]
-                    (create-database! driver dbdef)))]
-          (if (driver/report-timezone)
-            ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
-             :report-timezone nil
-             thunk)
-            (thunk))))))))
+  (test.data.impl.get-or-create/default-get-or-create-database! driver dbdef))
 
 (defn- get-or-create-test-data-db!
-  "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."
+  "Get or create the Test Data database for `driver`, which defaults to [[metabase.driver/*driver*]], or `:h2` if that
+  is unbound."
   ([]       (get-or-create-test-data-db! (tx/driver)))
   ([driver] (get-or-create-database! driver defs/test-data)))
 
 (def ^:dynamic *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly
-  what it suggests."
+  arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
+  does exactly what it suggests."
   get-or-create-test-data-db!)
 
 (defn do-with-db

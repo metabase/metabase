@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";

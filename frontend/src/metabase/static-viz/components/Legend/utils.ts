@@ -4,7 +4,7 @@ import {
   LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
 } from "./constants";
-import { LegendItem, PositionedLegendItem } from "./types";
+import type { LegendItem, PositionedLegendItem } from "./types";
 
 const calculateItemWidth = (
   item: LegendItem,

@@ -1,5 +1,9 @@
 import _ from "underscore";
-import { SearchResult, SearchResults, SearchScore } from "metabase-types/api";
+import type {
+  SearchResult,
+  SearchResults,
+  SearchScore,
+} from "metabase-types/api";
 import { createMockCollection } from "./collection";
 
 export const createMockSearchResult = (

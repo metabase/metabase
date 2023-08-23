@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import NoResults from "assets/img/no_results.svg";
 

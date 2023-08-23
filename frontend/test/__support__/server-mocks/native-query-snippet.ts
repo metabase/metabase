@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { NativeQuerySnippet } from "metabase-types/api";
+import type { NativeQuerySnippet } from "metabase-types/api";
 
 const PATH = "path:/api/native-query-snippet";
 

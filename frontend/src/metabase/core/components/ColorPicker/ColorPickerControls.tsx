@@ -1,4 +1,5 @@
-import { CustomPicker, CustomPickerInjectedProps } from "react-color";
+import type { CustomPickerInjectedProps } from "react-color";
+import { CustomPicker } from "react-color";
 import { Hue, Saturation } from "react-color/lib/components/common";
 import {
   ControlsRoot,

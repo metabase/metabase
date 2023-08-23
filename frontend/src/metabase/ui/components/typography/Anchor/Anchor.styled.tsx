@@ -6,7 +6,7 @@ export const getAnchorOverrides = (): MantineThemeOverride["components"] => ({
       return {
         root: {
           fontFamily: "inherit",
-          color: theme.fn.primaryColor(),
+          color: theme.colors.brand[1],
           "&:focus": {
             outline: `2px solid ${theme.colors.brand[0]}`,
             outlineOffset: "2px",

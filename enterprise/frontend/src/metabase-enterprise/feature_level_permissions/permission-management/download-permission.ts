@@ -1,9 +1,9 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Group, GroupsPermissions } from "metabase-types/api";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import {
+import type {
   EntityId,
   PermissionSubject,
   SchemaEntityId,

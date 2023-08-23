@@ -8,7 +8,7 @@ import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 
-import { DataPickerProps, DataPickerSelectedItem } from "../types";
+import type { DataPickerProps, DataPickerSelectedItem } from "../types";
 
 import useSelectedTables from "../useSelectedTables";
 

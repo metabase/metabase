@@ -26,8 +26,8 @@ import {
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
 import type { FilterOperator } from "../../deprecated-types";
-import Dimension from "../../Dimension";
-import StructuredQuery from "../StructuredQuery";
+import type Dimension from "../../Dimension";
+import type StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";
 
 interface FilterDisplayNameOpts {

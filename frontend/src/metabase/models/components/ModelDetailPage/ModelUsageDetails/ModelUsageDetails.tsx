@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import * as Urls from "metabase/lib/urls";
 import Questions, {

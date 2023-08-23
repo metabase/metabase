@@ -4,7 +4,7 @@ import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import { Timeline } from "metabase-types/api";
+import type { Timeline } from "metabase-types/api";
 import TimelinePicker from "./TimelinePicker";
 
 export default {
