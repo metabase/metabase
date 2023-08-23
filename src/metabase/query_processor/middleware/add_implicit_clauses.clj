@@ -23,6 +23,7 @@
   [table-id]
   (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
        (remove :parent-id)
+       (remove #(#{:sensitive :retired} (:visibility-type %)))
        (sort-by (juxt :position (comp u/lower-case-en :name)))))
 
 (mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
