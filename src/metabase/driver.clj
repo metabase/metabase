@@ -895,7 +895,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti privilege-rows
+(defmulti table-privileges
   "Returns the rows of data needed to populate the privilege table, which contains the privileges users have on the
    given `database`."
   {:added "0.48.0", :arglists '([driver database])}

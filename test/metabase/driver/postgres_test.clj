@@ -1219,13 +1219,13 @@
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
 
-(deftest privilege-rows-test
+(deftest table-privileges-test
   (mt/test-driver :postgres
-    (testing "`privilege-rows` should return the correct data for current_user and role privileges"
+    (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
-                               (->> (driver/privilege-rows driver/*driver* (mt/db))
+                               (->> (driver/table-privileges driver/*driver* (mt/db))
                                     (filter #(= (:role %) "privilege_rows_test_example_role"))))]
           (try
             (jdbc/execute! conn-spec (str "CREATE SCHEMA foo;"

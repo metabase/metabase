@@ -880,7 +880,7 @@
     " and ((t.role = s.role) or (t.is_current_user and s.is_current_user))"
     " and (t.select or t.update or t.insert or t.delete)"]))
 
-(defmethod driver/privilege-rows :postgres
+(defmethod driver/table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (jdbc/query conn-spec query-privileges-query)))
