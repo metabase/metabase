@@ -255,7 +255,7 @@
    [:lib/type [:= :mbql/filter-parts]]
    [:operator ::lib.schema.filter/operator]
    [:options ::lib.schema.common/options]
-   [:column ColumnWithOperators]
+   [:column [:maybe ColumnWithOperators]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts
@@ -278,5 +278,5 @@
                                                (lib.filter.operator/filter-operators col))
                                  (lib.filter.operator/operator-def op))
       :options  options
-      :column   (add-column-operators col)
+      :column   (some-> col add-column-operators)
       :args     (vec rest-args)})))

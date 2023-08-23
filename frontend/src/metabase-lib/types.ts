@@ -159,7 +159,7 @@ export type ExternalOp = {
 export type FilterParts = {
   operator: FilterOperator;
   options: Record<string, unknown>;
-  column: ColumnWithOperators;
+  column: ColumnWithOperators | null;
   args: ExpressionArg[];
 };
 
