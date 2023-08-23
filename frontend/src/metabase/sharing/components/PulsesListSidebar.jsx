@@ -17,7 +17,7 @@ import {
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
 import { formatFrame } from "metabase/lib/time";
-import { getActivePulseParameters } from "metabase/lib/pulse";
+import { getPulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
@@ -146,14 +146,16 @@ function buildRecipientText(pulse) {
       )}`;
 }
 
-function buildFilterText(pulse, parameters) {
-  const activeParameters = getActivePulseParameters(pulse, parameters);
+function buildFilterText(pulse) {
+  const parameters = getPulseParameters(pulse).filter(
+    parameter => parameter.value != null,
+  );
 
-  if (_.isEmpty(activeParameters)) {
+  if (_.isEmpty(parameters)) {
     return "";
   }
 
-  const [firstParameter, ...otherParameters] = activeParameters;
+  const [firstParameter, ...otherParameters] = parameters;
   const numValues = [].concat(firstParameter.value).length;
   const firstFilterText = `${firstParameter.name} is ${
     numValues > 1 ? t`${numValues} selections` : firstParameter.value
