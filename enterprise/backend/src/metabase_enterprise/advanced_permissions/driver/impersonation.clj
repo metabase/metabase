@@ -67,7 +67,7 @@
 (defn- impersonation-enabled?
   "Is connection impersonation enabled for the given database for any users?"
   [database]
-  (t2/exists? :model/ConnectionImpersonation :db_id (u/the-id database)))
+  (t2/exists? :model/ConnectionImpersonation :db_id (u/id database)))
 
 (defenterprise hash-key-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
@@ -89,15 +89,14 @@
       (let [enabled?           (impersonation-enabled? database)
             default-role       (driver.sql/default-database-role driver database)
             impersonation-role (and enabled? (connection-impersonation-role database))]
-        (if-let [role (or impersonation-role default-role)]
+        (when (and (impersonation-enabled? database) (not default-role))
+          (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
+                          {:user-id api/*current-user-id*
+                           :database-id (u/the-id database)})))
+        (when-let [role (or impersonation-role default-role)]
           ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
-          (driver/set-role! driver conn role)
-          ;; We require a default role to be provided for databases with connection impersonation enabled
-          (when (impersonation-enabled? database)
-            (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
-                            {:user-id api/*current-user-id*
-                             :database-id (u/the-id database)})))))
+          (driver/set-role! driver conn role)))
       (catch Throwable e
         (log/debug e (tru "Error setting role on connection"))
         (throw e)))))
