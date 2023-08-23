@@ -126,16 +126,16 @@
       (t2.with-temp/with-temp [Card {card-id :id}]
         (doseq [i (range 3)]
           (push-fake-revision! card-id :name (format "%d Tips Created by Day" i) :message "yay!"))
-        (is (=? [{:model       "FakedCard"
-                  :model_id    card-id
-                  :most_recent true}
-                 {:model       "FakedCard"
-                  :model_id    card-id
-                  :most_recent false}
-                 {:model       "FakedCard"
-                  :model_id    card-id
-                  :most_recent false}]
-                (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc]]})))))))
+       (is (=? [{:model       "FakedCard"
+                 :model_id    card-id
+                 :most_recent true}
+                {:model       "FakedCard"
+                 :model_id    card-id
+                 :most_recent false}
+                {:model       "FakedCard"
+                 :model_id    card-id
+                 :most_recent false}]
+               (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
