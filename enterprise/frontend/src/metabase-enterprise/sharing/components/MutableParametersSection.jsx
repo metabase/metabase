@@ -30,7 +30,11 @@ function MutableParametersSection({
     pulseParamValuesById,
   );
 
+  const normalizeValue = value =>
+    Array.isArray(value) && value.length === 0 ? null : value;
+
   const setParameterValue = (id, value) => {
+    value = normalizeValue(value);
     const parameter = parameters.find(parameter => parameter.id === id);
     const filteredParameters = pulseParameters.filter(
       parameter => parameter.id !== id,
