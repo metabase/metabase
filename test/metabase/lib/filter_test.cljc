@@ -345,7 +345,8 @@
                   parts))
           (is (=? {:lib/type :metadata/column
                    :operators (comp vector? not-empty)}
-                  (-> parts :args first))))))))
+                  (:column parts)))
+          (is (vector? (:args parts))))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."

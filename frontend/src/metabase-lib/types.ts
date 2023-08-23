@@ -159,7 +159,8 @@ export type ExternalOp = {
 export type FilterParts = {
   operator: FilterOperator;
   options: Record<string, unknown>;
-  args: [ColumnWithOperators, ...ExpressionArg[]];
+  column: ColumnWithOperators;
+  args: ExpressionArg[];
 };
 
 declare const Join: unique symbol;

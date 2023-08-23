@@ -15,6 +15,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -249,7 +250,15 @@
                                     (lib.filter.operator/filter-operators (ref->col col-ref)))
                       (lib.filter.operator/operator-def op)))))
 
-(mu/defn filter-parts :- ::lib.schema.filter/filter-parts
+(def ^:private FilterParts
+  [:map
+   [:lib/type [:= :mbql/filter-parts]]
+   [:operator ::lib.schema.filter/operator]
+   [:options ::lib.schema.common/options]
+   [:column ColumnWithOperators]
+   [:args [:sequential :any]]])
+
+(mu/defn filter-parts :- FilterParts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
   Might obsolate [[filter-operator]]."
   ([query a-filter-clause]
@@ -269,6 +278,5 @@
                                                (lib.filter.operator/filter-operators col))
                                  (lib.filter.operator/operator-def op))
       :options  options
-      :args     (if col
-                  (into [(add-column-operators col)] rest-args)
-                  (get a-filter-clause 2))})))
+      :column   (add-column-operators col)
+      :args     (vec rest-args)})))
