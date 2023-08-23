@@ -118,17 +118,22 @@
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
-(defn- display-name-for-joined-field
+(defn- update-display-name-for-joined-field
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
-  alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
-  [field-display-name {:keys [fk-field-id], join-alias :alias}]
-  (let [qualifier (if fk-field-id
-                    ;; strip off trailing ` id` from FK display name
-                    (str/replace (:display_name (qp.store/field fk-field-id))
-                                 #"(?i)\sid$"
-                                 "")
-                    join-alias)]
-    (format "%s → %s" qualifier field-display-name)))
+  alias; for implicitly joined fields, it is the display name of the foreign key used to create the join. Prefixing
+  can be disabled by setting `::avoid-display-name-prefix?` field option to true - used in eg.
+  [[metabase.query-processor.middleware.expand-macros/provides]]."
+  [metadata {:keys [fk-field-id], join-alias :alias :as _join}]
+  (-> (if (get-in metadata [:options ::avoid-display-name-prefix?] false)
+        metadata
+        (let [qualifier (if fk-field-id
+                        ;; strip off trailing ` id` from FK display name
+                          (str/replace (:display_name (qp.store/field fk-field-id))
+                                       #"(?i)\sid$"
+                                       "")
+                          join-alias)]
+          (update metadata :display_name (partial format "%s → %s" qualifier))))
+      (update :options dissoc ::avoid-display-name-prefix?)))
 
 (defn- datetime-arithmetics?
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
@@ -267,7 +272,7 @@
       (assoc :source_alias (or (:join-alias opts) (:alias join)))
 
       join
-      (update :display_name display-name-for-joined-field join)
+      (update-display-name-for-joined-field join)
 
       ;; Join with fk-field-id => IMPLICIT JOIN
       ;; Join w/o fk-field-id  => EXPLICIT JOIN
