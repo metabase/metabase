@@ -377,7 +377,7 @@
   [a-query stage-number a-filter-clause]
   (let [{:keys [operator options column args]} (lib.core/filter-parts a-query stage-number a-filter-clause)]
     #js {:operator operator
-         :options (clj->js options)
+         :options (clj->js (select-keys options [:case-sensitive :include-current]))
          :column column
          :args (to-array args)}))
 
