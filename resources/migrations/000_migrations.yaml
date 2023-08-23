@@ -16103,6 +16103,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: table_privileges
+            remarks: Table for user and role privileges by table
             columns:
               - column:
                   autoIncrement: true
@@ -16111,6 +16112,7 @@ databaseChangeLog:
                     primaryKey: true
                   name: id
                   type: int
+                  remarks: 'row ID'
               - column:
                   name: table_id
                   type: int
