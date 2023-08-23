@@ -69,7 +69,7 @@
 
 (defn- build-fk-map
   [fks field]
-  (if (:id field)
+  (if (and (seq fks) (:id field))
     (->> fks
          (filter (comp #{(:table_id field)} :table_id :target))
          (group-by :table_id)
@@ -86,17 +86,18 @@
            (vector :dimension)))
 
 (defn- add-filter
-  [dashcard filter-id field]
-  (let [mappings (->> (conj (:series dashcard) (:card dashcard))
-                      (keep (fn [card]
-                              (when-let [target (filter-for-card card field)]
-                                {:parameter_id filter-id
-                                 :target       target
-                                 :card_id      (:id card)})))
-                      not-empty)]
-    (cond
-      (nil? (:card dashcard)) dashcard
-      mappings                (update dashcard :parameter_mappings concat mappings))))
+  [{:keys [card series] :as dashcard} filter-id field]
+  (if (nil? card)
+    ;; No card implies a label block or some other non-data cell
+    dashcard
+    (some->> (conj series card)
+             (keep (fn [card]
+                     (when-let [target (filter-for-card card field)]
+                       {:parameter_id filter-id
+                        :target       target
+                        :card_id      (:id card)})))
+             seq
+             (update dashcard :parameter_mappings concat))))
 
 (defn- filter-type
   "Return filter type for a given field.
@@ -114,24 +115,6 @@
     (isa? semantic_type :type/Category) "category"
     (isa? semantic_type :type/Number)   "number")
     :default                            "text")
-
-(comment
-  ;; TODO - Remove prior to merge with main
-  (qp/process-query
-   {:database   1
-    :parameters [{:type   "number" :value [1]
-                  :target [:dimension [:field "ID" {:base-type "type/BigInteger"}]]}]
-    :query      {:source-table "card__256"
-                 :aggregation  [["count"]]}
-    :type       "query"})
-
-  (qp/process-query
-   {:database   1
-    :parameters [{:type   "category" :value ["Twitter"]
-                  :target [:dimension [:field "SOURCE" {:base-type "type/Text"}]]}]
-    :query      {:source-table "card__256"
-                 :aggregation  [["count"]]}
-    :type       "query"}))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
