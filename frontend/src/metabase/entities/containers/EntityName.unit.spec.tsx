@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { createMockUser } from "metabase-types/api/mocks";
-import EntityName from "./EntityName";
+import { EntityName } from "./EntityName";
 
 describe("EntityName", () => {
   describe("users", () => {

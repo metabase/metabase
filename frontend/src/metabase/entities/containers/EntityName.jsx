@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import EntityObjectLoader from "./EntityObjectLoader";
 
-const EntityName = ({ entityType, entityId, property = "name" }) => (
+export const EntityName = ({ entityType, entityId, property = "name" }) => (
   <EntityObjectLoader
     entityType={entityType}
     entityId={entityId}
@@ -12,5 +12,3 @@ const EntityName = ({ entityType, entityId, property = "name" }) => (
     {({ object }) => (object ? <span>{object.getName()}</span> : null)}
   </EntityObjectLoader>
 );
-
-export default EntityName;
