@@ -401,6 +401,12 @@
       (is (= {:end "2016-06-07T19:00:00", :start "2016-06-07T19:00:00"}
              (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"})))
 
+      (testing "even if the system timezone is changed"
+        (is (= (mt/with-system-timezone-id "UTC"
+                 (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"}))
+               (mt/with-system-timezone-id "Asia/Tokyo"
+                 (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"})))))
+
       (testing "default should be at UTC"
         (is (= {:start "2016-06-07T12:00:00", :end "2016-06-07T12:00:00"}
                (params.dates/date-string->range "thishour"))))
@@ -408,15 +414,6 @@
       (testing "Shouldn't affect the absolute datetime"
         (is (= {:start "2016-06-07T12:12:00" :end "2016-06-07T12:12:00"}
                (params.dates/date-string->range "2016-06-07T12:12:00")))))))
-
-(deftest relative-date-string->range-always-at-utc-test
-  (testing "the date range for relative string should always be at UTC regardless of the system-timezone-id"
-    (doseq [date-str ["past5minutes" "thisminute" "next45seconds"]]
-      (testing (format "date-string = %s" date-str)
-        (is (= (mt/with-system-timezone-id "UTC"
-                 (params.dates/date-string->range date-str))
-               (mt/with-system-timezone-id "Asia/Tokyo"
-                 (params.dates/date-string->range date-str))))))))
 
 (deftest relative-dates-with-starting-from-zero-must-match
   (testing "relative dates need to behave the same way, offset or not."
