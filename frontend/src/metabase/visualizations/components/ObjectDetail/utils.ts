@@ -20,11 +20,11 @@ import {
   isPK,
 } from "metabase-lib/types/utils/isa";
 import { canRunAction } from "metabase-lib/actions/utils";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
-import Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
 
-import { ObjectId } from "./types";
+import type { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
   table?: Table | null;

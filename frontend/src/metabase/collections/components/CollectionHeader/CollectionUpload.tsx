@@ -1,4 +1,5 @@
-import { useState, ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import type { Collection, CollectionId } from "metabase-types/api";

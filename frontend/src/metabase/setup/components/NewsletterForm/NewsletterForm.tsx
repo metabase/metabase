@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import * as Errors from "metabase/core/utils/errors";
-import { SubscribeInfo } from "metabase-types/store";
+import type { SubscribeInfo } from "metabase-types/store";
 import { subscribeToNewsletter } from "../../utils";
 import { getUserEmail } from "../../selectors";
 import {

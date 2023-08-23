@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.field :refer [Field]]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.util :as tu]))
@@ -62,9 +62,9 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
                   :rows [[3.4]]}
-                 (qp.test/rows-and-cols
+                 (qp.test-util/rows-and-cols
                   (mt/format-rows-by [1.0]
                     (mt/process-query query))))))))))
 
@@ -140,8 +140,8 @@
 (deftest ^:parallel multiple-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
-      (is (= [(qp.test/aggregate-col :count)
-              (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+      (is (= [(qp.test-util/aggregate-col :count)
+              (assoc (qp.test-util/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
              (mt/cols
               (mt/run-mbql-query venues
                 {:aggregation [[:count] [:count]]})))))))
@@ -222,11 +222,11 @@
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
         (is (= {:rows [[15]]
-                :cols [(qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
-                 (mt/format-rows-by [int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]})))))))))
+                :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
+               (qp.test-util/rows-and-cols
+                (mt/format-rows-by [int]
+                  (mt/run-mbql-query users
+                    {:aggregation [[:cum-count $id]]})))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -246,9 +246,9 @@
                      ["Simcha Yan"          13]
                      ["Spiros Teofil"       14]
                      ["Szymon Theutrich"    15]]
-              :cols [(qp.test/breakout-col :users :name)
-                     (qp.test/aggregate-col :cum-count :users :id)]}
-             (qp.test/rows-and-cols
+              :cols [(qp.test-util/breakout-col :users :name)
+                     (qp.test-util/aggregate-col :cum-count :users :id)]}
+             (qp.test-util/rows-and-cols
               (mt/format-rows-by [str int]
                 (mt/run-mbql-query users
                   {:aggregation [[:cum-count $id]]
@@ -257,13 +257,13 @@
 (deftest ^:parallel cumulative-count-with-breakout-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "w/ breakout on field that requires grouping"
-      (is (= {:cols [(qp.test/breakout-col :venues :price)
-                     (qp.test/aggregate-col :cum-count :venues :id)]
+      (is (= {:cols [(qp.test-util/breakout-col :venues :price)
+                     (qp.test-util/aggregate-col :cum-count :venues :id)]
               :rows [[1 22]
                      [2 81]
                      [3 94]
                      [4 100]]}
-             (qp.test/rows-and-cols
+             (qp.test-util/rows-and-cols
               (mt/format-rows-by [int int]
                 (mt/run-mbql-query venues
                   {:aggregation [[:cum-count $id]]
@@ -274,7 +274,7 @@
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
+        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
                       :settings {:is_priceless false})
                (or (-> results mt/cols first)
                    results)))))))

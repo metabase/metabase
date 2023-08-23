@@ -6,7 +6,7 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.pulse :as pulse]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
@@ -23,7 +23,7 @@
                   pulse/parts->notifications (fn [_ results]
                                                (vec results))]
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
-        (qp.test/rows result)))))
+        (qp.test-util/rows result)))))
 
 (def card-name "Test card")
 

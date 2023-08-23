@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import { InputProps } from "metabase/core/components/Input";
+import type { InputProps } from "metabase/core/components/Input";
 import {
   LicenseErrorMessage,
   LicenseTextInput,

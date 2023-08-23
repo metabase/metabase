@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button/Button";
 import FieldSet from "metabase/components/FieldSet";
-import { Segment, StructuredQuery } from "metabase-types/api";
+import type { Segment, StructuredQuery } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";

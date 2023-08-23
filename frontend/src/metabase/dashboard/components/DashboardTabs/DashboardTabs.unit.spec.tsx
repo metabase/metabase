@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { DashboardState, State } from "metabase-types/store";
-import { DashboardOrderedTab } from "metabase-types/api";
+import type { DashboardState, State } from "metabase-types/store";
+import type { DashboardOrderedTab } from "metabase-types/api";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 

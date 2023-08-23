@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";

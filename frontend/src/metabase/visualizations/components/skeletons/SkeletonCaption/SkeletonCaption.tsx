@@ -1,7 +1,7 @@
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
-import { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import {
   LegendDescriptionIcon,
   LegendRightContent,
@@ -12,7 +12,7 @@ import {
   SkeletonCaptionDescription,
   SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
-import { SkeletonCaptionSize } from "./types";
+import type { SkeletonCaptionSize } from "./types";
 
 export type SkeletonCaptionProps = HTMLAttributes<HTMLDivElement> &
   VisualizationSkeletonProps & {

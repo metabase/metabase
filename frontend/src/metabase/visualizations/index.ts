@@ -1,8 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { DatasetData, Series, TransformedSeries } from "metabase-types/api";
-import { Visualization } from "./types/visualization";
-import { RemappingHydratedDatasetColumn } from "./types";
+import type {
+  DatasetData,
+  Series,
+  TransformedSeries,
+} from "metabase-types/api";
+import type { Visualization } from "./types/visualization";
+import type { RemappingHydratedDatasetColumn } from "./types";
 
 const visualizations = new Map<string, Visualization>();
 const aliases = new Map<string, Visualization>();

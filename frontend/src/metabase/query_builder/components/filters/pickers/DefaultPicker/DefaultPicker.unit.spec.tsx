@@ -12,9 +12,10 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { DefaultPicker, DefaultPickerProps } from "./DefaultPicker";
+import type { DefaultPickerProps } from "./DefaultPicker";
+import { DefaultPicker } from "./DefaultPicker";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
-import useFormContext, {
-  FormStatus,
-} from "metabase/core/hooks/use-form-context";
+import type { FormStatus } from "metabase/core/hooks/use-form-context";
+import useFormContext from "metabase/core/hooks/use-form-context";
 
 const STATUS_TIMEOUT = 5000;
 

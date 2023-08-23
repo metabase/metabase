@@ -149,6 +149,7 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
         "no-unused-vars": "off",
+        "@typescript-eslint/consistent-type-imports": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           {

@@ -7,10 +7,10 @@ import {
   MODE_TYPE_PIVOT,
   MODE_TYPE_DEFAULT,
 } from "metabase/visualizations/click-actions/Mode/constants";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import { ModeType } from "./types";
+import type { ModeType } from "./types";
 
 export function getModeType(question: Question): ModeType | null {
   if (!question) {

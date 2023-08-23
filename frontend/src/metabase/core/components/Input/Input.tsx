@@ -1,14 +1,10 @@
-import {
-  forwardRef,
-  InputHTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-} from "react";
+import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import { InputSize } from "../../style/types";
+import type { InputSize } from "../../style/types";
 import {
   InputField,
   InputLeftButton,

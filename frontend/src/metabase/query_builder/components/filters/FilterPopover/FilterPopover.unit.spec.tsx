@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { FilterPopover } from "./FilterPopover";
 
 const metadata = createMockMetadata({

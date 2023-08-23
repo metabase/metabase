@@ -1,10 +1,10 @@
-import * as React from "react";
+import type * as React from "react";
 import {
   Section,
   SectionTitle,
   SectionWithTitle,
 } from "./ClickActionsViewSection.styled";
-import { ContentDirectionType } from "./utils";
+import type { ContentDirectionType } from "./utils";
 
 interface Props {
   type: string;

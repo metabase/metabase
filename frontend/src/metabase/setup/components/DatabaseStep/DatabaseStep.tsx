@@ -2,8 +2,8 @@ import { t } from "ttag";
 import { updateIn } from "icepick";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import { DatabaseData } from "metabase-types/api";
-import { InviteInfo } from "metabase-types/store";
+import type { DatabaseData } from "metabase-types/api";
+import type { InviteInfo } from "metabase-types/store";
 import {
   selectStep,
   skipDatabase,

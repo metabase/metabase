@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";
 import { createMockMetadata } from "__support__/metadata";
 import {

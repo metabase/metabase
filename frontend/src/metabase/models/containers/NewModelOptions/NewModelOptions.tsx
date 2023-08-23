@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Location } from "history";
+import type { Location } from "history";
 import { Grid } from "metabase/components/Grid";
 import NewModelOption from "metabase/models/components/NewModelOption";
 
@@ -12,7 +12,7 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 import { useSelector } from "metabase/lib/redux";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
   OptionsRoot,
