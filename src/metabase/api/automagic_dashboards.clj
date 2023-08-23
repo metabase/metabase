@@ -156,19 +156,36 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/pk/:indexed-value"
+;; TODO - Delete this once the below endpoint is done.
+(api/defendpoint GET "/:entity/:entity-id-or-query/column/:field-name/value/:field-value"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
-  [entity entity-id-or-query indexed-value show]
-  {show          [:maybe [:= "all"]]
-   indexed-value :int
-   entity        (mu/with-api-error-message
-                   (into [:enum] entities)
-                   (deferred-tru "Invalid entity type"))}
+  [entity entity-id-or-query indexed-value show field-name field-value]
+  {show        [:maybe [:= "all"]]
+   field-name  :string
+   field-value :int
+   entity      (mu/with-api-error-message
+                 (into [:enum] entities)
+                 (deferred-tru "Invalid entity type"))}
   (if (= entity "transform")
     (transform.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
-        (automagic-analysis {:show (keyword show) :indexed-value indexed-value}))))
+        (automagic-analysis {:show (keyword show)
+                             :field_name field-name
+                             :field_value field-value}))))
+
+;; TODO - Look up details from model_index_value and fill in the request...
+(api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
+  "Return an automagic dashboard for an entity detail specified by `entity`
+  with id `id` and a primary key of `indexed-value`."
+  [model-index-id pk-id]
+  {model-index-id :int
+   pk-id :int}
+  ;; Stuff...
+  #_(-> (->entity entity entity-id-or-query)
+      (automagic-analysis {:show        (keyword show)
+                           :field_name  field-name
+                           :field_value field-value})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
