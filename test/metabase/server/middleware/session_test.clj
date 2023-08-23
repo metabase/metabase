@@ -52,7 +52,7 @@
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
              (#'config/mb-session-cookie-samesite*))))
 
-    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_COOKIE_SAMESITE"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_SESSION_COOKIE_SAMESITE"
           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
             (#'config/mb-session-cookie-samesite*))))))
 
