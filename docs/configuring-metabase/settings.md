@@ -22,6 +22,8 @@ The site URL is the web address that people use to access your Metabase instance
 
 Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
 
+If you've set a dashboard as your homepage, and want to revert to the default Metabase homepage, simply turn off the **Enabled** toggle to disable the Custome Homepage feature.
+
 ## Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
