@@ -103,6 +103,16 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
             color: theme.colors.text[0],
           },
         },
+        [`&:has(.${getStylesRef("description")})`]: {
+          [`.${getStylesRef("label")}`]: {
+            marginBottom: 0,
+          },
+        },
+        [`&:has(.${getStylesRef("error")})`]: {
+          [`.${getStylesRef("label")}, .${getStylesRef("description")}`]: {
+            marginBottom: 0,
+          },
+        },
       },
       label: {
         ref: getStylesRef("label"),
@@ -110,26 +120,20 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
         lineHeight: "1rem",
-        "&:nth-last-child(2)": {
-          marginBottom: theme.spacing.xs,
-        },
+        marginBottom: theme.spacing.xs,
       },
       description: {
         ref: getStylesRef("description"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
-        "&:nth-last-child(2)": {
-          marginBottom: theme.spacing.xs,
-        },
       },
       error: {
+        ref: getStylesRef("error"),
         color: theme.colors.error[0],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
-        "&:nth-last-child(2)": {
-          marginBottom: theme.spacing.xs,
-        },
+        marginBottom: theme.spacing.xs,
       },
       required: {
         color: theme.colors.error[0],
