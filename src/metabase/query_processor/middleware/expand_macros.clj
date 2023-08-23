@@ -27,35 +27,38 @@
 ;;; |                                                    SEGMENTS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- segments [form]
+  (mbql.u/match form [:segment (_ :guard (complement mbql.u/ga-id?))]))
+
 (defn- segment-clauses->id->definition [segment-clauses]
   (when-let [segment-ids (seq (filter integer? (map second segment-clauses)))]
     (t2/select-pk->fn :definition Segment, :id [:in (set segment-ids)])))
 
-(defn- replace-segment-clauses [outer-query segment-id->definition]
-  (mbql.u/replace-in outer-query [:query]
+(defn- replace-segment-clauses [form segment-id->definition]
+  (mbql.u/replace form
     [:segment (segment-id :guard (complement mbql.u/ga-id?))]
     (or (:filter (segment-id->definition segment-id))
         (throw (IllegalArgumentException. (tru "Segment {0} does not exist, or is invalid." segment-id))))))
 
-(mu/defn ^:private expand-segments :- mbql.s/Query
-  "Recursively expand segments in the `query`."
-  [query :- mbql.s/Query]
-  (loop [{inner-query :query :as outer-query} query
+(defn- expand-segments
+  "Recursively expand segments in the `form`."
+  [form]
+  (loop [form-to-expand form
          depth 0]
-    (if-let [segments (mbql.u/match inner-query [:segment (_ :guard (complement mbql.u/ga-id?))])]
+    (if-let [segments (mbql.u/match form-to-expand [:segment (_ :guard (complement mbql.u/ga-id?))])]
       (let [segment-id->definition (segment-clauses->id->definition segments)
-            expanded-query (replace-segment-clauses outer-query segment-id->definition)]
+            expanded-form (replace-segment-clauses form-to-expand segment-id->definition)]
         ;; Following line is in place to avoid infinite recursion caused by mutually recursive
         ;; segment definitions or other unforseen circumstances. Number 41 is arbitrary.
-        (if (or (= expanded-query outer-query) (= depth 41))
+        (if (or (= expanded-form form-to-expand) (= depth 41))
           (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
                           {:type qp.error-type/invalid-query
-                           :original-query query
-                           :expanded-query expanded-query
+                           :original-form form
+                           :expanded-form expanded-form
                            :segment-id->definition segment-id->definition
                            :depth depth}))
-          (recur expanded-query (inc depth))))
-      outer-query)))
+          (recur expanded-form (inc depth))))
+      form-to-expand)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    METRICS                                                     |
