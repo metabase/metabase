@@ -131,15 +131,15 @@
 
 (defn- date-range-filter-clause
   [dt-col dt-val]
-  (let [{:keys [start end]} (try
-                             (params.dates/date-string->range dt-val {:inclusive-end? false})
-                             (catch Exception _e
-                               (throw (ex-info (tru "Failed to parse created at param: {0}" dt-val) {:status-code 400}))))
-        start               (some-> start u.date/parse)
-        end                 (some-> end u.date/parse)
-        dt-col              (if (some #(instance? LocalDate %) [start end])
-                                [:cast dt-col :date]
-                                dt-col)]
+  (let [date-range (try
+                    (params.dates/date-string->range dt-val {:inclusive-end? false})
+                    (catch Exception _e
+                      (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
+        start      (some-> (:start date-range) u.date/parse)
+        end        (some-> (:end date-range) u.date/parse)
+        dt-col     (if (some #(instance? LocalDate %) [start end])
+                     [:cast dt-col :date]
+                     dt-col)]
     (cond
      (= start end)
      [:= dt-col start]
@@ -166,19 +166,19 @@
 (defn- search-model->revision-model
   [model]
   (case model
-    "datset" (recur "card")
+    "dataset" (recur "card")
     (str/capitalize model)))
 
-(doseq [model ["collection" "dashboard" "card" "dataset"]]
+(doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query last-edited-by]
-    (-> query
-        (sql.helpers/join :revision
-                          [:= :revision.model_id
-                           (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :revision.most_recent true]
-                           [:= :revision.model (search-model->revision-model model)]
-                           [:= :revision.user_id last-edited-by])))
+    #p (-> query
+           (sql.helpers/join :revision
+                             [:= :revision.model_id
+                              (search.config/column-with-model-alias model :id)])
+           (sql.helpers/where [:= :revision.most_recent true]
+                              [:= :revision.model (search-model->revision-model model)]
+                              [:= :revision.user_id last-edited-by])))
 
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]

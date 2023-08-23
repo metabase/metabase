@@ -15,6 +15,7 @@
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
@@ -855,6 +856,49 @@
          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
            (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
 
+(deftest filter-by-last-edited-by-test
+  (let [search-term "last-edited-by"]
+    (t2.with-temp/with-temp
+      [:model/Card       {rasta-card-id :id}   {:name (format "%s Rasta Card" search-term)}
+       :model/Card       {lucky-card-id :id}   {:name (format "%s Lucky Card" search-term)}
+       :model/Card       {rasta-model-id :id}  {:name (format "%s Rasta Model" search-term) :dataset true}
+       :model/Card       {lucky-model-id :id}  {:name (format "%s Lucky Model" search-term) :dataset true}
+       :model/Dashboard  {rasta-dash-id :id}   {:name (format "%s Rasta Dashboard" search-term)}
+       :model/Dashboard  {lucky-dash-id :id}   {:name (format "%s Lucky Dashboard" search-term)}
+       :model/Metric     {rasta-metric-id :id} {:name (format "%s Rasta Metric" search-term)}
+       :model/Metric     {lucky-metric-id :id} {:name (format "%s Lucky Metric" search-term)}]
+      (let [rasta-user-id (mt/user->id :rasta)
+            lucky-user-id (mt/user->id :lucky)]
+        (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
+                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Metric rasta-metric-id rasta-user-id]
+                                    [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
+                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Metric lucky-metric-id lucky-user-id]]]
+          (revision/push-revision!
+           :entity      model
+           :id          id
+           :user-id     user-id
+           :is_creation true
+           :object      {:id id}))
+
+        (testing "Able to filter by last edited"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
+
+            (testing "only a subset of models are applicable"
+              (is (= #{"dashboard" "dataset" "metric" "card"} (set (:available_models resp)))))
+
+            (testing "results contains only entities with the specified creator"
+              (is (= #{[rasta-metric-id "metric"    "last-edited-by Rasta Metric"]
+                       [rasta-card-id   "card"      "last-edited-by Rasta Card"]
+                       [rasta-model-id  "dataset"   "last-edited-by Rasta Model"]
+                       [rasta-dash-id   "dashboard" "last-edited-by Rasta Dashboard"]}
+                     (->> (:data resp)
+                          (map (juxt :id :model :name))
+                          set))))))
+
+        (testing "error if last_edited_by is not an integer"
+          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_by "not-a-valid-user-id")]
+            (is (= {:last_edited_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
+
 (deftest verified-filter-test
   (let [search-term "Verified filter"]
     (t2.with-temp/with-temp
@@ -931,8 +975,48 @@
                    set))))
 
       (testing "error if invalids created_at string"
-        (is (= "Failed to parse created at param: today~"
+        (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
+
+(deftest filter-by-last-edited-at-test
+  (let [search-term "last-edited-at-filtering"]
+    (t2.with-temp/with-temp
+      [:model/Card       {card-id :id}   {:name (format "%s Card" search-term)}
+       :model/Card       {model-id :id}  {:name (format "%s Model" search-term) :dataset true}
+       :model/Dashboard  {dash-id :id}   {:name (format "%s Dashboard" search-term)}
+       :model/Metric     {metric-id :id} {:name (format "%s Metric" search-term)}]
+      (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
+                          [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+        (revision/push-revision!
+         :entity      model
+         :id          id
+         :user-id     (mt/user->id :rasta)
+         :is_creation true
+         :object      {:id id}))
+
+      (testing "returns only applicable models"
+        (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
+          (is (= #{[metric-id "metric"    "last-edited-at-filtering Metric"]
+                   [card-id   "card"      "last-edited-at-filtering Card"]
+                   [model-id  "dataset"   "last-edited-at-filtering Model"]
+                   [dash-id   "dashboard" "last-edited-at-filtering Dashboard"]}
+               (->> (:data resp)
+                    (map (juxt :id :model :name))
+                    set)))
+          (is (= #{"dashboard" "dataset" "metric" "card"}
+                 (-> resp
+                     :available_models
+                     set)))))
+
+      (testing "works with others filter too"
+        (is (= #{"dashboard" "dataset" "metric" "card"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :creator_id (mt/user->id :rasta))
+                   :available_models
+                   set))))
+
+      (testing "error if invalids last_edited_at string"
+        (is (= "Failed to parse datetime value: today~"
+               (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
 (deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
@@ -1021,6 +1105,76 @@
          (test-search "thisyear" new-result)
          (test-search "past1years-from-12months" old-result)
          (test-search "today" new-result))))))
+
+(deftest last-edited-at-correctness-test
+  (let [search-term "last-edited-at-filtering"
+        new          #t "2023-05-04T10:00Z[UTC]"
+        two-years-ago (t/minus new (t/years 2))]
+    (mt/with-clock new
+      (t2.with-temp/with-temp
+        [:model/Dashboard  {dashboard-new :id}{:name search-term}
+
+         :model/Dashboard  {dashboard-old :id}{:name search-term}
+
+         :model/Card       {card-new :id}     {:name search-term}
+         :model/Card       {card-old :id}     {:name search-term}
+         :model/Card       {model-new :id}    {:name search-term
+                                               :dataset    true}
+         :model/Card       {model-old :id}    {:name search-term
+                                               :dataset    true}
+         :model/Metric     {metric-new :id}   {:name search-term}
+         :model/Metric     {metric-old :id}   {:name search-term}]
+
+       (t2/insert! (t2/table-name :model/Revision) (for [[model model-id timestamp]
+                                                         [["Dashboard" dashboard-new new]
+                                                          ["Dashboard" dashboard-old two-years-ago]
+                                                          ["Card" card-new new]
+                                                          ["Card" card-old two-years-ago]
+                                                          ["Card" model-new new]
+                                                          ["Card" model-old two-years-ago]
+                                                          ["Metric" metric-new new]
+                                                          ["Metric" metric-old two-years-ago]]]
+                                                     {:model       model
+                                                      :model_id    model-id
+                                                      :object      "{}"
+                                                      :user_id     (mt/user->id :rasta)
+                                                      :timestamp   timestamp
+                                                      :most_recent true}))
+        ;; with clock doesn't work if calling via API, so we call the search function directly
+       (let [test-search (fn [last-edited-at expected]
+                          (testing (format "searching with last-edited-at = %s" last-edited-at)
+                            (mt/with-current-user (mt/user->id :crowberto)
+                              (is (= expected
+                                     (->> (#'api.search/search (#'api.search/search-context
+                                                                {:search-string  search-term
+                                                                 :archived       false
+                                                                 :models         search.config/all-models
+                                                                 :last-edited-at last-edited-at}))
+                                          :data
+                                          (map (juxt :model :id))
+                                          set))))))
+             new-result  #{["card"      card-new]
+                           ["dataset"   model-new]
+                           ["dashboard" dashboard-new]
+                           ["metric"    metric-new]}
+             old-result  #{["card"      card-old]
+                           ["dataset"   model-old]
+                           ["dashboard" dashboard-old]
+                           ["metric"    metric-old]}]
+         ;; absolute datetime
+        (test-search "Q2-2021" old-result)
+        (test-search "2023-05-04" new-result)
+        (test-search "2021-05-03~" (set/union old-result new-result))
+        ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
+        (test-search "2021-05-04~2023-05-03" old-result)
+        (test-search "2021-05-05~2023-05-04" new-result)
+        (test-search "~2023-05-03" old-result)
+        (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
+
+        ;; relative times
+        (test-search "thisyear" new-result)
+        (test-search "past1years-from-12months" old-result)
+        (test-search "today" new-result))))))
 
 (deftest available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
