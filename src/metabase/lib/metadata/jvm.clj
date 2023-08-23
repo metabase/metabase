@@ -10,12 +10,12 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]
-   [methodical.core :as methodical]))
+   [toucan2.model :as t2.model]))
 
 (def ^:private MetadataType
   [:enum
