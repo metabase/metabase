@@ -65,8 +65,10 @@ import {
   getIsAutoApplyFilters,
   getSelectedTabId,
   getisNavigatingBackToDashboard,
+  getLoadingDashCards,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
+import { delay } from "metabase/lib/promise";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -110,6 +112,7 @@ const mapStateToProps = state => {
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    loadingDashCards: getLoadingDashCards(state),
   };
 };
 
@@ -123,7 +126,14 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty } = props;
+  const {
+    dashboard,
+    isRunning,
+    isLoadingComplete,
+    isEditing,
+    isDirty,
+    loadingDashCards,
+  } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -144,13 +154,28 @@ const DashboardApp = props => {
   const pdfToastID = useUniqueId();
   useBeforeUnload(isEditing && isDirty);
 
-  const saveAsPDF = useCallback(() => {
-    const cardNodeSelector = "#Dashboard-Cards-Container";
-    saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-      trackExportDashboardToPDF(dashboard.id);
+  const saveAsPDF = useCallback(async () => {
+    console.table({
+      isLoadingComplete,
+      isWaitingForPDF,
+      loadingDashCardsLength: loadingDashCards.loadingIds.length === 0,
     });
-    dispatch(dismissUndo(pdfToastID));
-  }, [dashboard?.id, dashboard?.name, dispatch, pdfToastID]);
+    if (loadingDashCards.loadingIds.length === 0 && isWaitingForPDF) {
+      const cardNodeSelector = "#Dashboard-Cards-Container";
+      await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+        trackExportDashboardToPDF(dashboard.id);
+      });
+      setIsWaitingForPDF(false);
+      dispatch(dismissUndo(pdfToastID));
+    }
+  }, [
+    dashboard?.id,
+    dashboard?.name,
+    dispatch,
+    loadingDashCards.loadingIds.length,
+    isWaitingForPDF,
+    pdfToastID,
+  ]);
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -164,23 +189,15 @@ const DashboardApp = props => {
           t`All questions loaded`,
         );
       }
-
-      if (isWaitingForPDF) {
-        saveAsPDF();
-      }
     }
 
     return () => {
       dispatch(dismissUndo(slowToastId));
-      dispatch(dismissUndo(pdfToastID));
     };
   }, [
     dashboard?.name,
     dispatch,
     isLoadingComplete,
-    isWaitingForPDF,
-    pdfToastID,
-    saveAsPDF,
     showNotification,
     slowToastId,
   ]);
@@ -204,21 +221,32 @@ const DashboardApp = props => {
     }
   }, [dispatch, onConfirmToast, slowToastId]);
 
-  const onCancelPDF = useCallback(() => {
-    setIsWaitingForPDF(false);
-    dispatch(dismissUndo(pdfToastID));
-  }, [dispatch, pdfToastID]);
-
-  const onPDFTimeout = useCallback(() => {
-    if (isLoadingComplete) {
-      saveAsPDF();
-    } else if (!isWaitingForPDF) {
-      setIsWaitingForPDF(true);
-    }
-  }, [isLoadingComplete, isWaitingForPDF, saveAsPDF]);
-
   useEffect(() => {
-    if (isWaitingForPDF) {
+    if (loadingDashCards.loadingIds.length === 0 && isWaitingForPDF) {
+      saveAsPDF();
+    }
+  }, [isWaitingForPDF, loadingDashCards.loadingIds.length, saveAsPDF]);
+
+  const onPDFTimeout = useCallback(async () => {
+    console.table({
+      isLoadingComplete,
+      loadingDashCardLength: loadingDashCards.loadingIds.length === 0,
+    });
+    if (loadingDashCards.loadingIds.length === 0) {
+      await saveAsPDF();
+    } else if (!isWaitingForPDF) {
+      console.log({
+        id: pdfToastID,
+        icon: (
+          <Box pr="0.75rem">
+            <LoadingSpinner size={24} />
+          </Box>
+        ),
+        timeout: false,
+        message: t`Waiting for the dashboard to load before exporting…`,
+        canDismiss: true,
+        actionLabel: t`Cancel`,
+      });
       dispatch(
         addUndo({
           id: pdfToastID,
@@ -230,12 +258,19 @@ const DashboardApp = props => {
           timeout: false,
           message: t`Waiting for the dashboard to load before exporting…`,
           canDismiss: true,
-          action: onCancelPDF,
+          action: () => setIsWaitingForPDF(false),
           actionLabel: t`Cancel`,
         }),
       );
+      setIsWaitingForPDF(true);
     }
-  }, [dispatch, isWaitingForPDF, onCancelPDF, pdfToastID]);
+  }, [
+    dispatch,
+    loadingDashCards.loadingIds.length,
+    isWaitingForPDF,
+    pdfToastID,
+    saveAsPDF,
+  ]);
 
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
