@@ -3,14 +3,13 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defn- mbql-query [inner-query]
   {:database 1, :type :query, :query (merge {:source-table 1}
@@ -193,19 +192,25 @@
                 :breakout     [[:field 17 nil]]
                 :order-by     [[:asc [:field 1 nil]]]})))))))
 
-(deftest metric-with-multiple-aggregation-syntax-test
+(deftest ^:parallel metric-with-multiple-aggregation-syntax-test
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
     ;; so-called "multiple aggregation syntax" is the norm now -- query normalization will do this automatically
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-      (t2.with-temp/with-temp [:model/Metric metric (mt/$ids venues {:table_id $$venues
-                                                                     :definition {:aggregation [[:sum $price]]
-                                                                                  :filter      [:> $price 1]}})]
+      (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                        (lib.tu/mock-metadata-provider
+                                         {:metrics [(mt/$ids venues
+                                                      {:id         1
+                                                       :name       "Metric 1"
+                                                       :table-id   $$venues
+                                                       :definition {:aggregation [[:sum $price]]
+                                                                    :filter      [:> $price 1]}})]})
+                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
-                   {:aggregation [[:metric (u/the-id metric)]]
+                   {:aggregation [[:metric 1]]
                     :breakout    [$price]}))))))))
 
 (deftest ^:parallel dont-expand-ga-metrics-test

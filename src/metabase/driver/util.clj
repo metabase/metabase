@@ -7,6 +7,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
@@ -196,7 +197,9 @@
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
-    (database->driver* (u/the-id database-or-id))))
+    (if (qp.store/initialized?)
+      (:engine (lib.metadata/database (qp.store/metadata-provider)))
+      (database->driver* (u/the-id database-or-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

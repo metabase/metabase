@@ -133,6 +133,7 @@
    (mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
+              :database-id     (meta/id)
               ;; THIS IS A LEGACY STYLE QUERY!
               :dataset-query   {:database (meta/id)
                                 :type     :query
@@ -246,6 +247,7 @@
                               (merge
                                {:lib/type      :metadata/card
                                 :id            (inc idx)
+                                :database-id   (meta/id)
                                 :name          (str "Mock " (name table) " card")
                                 :dataset-query (if native?
                                                  {:database (meta/id)

@@ -194,6 +194,7 @@
                (merge
                 {:lib/type               :metadata/card
                  :collection-id          (:collection_id card)
+                 :database-id            (:database_id card)
                  :dataset                (:dataset card)
                  :dataset-query          (:dataset_query card)
                  :id                     (:id card)

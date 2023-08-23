@@ -247,7 +247,7 @@
   (bulk-metadata :metadata/column field-ids)
   nil)
 
-(defn ^:deprecated ->legacy-metadata
+(defn ^{:deprecated "0.48.0"} ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys

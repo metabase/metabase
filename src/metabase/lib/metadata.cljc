@@ -166,9 +166,10 @@
   converts these as needed."
   [:map
    {:error/message "Valid Card metadata"}
-   [:lib/type [:= :metadata/card]]
-   [:id   ::lib.schema.id/card]
-   [:name ::lib.schema.common/non-blank-string]
+   [:lib/type    [:= :metadata/card]]
+   [:id          ::lib.schema.id/card]
+   [:name        ::lib.schema.common/non-blank-string]
+   [:database-id ::lib.schema.id/database]
    ;; saved query. This is possibly still a legacy query, but should already be normalized.
    ;; Call [[metabase.lib.convert/->pMBQL]] on it as needed
    [:dataset-query   {:optional true} :map]
@@ -177,11 +178,6 @@
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]
    ;; whether this Card is a Model or not.
    [:dataset         {:optional true} :boolean]
-   ;; I think Database ID is always supposed to be present for a Card, altho our mock metadata in tests might not have
-   ;; it. It's `NOT NULL` in the application database. Probably safe to generally assume it's there.
-   ;;
-   ;; TODO -- confirm whether we can make this non-optional in the schema or not.
-   [:database-id     {:optional true} [:maybe ::lib.schema.id/database]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]

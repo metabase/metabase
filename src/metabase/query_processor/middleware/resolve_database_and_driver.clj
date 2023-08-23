@@ -2,6 +2,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.setting :as setting]
@@ -14,13 +15,24 @@
 
 (declare resolve-database-id)
 
+(defn- bootstrap-metadata-provider []
+  (if (qp.store/initialized?)
+    (qp.store/metadata-provider)
+    (reify lib.metadata.protocols/MetadataProvider
+      (card [_this card-id]
+        (t2/select-one-fn
+         (fn [card]
+           {:lib/type    :metadata/card
+            :database-id (:database_id card)})
+         [:model/Card :database_id]
+         :id card-id)))))
+
 (mu/defn ^:private resolve-database-id-for-source-card :- ::lib.schema.id/database
   [source-card-id :- ::lib.schema.id/card]
-  (let [{card-database-id :database_id, card-query :dataset_query} (t2/select-one [:model/Card :database_id :dataset_query]
-                                                                                  :id source-card-id)]
-    (or card-database-id
-        (when card-query
-          (resolve-database-id card-query)))))
+  (let [card (or (lib.metadata.protocols/card (bootstrap-metadata-provider) source-card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." source-card-id)
+                                 {:card-id source-card-id, :type qp.error-type/invalid-query, :status-code 404})))]
+    (:database-id card)))
 
 (mu/defn resolve-database-id :- ::lib.schema.id/database
   "Return the *actual* `:database` ID for a query, even if it is using
