@@ -141,7 +141,7 @@
   "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
    argument `dimensions` which is a list of fields for which to create filters, else
    it tries to infer by which fields it would be useful to filter."
-  [dashboard dimensions {:keys [max-filters _index-name field_value]}]
+  [dashboard dimensions {:keys [max-filters _index-name pk]}]
   (let [fks              (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                                     (:ordered_cards dashboard))))]
                            (->> (t2/select Field :fk_target_field_id [:not= nil]
@@ -164,9 +164,9 @@
                                     :type (filter-type candidate)
                                     :name (:display_name candidate)
                                     :slug (:name candidate)}
-                             (and field_value (= semantic_type :type/PK))
+                             (and pk (= semantic_type :type/PK))
                              (assoc
-                              :value [field_value]
+                              :value [pk]
                               :target [:dimension [:field field-name
                                                    {:base-type base_type}]]))]
              (-> dashboard

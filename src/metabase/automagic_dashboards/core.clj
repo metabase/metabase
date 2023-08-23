@@ -418,7 +418,7 @@
 (def ^:private field-filters
   {:fieldspec       fieldspec-matcher
    :named           name-regex-matcher
-   :field_name      (fn [field-name] (fn [{:keys [name]}] (= name field-name)))
+   :pk_ref          (fn [field-spec] (fn [{:keys [field_ref]}] (= field_ref field-spec)))
    :max-cardinality max-cardinality-matcher})
 
 (defn- filter-fields
@@ -456,7 +456,7 @@
   "Given a context and a dimension definition, find all fields from the context
    that match the definition of this dimension."
   [{{:keys [fields]} :source :keys [tables] :as context}
-   {:keys [field_type links_to named field_name max_cardinality] :as constraints}]
+   {:keys [field_type links_to named pk_ref max_cardinality] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to tables)
                        (keep :link)
@@ -472,13 +472,13 @@
                            :fields
                            (filter-fields {:fieldspec       fieldspec
                                            :named           named
-                                           :field_name      field_name
+                                           :pk_ref          pk_ref
                                            :max-cardinality max_cardinality})
                            (map #(assoc % :link (:link table)))))
                 (filter-tables tablespec tables))
         (filter-fields {:fieldspec       tablespec
                         :named           named
-                        :field_name      field_name
+                        :pk_ref          pk_ref
                         :max-cardinality max_cardinality}
                        fields)))))
 
@@ -1097,19 +1097,19 @@
 
 (defn- find-first-match-rule
   "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
-  [{:keys [rule rules-prefix full-name field_name] :as root}]
+  [{:keys [rule rules-prefix full-name pk_label pk_ref] :as root}]
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
         (fn [rule]
           ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
-          (let [rule (if field_name
+          (let [rule (if pk_label
                        (-> rule
-                           (update :dimensions conj {field_name {:field_type   [:type/PK]
-                                                                 :field_name   field_name
+                           (update :dimensions conj {pk_label {:field_type   [:type/PK]
+                                                                 :pk_ref pk_ref
                                                                  :score        100
                                                                  :always_keep? true}})
-                           (update :dashboard_filters conj field_name))
+                           (update :dashboard_filters conj pk_label))
                        rule)]
             (apply-rule root rule)))
         (matching-rules (rules/get-rules rules-prefix) root))
@@ -1120,7 +1120,7 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name field_value] :as root}]
+  [{:keys [show full-name pk] :as root}]
   (let [[dashboard rule context] (find-first-match-rule root)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
@@ -1133,7 +1133,7 @@
                     (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
-        (populate/create-dashboard {:show show :field_value field_value})
+        (populate/create-dashboard {:show show :pk pk})
         (assoc :related (related context rule)
                :more (when (and (not= show :all)
                                 (-> dashboard :cards count (> show)))

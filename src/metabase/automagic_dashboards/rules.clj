@@ -80,7 +80,9 @@
                                       (s/required-key :score)           Score
                                       (s/optional-key :links_to)        TableType
                                       (s/optional-key :named)           s/Str
-                                      (s/optional-key :field_name)      s/Str
+                                      (s/optional-key :pk_label)        s/Str
+                                      ;; TODO - beef this up
+                                      (s/optional-key :pk_ref)          s/Any
                                       (s/optional-key :always_keep?)    s/Bool
                                       (s/optional-key :max_cardinality) s/Int}})
 
