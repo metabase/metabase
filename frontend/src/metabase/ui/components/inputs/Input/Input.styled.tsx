@@ -127,6 +127,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
         lineHeight: "1rem",
+        marginBottom: theme.spacing.xs,
       },
       error: {
         ref: getStylesRef("error"),
