@@ -1232,7 +1232,8 @@
                                           "CREATE TABLE foo.bar (id INTEGER);"
                                           "CREATE TABLE foo.baz (id INTEGER);"
                                           "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                          "GRANT SELECT ON foo.baz TO privilege_rows_test_example_role;"))
+                                          "GRANT SELECT ON foo.baz TO privilege_rows_test_example_role;"
+                                          "GRANT UPDATE ON foo.baz TO privilege_rows_test_example_role;"))
             (testing "check that without USAGE privileges, nothing is returned"
               (is (= []
                      (get-privileges))))
@@ -1243,7 +1244,7 @@
                        :schema "foo",
                        :table "baz",
                        :select true,
-                       :update false,
+                       :update true,
                        :insert false,
                        :delete false}]
                      (get-privileges))))

@@ -13,6 +13,7 @@
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.sync-metadata.sync-table-privileges :as sync-table-privileges]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
@@ -50,7 +51,8 @@
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
    ;; finally, sync the metadata metadata table if it exists.
-   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
+   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))
+   (sync-util/create-sync-step "sync-table-privileges" sync-table-privileges/sync-table-privileges!)])
 
 (s/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."

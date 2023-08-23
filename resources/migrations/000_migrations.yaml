@@ -16096,6 +16096,57 @@ databaseChangeLog:
               column:
                 name: action_id
 
+  - changeSet:
+      id: v48.00-009
+      author: calherries
+      comment: Added 0.48.0 - Create table_privileges table
+      changes:
+        - createTable:
+            tableName: table_privileges
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                  name: id
+                  type: int
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'Table ID'
+                  constraints:
+                    foreignKeyName: fk_table_privileges_table_id
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    deleteCascade: true
+              - column:
+                  name: is_current_user
+                  type: boolean
+                  remarks: 'Flag indicating if the privileges relate to the current user'
+              - column:
+                  name: role
+                  type: varchar(255)
+                  remarks: 'Role name'
+              - column:
+                  name: select
+                  type: boolean
+                  remarks: 'Privilege to select from the table'
+              - column:
+                  name: update
+                  type: boolean
+                  remarks: 'Privilege to update records in the table'
+              - column:
+                  name: insert
+                  type: boolean
+                  remarks: 'Privilege to insert records into the table'
+              - column:
+                  name: delete
+                  type: boolean
+                  remarks: 'Privilege to delete records from the table'
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
