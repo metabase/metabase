@@ -8,6 +8,8 @@ import {
   totalMixin,
   showPercentagesOnChartMixin,
 } from "./mixins";
+import { PieChartLegend } from "./PieChartLegend";
+import { useChartDimension } from "./utils";
 
 Object.assign(PieChart, {
   uiName: "Pie 2",
@@ -22,12 +24,11 @@ export function PieChart(props: VisualizationProps) {
     props,
     mixins: [pieSeriesMixin, showPercentagesOnChartMixin, totalMixin],
   });
+  const { sideLength, onChartDimensionChange } = useChartDimension();
 
   return (
-    <EChartsRenderer
-      config={config}
-      width={props.width}
-      height={props.height}
-    />
+    <PieChartLegend onChartDimensionChange={onChartDimensionChange} {...props}>
+      <EChartsRenderer config={config} width={sideLength} height={sideLength} />
+    </PieChartLegend>
   );
 }
