@@ -172,13 +172,13 @@
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query last-edited-by]
-    #p (-> query
-           (sql.helpers/join :revision
-                             [:= :revision.model_id
-                              (search.config/column-with-model-alias model :id)])
-           (sql.helpers/where [:= :revision.most_recent true]
-                              [:= :revision.model (search-model->revision-model model)]
-                              [:= :revision.user_id last-edited-by])))
+    (-> query
+        (sql.helpers/join :revision
+                          [:= :revision.model_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :revision.most_recent true]
+                           [:= :revision.model (search-model->revision-model model)]
+                           [:= :revision.user_id last-edited-by])))
 
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
