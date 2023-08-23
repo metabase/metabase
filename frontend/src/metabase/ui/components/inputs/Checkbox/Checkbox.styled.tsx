@@ -22,8 +22,16 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       { size = "md" },
     ) => ({
       root: {
-        "& + &": {
-          marginTop: theme.spacing.md,
+        [`&:has(.${getStylesRef("input")}:disabled)`]: {
+          [`.${getStylesRef("label")}`]: {
+            color: theme.colors.text[0],
+          },
+          [`.${getStylesRef("description")}`]: {
+            color: theme.colors.text[0],
+          },
+          [`.${getStylesRef("icon")}`]: {
+            color: theme.colors.text[0],
+          },
         },
       },
       inner: {
@@ -31,6 +39,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
       },
       input: {
+        ref: getStylesRef("input"),
         width: getSize({ size, sizes: SIZES }),
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
@@ -46,12 +55,10 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         "&:disabled": {
           borderColor: theme.colors.border[0],
           backgroundColor: theme.colors.border[0],
-          [`.${getStylesRef("icon")}`]: {
-            color: theme.colors.text[0],
-          },
         },
       },
       label: {
+        ref: getStylesRef("label"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
@@ -60,6 +67,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         paddingRight: labelPosition === "right" ? theme.spacing.sm : undefined,
       },
       description: {
+        ref: getStylesRef("description"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
         lineHeight: "1rem",

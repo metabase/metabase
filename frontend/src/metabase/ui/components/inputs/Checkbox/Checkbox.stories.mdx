@@ -44,10 +44,6 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 - [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&t=4851xqAoQVenSrTX-11)
 - [Mantine Checkbox Docs](https://mantine.dev/core/checkbox/)
 
-## Caveats
-
-- Please don't use the `error` prop on Checkbox components (We'll standardize on this as other inputs get converted).
-
 ## Usage guidelines
 
 - **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Checkbox or Select.
@@ -56,15 +52,7 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 ## Examples
 
-export const Default = args => <Checkbox {...args} />;
-
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### States
-
-export const States = args => (
+export const Template = args => (
   <Stack>
     <Checkbox {...args} label="Default checkbox" />
     <Checkbox {...args} label="Indeterminate checkbox" indeterminate />
@@ -86,6 +74,47 @@ export const States = args => (
   </Stack>
 );
 
+export const Default = args => <Checkbox {...args} />;
+
 <Canvas>
-  <Story name="States">{States}</Story>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Checkbox.Group
+
+export const CheckboxGroup = args => (
+  <Checkbox.Group
+    defaultValue={["react"]}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Checkbox value="react" label="React" />
+      <Checkbox value="svelte" label="Svelte" />
+      <Checkbox value="ng" label="Angular" />
+      <Checkbox value="vue" label="Vue" />
+    </Stack>
+  </Checkbox.Group>
+);
+
+<Canvas>
+  <Story name="Checkbox group">{CheckboxGroup}</Story>
+</Canvas>
+
+### Label
+
+export const Label = args => <Template {...args} />;
+
+<Canvas>
+  <Story name="Label">{Label}</Story>
+</Canvas>
+
+### Description
+
+export const Description = args => (
+  <Template {...args} description="Description" />
+);
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
 </Canvas>
