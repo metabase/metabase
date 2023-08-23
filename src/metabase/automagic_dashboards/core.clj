@@ -485,20 +485,22 @@
 (defn- score-bindings
   "Assign a value to each potential binding.
   Takes a seq of potential bindings and returns a seq of vectors in the shape
-  of [score binding], where score is a 3 element vector. This is computed as:
-     1) Number of ancestors `field_type` has (if field_type has a table prefix,
+  of [score binding], where score is a 4 element vector. This is computed as:
+     1) Presence of a primary key ref. 1 if true as this is a desired binding. 0 otherwise.
+     2) Number of ancestors `field_type` has (if field_type has a table prefix,
         ancestors for both table and field are counted);
-     2) Number of fields in the definition, which would include additional filters
+     3) Number of fields in the definition, which would include additional filters
         (`named`, `max_cardinality`, `links_to`, ...) etc.;
-     3) The manually assigned score for the binding definition
+     4) The manually assigned score for the binding definition
   "
   [candidate-binding-values]
-  (letfn [(score [a]
-            (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
+  (letfn [(score-binding [a]
+            (let [[_dimension-name {:keys [pk_ref score field_type] :as definition}] a]
+              [(if pk_ref 1 0)
+               (reduce + (map (comp count ancestors) field_type))
                (count definition)
-               (:score definition)]))]
-    (map (juxt (comp score first) identity) candidate-binding-values)))
+               score]))]
+    (map (juxt (comp score-binding first) identity) candidate-binding-values)))
 
 (defn- most-specific-definition
   "Return the most specific definition among `definitions`.
@@ -530,10 +532,6 @@
                           :matches [\"CREATED_AT\"]}})
    "
   [candidate-binding-values]
-  #_(tap>
-     (map (fn [m]
-            (update-vals m (fn [v] (update v :matches #(mapv :name %)))))
-          candidate-binding-values))
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
@@ -1101,18 +1099,18 @@
   (or (when rule
         (apply-rule root (rules/get-rule rule)))
       (some
-        (fn [rule]
+       (fn [rule]
           ;; Note that the dimension name appears to be completely arbitrary as long as it is consistent.
-          (let [rule (if pk_label
-                       (-> rule
-                           (update :dimensions conj {pk_label {:field_type   [:type/PK]
-                                                                 :pk_ref pk_ref
-                                                                 :score        100
-                                                                 :always_keep? true}})
-                           (update :dashboard_filters conj pk_label))
-                       rule)]
-            (apply-rule root rule)))
-        (matching-rules (rules/get-rules rules-prefix) root))
+         (let [rule (if pk_label
+                      (-> rule
+                          (update :dimensions conj {pk_label {:field_type     [:type/PK]
+                                                              :pk_ref       pk_ref
+                                                              :score        100
+                                                              :always_keep? true}})
+                          (update :dashboard_filters conj pk_label))
+                      rule)]
+           (apply-rule root rule)))
+       (matching-rules (rules/get-rules rules-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
                       {:root            root
                        :available-rules (map :rule (or (some-> rule rules/get-rule vector)
@@ -1312,9 +1310,9 @@
   "Recursively finds key in coll, returns true or false"
   [coll k]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-            (loop [x coll-zip]
-              (when-not (zip/end? x)
-                (if (k (zip/node x)) true (recur (zip/next x))))))))
+             (loop [x coll-zip]
+               (when-not (zip/end? x)
+                 (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]

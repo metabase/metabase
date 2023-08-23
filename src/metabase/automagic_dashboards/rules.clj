@@ -3,7 +3,10 @@
   (:gen-class)
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.automagic-dashboards.populate :as populate]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -81,8 +84,10 @@
                                       (s/optional-key :links_to)        TableType
                                       (s/optional-key :named)           s/Str
                                       (s/optional-key :pk_label)        s/Str
-                                      ;; TODO - beef this up
-                                      (s/optional-key :pk_ref)          s/Any
+                                      (s/optional-key :pk_ref)          (s/pred
+                                                                         (comp (mc/validator mbql.s/FieldOrAggregationReference)
+                                                                               mbql.normalize/normalize-tokens)
+                                                                         "Field or aggregation reference as it comes in to the API")
                                       (s/optional-key :always_keep?)    s/Bool
                                       (s/optional-key :max_cardinality) s/Int}})
 
@@ -90,8 +95,8 @@
 
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
-(def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (deferred-trs "1 <= width <= {0}" populate/grid-width)))
+(def ^:private Width (s/constrained s/Int #(<= 1 % populate/grid-width)
+                                    (deferred-trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
@@ -323,8 +328,8 @@
       ds))))
 
 (def ^:private rules (delay
-                      (u.files/with-open-path-to-resource [path rules-dir]
-                        (into {} (load-rule-dir path)))))
+                       (u.files/with-open-path-to-resource [path rules-dir]
+                         (into {} (load-rule-dir path)))))
 
 (defn get-rules
   "Get all rules with prefix `prefix`.

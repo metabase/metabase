@@ -38,20 +38,20 @@
 
 (def ^:private Prefix
   (su/with-api-error-message
-      (s/pred (fn [prefix]
-                (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
+    (s/pred (fn [prefix]
+              (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
     (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
-      (s/pred (fn [rule]
-                (some (fn [toplevel]
-                        (some (comp rules/get-rule
-                                    (fn [prefix]
-                                      [toplevel prefix rule])
-                                    :rule)
-                              (rules/get-rules [toplevel])))
-                      ["table" "metric" "field"])))
+    (s/pred (fn [rule]
+              (some (fn [toplevel]
+                      (some (comp rules/get-rule
+                                  (fn [prefix]
+                                    [toplevel prefix rule])
+                                  :rule)
+                            (rules/get-rules [toplevel])))
+                    ["table" "metric" "field"])))
     (deferred-tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
@@ -59,7 +59,7 @@
 
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
-      (s/pred decode-base64-json)
+    (s/pred decode-base64-json)
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
@@ -137,12 +137,12 @@
 
 (def ^:private Entity
   (su/with-api-error-message
-      (apply s/enum entities)
+    (apply s/enum entities)
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
   (su/with-api-error-message
-      (s/enum "segment" "adhoc" "table")
+    (s/enum "segment" "adhoc" "table")
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query"
@@ -157,24 +157,6 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-;; TODO - Delete this once the below endpoint is done.
-(api/defendpoint GET "/:entity/:entity-id-or-query/column/:field-name/value/:field-value"
-  "Return an automagic dashboard for an entity detail specified by `entity`
-  with id `id` and a primary key of `indexed-value`."
-  [entity entity-id-or-query indexed-value show field-name field-value]
-  {show        [:maybe [:= "all"]]
-   field-name  :string
-   field-value :int
-   entity      (mu/with-api-error-message
-                 (into [:enum] entities)
-                 (deferred-tru "Invalid entity type"))}
-  (if (= entity "transform")
-    (transform.dashboard/dashboard (->entity entity entity-id-or-query))
-    (-> (->entity entity entity-id-or-query)
-        (automagic-analysis {:show (keyword show)
-                             :field_name field-name
-                             :field_value field-value}))))
-
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
@@ -184,8 +166,8 @@
   ;; Stuff...
   (api/let-404 [model-index       (t2/select-one ModelIndex :id model-index-id)
                 model-index-value (t2/select-one ModelIndexValue
-                                                 :model_index_id model-index-id
-                                                 :model_pk pk-id)]
+                                    :model_index_id model-index-id
+                                    :model_pk pk-id)]
     ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check Card (:model_id model-index))
     (-> (->entity :model (:model_id model-index))
