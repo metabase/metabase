@@ -34,17 +34,16 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
         value={value}
         onChange={onChange}
         data-testid="type-filter-checkbox-group"
-        inputContainer={children => (
-          <TypeCheckboxGroupWrapper>{children}</TypeCheckboxGroupWrapper>
-        )}
       >
-        {typeFilters.map(model => (
-          <Checkbox
-            key={model}
-            value={model}
-            label={getTranslatedEntityName(model)}
-          />
-        ))}
+        <TypeCheckboxGroupWrapper>
+          {typeFilters.map(model => (
+            <Checkbox
+              key={model}
+              value={model}
+              label={getTranslatedEntityName(model)}
+            />
+          ))}
+        </TypeCheckboxGroupWrapper>
       </Checkbox.Group>
     </SearchFilterView>
   );
