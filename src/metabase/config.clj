@@ -139,7 +139,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
     (when-not (#{"none", "lax", "strict"} same-site)
-      (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
+      (throw (ex-info "Invalid value for MB_SESSION_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
     (keyword same-site)))
 
 (def ^Keyword mb-session-cookie-samesite
