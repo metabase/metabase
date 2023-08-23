@@ -293,8 +293,11 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("12928_Q2");
     });
 
-    cy.findAllByText(/Products? → Category/).should("have.length", 1);
-    cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
+    cy.findAllByText(/^Products? → Category/).should("have.length", 1);
+    cy.findAllByText(/^Question \d+? - Products → Category → Category/).should(
+      "have.length",
+      1,
+    );
   });
 
   it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
