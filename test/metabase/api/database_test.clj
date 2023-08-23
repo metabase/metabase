@@ -1404,28 +1404,28 @@
                                  s/Keyword s/Any}]
                                (mt/user-http-request :rasta :get 200 url))))))))))))
 
-(deftest ^:parallel upsert-sensitive-values-test
-  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                    {:database (assoc meta/metadata :id 2)})
-    (testing "empty maps are okay"
-      (is (= {}
-             (api.database/upsert-sensitive-fields {} {}))))
-    (testing "no details updates are okay"
-      (is (= nil
-             (api.database/upsert-sensitive-fields nil nil))))
-    (testing "fields are replaced"
-      (is (= {:use-service-account           nil
-              :dataset-id                    "dacort"
-              :use-jvm-timezone              false
-              :service-account-json          "{\"foo\": \"bar\"}"
-              :password                      "foo"
-              :pass                          "bar"
-              :tunnel-pass                   "quux"
-              :tunnel-private-key            "foobar"
-              :tunnel-private-key-passphrase "fooquux"
-              :access-token                  "foobarfoo"
-              :refresh-token                 "foobarquux"}
-             (api.database/upsert-sensitive-fields {:description nil
+(deftest ^:parallel upsert-sensitive-fields-no-changes-test
+  (testing "empty maps are okay"
+    (is (= {}
+           (#'api.database/upsert-sensitive-fields {} {}))))
+  (testing "no details updates are okay"
+    (is (= nil
+           (#'api.database/upsert-sensitive-fields nil nil)))))
+
+(deftest ^:parallel upsert-sensitive-fields-fields-are-replaced-test
+  (testing "fields are replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{\"foo\": \"bar\"}"
+            :password                      "foo"
+            :pass                          "bar"
+            :tunnel-pass                   "quux"
+            :tunnel-private-key            "foobar"
+            :tunnel-private-key-passphrase "fooquux"
+            :access-token                  "foobarfoo"
+            :refresh-token                 "foobarquux"}
+           (#'api.database/upsert-sensitive-fields {:description nil
                                                     :name        "customer success BQ"
                                                     :details     {:use-service-account           nil
                                                                   :dataset-id                    "dacort"
@@ -1438,7 +1438,7 @@
                                                                   :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
-                                                    :id          2}
+                                                    :id          (mt/id)}
                                                    {:service-account-json          "{\"foo\": \"bar\"}"
                                                     :password                      "foo"
                                                     :pass                          "bar"
@@ -1446,42 +1446,9 @@
                                                     :tunnel-private-key            "foobar"
                                                     :tunnel-private-key-passphrase "fooquux"
                                                     :access-token                  "foobarfoo"
-                                                    :refresh-token                 "foobarquux"}))))
-    (testing "no fields are replaced"
-      (is (= {:use-service-account           nil
-              :dataset-id                    "dacort"
-              :use-jvm-timezone              false
-              :service-account-json          "{}"
-              :password                      "password"
-              :pass                          "pass"
-              :tunnel-pass                   "tunnel-pass"
-              :tunnel-private-key            "tunnel-private-key"
-              :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-              :access-token                  "access-token"
-              :refresh-token                 "refresh-token"}
-             (api.database/upsert-sensitive-fields {:description nil
-                                                    :name        "customer success BQ"
-                                                    :details     {:use-service-account           nil
-                                                                  :dataset-id                    "dacort"
-                                                                  :use-jvm-timezone              false
-                                                                  :service-account-json          "{}"
-                                                                  :password                      "password"
-                                                                  :pass                          "pass"
-                                                                  :tunnel-pass                   "tunnel-pass"
-                                                                  :tunnel-private-key            "tunnel-private-key"
-                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                  :access-token                  "access-token"
-                                                                  :refresh-token                 "refresh-token"}
-                                                    :id          2}
-                                                   {:service-account-json          protected-password
-                                                    :password                      protected-password
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                    :refresh-token                 "foobarquux"})))))
 
+(deftest ^:parallel upsert-sensitive-fields-one-field-replaced-test
   (testing "only one field is replaced"
     (is (= {:use-service-account           nil
             :dataset-id                    "dacort"
@@ -1494,28 +1461,64 @@
             :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
             :access-token                  "access-token"
             :refresh-token                 "refresh-token"}
-           (api.database/upsert-sensitive-fields {:description nil
-                                                  :name        "customer success BQ"
-                                                  :details     {:use-service-account           nil
-                                                                :dataset-id                    "dacort"
-                                                                :use-jvm-timezone              false
-                                                                :service-account-json          "{}"
-                                                                :password                      "password"
-                                                                :pass                          "pass"
-                                                                :tunnel-pass                   "tunnel-pass"
-                                                                :tunnel-private-key            "tunnel-private-key"
-                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                :access-token                  "access-token"
-                                                                :refresh-token                 "refresh-token"}
-                                                  :id          2}
-                                                 {:service-account-json          protected-password
-                                                  :password                      "new-password"
-                                                  :pass                          protected-password
-                                                  :tunnel-pass                   protected-password
-                                                  :tunnel-private-key            protected-password
-                                                  :tunnel-private-key-passphrase protected-password
-                                                  :access-token                  protected-password
-                                                  :refresh-token                 protected-password})))))
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
+                                                   {:service-account-json          protected-password
+                                                    :password                      "new-password"
+                                                    :pass                          protected-password
+                                                    :tunnel-pass                   protected-password
+                                                    :tunnel-private-key            protected-password
+                                                    :tunnel-private-key-passphrase protected-password
+                                                    :access-token                  protected-password
+                                                    :refresh-token                 protected-password})))))
+
+(deftest ^:parallel upsert-sensitive-fields-no-fields-replaced-test
+  (testing "no fields are replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{}"
+            :password                      "password"
+            :pass                          "pass"
+            :tunnel-pass                   "tunnel-pass"
+            :tunnel-private-key            "tunnel-private-key"
+            :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+            :access-token                  "access-token"
+            :refresh-token                 "refresh-token"}
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
+                                                   {:service-account-json          protected-password
+                                                    :password                      protected-password
+                                                    :pass                          protected-password
+                                                    :tunnel-pass                   protected-password
+                                                    :tunnel-private-key            protected-password
+                                                    :tunnel-private-key-passphrase protected-password
+                                                    :access-token                  protected-password
+                                                    :refresh-token                 protected-password})))))
 
 
 (deftest secret-file-paths-returned-by-api-test

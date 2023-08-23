@@ -104,13 +104,13 @@
     (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-provider)
     database-id-or-metadata-provider))
 
-(mu/defn ^:private maybe-set-metadata-provider!
+(mu/defn ^:private validate-existing-provider
+  "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
+  Database. We don't need to replace it."
   [database-id-or-metadata-provider :- [:or
                                         ::lib.schema.id/database
                                         lib.metadata/MetadataProvider]]
-  (if-let [old-provider (miscellaneous-value [::metadata-provider])]
-    ;; if there's already a provider, just make sure we're not trying to change the database; we don't need to replace
-    ;; it.
+  (let [old-provider (miscellaneous-value [::metadata-provider])]
     (when-not (identical? old-provider database-id-or-metadata-provider)
       (let [new-database-id      (if (integer? database-id-or-metadata-provider)
                                    database-id-or-metadata-provider
@@ -119,26 +119,40 @@
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
           (throw (ex-info (tru "Attempting to initialize metadata provider with second Database. Queries can only reference one Database.")
-                          {:existing-id existing-database-id, :new-id new-database-id})))))
-    ;; create a new metadata provider and save it.
-    (let [new-provider (->metadata-provider database-id-or-metadata-provider)]
-      ;; validate the new provider.
-      (try
-        (lib.metadata/database new-provider)
-        (catch Throwable e
-          (throw (ex-info (format "Invalid MetadataProvider; failed to return Database: %s" (ex-message e))
-                          {:metadata-provider new-provider}
-                          e))))
-      (store-miscellaneous-value! [::metadata-provider] new-provider))))
+                          {:existing-id existing-database-id, :new-id new-database-id})))))))
+
+(mu/defn ^:private set-metadata-provider!
+  "Create a new metadata provider and save it."
+  [database-id-or-metadata-provider :- [:or
+                                        ::lib.schema.id/database
+                                        lib.metadata/MetadataProvider]]
+  (let [new-provider (->metadata-provider database-id-or-metadata-provider)]
+    ;; validate the new provider.
+    (try
+      (lib.metadata/database new-provider)
+      (catch Throwable e
+        (throw (ex-info (format "Invalid MetadataProvider; failed to return valid Database: %s" (ex-message e))
+                        {:metadata-provider new-provider}
+                        e))))
+    (store-miscellaneous-value! [::metadata-provider] new-provider)))
 
 (defn do-with-metadata-provider
   "Implementation for [[with-metadata-provider]]."
   [database-id-or-metadata-provider thunk]
-  (if-not (initialized?)
+  (cond
+    (not (initialized?))
     (binding [*store* (atom {})]
       (do-with-metadata-provider database-id-or-metadata-provider thunk))
+
+    ;; existing provider
+    (miscellaneous-value [::metadata-provider])
     (do
-      (maybe-set-metadata-provider! database-id-or-metadata-provider)
+      (validate-existing-provider database-id-or-metadata-provider)
+      (thunk))
+
+    :else
+    (do
+      (set-metadata-provider! database-id-or-metadata-provider)
       (thunk))))
 
 (defmacro with-metadata-provider
