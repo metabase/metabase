@@ -324,6 +324,7 @@
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
+  (check-not-internal-user id)
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (t2/hydrate :user_group_memberships)))
 
@@ -400,7 +401,7 @@
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-group-manager)))
-
+  (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
