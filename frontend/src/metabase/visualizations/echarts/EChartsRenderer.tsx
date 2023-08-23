@@ -7,8 +7,8 @@ import type { EChartsConfig } from "../types";
 
 interface EChartsRendererProps {
   config: EChartsConfig;
-  width: number;
-  height: number;
+  width: number | "auto";
+  height: number | "auto";
 }
 
 export function EChartsRenderer({

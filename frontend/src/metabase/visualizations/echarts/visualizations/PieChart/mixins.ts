@@ -6,7 +6,7 @@ import {
   formatPercent,
 } from "metabase/visualizations/visualizations/PieChart/utils";
 import { formatValue } from "metabase/lib/formatting";
-import { getSlices } from "./utils";
+import { getMetricIndex, getSlices } from "./utils";
 
 export const pieSeriesMixin: EChartsMixin = ({ option, props }) => {
   const slices = getSlices({ props });
@@ -60,8 +60,7 @@ export const totalMixin: EChartsMixin = ({ option, props }) => {
     return { option };
   }
 
-  // TODO common function for metricIndex
-  const metricIndex = props.settings["pie._metricIndex"];
+  const metricIndex = getMetricIndex(props);
   const total = props.data.rows.reduce((sum, row) => sum + row[metricIndex], 0);
   const formattedTotal = formatValue(total, {
     ...props.settings.column?.(props.data.cols[metricIndex]),

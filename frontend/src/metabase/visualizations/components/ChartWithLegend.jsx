@@ -33,6 +33,7 @@ class ChartWithLegend extends Component {
       width,
       showLegend,
       isDashboard,
+      onChartDimensionChange,
     } = this.props;
 
     // padding
@@ -93,6 +94,8 @@ class ChartWithLegend extends Component {
     } else {
       type = "small";
     }
+
+    onChartDimensionChange?.({ width: chartWidth, height: chartHeight });
 
     const legend = LegendComponent ? (
       <LegendComponent

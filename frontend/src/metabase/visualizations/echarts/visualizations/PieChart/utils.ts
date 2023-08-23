@@ -1,3 +1,4 @@
+import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -7,6 +8,15 @@ import {
   OTHER_SLICE_MIN_PERCENTAGE,
 } from "metabase/visualizations/visualizations/PieChart/constants";
 import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting";
+
+export function getDimensionIndex(props: VisualizationProps) {
+  return props.settings["pie._dimensionIndex"];
+}
+
+export function getMetricIndex(props: VisualizationProps) {
+  return props.settings["pie._metricIndex"];
+}
 
 // TODO fix type errors
 export function getSlices({ props }: { props: VisualizationProps }) {
@@ -14,8 +24,8 @@ export function getSlices({ props }: { props: VisualizationProps }) {
     settings,
     data: { rows },
   } = props;
-  const metricIndex = settings["pie._metricIndex"];
-  const dimensionIndex = settings["pie._dimensionIndex"];
+  const metricIndex = getMetricIndex(props);
+  const dimensionIndex = getDimensionIndex(props);
 
   const total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
@@ -59,4 +69,57 @@ export function getSlices({ props }: { props: VisualizationProps }) {
   }
 
   return slices;
+}
+
+export type OnChartDimensionChange = (args: {
+  width: number | undefined;
+  height: number | undefined;
+}) => void;
+
+export function useChartDimension() {
+  const [sideLength, setSideLength] = useState<number>();
+
+  const onChartDimensionChange: OnChartDimensionChange = ({
+    width,
+    height,
+  }) => {
+    setSideLength(Math.max(width ?? 0, height ?? 0));
+  };
+
+  return {
+    sideLength: sideLength ?? ("auto" as const),
+    onChartDimensionChange,
+  };
+}
+
+export function formatDimension({
+  value,
+  props,
+}: {
+  value: any;
+  props: VisualizationProps;
+}) {
+  const dimensionIndex = getDimensionIndex(props);
+
+  return formatValue(value, {
+    ...props.settings.column?.(props.data.cols[dimensionIndex]),
+    jsx: true,
+    majorWidth: 0,
+  });
+}
+
+export function formatMetric({
+  value,
+  props,
+}: {
+  value: any;
+  props: VisualizationProps;
+}) {
+  const metricIndex = getMetricIndex(props);
+
+  return formatValue(value, {
+    ...props.settings.column?.(props.data.cols[metricIndex]),
+    jsx: true,
+    majorWidth: 0,
+  });
 }
