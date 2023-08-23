@@ -104,14 +104,15 @@
 
 (t2/define-after-insert :model/Revision
   [revision]
-  (let [{:keys [id model model_id]} revision]
-    ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
-    ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
-    ;; updating directly with the table name
-    (t2/update! (t2/table-name :model/Revision)
-                {:model model :model_id model_id :most_recent true :id [:not= id]}
-                {:most_recent false})
-    (delete-old-revisions! model model_id)))
+  (u/prog1 revision
+    (let [{:keys [id model model_id]} revision]
+      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
+      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
+      ;; updating directly with the table name
+      (t2/update! (t2/table-name :model/Revision)
+                  {:model model :model_id model_id :most_recent true :id [:not= id]}
+                  {:most_recent false})
+      (delete-old-revisions! model model_id))))
 
 ;;; # Functions
 
