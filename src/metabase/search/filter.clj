@@ -178,17 +178,14 @@
                            (search.config/column-with-model-alias model :id)])
         (sql.helpers/where [:= :revision.most_recent true]
                            [:= :revision.model (search-model->revision-model model)]
-                           [:= :revision.user_id last-edited-by])))
+                           [:= :revision.user_id last-edited-by]))))
 
+(doseq [model ["action" "dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
-    (-> query
-        (sql.helpers/join :revision
-                          [:= :revision.model_id
-                           (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :revision.most_recent true]
-                           [:= :revision.model (search-model->revision-model model)]
-                           (date-range-filter-clause :revision.timestamp last-edited-at)))))
+    (sql.helpers/where query (date-range-filter-clause
+                              (search.config/column-with-model-alias model :updated_at)
+                              last-edited-at))))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.

@@ -15181,6 +15181,7 @@ databaseChangeLog:
       comment: Added 0.48.0 - Set revision.most_recent = true for latest revisions
       changes:
         - sql:
+            dbms: postgresql,h2
             sql: >-
               UPDATE revision r
               SET most_recent = true
@@ -15188,6 +15189,19 @@ databaseChangeLog:
                                  SELECT model, model_id, MAX(timestamp)
                                  FROM revision
                                  GROUP BY model, model_id);
+          # mysql and mariadb does not allow update on a table that is in the select part
+          # so it we join for them
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE revision r
+              JOIN (
+                  SELECT model, model_id, MAX(timestamp) AS max_timestamp
+                  FROM revision
+                  GROUP BY model, model_id
+              ) AS subquery
+              ON r.model = subquery.model AND r.model_id = subquery.model_id AND r.timestamp = subquery.max_timestamp
+              SET r.most_recent = true;
       rollback: # nothing to do since the most_recent will be dropped anyway
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

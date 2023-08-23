@@ -981,36 +981,40 @@
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
     (t2.with-temp/with-temp
-      [:model/Card       {card-id :id}   {:name (format "%s Card" search-term)}
-       :model/Card       {model-id :id}  {:name (format "%s Model" search-term) :dataset true}
-       :model/Dashboard  {dash-id :id}   {:name (format "%s Dashboard" search-term)}
-       :model/Metric     {metric-id :id} {:name (format "%s Metric" search-term)}]
-      (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                          [:model/Dashboard dash-id] [:model/Metric metric-id]]]
-        (revision/push-revision!
-         :entity      model
-         :id          id
-         :user-id     (mt/user->id :rasta)
-         :is_creation true
-         :object      {:id id}))
-
+      [:model/Card       {card-id :id}   {:name search-term}
+       :model/Card       {model-id :id}  {:name search-term :dataset true}
+       :model/Dashboard  {dash-id :id}   {:name search-term}
+       :model/Metric     {metric-id :id} {:name search-term}
+       :model/Action     {action-id :id} {:name       search-term
+                                          :model_id   model-id
+                                          :type       :http}]
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
-          (is (= #{[metric-id "metric"    "last-edited-at-filtering Metric"]
-                   [card-id   "card"      "last-edited-at-filtering Card"]
-                   [model-id  "dataset"   "last-edited-at-filtering Model"]
-                   [dash-id   "dashboard" "last-edited-at-filtering Dashboard"]}
+          (is (= #{[action-id "action"]
+                   [card-id   "card"]
+                   [dash-id   "dashboard"]
+                   [model-id  "dataset"]
+                   [metric-id "metric"]}
                (->> (:data resp)
-                    (map (juxt :id :model :name))
+                    (map (juxt :id :model))
                     set)))
-          (is (= #{"dashboard" "dataset" "metric" "card"}
+
+          (is (= #{"action" "card" "dashboard" "dataset" "metric"}
                  (-> resp
                      :available_models
                      set)))))
 
-      (testing "works with others filter too"
+      (testing "works with the last_edited_by filter  too"
+        (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
+                            [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+          (revision/push-revision!
+           :entity      model
+           :id          id
+           :user-id     (mt/user->id :rasta)
+           :is_creation true
+           :object      {:id id}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
-               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :creator_id (mt/user->id :rasta))
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
                    :available_models
                    set))))
 
@@ -1112,35 +1116,33 @@
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id}{:name search-term}
-
-         :model/Dashboard  {dashboard-old :id}{:name search-term}
-
-         :model/Card       {card-new :id}     {:name search-term}
-         :model/Card       {card-old :id}     {:name search-term}
-         :model/Card       {model-new :id}    {:name search-term
-                                               :dataset    true}
-         :model/Card       {model-old :id}    {:name search-term
-                                               :dataset    true}
-         :model/Metric     {metric-new :id}   {:name search-term}
-         :model/Metric     {metric-old :id}   {:name search-term}]
-
-       (t2/insert! (t2/table-name :model/Revision) (for [[model model-id timestamp]
-                                                         [["Dashboard" dashboard-new new]
-                                                          ["Dashboard" dashboard-old two-years-ago]
-                                                          ["Card" card-new new]
-                                                          ["Card" card-old two-years-ago]
-                                                          ["Card" model-new new]
-                                                          ["Card" model-old two-years-ago]
-                                                          ["Metric" metric-new new]
-                                                          ["Metric" metric-old two-years-ago]]]
-                                                     {:model       model
-                                                      :model_id    model-id
-                                                      :object      "{}"
-                                                      :user_id     (mt/user->id :rasta)
-                                                      :timestamp   timestamp
-                                                      :most_recent true}))
-        ;; with clock doesn't work if calling via API, so we call the search function directly
+        [:model/Dashboard  {dashboard-new :id} {:name        search-term
+                                                :updated_at new}
+         :model/Dashboard  {dashboard-old :id} {:name       search-term
+                                                :updated_at two-years-ago}
+         :model/Card       {card-new :id}      {:name       search-term
+                                                :updated_at new}
+         :model/Card       {card-old :id}      {:name       search-term
+                                                :updated_at two-years-ago}
+         :model/Card       {model-new :id}     {:name       search-term
+                                                :dataset    true
+                                                :updated_at new}
+         :model/Card       {model-old :id}     {:name       search-term
+                                                :dataset    true
+                                                :updated_at two-years-ago}
+         :model/Metric     {metric-new :id}    {:name       search-term
+                                                :updated_at new}
+         :model/Metric     {metric-old :id}    {:name       search-term
+                                                :updated_at two-years-ago}
+         :model/Action     {action-new :id}    {:name       search-term
+                                                :model_id   model-new
+                                                :type       :http
+                                                :updated_at new}
+         :model/Action     {action-old :id}    {:name       search-term
+                                                :model_id   model-old
+                                                :type       :http
+                                                :updated_at two-years-ago}]
+          ;; with clock doesn't work if calling via API, so we call the search function directly
        (let [test-search (fn [last-edited-at expected]
                           (testing (format "searching with last-edited-at = %s" last-edited-at)
                             (mt/with-current-user (mt/user->id :crowberto)
@@ -1153,11 +1155,13 @@
                                           :data
                                           (map (juxt :model :id))
                                           set))))))
-             new-result  #{["card"      card-new]
+             new-result  #{["action"    action-new]
+                           ["card"      card-new]
                            ["dataset"   model-new]
                            ["dashboard" dashboard-new]
                            ["metric"    metric-new]}
-             old-result  #{["card"      card-old]
+             old-result  #{["action"    action-old]
+                           ["card"      card-old]
                            ["dataset"   model-old]
                            ["dashboard" dashboard-old]
                            ["metric"    metric-old]}]

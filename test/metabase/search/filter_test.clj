@@ -79,7 +79,7 @@
                       :last-edited-by 1})))))
 
    (testing "last edited at"
-     (is (= #{"dashboard" "dataset" "card" "metric"}
+     (is (= #{"dashboard" "dataset" "collection" "action" "metric" "card"}
             (search.filter/search-context->applicable-models
              (merge default-search-ctx
                     {:last-edited-at "past3days"}))))
@@ -156,6 +156,9 @@
          "yesterday"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-03"]
                                                     [:< [:cast :card.created_at :date] #t "2023-05-04"]])))
 
+;; both created at and last-edited-at use [[search.filter/date-range-filter-clause]]
+;; to generate the filter clause so for the full test cases, check [[date-range-filter-clause-test]]
+;; these 2 tests are for checking the shape of the query
 (deftest ^:parallel created-at-filter-test
   (testing "created-at filter"
     (is (= {:select [:*]
@@ -174,11 +177,8 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]],
-            :join   [:revision [:= :revision.model_id :card.id]]}
+                     [:>= [:cast :card.updated_at :date] #t "2016-04-18"]
+                     [:< [:cast :card.updated_at :date] #t "2016-04-24"]],}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))))
