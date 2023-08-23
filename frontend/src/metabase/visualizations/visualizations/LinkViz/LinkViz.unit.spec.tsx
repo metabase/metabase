@@ -25,7 +25,8 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { LinkViz, LinkVizProps } from "./LinkViz";
+import type { LinkVizProps } from "./LinkViz";
+import { LinkViz } from "./LinkViz";
 
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;

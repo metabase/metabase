@@ -5,7 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
 
-import {
+import type {
   VisualizationSettings,
   PivotTableCollapsedRowsSetting,
 } from "metabase-types/api";

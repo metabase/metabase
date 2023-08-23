@@ -1,9 +1,9 @@
 import Users from "metabase/entities/users";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
+import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
 import type { UserListResult } from "metabase-types/api";
 
 export const useUserListQuery = (

@@ -1,8 +1,9 @@
-import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
 import { Icon } from "metabase/core/components/Icon";
@@ -19,7 +20,7 @@ import RecentsList from "metabase/nav/components/RecentsList";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
 import SearchResults from "metabase/nav/components/SearchResults";
 
-import { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,

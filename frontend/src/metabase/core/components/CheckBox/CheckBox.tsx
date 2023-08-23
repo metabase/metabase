@@ -1,14 +1,12 @@
-import {
+import type {
   ChangeEvent,
   FocusEvent,
-  forwardRef,
   HTMLAttributes,
-  isValidElement,
   ReactElement,
   ReactNode,
   Ref,
-  useRef,
 } from "react";
+import { forwardRef, isValidElement, useRef } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   DEFAULT_CHECKED_COLOR,

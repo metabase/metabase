@@ -1,5 +1,6 @@
 import { t } from "ttag";
-import moment, { unitOfTime } from "moment-timezone";
+import type { unitOfTime } from "moment-timezone";
+import moment from "moment-timezone";
 
 const buildStartAndEndDates = (period: unitOfTime.StartOf, format: string) => {
   const now = moment();

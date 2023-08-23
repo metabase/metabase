@@ -10,10 +10,8 @@ import {
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import {
-  CollectionEndpoints,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
+import type { CollectionEndpoints } from "__support__/server-mocks";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -22,7 +20,7 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { openCollection } from "metabase/containers/ItemPicker/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -30,7 +28,7 @@ import {
   ORDERS_ID,
   ORDERS,
 } from "metabase-types/api/mocks/presets";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 
 const metadata = createMockMetadata({

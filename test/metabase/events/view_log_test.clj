@@ -118,7 +118,7 @@
                   {:model "card" :model_id (u/the-id dataset)}]
                  recent-views))))))))
 
-(deftest ^:parallel user-dismissed-toasts-setting-test
+(deftest user-dismissed-toasts-setting-test
   (testing "user-dismissed-toasts! updates user-dismissed-toasts"
     (binding [setting/*user-local-values* (delay (atom {}))]
       (view-log/dismissed-custom-dashboard-toast! false)

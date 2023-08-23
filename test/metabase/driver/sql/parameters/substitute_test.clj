@@ -11,7 +11,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -787,7 +786,7 @@
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
 
-              (qp.test/supports-report-timezone? driver/*driver*)
+              (qp.test-util/supports-report-timezone? driver/*driver*)
               "2018-04-18T00:00:00-07:00"
 
               :else

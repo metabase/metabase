@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import {
+import type {
   Card,
   Parameter,
   ParameterValuesConfig,

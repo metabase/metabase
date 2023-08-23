@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CardDisplayType } from "metabase-types/api";
-import ChartSkeleton, { ChartSkeletonProps } from "./ChartSkeleton";
+import type { CardDisplayType } from "metabase-types/api";
+import type { ChartSkeletonProps } from "./ChartSkeleton";
+import ChartSkeleton from "./ChartSkeleton";
 
 const MockActionMenu = <div>Action Menu</div>;
 

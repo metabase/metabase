@@ -1,9 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 import cx from "classnames";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { BaseFieldDefinition } from "metabase-types/forms";
+import type { BaseFieldDefinition } from "metabase-types/forms";
 
 import { FormFieldDescription } from "./FormFieldDescription";
 import {

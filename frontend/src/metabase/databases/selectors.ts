@@ -1,4 +1,4 @@
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
 
 export const getEngines = (state: State) => {

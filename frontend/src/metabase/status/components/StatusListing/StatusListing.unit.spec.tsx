@@ -4,7 +4,7 @@ import { callMockEvent } from "__support__/events";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import { createMockState, createMockUpload } from "metabase-types/store/mocks";
-import { FileUploadState } from "metabase-types/store/upload";
+import type { FileUploadState } from "metabase-types/store/upload";
 import StatusListing from "./StatusListing";
 
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ValidationError from "metabase-lib/ValidationError";
+import type ValidationError from "metabase-lib/ValidationError";
 
 import {
   QueryValidationErrorRoot,

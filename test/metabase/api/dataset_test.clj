@@ -18,8 +18,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -80,7 +80,7 @@
         (testing "\nAPI Response"
           (is (partial=
                {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                                          :native_form      true
                                          :results_timezone "UTC"}
                 :row_count              1

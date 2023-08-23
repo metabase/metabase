@@ -6,7 +6,8 @@ import {
   createMockTimelineEvent,
   createMockUser,
 } from "metabase-types/api/mocks";
-import EventCard, { EventCardProps } from "./EventCard";
+import type { EventCardProps } from "./EventCard";
+import EventCard from "./EventCard";
 
 describe("EventCard", () => {
   it("should format a day-only event", () => {

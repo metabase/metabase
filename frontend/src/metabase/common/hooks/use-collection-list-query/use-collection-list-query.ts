@@ -1,11 +1,11 @@
 import type { Collection, CollectionListQuery } from "metabase-types/api";
 import Collections from "metabase/entities/collections";
 
-import {
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
-  useEntityListQuery,
 } from "../use-entity-list-query";
+import { useEntityListQuery } from "../use-entity-list-query";
 
 export const useCollectionListQuery = (
   props: UseEntityListQueryProps<CollectionListQuery> = {},

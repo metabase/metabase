@@ -5,9 +5,9 @@ import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { NativeQueryForm } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { NativeQueryForm } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 

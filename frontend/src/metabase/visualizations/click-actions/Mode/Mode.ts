@@ -3,7 +3,7 @@ import type {
   ClickObject,
   QueryMode,
 } from "metabase/visualizations/types";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 export class Mode {
   _question: Question;
   _queryMode: QueryMode;

@@ -1,4 +1,4 @@
-import { ModelIndex } from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api";
 
 export const createMockModelIndex = (
   opts?: Partial<ModelIndex>,

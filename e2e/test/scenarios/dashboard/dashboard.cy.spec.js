@@ -27,6 +27,7 @@ import {
   dashboardHeader,
   openProductsTable,
   updateDashboardCards,
+  createTextCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -431,8 +432,19 @@ describe("scenarios > dashboard", () => {
       () => {
         cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           const cards = [
-            createTextCard("bottom", 1), // the bottom card intentionally goes first to have unsorted cards coming from the BE
-            createTextCard("top", 0),
+            // the bottom card intentionally goes first to have unsorted cards coming from the BE
+            createTextCard({
+              row: 1,
+              size_x: 24,
+              size_y: 1,
+              text: "bottom",
+            }),
+            createTextCard({
+              row: 0,
+              size_x: 24,
+              size_y: 1,
+              text: "top",
+            }),
           ];
 
           updateDashboardCards({ dashboard_id, cards });
@@ -972,22 +984,4 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
-}
-
-function createTextCard(text, row) {
-  return {
-    row,
-    size_x: 24,
-    size_y: 1,
-    visualization_settings: {
-      virtual_card: {
-        name: null,
-        display: "text",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      text,
-    },
-  };
 }

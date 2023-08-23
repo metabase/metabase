@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { Location } from "history";
 import { TabRow } from "metabase/core/components/TabRow";
 import { TabButton } from "metabase/core/components/TabButton";
-import { SelectedTabId } from "metabase-types/store";
+import type { SelectedTabId } from "metabase-types/store";
 import { Sortable } from "metabase/core/components/Sortable";
 
 import {
