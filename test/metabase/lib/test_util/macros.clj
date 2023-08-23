@@ -22,7 +22,7 @@
 (defmacro mbql-query
   "MLv2 version of [[metabase.test/mbql-query]] that uses the [[metabase.lib.test-metadata]] rather than the application
   database."
-  {:style/indent 1}
+  {:style/indent :defn}
   ([table-name]
    `(mbql-query ~table-name {}))
 
