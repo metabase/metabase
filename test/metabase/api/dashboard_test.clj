@@ -1710,11 +1710,7 @@
                                                   :ordered_tabs []}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
-            (is (pos-int? (:id (first resp))))
-
-            (is (pos-int? (:id (first resp))))
-
-                        (is (pos-int? (:id (first resp)))))
+            (is (pos-int? (:id (first resp)))))
           (is (= {:size_x                     4
                   :size_y                     4
                   :col                        4
@@ -3273,20 +3269,17 @@
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id      model-id
-                                                            :action_id    action-id}]]
+                                                            :card_id model-id
+                                                            :action_id action-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
-                  response     (mt/user-http-request :crowberto :post 200 execute-path
-                                                     {:parameters {"name" "Birds"}})
-                  new-row      (-> response
-                                   :created-row
-                                   (update-keys (comp keyword u/lower-case-en name)))]
+                  new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters {"name" "Birds"}})
+                              :created-row
+                              (update-keys (comp keyword u/lower-case-en name)))]
               (testing "Should be able to insert"
-                (testing (str "\nresponse =\n" (u/pprint-to-str response))
-                  (is new-row)
-                  (is (pos-int? (:id new-row)))
-                  (is (partial= {:name "Birds"}
-                                new-row))))
+                (is (pos? (:id new-row)))
+                (is (partial= {:name "Birds"}
+                              new-row)))
               (testing "Extra parameter should fail gracefully"
                 (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path

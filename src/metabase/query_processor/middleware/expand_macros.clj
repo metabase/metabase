@@ -81,9 +81,7 @@
 
 (mu/defn ^:private metric-clauses->id->info :- [:map-of ms/PositiveInt MetricInfo]
   [metric-clauses :- [:sequential mbql.s/metric]]
-  (when-let [metric-ids (not-empty (into #{}
-                                         (map second)
-                                         metric-clauses))]
+  (when-let [metric-ids (not-empty (into #{} (map second) metric-clauses))]
     (into {}
           (comp (remove (fn [metric]
                           (when-let [errors (metric-info-validation-errors metric)]

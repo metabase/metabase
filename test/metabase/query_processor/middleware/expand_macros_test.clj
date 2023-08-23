@@ -26,18 +26,28 @@
              {:filter   [:> [:field 4 nil] 1]
               :breakout [[:field 17 nil]]}))))))
 
+(def ^:private mock-metadata-provider
+  (lib/composed-metadata-provider
+   (lib.tu/mock-metadata-provider
+    {:segments [{:id         1
+                 :name       "Segment 1"
+                 :table-id   (meta/id :venues)
+                 :definition {:filter [:= [:field 5 nil] "abc"]}}
+                {:id         2
+                 :name       "Segment 2"
+                 :table-id   (meta/id :venues)
+                 :definition {:filter [:is-null [:field 7 nil]]}}]
+     :metrics  [{:id         1
+                 :name       "Metric 1"
+                 :table-id   (meta/id :venues)
+                 :definition {:aggregation [[:aggregation-options
+                                             [:sum [:field 20 nil]]
+                                             {:display-name "My Cool Aggregation"}]]
+                              :filter      [:= [:field 5 nil] "abc"]}}]})
+   meta/metadata-provider))
+
 (deftest ^:parallel segments-test
-  (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                    (lib.tu/mock-metadata-provider
-                                     {:segments [{:id         1
-                                                  :name       "Segment 1"
-                                                  :table-id   (meta/id :venues)
-                                                  :definition {:filter [:= [:field 5 nil] "abc"]}}
-                                                 {:id         2
-                                                  :name       "Segment 2"
-                                                  :table-id   (meta/id :venues)
-                                                  :definition {:filter [:is-null [:field 7 nil]]}}]})
-                                    meta/metadata-provider)
+  (qp.store/with-metadata-provider mock-metadata-provider
     (is (= (mbql-query
             {:filter   [:and
                         [:= [:field 5 nil] "abc"]
@@ -57,21 +67,19 @@
 (deftest ^:parallel nested-segments-test
   (let [metadata-provider (lib/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
-                            {:segments [{:id         1
-                                         :name       "Segment 1"
-                                         :table-id   (meta/id :venues)
-                                         :definition {:filter [:< [:field (meta/id :venues :price) nil] 3]}}
-                                        {:id         2
+                            {:segments [{:id         2
                                          :name       "Segment 2"
                                          :table-id   (meta/id :venues)
                                          :definition {:filter [:and
                                                                [:segment 1]
-                                                               [:> [:field (meta/id :venues :price) nil] 1]]}}]})
-                           meta/metadata-provider)]
+                                                               [:> [:field 6 nil] 1]]}}]})
+                           mock-metadata-provider)]
     (qp.store/with-metadata-provider metadata-provider
       (testing "Nested segments are correctly expanded (#30866)"
         (is (= (lib.tu.macros/mbql-query venues
-                 {:filter [:and [:< $price 3] [:> $price 1]]})
+                 {:filter [:and
+                           [:= [:field 5 nil] "abc"]
+                           [:> [:field 6 nil] 1]]})
                (#'expand-macros/expand-metrics-and-segments
                 (lib.tu.macros/mbql-query venues
                   {:filter [:segment 2]}))))))
@@ -92,16 +100,11 @@
 
 (deftest ^:parallel metric-test
   (testing "just a metric (w/out nested segments)"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:metrics [{:id         1
-                                                   :name       "Toucans in the rainforest"
-                                                   :table-id   (meta/id :venues)
-                                                   :definition {:aggregation [[:count]]
-                                                                :filter      [:= [:field 5 nil] "abc"]}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider mock-metadata-provider
       (is (= (mbql-query
-              {:aggregation [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
+              {:aggregation [[:aggregation-options
+                              [:sum [:field 20 nil]]
+                              {:display-name "My Cool Aggregation"}]]
                :filter      [:and
                              [:> [:field 4 nil] 1]
                              [:= [:field 5 nil] "abc"]]
@@ -162,30 +165,22 @@
   (testing "metric w/ nested segments"
     (qp.store/with-metadata-provider (lib/composed-metadata-provider
                                       (lib.tu/mock-metadata-provider
-                                       {:segments [{:id         1
-                                                    :name       "Segment 1"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:filter [:between [:field 9 nil] 0 25]}}
-                                                   {:id         2
-                                                    :name       "Segment 2"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:filter [:is-null [:field 7 nil]]}}]
-                                        :metrics  [{:id         1
-                                                    :name       "My Metric"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:aggregation [[:sum [:field 18 nil]]]
-                                                                 :filter      [:and
-                                                                               [:= [:field 5 nil] "abc"]
-                                                                               [:segment 1]]}}]})
-                                      meta/metadata-provider)
+                                       {:metrics [{:id         1
+                                                   :name       "My Metric"
+                                                   :table-id   (meta/id :venues)
+                                                   :definition {:aggregation [[:sum [:field 18 nil]]]
+                                                                :filter      [:and
+                                                                              [:between [:field 9 nil] 0 25]
+                                                                              [:segment 1]]}}]})
+                                      mock-metadata-provider)
       (is (= (mbql-query
               {:source-table 1000
                :aggregation  [[:aggregation-options [:sum [:field 18 nil]] {:display-name "My Metric"}]]
                :filter       [:and
                               [:> [:field 4 nil] 1]
                               [:is-null [:field 7 nil]]
-                              [:= [:field 5 nil] "abc"]
-                              [:between [:field 9 nil] 0 25]]
+                              [:between [:field 9 nil] 0 25]
+                              [:= [:field 5 nil] "abc"]]
                :breakout     [[:field 17 nil]]
                :order-by     [[:asc [:field 1 nil]]]})
              (#'expand-macros/expand-metrics-and-segments
@@ -255,14 +250,14 @@
     (qp.store/with-metadata-provider (lib/composed-metadata-provider
                                       (lib.tu/mock-metadata-provider
                                        {:metrics  [{:id         1
-                                                    :name       "Toucans in the rainforest"
+                                                    :name       "Metric 1"
                                                     :table-id   (meta/id :venues)
                                                     :definition {:aggregation [[:sum [:field 20 nil]]]}}]})
                                       meta/metadata-provider)
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]
-                              {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
+                              {:name "auto_generated_name", :display-name "Metric 1"}]]
                :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:aggregation-options
@@ -271,28 +266,20 @@
 
 (deftest ^:parallel include-display-name-test-2
   (testing "a Metric whose :aggregation is already named should not get wrapped in an `:aggregation-options` clause"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:metrics  [{:id         1
-                                                    :name       "Toucans in the rainforest"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:aggregation [[:aggregation-options
-                                                                                [:sum [:field 20 nil]]
-                                                                                {:display-name "My Cool Aggregation"}]]}}]})
-                                      meta/metadata-provider)
-      (is (= (mbql-query
-              {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
-               :breakout    [[:field 10 nil]]})
-             (#'expand-macros/expand-metrics-and-segments
-              (mbql-query {:aggregation [[:metric 1]]
-                           :breakout    [[:field 10 nil]]})))))))
+    (qp.store/with-metadata-provider mock-metadata-provider
+      (is (=? (mbql-query
+               {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
+                :breakout    [[:field 10 nil]]})
+              (#'expand-macros/expand-metrics-and-segments
+               (mbql-query {:aggregation [[:metric 1]]
+                            :breakout    [[:field 10 nil]]})))))))
 
 (deftest ^:parallel include-display-name-test-3
   (testing "...but if it's wrapped in `:aggregation-options`, but w/o given a display name, we should merge the options"
     (qp.store/with-metadata-provider (lib/composed-metadata-provider
                                       (lib.tu/mock-metadata-provider
                                        {:metrics  [{:id         1
-                                                    :name       "Toucans in the rainforest"
+                                                    :name       "Metric 1"
                                                     :table-id   (meta/id :venues)
                                                     :definition {:aggregation [[:aggregation-options
                                                                                 [:sum [:field 20 nil]]
@@ -301,7 +288,7 @@
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]
-                              {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
+                              {:name "auto_generated_name", :display-name "Metric 1"}]]
                :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:metric 1]]
@@ -309,17 +296,7 @@
 
 (deftest ^:parallel segments-in-share-clauses-test
   (testing "segments in :share clauses"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:segments [{:id         1
-                                                    :name       "Segment 1"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:filter [:= [:field 5 nil] "abc"]}}
-                                                   {:id         2
-                                                    :name       "Segment 2"
-                                                    :table-id   (meta/id :venues)
-                                                    :definition {:filter [:is-null [:field 7 nil]]}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider mock-metadata-provider
       (is (= (mbql-query
               {:aggregation [[:share [:and
                                       [:= [:field 5 nil] "abc"]
@@ -336,35 +313,21 @@
 
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:metrics  [(lib.tu.macros/$ids checkins
-                                                     {:id         1
-                                                      :name       "Toucans in the rainforest"
-                                                      :table-id   $$checkins
-                                                      :definition {:source-table $$checkins
-                                                                   :aggregation  [[:count]]
-                                                                   :filter       [:not-null $id]}})]
-                                        :segments [(lib.tu.macros/$ids checkins
-                                                     {:id         2
-                                                      :name       "Segment 1"
-                                                      :table-id   $$checkins
-                                                      :definition {:filter [:not-null $id]}})]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider mock-metadata-provider
       (doseq [[macro-type {:keys [before after]}]
               (lib.tu.macros/$ids checkins
                 {"Metrics"
                  {:before {:source-table $$checkins
                            :aggregation  [[:metric 1]]}
                   :after  {:source-table $$checkins
-                           :aggregation  [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
-                           :filter       [:not-null $id]}}
+                           :aggregation  [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
+                           :filter       [:= [:field 5 nil] "abc"]}}
 
                  "Segments"
                  {:before {:source-table $$checkins
                            :filter       [:segment 2]}
                   :after  {:source-table $$checkins
-                           :filter       [:not-null $id]}}})]
+                           :filter       [:is-null [:field 7 nil]]}}})]
         (testing macro-type
           (testing "nested 1 level"
             (is (= (lib.tu.macros/mbql-query nil

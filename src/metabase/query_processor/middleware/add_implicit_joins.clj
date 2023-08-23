@@ -60,9 +60,9 @@
             :when                                                       pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
-              join-alias               (join-alias table-name fk-name)]
+              alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
-               :alias        join-alias
+               :alias        alias-for-join
                :fields       :none
                :strategy     :left-join
                :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]]

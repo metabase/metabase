@@ -48,7 +48,7 @@
                                     meta/metadata-provider)
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
-(deftest ^:paralell basic-compilation-test
+(deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
     (is (= (ga-query {})
            (mbql->native {}))))

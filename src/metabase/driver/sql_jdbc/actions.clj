@@ -114,6 +114,7 @@
                         [::cast-values table-id]
                         (fn []
                           (into {}
+                                #_{:clj-kondo/ignore [:deprecated-var]}
                                 (map (juxt :name qp.store/->legacy-metadata))
                                 (qp.store/with-metadata-provider database-id
                                   (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]

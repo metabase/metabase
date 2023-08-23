@@ -97,8 +97,6 @@
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
   (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
-    ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
-    ;; initialized" errors. We should figure out why that's the case and then fix this
     (:base-type (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
 
 (defn- attr-value->param-value

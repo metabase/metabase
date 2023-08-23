@@ -145,18 +145,19 @@
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
 (deftest nested-nested-queries-test-3
-  (testing "But not when the dataset is lower than top level"
-    (t2.with-temp/with-temp [Card dataset {:dataset_query (mt/mbql-query venues {:limit 100})
-                                           :dataset       true}
-                             Card card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                           :type     :query
-                                                           :query    {:source-table (str "card__" (u/the-id dataset))}}}]
-      (let [results (qp/process-query {:type     :query
-                                       :query    {:source-table (str "card__" (u/the-id card))
-                                                  :limit        1}
-                                       :database lib.schema.id/saved-questions-virtual-database-id})]
-        (is (= {:rows 1}
-               (-> results :data (select-keys [:dataset :rows]) (update :rows count))))))))
+  (testing "Marks datasets as from a dataset"
+   (testing "But not when the dataset is lower than top level"
+     (t2.with-temp/with-temp [Card dataset {:dataset_query (mt/mbql-query venues {:limit 100})
+                                            :dataset       true}
+                              Card card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                            :type     :query
+                                                            :query    {:source-table (str "card__" (u/the-id dataset))}}}]
+       (let [results (qp/process-query {:type     :query
+                                        :query    {:source-table (str "card__" (u/the-id card))
+                                                   :limit        1}
+                                        :database lib.schema.id/saved-questions-virtual-database-id})]
+         (is (= {:rows 1}
+                (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
 
 

@@ -9,7 +9,6 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models :refer [Card]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -93,13 +92,13 @@
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
-  (t2.with-temp/with-temp [Card card {:dataset_query
-                                      (mt/mbql-query venues
-                                                     {:joins
-                                                      [{:source-table $$categories
-                                                        :condition    [:= $category_id &c.categories.id]
-                                                        :fields       :all
-                                                        :alias        "c"}]})}]
+  (t2.with-temp/with-temp [:model/Card card {:dataset_query
+                                             (mt/mbql-query venues
+                                               {:joins
+                                                [{:source-table $$categories
+                                                  :condition    [:= $category_id &c.categories.id]
+                                                  :fields       :all
+                                                  :alias        "c"}]})}]
     (let [query      {:database (mt/id)
                       :type     :query
                       :query    {:source-card (u/the-id card)}}
@@ -153,3 +152,42 @@
                 :semantic-type :type/Name}]
               (map #(lib/display-info agg-query %)
                    (lib.metadata.calculation/returned-columns agg-query)))))))
+
+(deftest ^:synchronized internal-remap-metadata-test
+  (mt/with-column-remappings [venues.id categories.name]
+    (is (=? {:lib/type           :metadata/column
+             :name               "ID"
+             :lib/external-remap {:lib/type :metadata.column.remapping/external
+                                  :id       integer?
+                                  :name     "ID [external remap]"
+                                  :field-id (mt/id :categories :name)}}
+            (lib.metadata/field
+             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/id :venues :id))))))
+
+(deftest ^:synchronized external-remap-metadata-test
+  (mt/with-column-remappings [venues.id {1 "African", 2 "American", 3 "Artisan", 4 "BBQ"}]
+    (is (=? {:lib/type           :metadata/column
+             :name               "ID"
+             :lib/internal-remap {:lib/type              :metadata.column.remapping/internal
+                                  :id                    integer?
+                                  :name                  "ID [internal remap]"
+                                  :values                [1 2 3 4]
+                                  :human-readable-values ["African" "American" "Artisan" "BBQ"]}}
+            (lib.metadata/field
+             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/id :venues :id))))))
+
+(deftest ^:synchronized persisted-info-metadata-test
+  (t2.with-temp/with-temp [:model/Card          {card-id :id} {}
+                           :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
+    (is (=? {:lib/type           :metadata/card
+             :id                 card-id
+             :lib/persisted-info {:active     true
+                                  :state      "persisted"
+                                  :definition {}
+                                  :query-hash string?
+                                  :table-name string?}}
+            (lib.metadata/card
+             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             card-id)))))

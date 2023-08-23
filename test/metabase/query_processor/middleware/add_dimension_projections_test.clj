@@ -178,6 +178,14 @@
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
+(defn- venues-column-metadata []
+  (qp.store/bulk-metadata
+   :metadata/column
+   [(meta/id :venues :id)
+    (meta/id :venues :name)
+    (meta/id :venues :category-id)
+    (meta/id :venues :price)]))
+
 (deftest ^:parallel remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
@@ -199,12 +207,7 @@
                                         {:name "Category ID [internal remap]", :remapped_from "CATEGORY_ID"}]}}
                     (remap-results
                      {}
-                     {:cols (qp.store/bulk-metadata
-                             :metadata/column
-                             [(meta/id :venues :id)
-                              (meta/id :venues :name)
-                              (meta/id :venues :category-id)
-                              (meta/id :venues :price)])}
+                     {:cols (venues-column-metadata)}
                      [[1 "Red Medicine"                   4 3]
                       [2 "Stout Burgers & Beers"         11 2]
                       [3 "The Apple Pan"                 11 2]
@@ -233,12 +236,7 @@
                                         {:name "Name [internal remap]", :remapped_from "NAME"}]}}
                     (remap-results
                      {}
-                     {:cols (qp.store/bulk-metadata
-                             :metadata/column
-                             [(meta/id :venues :id)
-                              (meta/id :venues :name)
-                              (meta/id :venues :category-id)
-                              (meta/id :venues :price)])}
+                     {:cols (venues-column-metadata)}
                      [[1 "apple"   4 3]
                       [2 "banana" 11 2]
                       [3 "kiwi"   11 2]]))))))
@@ -271,12 +269,7 @@
                                                                        :human-readable-field-id   1
                                                                        :human-readable-field-name "category_name"}]}
                      {:cols (let [[venues-id venues-name venues-category-id venues-price]
-                                  (qp.store/bulk-metadata
-                                   :metadata/column
-                                   [(meta/id :venues :id)
-                                    (meta/id :venues :name)
-                                    (meta/id :venues :category-id)
-                                    (meta/id :venues :price)])]
+                                  (venues-column-metadata)]
                               [venues-id
                                venues-name
                                (assoc-in venues-category-id [:options ::qp.add-dimension-projections/original-field-dimension-id] 1000)

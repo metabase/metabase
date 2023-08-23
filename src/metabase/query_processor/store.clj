@@ -181,24 +181,22 @@
                       [:set ::lib.schema.common/positive-int]
                       [:sequential ::lib.schema.common/positive-int]]]]
   (when-let [ids-set (not-empty (set ids))]
-    (let [provider (metadata-provider)
-          objects  (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                          (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
-                          (let [f (case metadata-type
-                                    :metadata/card    lib.metadata.protocols/card
-                                    :metadata/column  lib.metadata.protocols/field
-                                    :metadata/metric  lib.metadata.protocols/metric
-                                    :metadata/segment lib.metadata.protocols/segment
-                                    :metadata/table   lib.metadata.protocols/table)]
-                            (for [id ids-set]
-                              (or (f provider id)
-                                  (throw (missing-bulk-metadata-error metadata-type id)))))))]
-      (doseq [id ids-set]
-        (or (some #(= (u/the-id %) id) objects)
-            (throw (missing-bulk-metadata-error metadata-type id))))
-      (let [id->object (m/index-by :id objects)]
-        (for [id ids]
-          (get id->object id))))))
+    (let [provider   (metadata-provider)
+          objects    (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
+                            (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
+                            (let [f (case metadata-type
+                                      :metadata/card    lib.metadata.protocols/card
+                                      :metadata/column  lib.metadata.protocols/field
+                                      :metadata/metric  lib.metadata.protocols/metric
+                                      :metadata/segment lib.metadata.protocols/segment
+                                      :metadata/table   lib.metadata.protocols/table)]
+                              (for [id ids-set]
+                                (f provider id)))))
+          id->object (m/index-by :id objects)]
+      (mapv (fn [id]
+              (or (get id->object id)
+                  (throw (missing-bulk-metadata-error metadata-type id))))
+            ids))))
 
 ;;;;
 ;;;; DEPRECATED STUFF
@@ -249,13 +247,13 @@
   (bulk-metadata :metadata/column field-ids)
   nil)
 
-(defn ->legacy-metadata
+(defn ^:deprecated ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
   and Toucan 2 model `:type` metadata).
 
-  Try to avoid using this, we would live to remove this in the near future."
+  Try to avoid using this, we would like to remove this in the near future."
   [mlv2-metadata]
   (let [model (case (:lib/type mlv2-metadata)
                 :metadata/database :model/Database
@@ -277,6 +275,7 @@
           (throw (ex-info (tru "Invalid MetadataProvider: Metadata provider failed to return a Database.")
                           {:status-code 404
                            :type        qp.error-type/invalid-query})))
+      #_{:clj-kondo/ignore [:deprecated-var]}
       ->legacy-metadata))
 
 (mu/defn table :- LegacyTableMetadata
@@ -287,6 +286,7 @@
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :table-id    table-id})))
+      #_{:clj-kondo/ignore [:deprecated-var]}
       ->legacy-metadata))
 
 (mu/defn field :- LegacyFieldMetadata
@@ -297,4 +297,5 @@
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :field-id    field-id})))
+      #_{:clj-kondo/ignore [:deprecated-var]}
       ->legacy-metadata))

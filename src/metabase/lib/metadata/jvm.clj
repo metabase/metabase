@@ -13,7 +13,9 @@
    [potemkin :as p]
    [pretty.core :as pretty]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
+   [methodical.core :as methodical]))
 
 (def ^:private MetadataType
   [:enum
@@ -94,11 +96,18 @@
                               :from   [[(t2/table-name :model/Table) :model]]
                               :where  condition})))
 
+(derive ::Field :model/Field)
+
+(methodical/defmethod t2.model/model->namespace ::Field
+  [_model]
+  {:model/Dimension   "dimension"
+   :model/FieldValues "values"})
+
 (defmethod select :metadata/column
   [_metadata-type condition]
   (into []
         (map (fn [field]
-               (let [dimension-type (some-> (:dimension__type field) keyword)]
+               (let [dimension-type (some-> (:dimension/type field) keyword)]
                  (merge
                   {:lib/type           :metadata/column
                    :base-type          (:base_type field)
@@ -119,22 +128,22 @@
                    :table-id           (:table_id field)
                    :visibility-type    (:visibility_type field)}
                   (when (and (= dimension-type :external)
-                             (:dimension__human_readable_field_id field))
+                             (:dimension/human_readable_field_id field))
                     {:lib/external-remap {:lib/type :metadata.column.remapping/external
-                                          :id       (:dimension__id field)
-                                          :name     (:dimension__name field)
-                                          :field-id (:dimension__human_readable_field_id field)}})
+                                          :id       (:dimension/id field)
+                                          :name     (:dimension/name field)
+                                          :field-id (:dimension/human_readable_field_id field)}})
                   (when (and (= dimension-type :internal)
-                             (:values__values field)
-                             (:values__human_readable_values field))
+                             (:values/values field)
+                             (:values/human_readable_values field))
                     {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
-                                          :id                    (:dimension__id field)
-                                          :name                  (:dimension__name field)
+                                          :id                    (:dimension/id field)
+                                          :name                  (:dimension/name field)
                                           :values                (mi/json-out-with-keywordization
-                                                                  (:values__values field))
+                                                                  (:values/values field))
                                           :human-readable-values (mi/json-out-without-keywordization
-                                                                  (:values__human_readable_values field))}})))))
-        (t2/reducible-select :model/Field
+                                                                  (:values/human_readable_values field))}})))))
+        (t2/reducible-select ::Field
                              {:select    [:model.base_type
                                           :model.coercion_strategy
                                           :model.database_type
@@ -152,12 +161,12 @@
                                           :model.settings
                                           :model.table_id
                                           :model.visibility_type
-                                          [:dimension.id                      :dimension__id]
-                                          [:dimension.name                    :dimension__name]
-                                          [:dimension.type                    :dimension__type]
-                                          [:dimension.human_readable_field_id :dimension__human_readable_field_id]
-                                          [:values.values                     :values__values]
-                                          [:values.human_readable_values      :values__human_readable_values]]
+                                          :dimension.id
+                                          :dimension.name
+                                          :dimension.type
+                                          :dimension.human_readable_field_id
+                                          :values.values
+                                          :values.human_readable_values]
                               :from      [[(t2/table-name :model/Field) :model]]
                               :left-join [[(t2/table-name :model/Dimension) :dimension]
                                           [:and
@@ -171,6 +180,12 @@
 
 (defn- parse-persisted-info-definition [x]
   ((get-in (t2/transforms :model/PersistedInfo) [:definition :out] identity) x))
+
+(derive ::Card :model/Card)
+
+(methodical/defmethod t2.model/model->namespace ::Card
+  [_model]
+  {:model/PersistedInfo "persisted"})
 
 (defmethod select :metadata/card
   [_metadata-type condition]
@@ -186,13 +201,13 @@
                  :result-metadata        (:result_metadata card)
                  :table-id               (:table_id card)
                  :visualization-settings (:visualization_settings card)}
-                (when (:persisted_info__definition card)
-                  {:lib/persisted-info {:active     (:persisted_info__active card)
-                                        :state      (:persisted_info__state card)
-                                        :definition (parse-persisted-info-definition (:persisted_info__definition card))
-                                        :query-hash (:persisted_info__query_hash card)
-                                        :table-name (:persisted_info__table_name card)}}))))
-        (t2/reducible-select :model/Card
+                (when (:persisted/definition card)
+                  {:lib/persisted-info {:active     (:persisted/active card)
+                                        :state      (:persisted/state card)
+                                        :definition (parse-persisted-info-definition (:persisted/definition card))
+                                        :query-hash (:persisted/query_hash card)
+                                        :table-name (:persisted/table_name card)}}))))
+        (t2/reducible-select ::Card
                              {:select    [:model.collection_id
                                           :model.database_id
                                           :model.dataset
@@ -202,11 +217,11 @@
                                           :model.result_metadata
                                           :model.table_id
                                           :model.visualization_settings
-                                          [:persisted_info.active     :persisted_info__active]
-                                          [:persisted_info.state      :persisted_info__state]
-                                          [:persisted_info.definition :persisted_info__definition]
-                                          [:persisted_info.query_hash :persisted_info__query_hash]
-                                          [:persisted_info.table_name :persisted_info__table_name]]
+                                          :persisted_info.active
+                                          :persisted_info.state
+                                          :persisted_info.definition
+                                          :persisted_info.query_hash
+                                          :persisted_info.table_name]
                               :from      [[(t2/table-name :model/Card) :model]]
                               :left-join [[(t2/table-name :model/PersistedInfo) :persisted_info]
                                           [:= :persisted_info.card_id :model.id]]

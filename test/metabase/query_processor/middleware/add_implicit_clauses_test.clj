@@ -84,9 +84,8 @@
   (mt/with-everything-store
     (#'qp.add-implicit-clauses/add-implicit-fields inner-query)))
 
-(deftest add-order-bys-for-no-aggregations-test
+(deftest ^:parallel add-order-bys-for-no-aggregations-test
   (testing "We should add sorted implicit Fields for a query with no aggregations"
-    ()
     (is (= (:query
             (mt/mbql-query venues
               {:fields [ ;; :type/PK Fields should get sorted first
