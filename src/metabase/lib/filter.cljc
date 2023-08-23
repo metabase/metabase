@@ -277,6 +277,7 @@
                                                             :matching-filters matching-filters}))
          (first matching-filters))))))
 
+;; TODO: Refactor this away - handle legacy refs in `lib.js` and call `lib.equality` from there.
 (mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
   "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
   ([query legacy-ref]
@@ -307,9 +308,9 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op options first-arg & rest-args] a-filter-clause
-         stage (lib.util/query-stage query stage-number)
+         stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col (lib.equality/closest-matching-metadata first-arg columns)]
+         col     (lib.equality/closest-matching-metadata query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                                (lib.filter.operator/filter-operators col))

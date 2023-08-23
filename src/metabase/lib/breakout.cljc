@@ -73,8 +73,10 @@
                     options {:include-implicitly-joinable-for-source-card? false}]
                 (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq cols)
-       (let [matching (lib.equality/find-closest-matches-for-refs
-                        query stage-number (breakouts query stage-number) cols)]
+       (let [matching (lib.equality/closest-matches-in-metadata
+                        query stage-number
+                        (or (breakouts query stage-number) [])
+                        cols {})]
          (mapv #(let [pos (matching %)]
                   (cond-> %
                     pos (assoc :breakout-position pos)))

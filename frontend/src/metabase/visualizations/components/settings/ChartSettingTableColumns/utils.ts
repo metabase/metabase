@@ -1,8 +1,11 @@
-import { DatasetColumn, TableColumnOrderSetting } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import {
+import type {
   ColumnGroupItem,
   ColumnMetadataItem,
   ColumnSetting,

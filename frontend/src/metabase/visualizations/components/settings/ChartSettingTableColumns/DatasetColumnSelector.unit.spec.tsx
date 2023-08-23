@@ -1,6 +1,9 @@
 import { assocIn } from "icepick";
 import userEvent from "@testing-library/user-event";
-import { DatasetColumn, TableColumnOrderSetting } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockTableColumnOrderSetting,

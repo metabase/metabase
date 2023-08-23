@@ -3,7 +3,7 @@ import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
   addColumnInQuery,
@@ -19,7 +19,7 @@ import {
   getQueryColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
-import {
+import type {
   ColumnMetadataItem,
   ColumnSettingItem,
   DragColumnProps,

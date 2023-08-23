@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import { useCallback } from "react";
-import { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 import { getEditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
 import { ColumnItem } from "../ColumnItem";
 import { ChartSettingOrderedItems } from "../ChartSettingOrderedItems";
-import {
+import type {
   ColumnGroupItem,
   ColumnMetadataItem,
   ColumnSettingItem,

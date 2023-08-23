@@ -1,9 +1,9 @@
-import {
+import type {
   DatasetColumn,
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 export interface ColumnSetting extends TableColumnOrderSetting {
   fieldRef: FieldReference;

@@ -205,10 +205,10 @@
     {[:field {} 3] 0
      [:field {} 1] 1}
 
-    [[:field {:base-type :type/Integer} 1]]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
-    {[:field {:base-type :type/Integer} 1] 0}
+    [[:field {:base-type :type/Integer} "foo"]]
+    [[:field {:base-type :type/Number}  "foo"]
+     [:field {:base-type :type/Integer} "foo"]]
+    {[:field {:base-type :type/Integer} "foo"] 0}
 
     [[:field {:join-alias "J"} 1]]
     [[:field {:join-alias "I"} 1]
@@ -219,7 +219,7 @@
     ;; note that the key of the returned map is the *original* haystack value
     [[:field {:base-type :type/Float} 1]]
     [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
+     [:field {:base-type :type/Integer} 2]]
     {[:field {:base-type :type/Number} 1] 0}
 
     ;; if no exact match, ignore :join-alias
@@ -229,10 +229,10 @@
     {[:field {:join-alias "J"} 1] 0}
 
     ;; ignore binning altogether if we need to.
-    [:field {:base-type :type/Float
+    [[:field {:base-type :type/Float
              :binning   {:strategy :bin-width, :bin-width 20}
              :lib/uuid  "ead5b63d-a326-4fab-bacb-69e1b08f807d"}
-     "People__LONGITUDE"]
+     "People__LONGITUDE"]]
     [[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
               :base-type      :type/Float
               :effective-type :type/Float}
@@ -272,7 +272,7 @@
     ;; note that the key of the returned map is the *original* haystack value
     [:field {:base-type :type/Float} 1]
     [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
+     [:field {:base-type :type/Integer} 2]]
     [:field {:base-type :type/Number} 1]
 
     ;; if no exact match, ignore :join-alias
@@ -291,13 +291,14 @@
   (is (= {[:field {} "CATEGORY"] 0
           [:field {} "ID"]       1}
          (lib.equality/find-closest-matches-for-refs
-          (lib/query meta/metadata-provider (meta/table-metadata :products))
-          -1
+           (lib/query meta/metadata-provider (meta/table-metadata :products))
+           -1
           [[:field {} (meta/id :products :category)]
            [:field {} "ID"]
            [:field {} "NAME"]]
           [[:field {} "ID"]
-           [:field {} "CATEGORY"]]))))
+           [:field {} "CATEGORY"]]
+          {}))))
 
 (deftest ^:parallel find-closest-matching-ref-4-arity-test
   (is (= [:field {} "CATEGORY"]
@@ -353,7 +354,9 @@
               {:name "CREATED_AT", :selected? true}
               {:name "QUANTITY",   :selected? false}]
              (mapv #(select-keys % [:name :selected?])
-                   (lib.equality/mark-selected-columns cols selected)))))))
+                   (lib.equality/mark-selected-columns cols selected))
+             (mapv #(select-keys % [:name :selected?])
+                   (lib.equality/mark-selected-columns query -1 cols selected)))))))
 
 (deftest ^:parallel closest-matching-metadata-test
   (testing "closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
@@ -374,8 +377,9 @@
         (is (=? [:field {} "NAME"]
                 (lib.equality/find-closest-matching-ref query -1 a-ref refs))))
       (testing "... closest-matching-metadata finds the correct metadata, categories.name!!!"
-        (is (= 7
-               (lib.equality/index-of-closest-matching-metadata a-ref cols)))))))
+        (is (= (nth cols 7)
+               (lib.equality/closest-matching-metadata a-ref cols)
+               (lib.equality/closest-matching-metadata query -1 a-ref cols)))))))
 
 (deftest ^:parallel closest-matching-metadata-aggregation-test
   (let [query (-> lib.tu/venues-query

@@ -19,7 +19,6 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -414,7 +413,7 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
-                                 (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                 (when-let [join-alias (lib.join.util/current-join-alias metadata)]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
@@ -512,7 +511,7 @@
        (mapv (fn [col]
                (assoc col :selected? true))
              visible-columns)
-       (lib.equality/mark-selected-columns visible-columns selected-fields)))))
+       (lib.equality/mark-selected-columns query stage-number visible-columns selected-fields)))))
 
 (mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Find the field id for something or nil."
@@ -548,7 +547,6 @@
                             (every? (comp integer? last) field-refs))
                      (lib.equality/find-closest-matching-ref column-ref field-refs match-opts)
                      (lib.equality/find-closest-matching-ref populated stage-number column-ref field-refs match-opts))]
-    #?(:cljs (js/console.log "include-field" column-ref field-refs match-ref))
     (if (and match-ref
              (or (string? (last column-ref))
                  (integer? (last match-ref))))
@@ -560,19 +558,10 @@
   (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   :let [joinables (lib.join/joinable-columns query stage-number join)
-                                        field (or (lib.equality/closest-matching-metadata
-                                                   query stage-number column-ref
-                                                   joinables
-                                                   {:keep-join? true})
-                                                  ;; TODO: Remove this if it's really not needed anymore.
-                                                  ;; Sometimes we have to resolve a column marked as coming from a join.
-                                                  ;; Here we try to match with the joinable columns ignoring the diference
-                                                  ;; between the sources.
-                                                  #_(lib.equality/find-closest-matching-ref
-                                                   query stage-number column-ref
-                                                   (mapv #(assoc % :lib/source (:lib/source column))
-                                                         joinables)
-                                                   {:keep-join? true}))]
+                                        field     (lib.equality/closest-matching-metadata
+                                                    query stage-number column-ref
+                                                    joinables
+                                                    {:keep-join? true})]
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
@@ -604,9 +593,9 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
-    #?(:cljs (js/console.log "add-field" query column))
     (case source
       (:source/table-defaults
+       :source/fields
        :source/card
        :source/previous-stage
        :source/expressions
@@ -679,6 +668,7 @@
   (let [source (:lib/source column)]
     (case source
       (:source/table-defaults
+       :source/fields
        :source/breakouts
        :source/aggregations
        :source/expressions
@@ -710,7 +700,7 @@
                     lib.metadata.calculation/returned-columns
                     lib.metadata.calculation/visible-columns)
                   query stage-number stage)]
-     (lib.equality/closest-matching-metadata field-ref columns))))
+     (lib.equality/closest-matching-metadata query stage-number field-ref columns))))
 
 ;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
 (mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]

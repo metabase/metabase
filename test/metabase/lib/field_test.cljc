@@ -5,8 +5,10 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -1275,3 +1277,180 @@
       #?@(:cljs
           [#js ["aggregation" 0]
            #js ["aggregation" 0 #js {}]]))))
+
+(deftest ^:parallel self-join-ambiguity-test
+  (testing "Even when doing a tree-like self join, fields are matched correctly"
+    (let [base     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/with-fields [(lib/ref (meta/field-metadata :orders :id))
+                                         (lib/ref (meta/field-metadata :orders :tax))]))
+          join     (-> (lib/join-clause (meta/table-metadata :orders)
+                                        [(lib/=
+                                           (lib/ref (meta/field-metadata :orders :user-id))
+                                           (-> (meta/field-metadata :orders :id)
+                                               lib/ref
+                                               (lib.options/update-options assoc :join-alias "Orders")))])
+                       (lib/with-join-alias "Orders")
+                       (lib/with-join-fields [(lib/ref (meta/field-metadata :orders :id))
+                                              (lib/ref (meta/field-metadata :orders :tax))]))
+          query    (lib/join base join)
+          exp-src-id   {:lib/type      :metadata/column
+                        :name          "ID"
+                        :semantic-type :type/PK
+                        :table-id      (meta/id :orders)
+                        :id            (meta/id :orders :id)
+                        :lib/source    :source/fields
+                        :lib/desired-column-alias "ID"
+                        :display-name  "ID"}
+          exp-src-tax  {:lib/type      :metadata/column
+                        :name          "TAX"
+                        :semantic-type nil
+                        :table-id      (meta/id :orders)
+                        :id            (meta/id :orders :tax)
+                        :lib/source    :source/fields
+                        :lib/desired-column-alias "TAX"
+                        :display-name  "Tax"}
+          exp-join-id  {:lib/type      :metadata/column
+                        :name          "ID"
+                        :semantic-type :type/PK
+                        :table-id      (meta/id :orders)
+                        :id            (meta/id :orders :id)
+                        :lib/source    :source/joins
+                        :lib/desired-column-alias "Orders__ID"
+                        :metabase.lib.join/join-alias "Orders"
+                        :display-name  "ID"}
+          exp-join-tax {:lib/type      :metadata/column
+                        :name          "TAX"
+                        :semantic-type nil
+                        :table-id      (meta/id :orders)
+                        :id            (meta/id :orders :tax)
+                        :lib/source    :source/joins
+                        :lib/desired-column-alias "Orders__TAX"
+                        :metabase.lib.join/join-alias "Orders"
+                        :display-name  "Tax"}
+          columns      (lib.metadata.calculation/returned-columns query)]
+      (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
+              (lib.metadata.calculation/returned-columns query)))
+
+      (doseq [[label column-alias] [["original ID column"  "ID"]
+                                    ["original TAX column" "TAX"]
+                                    ["joined ID column"    "Orders__ID"]
+                                    ["joined TAX column"   "Orders__TAX"]]]
+        (testing (str "when hiding the " label)
+          (let [col-pred     #(= (:lib/desired-column-alias %) column-alias)
+                to-hide      (first (filter col-pred columns))
+                ;_ (prn "to hide" to-hide)
+                ;_ (prn "query" query)
+                hidden       (lib/remove-field query -1 to-hide)
+                ;_ (prn "hidden" hidden)
+                exp-shown    [exp-src-id exp-src-tax exp-join-id exp-join-tax]
+                exp-hidden   (remove col-pred exp-shown)]
+            (is (=? exp-hidden
+                    (lib.metadata.calculation/returned-columns hidden)))
+            (is (=? (map #(dissoc % :lib/source) exp-hidden)
+                    (filter :selected? (lib.equality/mark-selected-columns
+                                         (lib.metadata.calculation/visible-columns hidden)
+                                         (lib.metadata.calculation/returned-columns hidden)))))
+
+            (testing "and showing it again"
+              (let [shown     (lib/add-field query -1 to-hide)]
+                (is (=? exp-shown
+                        (lib.metadata.calculation/returned-columns shown)))
+                (is (=? (map #(dissoc % :lib/source) exp-shown)
+                        (filter :selected? (lib.equality/mark-selected-columns
+                                             (lib.metadata.calculation/visible-columns shown)
+                                             (lib.metadata.calculation/returned-columns shown)))))))))))))
+
+(deftest ^:parallel nested-query-add-remove-fields-test
+  (testing "a nested query with a field already excluded"
+    (let [provider   (lib.tu/metadata-provider-with-cards-for-queries
+                      meta/metadata-provider
+                      [(lib/query meta/metadata-provider (meta/table-metadata :venues))])
+          base       (lib/query provider (lib.metadata/card provider 1))
+          columns    (lib.metadata.calculation/returned-columns base)
+          price-pred #(= (:name %) "PRICE")
+          no-price   (remove price-pred columns)
+          query      (lib/with-fields base no-price)]
+      (is (empty? (filter price-pred (lib.metadata.calculation/returned-columns query))))
+      (let [vis-price (->> query
+                           lib.metadata.calculation/visible-columns
+                           (filter price-pred)
+                           first)]
+        (is (=? {:lib/type    :metadata/column
+                 :name        "PRICE"
+                 :lib/card-id (get-in base [:stages 0 :source-card])
+                 :lib/source  :source/card}
+                vis-price))
+
+        (testing "can have that dropped field added back"
+          (let [added (lib/add-field query -1 vis-price)]
+            (is (=? (map #(assoc % :lib/source :source/fields) columns)
+                    (lib.metadata.calculation/returned-columns added)))
+            (testing "and removed again"
+              (is (=? (map #(assoc % :lib/source :source/fields) no-price)
+                      (-> added
+                          (lib/remove-field -1 vis-price)
+                          lib.metadata.calculation/returned-columns))))))))))
+
+(defn- mark-selected [query]
+  (lib.equality/mark-selected-columns query -1
+                                      (lib.metadata.calculation/visible-columns query)
+                                      (lib.metadata.calculation/returned-columns query)))
+
+(deftest ^:parallel nested-query-join-with-fields-test
+  (testing "a nested query which has an explicit join with :fields"
+    (let [base           (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          join           (-> (lib/join-clause (meta/table-metadata :products))
+                             (lib/with-join-alias "Products")
+                             (lib/with-join-conditions [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
+                                                               (lib/ref (meta/field-metadata :products :id)))])
+                             (lib/with-join-fields [(meta/field-metadata :products :category)]))
+          provider       (lib.tu/metadata-provider-with-cards-for-queries
+                          meta/metadata-provider
+                          [(lib/join base -1 join)])
+          query          (lib/query provider (lib.metadata/card provider 1))
+          order-cols     (for [col (meta/fields :orders)]
+                           (-> (meta/field-metadata :orders col)
+                               (assoc :lib/source :source/card)
+                               (dissoc :id :table-id)))
+          join-cols      [(-> (meta/field-metadata :products :category)
+                              (assoc :lib/source :source/card
+                                     :source-alias "Products")
+                              (dissoc :id :table-id))]
+          implicit-cols  (for [col (meta/fields :people)]
+                           (-> (meta/field-metadata :people col)
+                               (assoc :lib/source :source/implicitly-joinable)))
+          sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
+      (is (=? (sorted (concat order-cols join-cols))
+              (sorted (lib.metadata.calculation/returned-columns query))))
+      (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
+        (is (=? (sorted (concat order-cols join-cols implicit-cols))
+                (sorted (lib.metadata.calculation/visible-columns query))))))))
+
+(deftest ^:parallel nested-query-implicit-join-fields-test
+  (testing "joining a nested query with another table"
+    ;; Use the mock card for :orders, join that with products in the nested query.
+    (let [provider  (lib.tu/metadata-provider-with-cards-for-queries
+                      meta/metadata-provider
+                      [(lib/query meta/metadata-provider (meta/table-metadata :orders))])
+          base      (lib/query provider (lib.metadata/card provider 1))
+          join      (lib/join-clause (meta/table-metadata :products)
+                                     [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
+                                             (lib/ref (meta/field-metadata :products :id)))])
+          query     (lib/join base -1 join)
+          get-state (fn [cols] (first (filter #(= (:id %) (meta/id :people :state)) cols)))
+          joined    (->> query
+                         lib.metadata.calculation/visible-columns
+                         get-state
+                         (lib/add-field query -1))]
+      (testing "can add an implicit join"
+        (is (= (inc (count (lib.metadata.calculation/returned-columns query)))
+               (count (lib.metadata.calculation/returned-columns joined)))))
+
+      (testing "correctly marks columns as selected"
+        (testing "without the implicit join"
+          (is (not (-> query mark-selected get-state :selected?))))
+        (testing "with the implicit join"
+          (is (=? {:id (meta/id :people :state)
+                   :lib/source :source/implicitly-joinable
+                   :selected? true}
+                  (get-state (mark-selected joined)))))))))

@@ -379,12 +379,12 @@
 
 (defn- select-home-column
   [home-cols cond-fields]
-  (let [matches (lib.equality/find-closest-matches-for-refs
-                  (map lib.ref/ref home-cols) cond-fields)
-        ;; Matches is a map from cond-fields to the corresponding home-cols index.
-        cond-home-cols (->> cond-fields
-                            (keep matches)
-                            (map #(nth home-cols %)))]
+  ;; cond-fields can have duplicates, which breaks [[lib.equality/find-closest-matches-for-refs]] and friends.
+  ;; So we look them up one at a time.
+  (let [cond-home-cols (for [field cond-fields
+                             :let [home-col (lib.equality/closest-matching-metadata field home-cols)]
+                             :when home-col]
+                         home-col)]
     ;; first choice: the leftmost FK or PK in the condition referring to a home column
     (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
         ;; otherwise the leftmost home column in the condition
@@ -464,7 +464,7 @@
           (let [bare-lhs (lib.options/update-options lhs dissoc :join-alias)
                 bare-rhs (lib.options/update-options rhs dissoc :join-alias)]
             (if (and (nil? (lib.equality/closest-matching-metadata query stage-number bare-lhs home-cols))
-                     (lib.equality/index-of-closest-matching-metadata query stage-number bare-rhs home-cols))
+                     (lib.equality/closest-matching-metadata query stage-number bare-rhs home-cols))
               [op op-opts lhs bare-rhs]
               [op op-opts bare-lhs rhs]))
 
@@ -511,7 +511,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- [:or PartialJoin Joinable]]
+    a-join       :- [:or lib.join.util/PartialJoin Joinable]]
    (let [a-join              (join-clause a-join)
          suggested-condition (when (empty? (join-conditions a-join))
                                (suggested-join-condition query stage-number (joined-thing query a-join)))
@@ -587,7 +587,7 @@
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
   [metadata-providerable :- lib.metadata/MetadataProviderable
-   a-join                :- PartialJoin]
+   a-join                :- lib.join.util/PartialJoin]
   (let [origin (-> a-join :stages first)]
     (cond
       (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))

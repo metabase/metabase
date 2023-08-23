@@ -8,8 +8,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -76,10 +75,10 @@
           field-id (inc (apply max (map :id (lib/visible-columns query))))
           field-name (str field-id)]
       (mu/disable-enforcement
-       (is (=? {:name field-id
-                :display-name field-name
-                :long-display-name (str "join → " field-name)}
-               (lib/display-info query [:field {:join-alias "join"} field-id])))))))
+        (is (=? {:name field-id
+                 :display-name field-name
+                 :long-display-name (str "join → " field-name)}
+                (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (deftest ^:parallel visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
@@ -106,9 +105,9 @@
 
   (testing "multiple aggregations"
     (lib.metadata.calculation/visible-columns
-      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          (lib/aggregate (lib/count))
-          (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))))
+     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+         (lib/aggregate (lib/count))
+         (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))))
 
 (deftest ^:parallel source-cards-test
   (testing "with :source-card"

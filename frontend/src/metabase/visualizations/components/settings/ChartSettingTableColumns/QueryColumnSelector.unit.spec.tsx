@@ -1,6 +1,6 @@
 import { assocIn } from "icepick";
 import userEvent from "@testing-library/user-event";
-import {
+import type {
   DatasetColumn,
   DatasetQuery,
   TableColumnOrderSetting,

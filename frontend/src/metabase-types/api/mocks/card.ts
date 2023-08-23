@@ -7,9 +7,9 @@ import type {
   StructuredDatasetQuery,
   NativeDatasetQuery,
   PublicCard,
+  TableColumnOrderSetting,
 } from "metabase-types/api";
 
-import { TableColumnOrderSetting } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,

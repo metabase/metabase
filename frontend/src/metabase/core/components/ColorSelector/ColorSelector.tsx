@@ -1,6 +1,7 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
-import ColorPill, { PillSize } from "metabase/core/components/ColorPill";
+import type { PillSize } from "metabase/core/components/ColorPill";
+import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorSelectorPopover from "./ColorSelectorPopover";
 

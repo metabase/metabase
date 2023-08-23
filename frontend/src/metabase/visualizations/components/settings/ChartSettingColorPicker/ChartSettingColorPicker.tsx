@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { getAccentColors } from "metabase/lib/colors/groups";
-import { PillSize } from "metabase/core/components/ColorPill";
+import type { PillSize } from "metabase/core/components/ColorPill";
 import ColorSelector from "metabase/core/components/ColorSelector";
 
 interface ChartSettingColorPickerProps {

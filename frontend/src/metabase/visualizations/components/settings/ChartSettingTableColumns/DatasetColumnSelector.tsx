@@ -11,7 +11,11 @@ import {
   getDatasetColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
-import { ColumnSettingItem, DragColumnProps, EditWidgetConfig } from "./types";
+import type {
+  ColumnSettingItem,
+  DragColumnProps,
+  EditWidgetConfig,
+} from "./types";
 
 export interface DatasetColumnSelectorProps {
   value: TableColumnOrderSetting[];
