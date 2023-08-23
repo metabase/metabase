@@ -135,7 +135,7 @@
 (defn- default-created-at-filter-clause
   [model created-at]
   (let [{:keys [start end]} (try
-                             (params.dates/date-string->range created-at {:inclusive-end? false})
+                             (params.dates/date-string->range created-at {:inclusive-end? false :timezone-id "UTC"})
                              (catch Exception _e
                                (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
         start               (some-> start u.date/parse)

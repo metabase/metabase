@@ -406,7 +406,7 @@
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
   `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
 
-  e.g:
+   e.g:
     (date-string->range \"past2days\") ; -> {:start \"2020-01-20\", :end \"2020-01-21\"}
 
   intended for use with SQL like
@@ -416,16 +416,21 @@
   which is *INCLUSIVE*. If the filter clause you're generating is not inclusive, pass the `:inclusive-start?` or
   `:inclusive-end?` options as needed to generate an appropriate range.
 
+  For relative date strings, the datetime is relative with current local time, if you want to change the timezone of
+  local time, use the option `:timezone-id`.
+
   Note that some ranges are open-ended on one side, and will have only a `:start` or an `:end`."
   ;; 1-arg version returns inclusive start/end; 2-arg version can adjust as needed
   ([date-string]
    (date-string->range date-string nil))
 
   ([date-string  :- ms/NonBlankString
-    {:keys [inclusive-start? inclusive-end?]
+    {:keys [inclusive-start? inclusive-end? timezone-id]
      :or   {inclusive-start? true inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         now     (t/local-date-time (t/zone-id "UTC"))]
+         now     (if timezone-id
+                   (t/local-date-time (t/zone-id timezone-id))
+                   (t/local-date-time))]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
      (or (->> (execute-decoders relative-date-string-decoders :range now date-string)

@@ -4,10 +4,8 @@
    [clojure.test.check :as tc]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [java-time :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.test :as mt]))
 
 (deftest date-string->filter-test
   (testing "year and month"
@@ -396,6 +394,20 @@
          (testing (format "%s with options %s should parse to %s" (pr-str s) (pr-str option) (pr-str ranges))
            (is (= expected-range
                   (params.dates/date-string->range s option)))))))))
+
+(deftest date-string->range-custom-timezone-test
+  (mt/with-clock #t "2016-06-07T12:13:55Z"
+    (testing "if an timezone-id is specified, the relative datetime should relative to now at the specified timezone"
+      (is (= {:end "2016-06-07T19:00:00", :start "2016-06-07T19:00:00"}
+             (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"})))
+
+      (testing "default should be at UTC"
+        (is (= {:start "2016-06-07T12:00:00", :end "2016-06-07T12:00:00"}
+               (params.dates/date-string->range "thishour"))))
+
+      (testing "Shouldn't affect the absolute datetime"
+        (is (= {:start "2016-06-07T12:12:00" :end "2016-06-07T12:12:00"}
+               (params.dates/date-string->range "2016-06-07T12:12:00")))))))
 
 (deftest relative-date-string->range-always-at-utc-test
   (testing "the date range for relative string should always be at UTC regardless of the system-timezone-id"
