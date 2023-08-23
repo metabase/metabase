@@ -43,7 +43,7 @@
 (defmacro ^:private with-streaming-response-thread-pool {:style/indent 0} [& body]
   `(do-with-streaming-response-thread-pool (fn [] ~@body)))
 
-(defmacro ^:private with-test-driver-db {:style/indent 0} [& body]
+(defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
   `(t2.with-temp/with-temp [Database db# {:engine ::test-driver}]
      (mt/with-db db#
        (with-streaming-response-thread-pool
@@ -88,7 +88,7 @@
 
 (deftest basic-test
   (testing "Make sure our ::test-driver is working as expected"
-    (with-test-driver-db
+    (with-test-driver-db!
       (is (= [[10]]
              (mt/rows
                (mt/user-http-request :lucky
@@ -99,7 +99,7 @@
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
-    (with-test-driver-db
+    (with-test-driver-db!
       (let [num-requests       (+ thread-pool-size 20)
             remaining          (atom num-requests)
             session-token      (client/authenticate (mt/user->credentials :lucky))
@@ -124,7 +124,7 @@
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
     (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
-      (with-test-driver-db
+      (with-test-driver-db!
         (reset! canceled? false)
         (with-start-execution-chan [start-chan]
           (let [url           (client/build-url "dataset" nil)
@@ -150,7 +150,7 @@
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
-(deftest preserve-bindings-test
+(deftest ^:parallel preserve-bindings-test
   (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]
