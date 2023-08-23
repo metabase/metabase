@@ -22,7 +22,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- with-local-date-time-at-same-zone
+(defn do-with-local-date-time-at-same-zone
+  [clock-zone-id thunk]
+  (let [original-var t/local-date-time]
+    (with-redefs [t/local-date-time (fn [& args]
+                                      (if (and (= (count args) 1)
+                                               (instance? ZoneId (first args)))
+                                        (-> (.atZone ^LocalDateTime (original-var) ^ZoneId clock-zone-id) ^ZonedDateTime
+                                            (t/with-zone-same-instant (first args))
+                                            .toLocalDateTime)
+                                        (apply original-var args)))]
+      (thunk))))
+
+(defmacro with-local-date-time-at-same-zone
   "This fixes a very specific bug with [[t/local-date-time]] when called with a timezone-id when it's under a [[mt/with-clock]].
 
   Say if my current time is : 2023-01-01T10:00:00[UTC]
@@ -43,16 +55,8 @@
 
   which is the time from clock but in Asia/Ho_Chi_Minh
   "
-  [clock-zone-id thunk]
-  (let [original-var t/local-date-time]
-    (with-redefs[t/local-date-time (fn [& args]
-                                     (if (and (= (count args) 1)
-                                              (instance? ZoneId (first args)))
-                                       (-> (.atZone ^LocalDateTime (original-var) ^ZoneId clock-zone-id) ^ZonedDateTime
-                                           (t/with-zone-same-instant (first args))
-                                           .toLocalDateTime)
-                                       (apply original-var args)))]
-      (thunk))))
+  [clock-zone-id & body]
+  `(do-with-local-date-time-at-same-zone ~clock-zone-id (fn [] ~@body)))
 
 (defn do-with-clock [clock thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
@@ -65,7 +69,8 @@
                                                                        (pr-str clock)))))]
       #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
-        (with-local-date-time-at-same-zone (t/zone-id clock) thunk)))))
+        (with-local-date-time-at-same-zone (t/zone-id clock)
+          (thunk))))))
 
 (defmacro with-clock
   "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
