@@ -10,8 +10,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
@@ -19,7 +17,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]

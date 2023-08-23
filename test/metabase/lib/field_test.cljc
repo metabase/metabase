@@ -52,7 +52,7 @@
                      :id        (grandparent-parent-child-id :child)
                      :base-type :type/Text}]
     (lib.tu/mock-metadata-provider
-     {:database meta/metadata
+     {:database meta/database
       :tables   [(meta/table-metadata :venues)]
       :fields   (mapv (fn [field-metadata]
                         (merge {:visibility-type :normal

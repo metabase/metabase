@@ -89,7 +89,7 @@
                     :password "passw"
                     :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp))))))
 
-(deftest ^:parallel connection-props-server->client-test
+(deftest connection-props-server->client-test
   (testing "connection-props-server->client works as expected for secret types"
     (doseq [[expected is-hosted?] [[[{:name "host"}
                                      {:name        "password-value"
@@ -181,7 +181,9 @@
         (is (= []
                (driver.u/connection-props-server->client
                 nil
-                [{:name "test", :type :info}]))))))
+                [{:name "test", :type :info}])))))))
+
+(deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
     (is (= [{:name "first-prop"}
             {:default      "all"
@@ -212,7 +214,9 @@
               {:name         "my-schema-filters"
                :type         :schema-filters
                :display-name "Schemas"}
-              {:name "last-prop"}]))))
+              {:name "last-prop"}])))))
+
+(deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
