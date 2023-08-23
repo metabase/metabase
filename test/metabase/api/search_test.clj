@@ -859,14 +859,14 @@
 (deftest filter-by-last-edited-by-test
   (let [search-term "last-edited-by"]
     (t2.with-temp/with-temp
-      [:model/Card       {rasta-card-id :id}   {:name (format "%s Rasta Card" search-term)}
-       :model/Card       {lucky-card-id :id}   {:name (format "%s Lucky Card" search-term)}
-       :model/Card       {rasta-model-id :id}  {:name (format "%s Rasta Model" search-term) :dataset true}
-       :model/Card       {lucky-model-id :id}  {:name (format "%s Lucky Model" search-term) :dataset true}
-       :model/Dashboard  {rasta-dash-id :id}   {:name (format "%s Rasta Dashboard" search-term)}
-       :model/Dashboard  {lucky-dash-id :id}   {:name (format "%s Lucky Dashboard" search-term)}
-       :model/Metric     {rasta-metric-id :id} {:name (format "%s Rasta Metric" search-term)}
-       :model/Metric     {lucky-metric-id :id} {:name (format "%s Lucky Metric" search-term)}]
+      [:model/Card       {rasta-card-id :id}   {:name search-term}
+       :model/Card       {lucky-card-id :id}   {:name search-term}
+       :model/Card       {rasta-model-id :id}  {:name search-term :dataset true}
+       :model/Card       {lucky-model-id :id}  {:name search-term :dataset true}
+       :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
+       :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
+       :model/Metric     {rasta-metric-id :id} {:name search-term}
+       :model/Metric     {lucky-metric-id :id} {:name search-term}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
@@ -887,12 +887,12 @@
               (is (= #{"dashboard" "dataset" "metric" "card"} (set (:available_models resp)))))
 
             (testing "results contains only entities with the specified creator"
-              (is (= #{[rasta-metric-id "metric"    "last-edited-by Rasta Metric"]
-                       [rasta-card-id   "card"      "last-edited-by Rasta Card"]
-                       [rasta-model-id  "dataset"   "last-edited-by Rasta Model"]
-                       [rasta-dash-id   "dashboard" "last-edited-by Rasta Dashboard"]}
+              (is (= #{[rasta-metric-id "metric"]
+                       [rasta-card-id   "card"]
+                       [rasta-model-id  "dataset"]
+                       [rasta-dash-id   "dashboard"]}
                      (->> (:data resp)
-                          (map (juxt :id :model :name))
+                          (map (juxt :id :model))
                           set))))))
 
         (testing "error if last_edited_by is not an integer"
@@ -1004,7 +1004,7 @@
                      :available_models
                      set)))))
 
-      (testing "works with the last_edited_by filter  too"
+      (testing "works with the last_edited_by filter too"
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                             [:model/Dashboard dash-id] [:model/Metric metric-id]]]
           (revision/push-revision!
@@ -1111,12 +1111,12 @@
          (test-search "today" new-result))))))
 
 (deftest last-edited-at-correctness-test
-  (let [search-term "last-edited-at-filtering"
-        new          #t "2023-05-04T10:00Z[UTC]"
+  (let [search-term   "last-edited-at-filtering"
+        new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id} {:name        search-term
+        [:model/Dashboard  {dashboard-new :id} {:name       search-term
                                                 :updated_at new}
          :model/Dashboard  {dashboard-old :id} {:name       search-term
                                                 :updated_at two-years-ago}

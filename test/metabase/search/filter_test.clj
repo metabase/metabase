@@ -79,7 +79,7 @@
                       :last-edited-by 1})))))
 
    (testing "last edited at"
-     (is (= #{"dashboard" "dataset" "collection" "action" "metric" "card"}
+     (is (= #{"dashboard" "dataset" "action" "metric" "card"}
             (search.filter/search-context->applicable-models
              (merge default-search-ctx
                     {:last-edited-at "past3days"}))))
