@@ -107,51 +107,88 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
         rating: {
           type: "number",
           name: "rating",
-          id: "b22a5ce4-fe1d-44e3-8df4-f8951f7921bc",
+          id: "68821a54-f0f3-4f09-8c32-6f7c0e5e5399",
           "display-name": "Rating",
         },
       },
     },
   };
 
+  const filterDetails = [
+    {
+      name: "Rating",
+      slug: "rating",
+      id: "10c0d4ba",
+      type: "number/=",
+      sectionId: "number",
+    },
+    {
+      name: "Price",
+      slug: "price",
+      id: "88b1a9dd",
+      type: "number/=",
+      sectionId: "number",
+    },
+  ];
+
+  const parameterMapping = filterDetails.map(filter => ({
+    parameter_id: filter.id,
+    target: ["variable", ["template-tag", filter.slug]],
+  }));
+
+  const dashboardDetails = {
+    name: "Dashboard #31975",
+    parameters: filterDetails,
+  };
+  const dashcardDetails = {
+    row: 0,
+    col: 0,
+    size_x: 16,
+    size_y: 8,
+  };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+        cards: [
+          {
+            id,
+            card_id,
+            ...dashcardDetails,
+            parameter_mappings: parameterMapping.map(mapping => ({
+              ...mapping,
+              card_id,
+            })),
+          },
+        ],
+      });
 
-        visitDashboard(dashboard_id);
-      },
-    );
-
-    editDashboard();
+      visitDashboard(dashboard_id);
+    });
   });
 
   it("should keep filter value on blur (metabase#31975)", () => {
-    setupNumberFilter("Price");
-    setupNumberFilter("Rating");
-
-    saveDashboard();
-
     cy.findByPlaceholderText("Price").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
     cy.findAllByTestId("table-row")
       .should("have.length", 2)
-      .and("contain", "Doohickey")
-      .and("contain", "Widget");
+      // first line price
+      .and("contain", "98.82")
+      // first line rating
+      .and("contain", "4.3")
+      // second line price
+      .and("contain", "95.93")
+      // second line rating
+      .and("contain", "4.4");
   });
 });
-
-function setupNumberFilter(name) {
-  setFilter("Number", "Equal to");
-  cy.findByDisplayValue("Equal to").clear().type(name);
-
-  clickSelect();
-  popover().contains(name).click();
-}
 
 function clickSelect() {
   getDashboardCard().findByText("Select…").click();
