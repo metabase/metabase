@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { SunburstSeriesOption } from "echarts";
 
 import type { EChartsMixin } from "metabase/visualizations/types";
@@ -55,44 +54,45 @@ export const showPercentagesOnChartMixin: EChartsMixin = ({
   return { option };
 };
 
-// Will later use this for changing total on hover
-export function usePieTotalMixin() {
-  const [text, setText] = useState("");
+export const totalMixin: EChartsMixin = ({ option, props }) => {
+  if (!props.settings["pie.show_total"]) {
+    return { option };
+  }
+  const total = props.data.rows.reduce(
+    (sum, row) => sum + row[props.settings["pie._metricIndex"]],
+    0,
+  );
 
-  const pieTotalMixin: EChartsMixin = ({ option }) => {
-    // TODO fix any type
-    const mouseoverHandler = (event: any) => {
-      setText(`${event.data.name} - ${event.data.value}`);
-    };
-    const mouseoutHandler = (event: any) => {
-      setText("Total...");
-    };
-
-    option.graphic = {
-      type: "text",
-      left: "center",
-      top: "center",
-      // TODO styles
-      style: {
-        fill: "#000",
-        font: "bold 26px sans-serif",
-        text: text || "Total...",
-      },
-    };
-    option.hoverLayerThreshold = 0;
-
-    return {
-      option,
-      eventHandlers: [
-        {
-          eventName: "mouseover",
-          query: "series.sunburst",
-          handler: mouseoverHandler,
+  option.graphic = {
+    type: "group",
+    top: "center",
+    left: "center",
+    children: [
+      {
+        type: "text",
+        cursor: "text",
+        // TODO styles
+        style: {
+          fill: "#000",
+          font: "bold 26px sans-serif",
+          textAlign: "center",
+          text: total,
         },
-        { eventName: "mouseout", handler: mouseoutHandler },
-      ],
-    };
+      },
+      {
+        type: "text",
+        cursor: "text",
+        top: 25,
+        // TODO styles
+        style: {
+          fill: "#000",
+          font: "bold 26px sans-serif",
+          textAlign: "center",
+          text: "Total",
+        },
+      },
+    ],
   };
 
-  return pieTotalMixin;
-}
+  return { option };
+};
