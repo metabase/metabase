@@ -162,9 +162,11 @@
          :moderated_status]
         bookmark-col dashboardcard-count-col))
 
-(defmethod columns-for-model "indexed-entity" [_]
+(defmethod columns-for-model "indexed-entity"
+  [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
+   [:model-index.id             :model_index_id]
    [:model-index.pk_ref         :pk_ref]
    [:collection.name            :collection_name]
    [:model.collection_id        :collection_id]
