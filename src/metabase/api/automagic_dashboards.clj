@@ -165,9 +165,10 @@
     (when-let [table-ids (t2/select-fn-set :table_id 'Field :fk_target_field_id field-id)]
       (t2/select 'Table :id [:in table-ids]))))
 
-(defn create-linked-dashboard [model linked]
-  (let [                                                    ;root-dashboard   (magic/automagic-analysis model {:show :all})
-        child-dashboards (map #(magic/automagic-analysis % {:show :all}) linked)
+(defn create-linked-dashboard
+  "For each joinable table from `model`, create an x-ray dashboard as a tab."
+  [{:keys [model linked-tables model-index model-index-value]}]
+  (let [child-dashboards (map #(magic/automagic-analysis % {:show :all}) linked-tables)
         dashboard-id     (gensym)
         dashboards       (->> child-dashboards
                               (map (fn [dashboard]
@@ -214,7 +215,10 @@
                                                     :model-index-value model-index-value})]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
                (api/read-check Card (:model_id model-index))
-               (or (create-linked-dashboard model linked)
+               (or (create-linked-dashboard {:model model
+                                             :linked-tables linked
+                                             :model-index model-index
+                                             :model-index-value model-index-value})
                    (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
