@@ -60,13 +60,13 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       description: {
         ref: getStylesRef("description"),
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
         marginTop: theme.spacing.xs,
       },
       icon: {
