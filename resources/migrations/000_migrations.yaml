@@ -15204,6 +15204,22 @@ databaseChangeLog:
               SET r.most_recent = true;
       rollback: # nothing to do since the most_recent will be dropped anyway
 
+  - changeSet:
+      id: v48.00-010
+      author: qnkhuat
+      comment: Remove ON UPDATE for revision.timestamp on mysql, mariadb
+      preConditions:
+          # If preconditions fail (i.e., dbms is not mysql or mariadb) then mark this migration as 'ran'
+          - onFail: MARK_RAN
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+      changes:
+          - sql:
+                sql: ALTER TABLE `revision` CHANGE `timestamp` `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

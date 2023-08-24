@@ -48,11 +48,11 @@
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-   :entity   :model/FakedCard
-   :id       card-id
-   :user-id  (mt/user->id :rasta)
-   :object   (dissoc object :message)
-   :message  message))
+   :entity    :model/FakedCard
+   :id        card-id
+   :user-id   (mt/user->id :rasta)
+   :object    (dissoc object :message)
+   :message   message))
 
 (deftest ^:parallel post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
@@ -136,6 +136,19 @@
                  :model_id    card-id
                  :most_recent false}]
                (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
+
+(deftest update-revision-does-not-update-timestamp-test
+  ;; Realistically this only happens on mysql and mariadb for some reasons
+  ;; and we can't update revision anyway, except for when we need to change most_recent
+  (t2.with-temp/with-temp [Card {card-id :id} {}]
+    (let [revision (first (t2/insert-returning-instances! :model/Revision {:model       "Card"
+                                                                           :user_id     (mt/user->id :crowberto)
+                                                                           :model_id    card-id
+                                                                           :object      {}
+                                                                           :most_recent false}))]
+      (t2/update! (t2/table-name :model/Revision) (:id revision) {:most_recent true})
+      (is (= (:timestamp revision)
+             (t2/select-one-fn :timestamp :model/Revision (:id revision)))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"

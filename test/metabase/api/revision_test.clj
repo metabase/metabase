@@ -72,7 +72,7 @@
 (deftest get-revision-for-entity-with-revision-exceeds-max-revision-test
   (t2.with-temp/with-temp [Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
-    (doseq [i (range (+ revision/max-revisions 2))]
+    (doseq [i (range (inc revision/max-revisions))]
       (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
 
