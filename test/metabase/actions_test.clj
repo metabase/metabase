@@ -154,10 +154,10 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
-                                           :engine   ::feature-flag-test-driver
-                                           :settings {:database-enable-actions true}}]
-                    Table    [{table-id :id} {:db_id db-id}]]
+    (mt/with-temp [Database {db-id :id}    {:name     "Birds"
+                                            :engine   ::feature-flag-test-driver
+                                            :settings {:database-enable-actions true}}
+                   Table    {table-id :id} {:db_id db-id}]
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)

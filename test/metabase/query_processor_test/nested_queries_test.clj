@@ -621,11 +621,11 @@
 (deftest macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (mt/with-temp* [Segment [segment (mt/$ids {:table_id   $$venues
-                                                 :definition {:filter [:= $venues.price 1]}})]
-                      Card    [card (mbql-card-def
-                                      :source-table (mt/id :venues)
-                                      :filter       [:and [:segment (u/the-id segment)]])]]
+      (mt/with-temp [Segment segment (mt/$ids {:table_id   $$venues
+                                               :definition {:filter [:= $venues.price 1]}})
+                     Card    card (mbql-card-def
+                                   :source-table (mt/id :venues)
+                                   :filter       [:and [:segment (u/the-id segment)]])]
         (is (= [[22]]
                (mt/formatted-rows [int]
                  (qp/process-query
@@ -635,9 +635,9 @@
 (deftest card-perms-test
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection"
-      (mt/with-temp* [Collection [collection]
-                      Card       [card {:collection_id (u/the-id collection)
-                                        :dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}]]
+      (mt/with-temp [Collection collection {}
+                     Card       card {:collection_id (u/the-id collection)
+                                      :dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}]
         (is (= #{(perms/collection-read-path collection)}
                (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))))
 
@@ -651,12 +651,12 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (mt/with-temp* [Collection [collection]
-                          Card       [card-1 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
-                          Card       [card-2 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query nil
-                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]]
+          (mt/with-temp [Collection collection {}
+                         Card       card-1 {:collection_id (u/the-id collection)
+                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                         Card       card-2 {:collection_id (u/the-id collection)
+                                            :dataset_query (mt/mbql-query nil
+                                                             {:source-table (format "card__%d" (u/the-id card-1))})}]
             (testing "read perms for both Cards should be the same as reading the parent collection")
             (is (= (mi/perms-objects-set collection :read)
                    (mi/perms-objects-set card-1 :read)
@@ -712,8 +712,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
-        (mt/with-temp* [Collection [source-card-collection]
-                        Collection [dest-card-collection]]
+        (mt/with-temp [Collection source-card-collection {}
+                       Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
@@ -728,8 +728,8 @@
                          (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
-          (mt/with-temp* [Collection [source-card-collection]
-                          Collection [dest-card-collection]]
+          (mt/with-temp [Collection source-card-collection {}
+                         Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           s/Keyword s/Any}
@@ -744,8 +744,8 @@
                            (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
-            (mt/with-temp* [Collection [source-card-collection]
-                            Collection [dest-card-collection]]
+            (mt/with-temp [Collection source-card-collection {}
+                           Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
                             s/Keyword s/Any}

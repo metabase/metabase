@@ -165,11 +165,11 @@
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
 (defn do-with-some-fields [thunk]
-  (mt/with-temp* [Database [db                 {:engine "googleanalytics"}]
-                  Table    [table              {:name "98765432", :db_id (u/the-id db)}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/the-id table)}]]
+  (mt/with-temp [Database db                 {:engine "googleanalytics"}
+                 Table    table              {:name "98765432" :db_id (u/the-id db)}
+                 Field    event-action-field {:name "ga:eventAction" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    event-label-field  {:name "ga:eventLabel" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    date-field         {:name "ga:date" :base_type "type/Date" :table_id (u/the-id table)}]
     (mt/with-db db
       (thunk {:db                 db
               :table              table
@@ -362,9 +362,9 @@
 ;; Can we *save* a GA query that has two aggregations?
 
 (deftest save-ga-query-test
-  (mt/with-temp* [Database [db    {:engine :googleanalytics}]
-                  Table    [table {:db_id (u/the-id db)}]
-                  Field    [field {:table_id (u/the-id table)}]]
+  (mt/with-temp [Database db    {:engine :googleanalytics}
+                 Table    table {:db_id (u/the-id db)}
+                 Field    field {:table_id (u/the-id table)}]
     (let [cnt (->> (mt/user-http-request
                     :crowberto :post 200 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"

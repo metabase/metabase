@@ -123,8 +123,8 @@
 
 (deftest disallow-joins-against-table-on-different-db-test
   (testing "Test that joining against a table in a different DB throws an Exception"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}    {:db_id database-id}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"\QFailed to fetch :metadata/table\E"

@@ -418,10 +418,10 @@
                                                                                    "price" {:id     "price"
                                                                                             :hidden true}}}}]
             (let [dashboard-uuid (str (random-uuid))]
-              (mt/with-temp* [Dashboard [{dashboard-id :id} {:public_uuid dashboard-uuid}]
-                              DashboardCard [dashcard {:dashboard_id dashboard-id
-                                                       :action_id    action-id
-                                                       :card_id      card-id}]]
+              (mt/with-temp [Dashboard {dashboard-id :id} {:public_uuid dashboard-uuid}
+                             DashboardCard dashcard {:dashboard_id dashboard-id
+                                                     :action_id    action-id
+                                                     :card_id      card-id}]
                 (testing "Dashcard should only have id and name params"
                   (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
@@ -444,9 +444,9 @@
                                                                                                     :hidden true}
                                                                                             "name" {:id     "name"
                                                                                                     :hidden false}}}}]
-            (mt/with-temp* [DashboardCard [_ {:dashboard_id (:id dash)
-                                              :action_id action-id
-                                              :card_id model-id}]]
+            (mt/with-temp [DashboardCard _ {:dashboard_id (:id dash)
+                                            :action_id action-id
+                                            :card_id model-id}]
               (let [public-action (-> (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))
                                       :ordered_cards first :action)]
                 (testing "hidden action fields should not be included in the response"
@@ -851,30 +851,30 @@
 
 
 (deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
-  (is (mt/with-temp* [Dashboard     [dashboard]
-                      Card          [card]
-                      DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
+  (is (mt/with-temp [Dashboard     dashboard {}
+                     Card          card {}
+                     DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
 
 
-(deftest TODO-name-this-exception
+(deftest field-not-found-on-dashcard
   (is (thrown? Exception
-               (mt/with-temp* [Dashboard     [dashboard]
-                               Card          [card]
-                               DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
+               (mt/with-temp [Dashboard     dashboard {}
+                              Card          card {}
+                              DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
                  (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))))
 
 ;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
 (deftest implicit-param
-  (is (mt/with-temp* [Dashboard     [dashboard]
-                      Card          [card (sql-card-referencing-venue-name)]
-                      DashboardCard [_ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+  (is (mt/with-temp [Dashboard     dashboard {}
+                     Card          card (sql-card-referencing-venue-name)
+                     DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))
 
   (is (thrown? Exception
-               (mt/with-temp* [Dashboard     [dashboard]
-                               Card          [card (sql-card-referencing-venue-name)]
-                               DashboardCard [_ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+               (mt/with-temp [Dashboard     dashboard {}
+                              Card          card (sql-card-referencing-venue-name)
+                              DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
                  (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard))))))
 
 ;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
@@ -1003,14 +1003,14 @@
 
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp* [Dashboard     [dashboard (shared-obj)]
-                    Card          [card      (mbql-card-referencing table-kw field-kw)]
-                    DashboardCard [dashcard  {:dashboard_id       (u/the-id dashboard)
-                                              :card_id            (u/the-id card)
-                                              :parameter_mappings [{:card_id (u/the-id card)
-                                                                    :target  [:dimension
-                                                                              [:field
-                                                                               (mt/id table-kw field-kw) nil]]}]}]]
+    (mt/with-temp [Dashboard     dashboard (shared-obj)
+                   Card          card      (mbql-card-referencing table-kw field-kw)
+                   DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                            :card_id            (u/the-id card)
+                                            :parameter_mappings [{:card_id (u/the-id card)
+                                                                  :target  [:dimension
+                                                                            [:field
+                                                                             (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
 (defmacro with-sharing-enabled-and-temp-dashcard-referencing
@@ -1437,9 +1437,9 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
         (mt/with-actions [{:keys [action-id model-id]} {}]
-          (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                            :action_id action-id
-                                                            :card_id model-id}]]
+          (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
+                                                          :action_id action-id
+                                                          :card_id model-id}]
             (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
               (is (partial= {:rows-affected 1}
                             (client/client
@@ -1464,9 +1464,9 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash {:parameters []}]
           (mt/with-actions [{:keys [action-id model-id]} {}]
-            (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                              :action_id action-id
-                                                              :card_id model-id}]]
+            (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
+                                                            :action_id action-id
+                                                            :card_id model-id}]
               (is (partial= {:rows-affected 1}
                             (client/client
                              :post 200
@@ -1480,9 +1480,9 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
-          (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                            :action_id action-id
-                                                            :card_id model-id}]]
+          (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
+                                                          :action_id action-id
+                                                          :card_id model-id}]
             (is (partial= {:id 1 :name "African"}
                           (client/client
                            :get 200

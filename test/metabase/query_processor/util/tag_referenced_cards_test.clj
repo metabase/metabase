@@ -5,13 +5,12 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest tags-referenced-cards-lookup-test
   (testing "returns Card instances from raw query"
-    (t2.with-temp/with-temp [Card c1 {}
-                             Card c2 {}]
+    (mt/with-temp [Card c1 {}
+                   Card c2 {}]
       (qp.store/with-metadata-provider (mt/id)
         (is (=? [{:id            (:id c1)
                   :dataset-query {}}

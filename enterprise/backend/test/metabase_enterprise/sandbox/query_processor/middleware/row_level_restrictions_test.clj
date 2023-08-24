@@ -366,8 +366,8 @@
   (mt/test-drivers (e2e-test-drivers)
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
-        (t2.with-temp/with-temp [Collection collection {}
-                                 Card       card       {:collection_id (u/the-id collection)}]
+        (mt/with-temp [Collection collection {}
+                       Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
             (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
@@ -848,8 +848,8 @@
                           s/Keyword  s/Any}
                          (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
-            (t2.with-temp/with-temp [Collection {collection-id :id} {}
-                                     Card       {card-id :id}       {:dataset_query query, :collection_id collection-id}]
+            (mt/with-temp [Collection {collection-id :id} {}
+                           Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
               (perms/grant-collection-read-permissions! &group collection-id)
               (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
                                         s/Keyword s/Any}
@@ -1094,12 +1094,12 @@
                                               [:field (mt/id :products :category)
                                                nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
-          (t2.with-temp/with-temp [Card model {:dataset       true
-                                               :dataset_query (mt/mbql-query
-                                                                  products
-                                                                ;; note does not include the field we have to filter on. No way
-                                                                ;; to use the sandbox filter on the cached table
-                                                                  {:fields [$id $price]})}]
+          (mt/with-temp [Card model {:dataset       true
+                                     :dataset_query (mt/mbql-query
+                                                      products
+                                                      ;; note does not include the field we have to filter on. No way
+                                                      ;; to use the sandbox filter on the cached table
+                                                      {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))

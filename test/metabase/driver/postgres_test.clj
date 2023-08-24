@@ -380,12 +380,6 @@
     (testing "Deal with complicated identifier (#22967)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "complicated_identifiers"
                                                                  :json-unfolding true})]
-        (mt/with-temp* [Database [database  {:engine :postgres, :details details}]
-                        Table    [table     {:db_id (u/the-id database)
-                                             :name  "complicated_identifiers"}]
-                        Field    [val-field {:table_id      (u/the-id table)
-                                             :nfc_path      [:jsons "values" "qty"]
-                                             :database_type "integer"}]]
           (qp.store/with-metadata-provider (u/the-id database)
             (qp.store/fetch-and-store-tables! [(u/the-id table)])
             (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
@@ -1208,10 +1202,10 @@
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
           (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (mt/with-temp* [:model/Card [_ {:name "model"
-                                            :dataset true
-                                            :dataset_query (mt/mbql-query categories)
-                                            :database_id (mt/id)}]]
+            (mt/with-temp [:model/Card _ {:name "model"
+                                          :dataset true
+                                          :dataset_query (mt/mbql-query categories)
+                                          :database_id (mt/id)}]
               (persist-models!)
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
