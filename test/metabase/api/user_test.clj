@@ -12,7 +12,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-set]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -77,7 +77,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user")))))
     (testing "Check that group-managers can get a list of that group's users."
-      (premium-features-set/with-premium-features #{:advanced-permissions}
+      (premium-features-test/with-premium-features #{:advanced-permissions}
         (t2.with-temp/with-temp
             [:model/PermissionsGroup           {group-id1 :id} {:name "Test Group"}
              :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
@@ -130,7 +130,7 @@
                             (map :email))))))))))))
 
 (deftest user-recipients-list-ee-test
-  (premium-features-set/with-premium-features #{:email-restrict-recipients}
+  (premium-features-test/with-premium-features #{:email-restrict-recipients}
     (testing "GET /api/user/recipients"
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [crowberto "crowberto@metabase.com"

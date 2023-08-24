@@ -25,23 +25,18 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user")))
       (testing "Should return themselves when the user is a segmented group manager"
-        (mt/with-group [group {:name "a group"}]
-          (let [membership (t2/select-one PermissionsGroupMembership
-                                          :group_id (u/the-id group)
-                                          :user_id (mt/user->id :rasta))]
-            (t2/update! PermissionsGroupMembership :id (:id membership)
-                        {:is_group_manager true}))
-          (let [result (mt/user-http-request :rasta :get 200 "user")]
-            (is (= [{:common_name  "Rasta Toucan"
-                     :last_name    "Toucan"
-                     :first_name   "Rasta"
-                     :email        "rasta@metabase.com"
-                     :id           true
-                     :is_superuser false
-                     :last_login   true
-                     :group_ids    true}]
-                   (-> result :data tu/boolean-ids-and-timestamps (->> (map #(update % :group_ids seq))))))
-            (is (= 1 (:total result)))))))))
+        (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-group [group {:name "a group"}]
+            (let [membership (t2/select-one PermissionsGroupMembership
+                                            :group_id (u/the-id group)
+                                            :user_id (mt/user->id :rasta))]
+              (t2/update! PermissionsGroupMembership :id (:id membership)
+                          {:is_group_manager true}))
+            (let [result (mt/user-http-request :rasta :get 200 "user")]
+              (is (= ["rasta@metabase.com"]
+                     (map :email (:data result))))
+              (is (= 1 (count (:data result))))
+              (is (= 1 (:total result))))))))))
 
 (deftest get-user-attributes-test
   (testing "requires sandbox enabled"

@@ -220,7 +220,12 @@
              ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
              group-id-clause
              distinct)
-     :total  (t2/count [User [:distinct :core_user.id]] (filter-clauses-without-paging clauses))
+     :total  (-> (t2/query
+                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                          :from   :core_user}
+                         clauses))
+                 first
+                 :count)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
