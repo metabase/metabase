@@ -1095,8 +1095,7 @@
   "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
   [group-id changes]
   (when config/ee-available?
-    (let [audit-collection-id  (-> (t2/select-one 'Collection :entity_id (default-audit-collection-entity-id))
-                                   :id)]
+    (let [audit-collection-id (t2/select-one-fn :id 'Collection :entity_id (default-audit-collection-entity-id)]
       (doseq [[change-id type] changes]
         (when (= change-id audit-collection-id)
           (let [change-permissions! (case type
