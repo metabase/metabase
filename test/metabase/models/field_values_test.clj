@@ -113,7 +113,7 @@
   (mt/with-temp [Database    {database-id :id} {}
                  Table       {table-id :id} {:db_id database-id}
                  Field       {field-id :id} {:table_id table-id}
-                 FieldValues _              {:field_id field-id :values "[123]"}]
+                 FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values FieldValues, :field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
