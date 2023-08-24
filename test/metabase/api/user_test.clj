@@ -77,18 +77,19 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user")))))
     (testing "Check that group-managers can get a list of that group's users."
-      (t2.with-temp/with-temp
-          [:model/PermissionsGroup           {group-id1 :id} {:name "Test Group"}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}]
-        (is (= #{"lucky@metabase.com"
-                 "rasta@metabase.com"}
-               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                    (filter mt/test-user?)
-                    (map :email)
-                    set)))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :lucky :get 403 "user")))))))
+      (premium-features-set/with-premium-features #{:advanced-permissions}
+        (t2.with-temp/with-temp
+            [:model/PermissionsGroup           {group-id1 :id} {:name "Test Group"}
+             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}]
+          (is (= #{"lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set)))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :lucky :get 403 "user"))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
