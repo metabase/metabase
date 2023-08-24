@@ -245,7 +245,7 @@
    (let [[op _ first-arg] a-filter-clause
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col (when-let [i (lib.equality/index-of-closest-matching-metadata query first-arg columns)]
+         col (when-let [i (lib.equality/index-of-closest-matching-metadata first-arg columns)]
                (nth columns i))]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))

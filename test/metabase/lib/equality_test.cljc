@@ -285,4 +285,4 @@
                 (lib.equality/find-closest-matching-ref query a-ref refs))))
       (testing "... index-of-closest-matching-metadata finds the correct metadata, categories.name!!!"
         (is (= 7
-               (lib.equality/index-of-closest-matching-metadata query a-ref cols)))))))
+               (lib.equality/index-of-closest-matching-metadata a-ref cols)))))))
