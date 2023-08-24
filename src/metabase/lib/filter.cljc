@@ -259,15 +259,12 @@
     stage-number :- :int
     legacy-filter]
    (let [query-filters (vec (filters query stage-number))
-         legacy-query-filter->pos (into {}
-                                        (map-indexed (fn [i f]
-                                                       [(lib.convert/->legacy-MBQL f) i]))
-                                        query-filters)
-         matching-filters (clojure.core/filter #(clojure.core/= % legacy-filter)
-                                               (keys legacy-query-filter->pos))]
+         matching-filters (clojure.core/filter #(clojure.core/= (lib.convert/->legacy-MBQL %)
+                                                                legacy-filter)
+                                               query-filters)]
      (when (seq matching-filters)
        (if (next matching-filters)
          (throw (ex-info "Multiple matching filters found" {:legacy-filter legacy-filter
                                                             :query-filters query-filters
                                                             :matching-filters matching-filters}))
-         (-> matching-filters first legacy-query-filter->pos query-filters))))))
+         (first matching-filters))))))

@@ -345,20 +345,35 @@
                 query'))))))
 
 (deftest ^:parallel find-filter-for-legacy-filter-test
-  (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                            (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
-        filterable-cols (lib/filterable-columns query)
-        [first-col]     filterable-cols
-        expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
-        query           (->  query
-                             (lib/filter (lib/filter-clause
-                                          (first (lib/filterable-column-operators first-col))
-                                          first-col
-                                          515))
-                             (lib/filter (lib/filter-clause
-                                          (first (lib/filterable-column-operators expr-col))
-                                          expr-col
-                                          (meta/field-metadata :users :last-login))))]
-    (doseq [filter-clause (lib/filters query)]
-      (is (= filter-clause
-             (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause)))))))
+  (testing "existing clauses"
+    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                              (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+          filterable-cols (lib/filterable-columns query)
+          [first-col]     filterable-cols
+          expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
+          first-filter    (lib/filter-clause
+                           (first (lib/filterable-column-operators first-col))
+                           first-col
+                           515)
+          query           (->  query
+                               (lib/filter first-filter)
+                               (lib/filter (lib/filter-clause
+                                            (first (lib/filterable-column-operators expr-col))
+                                            expr-col
+                                            (meta/field-metadata :users :last-login))))
+          filter-clauses (lib/filters query)]
+      (testing "existing clauses"
+        (doseq [filter-clause filter-clauses]
+          (is (= filter-clause
+                 (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+      (testing "missing clause"
+        (let [filter-clause (assoc first-filter 2 43)]
+          (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+      (testing "ambiguous match"
+        (let [query (lib/filter query (-> first-filter
+                                          (assoc-in [1 :lib/uuid] (str (random-uuid)))
+                                          (assoc-in [2 1 :lib/uuid] (str (random-uuid)))))]
+          first-filter(prn query)
+          (is (thrown-with-msg?
+               Exception #"Multiple matching filters found"
+               (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
