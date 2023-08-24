@@ -1,23 +1,24 @@
 (ns metabase.models.model-index-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [malli.core :as mc]
-            [malli.error :as me]
-            [metabase.driver :as driver]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.model-index :as model-index :refer [ModelIndex
-                                                                 ModelIndexValue]]
-            [metabase.query-processor :as qp]
-            [metabase.task :as task]
-            [metabase.task.index-values :as task.index-values]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan2.core :as t2]
-            [toucan2.tools.with-temp :as t2.with-temp]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.driver :as driver]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.model-index :as model-index :refer [ModelIndex
+                                                        ModelIndexValue]]
+   [metabase.query-processor :as qp]
+   [metabase.task :as task]
+   [metabase.task.index-values :as task.index-values]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro with-scheduler-setup [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]

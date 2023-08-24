@@ -283,13 +283,13 @@
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [base {:dataset_query
-                                  (mt/mbql-query
-                                   reviews
-                                   {:breakout [$product_id],
-                                    :aggregation [[:count]],
-                                    ;; filter on an implicit join
-                                    :filter [:= $product_id->products.category "Doohickey"]})}]]
+      (mt/with-temp [Card base {:dataset_query
+                                (mt/mbql-query
+                                 reviews
+                                 {:breakout [$product_id],
+                                  :aggregation [[:count]],
+                                  ;; filter on an implicit join
+                                  :filter [:= $product_id->products.category "Doohickey"]})}]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
              (mt/rows

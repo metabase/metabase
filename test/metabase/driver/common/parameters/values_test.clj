@@ -341,10 +341,10 @@
         (mt/dataset test-data
           (mt/with-persistence-enabled [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
-              (mt/with-temp* [Card [model {:name "model"
-                                           :dataset true
-                                           :dataset_query mbql-query
-                                           :database_id (mt/id)}]]
+              (mt/with-temp [Card model {:name "model"
+                                         :dataset true
+                                         :dataset_query mbql-query
+                                         :database_id (mt/id)}]
                 (persist-models!)
                 (testing "tag uses persisted table"
                   (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
@@ -429,17 +429,17 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-        (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id} {:collection_id (u/the-id collection)
-                                                     :dataset_query (mt/mbql-query venues
-                                                                      {:order-by [[:asc $id]], :limit 2})}]
-                        Card       [card-2 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/native-query
-                                                             {:query         "SELECT * FROM {{card}}"
-                                                              :template-tags {"card" {:name         "card"
-                                                                                      :display-name "card"
-                                                                                      :type         :card
-                                                                                      :card-id      card-1-id}}})}]]
+        (mt/with-temp [Collection collection {}
+                       Card       {card-1-id :id} {:collection_id (u/the-id collection)
+                                                   :dataset_query (mt/mbql-query venues
+                                                                                 {:order-by [[:asc $id]] :limit 2})}
+                       Card       card-2 {:collection_id (u/the-id collection)
+                                          :dataset_query (mt/native-query
+                                                          {:query         "SELECT * FROM {{card}}"
+                                                           :template-tags {"card" {:name         "card"
+                                                                                   :display-name "card"
+                                                                                   :type         :card
+                                                                                   :card-id      card-1-id}}})}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (mt/with-test-user :rasta
             (binding [qp.perms/*card-id* (u/the-id card-2)]

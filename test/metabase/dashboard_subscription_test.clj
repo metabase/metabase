@@ -34,29 +34,28 @@
   [{:keys [dashboard pulse pulse-card channel card dashcard]
     :or   {channel :email}}
    f]
-  (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
-                                 (merge {:name         "Aviary KPIs"
-                                         :dashboard_id (u/the-id dashboard)}
-                                        pulse)]
-                  PulseCard     [_ (merge {:pulse_id pulse-id
-                                           :card_id  (u/the-id card)
-                                           :position 0}
-                                          pulse-card)]
-                  DashboardCard [_ (merge {:dashboard_id (u/the-id dashboard)
-                                           :row          0
-                                           :card_id      (u/the-id card)}
-                                          dashcard)]
-                  PulseChannel  [{pc-id :id} (case channel
-                                               :email
-                                               {:pulse_id pulse-id}
+  (mt/with-temp [Pulse         {pulse-id :id, :as pulse} (merge {:name         "Aviary KPIs"
+                                                                 :dashboard_id (u/the-id dashboard)}
+                                                                pulse)
+                 PulseCard     _ (merge {:pulse_id pulse-id
+                                         :card_id  (u/the-id card)
+                                         :position 0}
+                                        pulse-card)
+                 DashboardCard _ (merge {:dashboard_id (u/the-id dashboard)
+                                         :row          0
+                                         :card_id      (u/the-id card)}
+                                        dashcard)
+                 PulseChannel  {pc-id :id} (case channel
+                                             :email
+                                             {:pulse_id pulse-id}
 
-                                               :slack
-                                               {:pulse_id     pulse-id
-                                                :channel_type "slack"
-                                                :details      {:channel "#general"}})]]
+                                             :slack
+                                             {:pulse_id     pulse-id
+                                              :channel_type "slack"
+                                              :details      {:channel "#general"}})]
     (if (= channel :email)
-      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                        :pulse_channel_id pc-id}]
+      (mt/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -90,11 +89,11 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
-                                                             (merge {:name "Aviary KPIs"
-                                                                     :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name pulse.test-util/card-name
-                                                           :display (or display :line)} card)]]
+      (mt/with-temp [Dashboard     {dashboard-id :id} (->> dashboard
+                                                           (merge {:name "Aviary KPIs"
+                                                                   :description "How are the birds doing today?"}))
+                     Card          {card-id :id} (merge {:name pulse.test-util/card-name
+                                                         :display (or display :line)} card)]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
@@ -223,12 +222,12 @@
 
 (deftest execute-dashboard-test
   (testing "it runs for each non-virtual card"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2}]
-                    User [{user-id :id}]]
+    (mt/with-temp [Card          {card-id-1 :id} {}
+                   Card          {card-id-2 :id} {}
+                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
+                   User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
@@ -237,33 +236,33 @@
                        :type     (s/eq :card)}]
                      result)))))
   (testing "hides empty card when card.hide_empty is true"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}]
-                    User [{user-id :id}]]
+    (mt/with-temp [Card          {card-id-1 :id} {}
+                   Card          {card-id-2 :id} {}
+                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
+                   User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 1)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
-                    Card          [{card-id-3 :id}]
-                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
-                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
-                    User [{user-id :id}]]
+    (mt/with-temp [Card          {card-id-1 :id} {}
+                   Card          {card-id-2 :id} {}
+                   Card          {card-id-3 :id} {}
+                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
+                   User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp* [Card          [_]
-                    Card          [_]
-                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [_ {:dashboard_id dashboard-id
-                                      :visualization_settings {:virtual_card {}, :text "test"}}]
-                    User [{user-id :id}]]
+    (mt/with-temp [Card          _ {}
+                   Card          _ {}
+                   Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
+                   DashboardCard _ {:dashboard_id dashboard-id
+                                    :visualization_settings {:virtual_card {}, :text "test"}}
+                   User {user-id :id} {}]
       (is (= [{:virtual_card {} :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
@@ -630,43 +629,43 @@
                                                                                           :type    "category"
                                                                                           :default ["Gizmo"]}]}]
         (testing "MBQL query"
-          (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"
-                                                    :dataset_query (mt/mbql-query products
-                                                                     {:fields   [$id $title $category]
-                                                                      :order-by [[:asc $id]]
-                                                                      :limit    2})}]
-                          DashboardCard [_ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
-                                                                  :card_id      mbql-card-id
-                                                                  :target       [:dimension [:field (mt/id :products :category) nil]]}]
-                                            :card_id            mbql-card-id
-                                            :dashboard_id       dashboard-id}]]
+          (mt/with-temp [Card {mbql-card-id :id} {:name          "Orders"
+                                                  :dataset_query (mt/mbql-query products
+                                                                                {:fields   [$id $title $category]
+                                                                                 :order-by [[:asc $id]]
+                                                                                 :limit    2})}
+                         DashboardCard _ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
+                                                                :card_id      mbql-card-id
+                                                                :target       [:dimension [:field (mt/id :products :category) nil]]}]
+                                          :card_id            mbql-card-id
+                                          :dashboard_id       dashboard-id}]
             (let [[mbql-results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
         (testing "SQL Query"
-          (mt/with-temp* [Card [{sql-card-id :id} {:name          "Products (SQL)"
-                                                   :dataset_query (mt/native-query
-                                                                    {:query
-                                                                     (str "SELECT id, title, category\n"
-                                                                          "FROM products\n"
-                                                                          "WHERE {{category}}\n"
-                                                                          "ORDER BY id ASC\n"
-                                                                          "LIMIT 2")
+          (mt/with-temp [Card {sql-card-id :id} {:name          "Products (SQL)"
+                                                 :dataset_query (mt/native-query
+                                                                 {:query
+                                                                  (str "SELECT id, title, category\n"
+                                                                       "FROM products\n"
+                                                                       "WHERE {{category}}\n"
+                                                                       "ORDER BY id ASC\n"
+                                                                       "LIMIT 2")
 
-                                                                     :template-tags
-                                                                     {"category"
-                                                                      {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
-                                                                       :name         "category"
-                                                                       :display-name "Category"
-                                                                       :type         :dimension
-                                                                       :dimension    [:field (mt/id :products :category) nil]
-                                                                       :widget-type  :category}}})}]
-                          DashboardCard [_ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
-                                                                  :card_id      sql-card-id
-                                                                  :target       [:dimension [:template-tag "category"]]}]
-                                            :card_id            sql-card-id
-                                            :dashboard_id       dashboard-id}]]
+                                                                  :template-tags
+                                                                  {"category"
+                                                                   {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                    :name         "category"
+                                                                    :display-name "Category"
+                                                                    :type         :dimension
+                                                                    :dimension    [:field (mt/id :products :category) nil]
+                                                                    :widget-type  :category}}})}
+                         DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
+                                                                :card_id      sql-card-id
+                                                                :target       [:dimension [:template-tag "category"]]}]
+                                          :card_id            sql-card-id
+                                          :dashboard_id       dashboard-id}]
             (let [[results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
@@ -674,16 +673,16 @@
 
 (deftest substitute-parameters-in-virtual-cards
   (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
-    (mt/with-temp* [Dashboard [{dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
-                                                                 :parameters [{:name    "Category"
-                                                                               :slug    "category"
-                                                                               :id      "TEST_ID"
-                                                                               :type    "category"
-                                                                               :default ["Doohickey" "Gizmo"]}]}]
-                    DashboardCard [_ {:parameter_mappings [{:parameter_id "TEST_ID"
-                                                            :target       [:text-tag "foo"]}]
-                                      :dashboard_id       dashboard-id
-                                      :visualization_settings {:text "{{foo}}"}}]]
+    (mt/with-temp [Dashboard {dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
+                                                               :parameters [{:name    "Category"
+                                                                             :slug    "category"
+                                                                             :id      "TEST_ID"
+                                                                             :type    "category"
+                                                                             :default ["Doohickey" "Gizmo"]}]}
+                   DashboardCard _ {:parameter_mappings [{:parameter_id "TEST_ID"
+                                                          :target       [:text-tag "foo"]}]
+                                    :dashboard_id       dashboard-id
+                                    :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
@@ -693,12 +692,12 @@
     (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
           original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
       (try
-        (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
-                        Card      [{card-id :id} {:name          "Products (SQL)"
-                                                  :dataset_query (mt/native-query
-                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
-                        DashboardCard [_ {:dashboard_id dashboard-id
-                                          :card_id      card-id}]]
+        (mt/with-temp [Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
+                       Card      {card-id :id} {:name          "Products (SQL)"
+                                                :dataset_query (mt/native-query
+                                                                {:query "SELECT * FROM venues LIMIT 1"})}
+                       DashboardCard _ {:dashboard_id dashboard-id
+                                        :card_id      card-id}]
           (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                  (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)

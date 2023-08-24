@@ -171,8 +171,8 @@
 
 (deftest expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp [Card card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}
+                   Card card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
@@ -183,8 +183,8 @@
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp [Card card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}
+                   Card card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
@@ -196,10 +196,10 @@
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+    (mt/with-temp [Card card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}
+                   Card card-2 {:dataset_query (mt/native-query
+                                                {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                 :template-tags (card-template-tags [(:id card-1)])})}]
       (let [card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
@@ -209,10 +209,10 @@
                   :template-tags (card-template-tags [card-2-id])})))))))
 
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues)}]
-                    Card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+    (mt/with-temp [Card card-1 {:dataset_query (mt/mbql-query venues)}
+                   Card card-2 {:dataset_query (mt/native-query
+                                                {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                 :template-tags (card-template-tags [(:id card-1)])})}]
       (let [card-2-id       (:id card-2)
             card-1-subquery (str "SELECT "
                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
@@ -266,22 +266,22 @@
                             :snippet-id   snippet-id}])))
 
 (deftest expand-multiple-snippets-test
-  (mt/with-temp* [NativeQuerySnippet [select-snippet {:content     "name, price"
-                                                      :creator_id  (mt/user->id :rasta)
-                                                      :description "Fields to SELECT"
-                                                      :name        "Venue fields"}]
-                  NativeQuerySnippet [where-snippet  {:content     "price > 2"
-                                                      :creator_id  (mt/user->id :rasta)
-                                                      :description "Meant for use in WHERE clause"
-                                                      :name        "Filter: expensive venues"}]
-                  Card [card {:dataset_query
-                              (mt/native-query
-                                {:query         (str "SELECT {{ Venue fields }} "
-                                                     "FROM venues "
-                                                     "WHERE {{ Filter: expensive venues }}")
-                                 :template-tags (snippet-template-tags
-                                                 {"Venue fields"             (:id select-snippet)
-                                                  "Filter: expensive venues" (:id where-snippet)})})}]]
+  (mt/with-temp [NativeQuerySnippet select-snippet {:content     "name, price"
+                                                    :creator_id  (mt/user->id :rasta)
+                                                    :description "Fields to SELECT"
+                                                    :name        "Venue fields"}
+                 NativeQuerySnippet where-snippet  {:content     "price > 2"
+                                                    :creator_id  (mt/user->id :rasta)
+                                                    :description "Meant for use in WHERE clause"
+                                                    :name        "Filter: expensive venues"}
+                 Card card {:dataset_query
+                            (mt/native-query
+                             {:query         (str "SELECT {{ Venue fields }} "
+                                                  "FROM venues "
+                                                  "WHERE {{ Filter: expensive venues }}")
+                              :template-tags (snippet-template-tags
+                                              {"Venue fields"             (:id select-snippet)
+                                               "Filter: expensive venues" (:id where-snippet)})})}]
     (testing "multiple snippets are correctly expanded in parent query"
       (is (= (mt/native-query
                {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
