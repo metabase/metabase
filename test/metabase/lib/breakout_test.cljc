@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -484,3 +485,29 @@
                    :breakout-position 0}
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
+
+(defn- legacy-query-with-broken-breakout []
+  (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
+      ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
+      ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
+      ;; technically wrong.
+      ;;
+      ;; Actually a correct reference would be [:field {} "Products__Category"], see #29763
+      (lib/breakout [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])))
+
+(deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
+  (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
+    (let [query (legacy-query-with-broken-breakout)]
+      (is (=? [{:name              "CATEGORY"
+                :display-name      "Category"
+                :long-display-name "Products → Category"
+                :effective-type    :type/Text}]
+              (map (partial lib/display-info query)
+                   (lib/breakouts query)))))))
+
+(deftest ^:parallel legacy-query-with-broken-breakout-breakoutable-columns-test
+  (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
+    (is (=? {:display-name      "Products → Category"
+             :breakout-position 0}
+            (m/find-first #(= (:id %) (meta/id :products :category))
+                          (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))

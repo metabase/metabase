@@ -6,7 +6,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -190,16 +192,6 @@
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
 
-(deftest ^:parallel unjoin-field-name-test
-  (are [clause expected] (= expected
-                            (#'lib.equality/unjoin-field-name clause))
-    [:field {} "join__col"]
-    [:field {:join-alias "join"} "col"]
-
-    ;; don't transform ones that already have a join alias
-    [:field {:join-alias "x"} "join__col"]
-    [:field {:join-alias "x"} "join__col"]))
-
 (deftest ^:parallel find-closest-matching-ref-test
   (are [a-ref refs expected] (= expected
                                 (lib.equality/find-closest-matching-ref a-ref refs))
@@ -230,18 +222,7 @@
     [:field {} 1]
     [[:field {:join-alias "J"} 1]
      [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]
-
-    ;; for columns that have `join__` in their names but no `:join-alias` try to unpack it and match that way
-    [:field {} "join__col"]
-    [[:field {:join-alias "x"} "col"]
-     [:field {:join-alias "join"} "col"]]
-    [:field {:join-alias "join"} "col"]
-
-    [:field {:join-alias "join"} "col"]
-    [[:field {} "join__x"]
-     [:field {} "join__col"]]
-    [:field {} "join__col"]))
+    [:field {:join-alias "J"} 1]))
 
 (deftest ^:parallel find-closest-matching-ref-3-arity-test
   (is (= [:field {} "CATEGORY"]
@@ -283,3 +264,25 @@
               {:name "QUANTITY",   :selected? false}]
              (mapv #(select-keys % [:name :selected?])
                    (lib.equality/mark-selected-columns query cols selected)))))))
+
+(deftest ^:parallel index-of-closest-matching-metadata-test
+  (testing "index-of-closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
+    (let [query (lib/append-stage lib.tu/query-with-join)
+          cols  (lib/returned-columns query)
+          refs  (map lib.ref/ref cols)
+          a-ref [:field {} (meta/id :categories :name)]]
+      (is (=? [[:field {} "ID"]          ; 0
+               [:field {} "NAME"]        ; 1
+               [:field {} "CATEGORY_ID"] ; 2
+               [:field {} "LATITUDE"]    ; 3
+               [:field {} "LONGITUDE"]   ; 4
+               [:field {} "PRICE"]       ; 5
+               [:field {} "Cat__ID"]     ; 6
+               [:field {} "Cat__NAME"]]  ; 7
+              refs))
+      (testing "find-closest-matching-ref actually finds the wrong ref here! This is venues.name, not categories.name!!!"
+        (is (=? [:field {} "NAME"]
+                (lib.equality/find-closest-matching-ref query a-ref refs))))
+      (testing "... index-of-closest-matching-metadata finds the correct metadata, categories.name!!!"
+        (is (= 7
+               (lib.equality/index-of-closest-matching-metadata query a-ref cols)))))))

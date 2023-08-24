@@ -374,6 +374,7 @@
     []))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
+
 (defmethod lib.binning/binning-method :field
   [field-clause]
   (some-> field-clause
@@ -429,20 +430,20 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
-          options           (merge {:lib/uuid       (str (random-uuid))
-                                    :base-type      (:base-type metadata)
-                                    :effective-type (column-metadata-effective-type metadata)}
-                                   (when-let [join-alias (lib.join/current-join-alias metadata)]
-                                     {:join-alias join-alias})
-                                   (when-let [temporal-unit (::temporal-unit metadata)]
-                                     {:temporal-unit temporal-unit})
-                                   (when-let [binning (::binning metadata)]
-                                     {:binning binning})
-                                   (when-let [source-field-id (:fk-field-id metadata)]
-                                     {:source-field source-field-id}))]
-      [:field options (if inherited-column?
-                        (or (:lib/desired-column-alias metadata) (:name metadata))
-                        (or (:id metadata) (:name metadata)))]))
+        options           (merge {:lib/uuid       (str (random-uuid))
+                                  :base-type      (:base-type metadata)
+                                  :effective-type (column-metadata-effective-type metadata)}
+                                 (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                   {:join-alias join-alias})
+                                 (when-let [temporal-unit (::temporal-unit metadata)]
+                                   {:temporal-unit temporal-unit})
+                                 (when-let [binning (::binning metadata)]
+                                   {:binning binning})
+                                 (when-let [source-field-id (:fk-field-id metadata)]
+                                   {:source-field source-field-id}))]
+    [:field options (if inherited-column?
+                      (or (:lib/desired-column-alias metadata) (:name metadata))
+                      (or (:id metadata) (:name metadata)))]))
 
 (defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]
