@@ -17,7 +17,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.ref]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -28,8 +28,6 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
-
-(comment metabase.lib.schema.ref/keep-me)
 
 (defn- normalize-binning-options [opts]
   (lib.normalize/normalize-map
@@ -589,8 +587,7 @@
   (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   field (lib.join/joinable-columns query stage-number join)
-                                  :when (lib.equality/find-closest-matching-ref query column-ref
-                                                                                [(lib.ref/ref field)])]
+                                  :when (lib.equality/closest-matching-metadata column-ref [field])]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
 
@@ -657,17 +654,18 @@
       new-fields (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
-  (let [field-ref    (lib.ref/ref column)
-        join         (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
-        join-fields  (lib.join/join-fields join)]
+  (let [field-ref   (lib.ref/ref column)
+        join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
+        join-fields (lib.join/join-fields join)]
     (if (or (nil? join-fields)
             (= join-fields :none))
       ;; Nothing to do if there's already no join fields.
       query
-      (let [join-fields (if (= join-fields :all)
-                          (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
-                          join-fields)
-            removed     (remove #(lib.equality/find-closest-matching-ref query field-ref [%]) join-fields)]
+      (let [removed (if (= join-fields :all)
+                      (remove #(lib.equality/closest-matching-metadata field-ref [%])
+                              (lib.metadata.calculation/returned-columns query stage-number join))
+                      (remove #(lib.equality/find-closest-matching-ref query field-ref [%])
+                              join-fields))]
         (cond-> query
           ;; If we actually removed a field, replace the join. Otherwise return the query unchanged.
           (< (count removed) (count join-fields))
@@ -715,9 +713,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    field-ref]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         ref->col (zipmap (map lib.ref/ref columns) columns)
-         col-ref (lib.equality/find-closest-matching-ref query field-ref (keys ref->col))]
-     (ref->col col-ref))))
+    field-ref    :- ::lib.schema.ref/ref]
+   (let [stage   (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (lib.equality/closest-matching-metadata field-ref columns))))

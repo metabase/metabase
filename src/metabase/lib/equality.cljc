@@ -9,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.util.malli :as mu]))
 
@@ -123,8 +124,9 @@
   IMPORTANT!
 
   When trying to find the matching ref for a sequence of metadatas, prefer [[index-of-closest-matching-metadata]]
-  instead, which is less broken (see [[metabase.lib.equality-test/index-of-closest-matching-metadata-test]]) and is
-  slightly more performant, since it converts metadatas to refs in a lazy fashion."
+  or [[closest-matching-metadata]] instead, which are less
+  broken (see [[metabase.lib.equality-test/index-of-closest-matching-metadata-test]]) and is slightly more performant,
+  since it converts metadatas to refs in a lazy fashion."
   ([a-ref refs]
    (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
                                        #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
@@ -156,10 +158,10 @@
   than [[find-closest-matching-ref]], because column metadatas inherently have more information than they do after
   they are converted to refs.
 
-  If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` (This
-  seemed generally more useful for the places where this is used than returning the matching metadata itself, and less
-  finicky to use in a set or as a map key than a giant metadata map)."
-  [a-ref metadatas]
+  If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` If you
+  want the metadata instead, use [[closest-matching-metadata]]."
+  [a-ref     :- ::lib.schema.ref/ref
+   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
   (when (seq metadatas)
     ;; create refs in a lazy fashion, e.g. if the very first metadata ends up matching we don't need to create refs
     ;; for all of the other metadatas.
@@ -189,6 +191,14 @@
                               (lib.ref/ref
                                (cond-> metadata
                                  (:id metadata) (assoc :lib/source :source/table-defaults))))))))))
+
+(mu/defn closest-matching-metadata :- [:maybe lib.metadata/ColumnMetadata]
+  "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
+  rather than a sequence of refs. See [[index-of-closet-matching-metadata]] for more info."
+  [a-ref     :- ::lib.schema.ref/ref
+   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+  (when-let [i (index-of-closest-matching-metadata a-ref metadatas)]
+    (nth metadatas i)))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching

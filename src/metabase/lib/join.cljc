@@ -469,7 +469,7 @@
   (mbql.u.match/replace form
     (field :guard (fn [field-clause]
                     (and (lib.util/field-clause? field-clause)
-                         (boolean (lib.equality/index-of-closest-matching-metadata field-clause join-cols)))))
+                         (boolean (lib.equality/closest-matching-metadata field-clause join-cols)))))
     (with-join-alias field join-alias)))
 
 (defn- add-alias-to-condition
@@ -487,7 +487,7 @@
         (cond
           ;; no sides obviously belong to joined
           (not (or lhs-alias rhs-alias))
-          (if (lib.equality/index-of-closest-matching-metadata rhs home-cols)
+          (if (lib.equality/closest-matching-metadata rhs home-cols)
             [op op-opts (with-join-alias lhs join-alias) rhs]
             [op op-opts lhs (with-join-alias rhs join-alias)])
 
@@ -497,7 +497,7 @@
           (and (= lhs-alias join-alias) (= rhs-alias join-alias))
           (let [bare-lhs (lib.options/update-options lhs dissoc :join-alias)
                 bare-rhs (lib.options/update-options rhs dissoc :join-alias)]
-            (if (and (nil? (lib.equality/index-of-closest-matching-metadata bare-lhs home-cols))
+            (if (and (nil? (lib.equality/closest-matching-metadata bare-lhs home-cols))
                      (lib.equality/index-of-closest-matching-metadata bare-rhs home-cols))
               [op op-opts lhs bare-rhs]
               [op op-opts bare-lhs rhs]))
