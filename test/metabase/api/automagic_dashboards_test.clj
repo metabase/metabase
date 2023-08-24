@@ -217,11 +217,11 @@
     (mt/dataset sample-dataset
       (let [card-query      (mt/native-query {:query "select * from people"})
             result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
-        (mt/with-temp* [Collection [{collection-id :id}]
-                        Card       [{card-id :id} {:name            "15655_Q1"
-                                                   :collection_id   collection-id
-                                                   :dataset_query   card-query
-                                                   :result_metadata result-metadata}]]
+        (mt/with-temp [Collection {collection-id :id} {}
+                       Card       {card-id :id} {:name            "15655_Q1"
+                                                 :collection_id   collection-id
+                                                 :dataset_query   card-query
+                                                 :result_metadata result-metadata}]
           (let [query      {:database (mt/id)
                             :type     :query
                             :query    {:source-table (format "card__%d" card-id)

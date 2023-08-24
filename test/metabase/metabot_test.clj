@@ -2,11 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
    [metabase.metabot :as metabot]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card]]
    [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def test-prompt-templates
@@ -98,7 +101,7 @@
                                   :query    {:source-table (mt/id :products)}}
                                  :dataset true}]
           (let [user_prompt        "Show me all of my orders data"
-                db                 (t2/select-one Database :id (mt/id))
+                db                 (t2/select-one :model/Database :id (mt/id))
                 {:keys [models] :as denormalized-db} (metabot-util/denormalize-database db)
                 denormalized-model (first (filter (comp #{"Orders Model"} :name) models))
                 context            {:database    denormalized-db
