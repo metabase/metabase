@@ -107,10 +107,10 @@
              (card-metadata card)))))
 
   (testing "...even when running via the API endpoint"
-    (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id   (u/the-id collection)
-                                      :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                      :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
+    (mt/with-temp [Collection collection {}
+                   Card       card {:collection_id   (u/the-id collection)
+                                    :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                    :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
                                                         :type     :query
