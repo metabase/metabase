@@ -15,7 +15,7 @@ export const args = {
 };
 
 export const sampleArgs = {
-  value: 42,
+  value: 1234,
   label: "Goal value",
   description: "Constant line added as a marker to a chart",
   placeholder: "0",
@@ -141,18 +141,7 @@ export const Icons = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    icon={<Icon name="dashboard" />}
-    withAsterisk
-  />
-);
-
-export const RightSection = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    rightSection={<Icon name="chevrondown" />}
+    icon={<Icon name="int" />}
     withAsterisk
   />
 );
@@ -164,7 +153,6 @@ export const ReadOnly = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    rightSection={<Icon name="chevrondown" />}
     readOnly
   />
 );
@@ -229,14 +217,6 @@ export const IconMd = args => <Icons {...args} size="md" />;
   <Story name="Icon, md">{IconMd}</Story>
 </Canvas>
 
-#### Right section
-
-export const RightSectionMd = args => <RightSection {...args} size="md" />;
-
-<Canvas>
-  <Story name="Right section, md">{RightSectionMd}</Story>
-</Canvas>
-
 #### Read only
 
 export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
@@ -299,14 +279,6 @@ export const IconXs = args => <Icons {...args} size="xs" />;
 
 <Canvas>
   <Story name="Icon, xs">{IconXs}</Story>
-</Canvas>
-
-#### Right section
-
-export const RightSectionXs = args => <RightSection {...args} size="xs" />;
-
-<Canvas>
-  <Story name="Right section, xs">{RightSectionXs}</Story>
 </Canvas>
 
 #### Read only
