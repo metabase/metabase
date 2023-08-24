@@ -41,7 +41,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     error: getThemeColors([color("error")]),
   },
   primaryColor: "brand",
-  primaryShade: 2,
+  primaryShade: 1,
   shadows: {
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
