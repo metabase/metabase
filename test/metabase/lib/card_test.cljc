@@ -7,7 +7,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -97,7 +97,7 @@
 
 (deftest ^:parallel returned-columns-31769-test
   (testing "Cards with joins should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider meta/metadata-provider meta/id 1 2)
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id 1 2)
           card              (lib.metadata/card metadata-provider 1)
           q                 (:dataset-query card)
           cols              (lib/returned-columns q)]
@@ -117,7 +117,7 @@
 
 (deftest ^:parallel returned-columns-31769-source-card-test
   (testing "Queries with `:source-card`s with joins should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
           card            (lib.metadata/card metadata-provider 1)
           q                 (lib/query metadata-provider card)
           cols              (lib/returned-columns q)]
@@ -136,7 +136,7 @@
 
 (deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
   (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
           card            (lib.metadata/card metadata-provider 1)
           q                 (-> (lib/query metadata-provider card)
                                 lib/append-stage)

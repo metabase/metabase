@@ -12,7 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -996,10 +996,10 @@
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
         (t2.with-temp/with-temp [:model/Card {card-1-id :id} {:dataset_query
                                                               (lib.convert/->legacy-MBQL
-                                                               (lib.tu.mocks.31769/card-1-query metadata-provider mt/id))}
+                                                               (lib.tu.mocks-31769/card-1-query metadata-provider mt/id))}
                                  :model/Card {card-2-id :id} {:dataset_query
                                                               (lib.convert/->legacy-MBQL
-                                                               (lib.tu.mocks.31769/card-2-query metadata-provider mt/id))}]
+                                                               (lib.tu.mocks-31769/card-2-query metadata-provider mt/id))}]
           (testing "returned columns"
             (let [card (lib.metadata/card metadata-provider card-1-id)]
               (assert card)
@@ -1017,7 +1017,7 @@
                            [:field {:base-type :type/Integer} "count"]]
                           (map lib.ref/ref cols)))))))
           (let [query (lib.convert/->legacy-MBQL
-                       (lib.tu.mocks.31769/query metadata-provider card-1-id card-2-id))]
+                       (lib.tu.mocks-31769/query metadata-provider card-1-id card-2-id))]
             (is (=? {:query {:joins [{:condition [:=
                                                   [:field "Products__CATEGORY" {:base-type :type/Text}]
                                                   [:field integer? {:base-type :type/Text, :join-alias string?}]]}]}}

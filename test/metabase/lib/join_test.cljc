@@ -8,7 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -1143,4 +1143,4 @@
                                               [:field {:join-alias "Question 2 - Category"} (meta/id :products :category)]]]
                                 :alias      "Question 2 - Category"}]
                        :limit 2}]}
-            (lib.tu.mocks.31769/query)))))
+            (lib.tu.mocks-31769/query)))))

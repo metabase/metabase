@@ -1,4 +1,4 @@
-(ns metabase.lib.test-util.mocks.31769
+(ns metabase.lib.test-util.mocks-31769
   "Mocks to reproduce the behavior of e2e test #31769 directly in MLv2 and in QP tests. Some tests using this:
 
   * [[metabase.lib.card-test/returned-columns-31769-test]]
