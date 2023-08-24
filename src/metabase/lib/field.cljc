@@ -661,14 +661,17 @@
             (= join-fields :none))
       ;; Nothing to do if there's already no join fields.
       query
-      (let [removed (if (= join-fields :all)
-                      (remove #(lib.equality/closest-matching-metadata field-ref [%])
-                              (lib.metadata.calculation/returned-columns query stage-number join))
-                      (remove #(lib.equality/find-closest-matching-ref query field-ref [%])
-                              join-fields))]
+      (let [resolved-join-fields (if (= join-fields :all)
+                                   (lib.metadata.calculation/returned-columns query stage-number join)
+                                   join-fields)
+            removed              (if (= join-fields :all)
+                                   (remove #(lib.equality/closest-matching-metadata field-ref [%])
+                                           resolved-join-fields)
+                                   (remove #(lib.equality/find-closest-matching-ref query field-ref [%])
+                                           resolved-join-fields))]
         (cond-> query
           ;; If we actually removed a field, replace the join. Otherwise return the query unchanged.
-          (< (count removed) (count join-fields))
+          (< (count removed) (count resolved-join-fields))
           (lib.remove-replace/replace-join stage-number join (lib.join/with-join-fields join removed)))))))
 
 (mu/defn remove-field :- ::lib.schema/query
