@@ -141,7 +141,7 @@
              candidate     (assoc candidate-field :fk-map (build-fk-map fks candidate-field))
              dashcards     (:ordered_cards dashboard)
              dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
-          ;; Only add filters that apply to all cards.
+         ;; Only add filters that apply to all cards.
          (if (= (count dashcards) (count dashcards-new))
            (let [parameter (cond-> {:id   filter-id
                                     :type (filter-type candidate)

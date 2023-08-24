@@ -136,25 +136,25 @@
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
-  (let [card (-> {:creator_id    api/*current-user-id*
-                  :dataset_query dataset_query
-                  :description   description
-                  :name          title
-                  :collection_id nil
-                  :id            (or id (gensym))}
+  [dashboard {:keys [title description dataset_query width height id dashboard_tab_id] :as card} [x y]]
+  (let [card (-> {:creator_id       api/*current-user-id*
+                  :dataset_query    dataset_query
+                  :description      description
+                  :name             title
+                  :collection_id    nil
+                  :id               (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj
             (merge (card-defaults)
                    {
-                    ;:dashboard_tab_id       42
                     :col                    y
                     :row                    x
                     :size_x                 width
                     :size_y                 height
                     :card                   card
                     :card_id                (:id card)
+                    :dashboard_tab_id       dashboard_tab_id
                     :visualization_settings {}}))))
 
 (defn add-text-card
@@ -292,6 +292,20 @@
                         :creator_id     api/*current-user-id*
                         :parameters     []}
          cards         (shown-cards n cards)
+         ;; this moves groups into their own tabs. Just for testing purposes. We'll back this out before we merge.
+         [tabs cards]  (->> cards
+                            (partition-by :group)
+                            (map-indexed (fn [idx cs]
+                                           (let [group-name (-> cs first :group)
+                                                 tab-id (gensym)]
+                                             [{:name group-name,
+                                               :position idx,
+                                               :id tab-id}
+                                              (map (fn [c] (assoc c :dashboard_tab_id tab-id))
+                                                   cs)])))
+                            (reduce (fn [[ts css] [t cs]]
+                                      [(conj ts t) (into css cs)])
+                                    [[] []]))
          [dashboard _] (->> cards
                             (partition-by :group)
                             (reduce (fn [[dashboard grid] cards]
@@ -306,6 +320,7 @@
                      title
                      (str/join "; " (map :title cards))))
      (cond-> dashboard
+       (seq tabs) (assoc :ordered_tabs tabs)
        (not-empty filters)
        (filters/add-filters filters {:max-filters max-filters :pk pk})))))
 

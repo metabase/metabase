@@ -434,21 +434,24 @@
   [dashboard parent-collection-id]
   (let [dashboard  (i18n/localized-strings->strings dashboard)
         dashcards  (:ordered_cards dashboard)
+        tabs       (:ordered_tabs dashboard)
         collection (populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
                     (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            :model/Dashboard
-                            (-> dashboard
-                                (dissoc :ordered_cards :rule :related :transient_name
-                                        :transient_filters :param_fields :more)
-                                (assoc :description         (->> dashboard
-                                                                 :transient_filters
-                                                                 applied-filters-blurb)
-                                       :collection_id       (:id collection)
-                                       :collection_position 1))))]
+                           :model/Dashboard
+                           (-> dashboard
+                               (dissoc :ordered_cards :ordered_tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more)
+                               (assoc :description         (->> dashboard
+                                                                :transient_filters
+                                                                applied-filters-blurb)
+                                      :collection_id       (:id collection)
+                                      :collection_position 1))))
+
+        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
                       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
@@ -461,9 +464,10 @@
                                          (update :parameter_mappings
                                                  (partial map #(assoc % :card_id (:id card))))
                                          (assoc :series series)
+                                         (update :dashboard_tab_id (or old->new-tab-id {}))
                                          (assoc :card_id (:id card)))]
                         dashcard)))
-   dashboard))
+    dashboard))
 
 (def ^:private ParamWithMapping
   {:name     su/NonBlankString
