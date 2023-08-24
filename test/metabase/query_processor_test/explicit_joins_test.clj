@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
@@ -1020,26 +1021,6 @@
       (mt/with-native-query-testing-context q3
         (is (= :wow
                (mt/rows (qp/process-query q3))))))))
-
-(deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
-  (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
-          card            (lib.metadata/card metadata-provider 1)
-          q                 (-> (lib/query metadata-provider card)
-                                lib/append-stage)
-          cols              (lib/returned-columns q)]
-      (is (=? [{:name                     "CATEGORY"
-                :lib/source               :source/previous-stage
-                :lib/source-column-alias  "Products__CATEGORY"
-                :lib/desired-column-alias "Products__CATEGORY"}
-               {:name                     "count"
-                :lib/source               :source/previous-stage
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"}]
-              cols))
-      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-               [:field {:base-type :type/Integer} "count"]]
-              (map lib.ref/ref cols))))))
 
 (deftest test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"

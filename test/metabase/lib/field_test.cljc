@@ -182,7 +182,7 @@
                            :source-card 1
                            :breakout    [[:field
                                           {:join-alias (symbol "nil #_\"key is not present.\"")}
-                                          "CATEGORY"]]}]}
+                                          "Products__CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
                           :display-name      (if (:result-metadata card-def)

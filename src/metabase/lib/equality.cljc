@@ -2,6 +2,7 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -95,6 +96,22 @@
   (lib.options/update-options a-ref (fn [options]
                                       (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
 
+(defn- unjoin-field-name
+  "Convert something like
+
+    [:field {} \"join__col\"]
+
+  to
+
+    [:field {:join-alias \"join\"} \"col\"]"
+  [a-ref]
+  (mbql.u.match/replace a-ref
+    [:field
+     (opts :guard (complement :join-alias))
+     (field-name :guard (every-pred string? #(str/includes? % "__"))) ]
+    (let [[join-alias source-name] (str/split field-name #"__" 2)]
+      [:field (assoc opts :join-alias join-alias) source-name])))
+
 (defn find-closest-matching-ref
   "Find the ref that most closely matches `a-ref` from a sequence of `refs`. This is meant to power things
   like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
@@ -114,21 +131,24 @@
   column names; it does not work the other way around. Luckily we currently don't have problems with MLv1/legacy
   queries accidentally using string :field literals where it shouldn't have been doing so."
   ([a-ref refs]
-   (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
-                                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
-                                       ;; ignore namespaced keys
-                                       update-options-remove-namespaced-keys
-                                       ;; ignore type info
-                                       #(lib.options/update-options % dissoc :base-type :effective-type)
-                                       ;; ignore temporal-unit
-                                       #(lib.options/update-options % dissoc :temporal-unit)
-                                       ;; ignore join alias
-                                       #(lib.options/update-options % dissoc :join-alias)]]
-     (or (let [a-ref (xform a-ref)]
-           (m/find-first #(= (xform %) a-ref)
-                         refs))
-         (when (seq more-xforms)
-           (recur (comp xform (first more-xforms)) (rest more-xforms))))))
+   (or (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
+                                           #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
+                                           ;; ignore namespaced keys
+                                           update-options-remove-namespaced-keys
+                                           ;; ignore type info
+                                           #(lib.options/update-options % dissoc :base-type :effective-type)
+                                           ;; ignore temporal-unit
+                                           #(lib.options/update-options % dissoc :temporal-unit)
+                                           ;; ignore join alias
+                                           #(lib.options/update-options % dissoc :join-alias)]]
+         (or (let [a-ref (xform a-ref)]
+               (m/find-first #(= (xform %) a-ref)
+                             refs))
+             (when (seq more-xforms)
+               (recur (comp xform (first more-xforms)) (rest more-xforms)))))
+       (let [unjoined-ref (unjoin-field-name a-ref)]
+         (when-not (= unjoined-ref a-ref)
+           (recur unjoined-ref refs)))))
 
   ([metadata-providerable a-ref refs]
    (or (find-closest-matching-ref a-ref refs)

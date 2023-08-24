@@ -190,6 +190,16 @@
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
 
+(deftest ^:parallel unjoin-field-name-test
+  (are [clause expected] (= expected
+                            (#'lib.equality/unjoin-field-name clause))
+    [:field {} "join__col"]
+    [:field {:join-alias "join"} "col"]
+
+    ;; don't transform ones that already have a join alias
+    [:field {:join-alias "x"} "join__col"]
+    [:field {:join-alias "x"} "join__col"]))
+
 (deftest ^:parallel find-closest-matching-ref-test
   (are [a-ref refs expected] (= expected
                                 (lib.equality/find-closest-matching-ref a-ref refs))
@@ -220,7 +230,13 @@
     [:field {} 1]
     [[:field {:join-alias "J"} 1]
      [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]))
+    [:field {:join-alias "J"} 1]
+
+    ;; for columns that have `join__` in their names but no `:join-alias` try to unpack it and match that way
+    [:field {} "join__col"]
+    [[:field {:join-alias "x"} "col"]
+     [:field {:join-alias "join"} "col"]]
+    [:field {:join-alias "join"} "col"]))
 
 (deftest ^:parallel find-closest-matching-ref-3-arity-test
   (is (= [:field {} "CATEGORY"]

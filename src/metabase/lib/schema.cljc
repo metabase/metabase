@@ -99,7 +99,7 @@
 (defn- aggregation-ref-error-for-stage [stage]
   (when-let [err-loc (first (aggregation-ref-errors-for-stage stage))]
     (if-let [ag-uuid (get-in err-loc [1 2])]
-      (str "Invalid :aggregation reference: no aggregation with uuid " (pr-str ag-uuid))
+      (str "Invalid :aggregation reference: no aggregation with uuid " ag-uuid)
       (str "Invalid :aggregation reference: " (get err-loc 1)))))
 
 (def ^:private ^{:arglists '([stage])} ref-error-for-stage
