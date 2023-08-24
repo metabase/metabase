@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-joins
+(ns ^:deprecated metabase.query-processor.middleware.resolve-joins
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
@@ -192,7 +192,7 @@
     source-query
     (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
-(defn resolve-joins
+(defn ^:deprecated resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [{inner-query :query, :as outer-query}]
   (cond-> outer-query

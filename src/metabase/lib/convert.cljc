@@ -12,6 +12,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -194,8 +195,10 @@
 
 (defmethod ->pMBQL :dispatch-type/map
   [m]
-  (if (:type m)
-    (-> (lib.util/pipeline m)
+  (if ((some-fn :type "type") m)
+    (-> m
+        mbql.normalize/normalize
+        lib.util/pipeline
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
         clean)

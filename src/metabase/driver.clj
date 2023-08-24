@@ -17,7 +17,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.driver :as driver]))
 
 (set! *warn-on-reflection* true)
 
@@ -631,9 +632,23 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query]), :style/indent 1}
+  {:arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti mbql-version
+  "What version of the version of MBQL is this driver is built to compile?
+
+  * 1-3 = MBQL '95/'98/'98 SE (unsupported)
+  * 4 = 'legacy MBQL' (the version immediately preceeding MLv2/pMBQL)
+  * 5 = pMBQL"
+  {:arglists '([driver]), :added "v0.48.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod mbql-version :default
+  [_driver]
+  4)
 
 (defmulti splice-parameters-into-native-query
   "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
