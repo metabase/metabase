@@ -148,6 +148,7 @@
    java.util.UUID/randomUUID            {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
    malli.core/explainer                 {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    medley.core/random-uuid              {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
+   metabase.test/with-temp*             {:message "Use mt/with-temp instead of mt/with-temp*"}
    toucan2.tools.with-temp              {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}
    toucan.db/select                     {:message "Use t2/select instead of toucan.db/select"}
    toucan.db/select-one                 {:message "Use t2/select-one instead of toucan.db/select-one"}
