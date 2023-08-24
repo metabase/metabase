@@ -236,7 +236,12 @@
     [:field {} "join__col"]
     [[:field {:join-alias "x"} "col"]
      [:field {:join-alias "join"} "col"]]
-    [:field {:join-alias "join"} "col"]))
+    [:field {:join-alias "join"} "col"]
+
+    [:field {:join-alias "join"} "col"]
+    [[:field {} "join__x"]
+     [:field {} "join__col"]]
+    [:field {} "join__col"]))
 
 (deftest ^:parallel find-closest-matching-ref-3-arity-test
   (is (= [:field {} "CATEGORY"]

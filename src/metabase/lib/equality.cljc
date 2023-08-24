@@ -131,24 +131,29 @@
   column names; it does not work the other way around. Luckily we currently don't have problems with MLv1/legacy
   queries accidentally using string :field literals where it shouldn't have been doing so."
   ([a-ref refs]
-   (or (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
-                                           #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
-                                           ;; ignore namespaced keys
-                                           update-options-remove-namespaced-keys
-                                           ;; ignore type info
-                                           #(lib.options/update-options % dissoc :base-type :effective-type)
-                                           ;; ignore temporal-unit
-                                           #(lib.options/update-options % dissoc :temporal-unit)
-                                           ;; ignore join alias
-                                           #(lib.options/update-options % dissoc :join-alias)]]
-         (or (let [a-ref (xform a-ref)]
-               (m/find-first #(= (xform %) a-ref)
-                             refs))
-             (when (seq more-xforms)
-               (recur (comp xform (first more-xforms)) (rest more-xforms)))))
-       (let [unjoined-ref (unjoin-field-name a-ref)]
-         (when-not (= unjoined-ref a-ref)
-           (recur unjoined-ref refs)))))
+   (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
+                                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
+                                       ;; ignore namespaced keys
+                                       update-options-remove-namespaced-keys
+                                       ;; ignore type info
+                                       #(lib.options/update-options % dissoc :base-type :effective-type)
+                                       ;; ignore temporal-unit
+                                       #(lib.options/update-options % dissoc :temporal-unit)
+                                       ;; [:field {} "join__col"] => [:field {:join-alias "join"} "col"]
+                                       unjoin-field-name
+                                       ;; ignore join alias
+                                       #(lib.options/update-options % dissoc :join-alias)
+                                       ;; ok now call [[unjoin-field-name]] one last time, it will apply to fields
+                                       ;; that were previously skipped because they already had a `:join-alias` e.g.
+                                       ;; ones that were REALLY broken like
+                                       ;;
+                                       ;;    [:field {:join-alias "join"} "join__col"]
+                                       unjoin-field-name]]
+     (or (let [a-ref (xform a-ref)]
+           (m/find-first #(= (xform %) a-ref)
+                         refs))
+         (when (seq more-xforms)
+           (recur (comp xform (first more-xforms)) (rest more-xforms))))))
 
   ([metadata-providerable a-ref refs]
    (or (find-closest-matching-ref a-ref refs)
