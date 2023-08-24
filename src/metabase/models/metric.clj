@@ -11,6 +11,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
@@ -60,19 +61,18 @@
   [metadata-provider :- lib.metadata/MetadataProvider
    {:keys [definition], table-id :table_id, :as _metric}]
   (when (seq definition)
-    (when-let [{database-id :db-id} (when table-id
-                                      (lib.metadata.protocols/table metadata-provider table-id))]
-      (try
-        (let [definition (merge {:source-table table-id}
-                                definition)
-              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-query query))
-        (catch Throwable e
-          (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
-          nil)))))
+    (try
+      (let [database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
+            definition  (merge {:source-table table-id}
+                               definition)
+            query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-query query))
+      (catch Throwable e
+        (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
+        nil))))
 
-(defn- warmed-metadata-provider [metrics]
-  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+(defn- warmed-metadata-provider [database-id metrics]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas! :metadata/metric metrics))
         segment-ids       (into #{} (mbql.u/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
@@ -89,10 +89,27 @@
     (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
+(defn- metrics->table-id->warmed-metadata-provider
+  [metrics]
+  (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id metrics)))]
+                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+        db-id->metadata-provider    (memoize
+                                     (mu/fn db-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+                                       [database-id :- ::lib.schema.id/database]
+                                       (let [metrics-for-db (filter (fn [metric]
+                                                                      (= (table-id->db-id (:table_id metric))
+                                                                         database-id))
+                                                                    metrics)]
+                                         (warmed-metadata-provider database-id metrics-for-db))))]
+    (mu/fn table-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+      [table-id :- ::lib.schema.id/table]
+      (-> table-id table-id->db-id db-id->metadata-provider))))
+
 (methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
   [_model _key metrics]
-  (let [metadata-provider (warmed-metadata-provider metrics)]
-    (for [metric metrics]
+  (let [table-id->warmed-metadata-provider (metrics->table-id->warmed-metadata-provider metrics)]
+    (for [metric metrics
+          :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id metric))]]
       (assoc metric :definition_description (definition-description metadata-provider metric)))))
 
 

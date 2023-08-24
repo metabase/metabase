@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
@@ -56,8 +59,8 @@
     (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
                            (slurp "./test_resources/ssl/server.pem"))
           keystore (driver.u/generate-trust-store cert-string)]
-      (is (true? (.containsAlias keystore test-server-dn)))
-      (is (true? (.containsAlias keystore test-ca-dn)))))
+      (is (.containsAlias keystore test-server-dn))
+      (is (.containsAlias keystore test-ca-dn))))
 
   (testing "can create SocketFactory for CA cert"
     ;; this is a tough method to test - the resulting `SSLSocketFactory`
@@ -178,7 +181,9 @@
         (is (= []
                (driver.u/connection-props-server->client
                 nil
-                [{:name "test", :type :info}]))))))
+                [{:name "test", :type :info}])))))))
+
+(deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
     (is (= [{:name "first-prop"}
             {:default      "all"
@@ -209,7 +214,9 @@
               {:name         "my-schema-filters"
                :type         :schema-filters
                :display-name "Schemas"}
-              {:name "last-prop"}]))))
+              {:name "last-prop"}])))))
+
+(deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
@@ -249,22 +256,30 @@
 
 (deftest ^:parallel semantic-version-gte-test
   (testing "semantic-version-gte works as expected"
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 0])))
-    (is (true? (driver.u/semantic-version-gte [5 0 1] [4 0])))
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 0 1])))
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 1])))
-    (is (true? (driver.u/semantic-version-gte [4 1] [4 1])))
-    (is (true? (driver.u/semantic-version-gte [4 1] [4])))
-    (is (true? (driver.u/semantic-version-gte [4] [4])))
-    (is (true? (driver.u/semantic-version-gte [4] [4 0 0])))
-    (is (false? (driver.u/semantic-version-gte [3] [4])))
-    (is (false? (driver.u/semantic-version-gte [4] [4 1])))
-    (is (false? (driver.u/semantic-version-gte [4 0] [4 0 1])))
-    (is (false? (driver.u/semantic-version-gte [4 0 1] [4 1])))
-    (is (false? (driver.u/semantic-version-gte [3 9] [4 0])))
-    (is (false? (driver.u/semantic-version-gte [3 1] [4])))))
+    (are [x y] (driver.u/semantic-version-gte x y)
+      [5 0]   [4 0]
+      [5 0 1] [4 0]
+      [5 0]   [4 0 1]
+      [5 0]   [4 1]
+      [4 1]   [4 1]
+      [4 1]   [4]
+      [4]     [4]
+      [4]     [4 0 0])
+    (are [x y] (not (driver.u/semantic-version-gte x y))
+      [3]     [4]
+      [4]     [4 1]
+      [4 0]   [4 0 1]
+      [4 0 1] [4 1]
+      [3 9]   [4 0]
+      [3 1]   [4])))
 
 (deftest ^:parallel mark-h2-superseded-test
   (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
    (is (=? {:driver-name "H2", :superseded-by :deprecated}
            (:h2 (driver.u/available-drivers-info))))))
+
+(deftest ^:paralell database-id->driver-use-qp-store-test
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    {:database (assoc meta/database :id Integer/MAX_VALUE, :engine :wow)})
+    (is (= :wow
+           (driver.u/database->driver Integer/MAX_VALUE)))))

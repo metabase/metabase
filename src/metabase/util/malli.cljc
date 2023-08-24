@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [defn defmethod])
+  (:refer-clojure :exclude [fn defn defmethod])
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
@@ -15,7 +15,9 @@
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
-   (p/import-vars [mu.defn defn]))
+   (p/import-vars
+    [mu.fn fn]
+    [mu.defn defn]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
@@ -77,7 +79,7 @@
      (let [dispatch-value-symb (gensym "dispatch-value-")
            error-context-symb  (gensym "error-context-")]
        `(let [~dispatch-value-symb ~dispatch-value
-              ~error-context-symb  {:fn-name        '~multifn
+              ~error-context-symb  {:fn-name        '~(symbol (resolve multifn))
                                     :dispatch-value ~dispatch-value-symb}
               f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)

@@ -148,6 +148,7 @@
   field-id
   fieldable-columns
   fields
+  find-visible-column-for-ref
   remove-field
   with-fields]
  [lib.filter
@@ -157,6 +158,8 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
+  find-filter-for-legacy-filter
   and
   or
   not

@@ -706,3 +706,18 @@
       :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
       ;; Default case: do nothing and return the query unchaged.
       query)))
+
+(mu/defn find-visible-column-for-ref :- [:maybe lib.metadata/ColumnMetadata]
+  "Return the visible column in `query` at `stage-number` referenced by `field-ref`.
+  If `stage-number` is omitted, the last stage is used."
+  ([query field-ref]
+   (find-visible-column-for-ref query -1 field-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    field-ref]
+   (let [stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         ref->col (zipmap (map lib.ref/ref columns) columns)
+         col-ref (lib.equality/find-closest-matching-ref query field-ref (keys ref->col))]
+     (ref->col col-ref))))

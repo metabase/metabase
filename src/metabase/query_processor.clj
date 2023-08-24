@@ -234,9 +234,10 @@
   ;; down any post-processing these around middlewares might do happens in reversed order.
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'qp.resolve-database-and-driver/resolve-database-and-driver
-   #'fetch-source-query/resolve-card-id-source-tables
+  [#'fetch-source-query/resolve-card-id-source-tables
+   #'qp.resolve-database-and-driver/resolve-driver-and-database-local-values
    #'store/initialize-store
+   #'qp.resolve-database-and-driver/resolve-database
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
@@ -321,10 +322,15 @@
                     {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
-  (qp.store/with-store
+  (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
     (let [preprocessed (-> query preprocess restore-join-aliases)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
+        (->> (annotate/merged-column-info preprocessed nil)
+             ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
+             ;; directly we can stop stripping these out
+             (mapv (fn [col]
+                     (dissoc col :lib/external_remap :lib/internal_remap)))
+             not-empty)))))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

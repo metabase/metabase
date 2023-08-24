@@ -1710,7 +1710,7 @@
                                                   :ordered_tabs []}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
-            (is (pos? (:id (first resp)))))
+            (is (pos-int? (:id (first resp)))))
           (is (= {:size_x                     4
                   :size_y                     4
                   :col                        4
@@ -3254,7 +3254,7 @@
                      (mt/user-http-request :crowberto :post 500 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
-(deftest dashcard-implicit-action-execution-test
+(deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
@@ -3279,7 +3279,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {}}))))))))
+                                                    {:parameters {}})))))))))))
+
+(deftest dashcard-implicit-action-execution-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard update"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}
@@ -3302,7 +3306,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"id" 1}}))))))))
+                                                    {:parameters {"id" 1}})))))))))))
+
+(deftest dashcard-implicit-action-execution-delete-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard delete"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}

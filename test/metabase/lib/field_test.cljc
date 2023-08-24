@@ -53,7 +53,7 @@
                      :id        (grandparent-parent-child-id :child)
                      :base-type :type/Text}]
     (lib.tu/mock-metadata-provider
-     {:database meta/metadata
+     {:database meta/database
       :tables   [(meta/table-metadata :venues)]
       :fields   (mapv (fn [field-metadata]
                         (merge {:visibility-type :normal
@@ -480,6 +480,7 @@
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [card-1            {:name          "My Card"
                              :id            1
+                             :database-id   (meta/id)
                              :dataset-query {:database (meta/id)
                                              :type     :query
                                              :query    {:source-table (meta/id :checkins)
@@ -606,6 +607,7 @@
                                  :name "My Table"}]
                      :cards    [{:id              3
                                  :name            "Card 3"
+                                 :database-id     (meta/id)
                                  :dataset-query   {:lib/type :mbql/query
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
@@ -1205,3 +1207,34 @@
                     (lib/add-field    -1 (second columns))
                     (lib.util/query-stage -1)
                     :fields)))))))
+
+(deftest ^:parallel find-visible-column-for-ref-test
+  (testing "precise references"
+    (doseq [query-var [#'lib.tu/query-with-expression
+                       #'lib.tu/query-with-join-with-explicit-fields
+                       #'lib.tu/query-with-source-card]
+            :let [query @query-var]
+            col (lib/visible-columns query)
+            :let [col-ref (lib/ref col)]]
+      (testing (str "ref " col-ref " of " (symbol query-var))
+        (is (= (dissoc col :lib/source-uuid)
+               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid))))))
+  (testing "reference by ID instead of name"
+    (let [query lib.tu/query-with-source-card
+          col-ref [:field
+                   {:lib/uuid "ae24a9b0-cbb5-40b6-bace-c8a5ac6a7e42"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer}
+                   (meta/id :checkins :user-id)]]
+      (is (=? {:lib/type :metadata/column
+               :base-type :type/Integer
+               :semantic-type :type/FK
+               :name "USER_ID"
+               :lib/card-id 1
+               :lib/source :source/card
+               :lib/source-column-alias "USER_ID"
+               :effective-type :type/Integer
+               :id (meta/id :checkins :user-id)
+               :lib/desired-column-alias "USER_ID"
+               :display-name "User ID"}
+              (lib/find-visible-column-for-ref query col-ref))))))

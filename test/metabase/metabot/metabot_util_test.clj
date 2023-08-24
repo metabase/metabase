@@ -214,69 +214,73 @@
       (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name            "Orders Model"
-                             :dataset_query   q
-                             :result_metadata result-metadata
-                             :dataset         true}]
-         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
-           (is (= (mdb.query/format-sql
-                   (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
-                  inner_query))
-           (is (= (mdb.query/format-sql
-                   (str/join
-                    [(format "CREATE TABLE \"%s\" (" sql_name)
-                     "'ID' BIGINTEGER,"
-                     "'USER_ID' INTEGER,"
-                     "'PRODUCT_ID' INTEGER,"
-                     "'SUBTOTAL' FLOAT,"
-                     "'TAX' FLOAT,"
-                     "'TOTAL' FLOAT,"
-                     "'DISCOUNT' FLOAT,"
-                     "'CREATED_AT' DATETIMEWITHLOCALTZ,"
-                     "'QUANTITY' INTEGER)"]))
-                  (mdb.query/format-sql create_table_ddl)))
-           create_table_ddl)))))
+          [Card orders-model {:name            "Orders Model"
+                              :dataset_query   q
+                              :result_metadata result-metadata
+                              :dataset         true}]
+          (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
+            (is (= (mdb.query/format-sql
+                    (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
+                   inner_query))
+            (is (= (mdb.query/format-sql
+                    (str/join
+                     [(format "CREATE TABLE \"%s\" (" sql_name)
+                      "'ID' BIGINTEGER,"
+                      "'USER_ID' INTEGER,"
+                      "'PRODUCT_ID' INTEGER,"
+                      "'SUBTOTAL' FLOAT,"
+                      "'TAX' FLOAT,"
+                      "'TOTAL' FLOAT,"
+                      "'DISCOUNT' FLOAT,"
+                      "'CREATED_AT' DATETIMEWITHLOCALTZ,"
+                      "'QUANTITY' INTEGER)"]))
+                   (mdb.query/format-sql create_table_ddl)))
+            create_table_ddl))))))
+
+(deftest native-inner-query-test-2
   (testing "A SELECT of columns will produce those column names in th resulting DDLs"
     (mt/dataset sample-dataset
       (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name            "Orders Model"
-                             :dataset_query   q
-                             :result_metadata result-metadata
-                             :dataset         true}]
-         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
-           (is (= (mdb.query/format-sql
-                   (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
-                  inner_query))
-           (is (= (mdb.query/format-sql
-                   (str/join
-                    [(format "CREATE TABLE \"%s\" (" sql_name)
-                     "'TOTAL' FLOAT,"
-                     "'QUANTITY' INTEGER,"
-                     "'TAX' FLOAT,"
-                     "'CREATED_AT' DATETIMEWITHLOCALTZ)"]))
-                  (mdb.query/format-sql create_table_ddl)))
-           create_table_ddl)))))
+          [Card orders-model {:name            "Orders Model"
+                              :dataset_query   q
+                              :result_metadata result-metadata
+                              :dataset         true}]
+          (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
+            (is (= (mdb.query/format-sql
+                    (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
+                   inner_query))
+            (is (= (mdb.query/format-sql
+                    (str/join
+                     [(format "CREATE TABLE \"%s\" (" sql_name)
+                      "'TOTAL' FLOAT,"
+                      "'QUANTITY' INTEGER,"
+                      "'TAX' FLOAT,"
+                      "'CREATED_AT' DATETIMEWITHLOCALTZ)"]))
+                   (mdb.query/format-sql create_table_ddl)))
+            create_table_ddl))))))
+
+(deftest native-inner-query-test-3
   (testing "Duplicate native column aliases will be deduplicated"
     (mt/dataset sample-dataset
       (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name            "Orders Model"
-                             :dataset_query   q
-                             :result_metadata result-metadata
-                             :dataset         true}]
-         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
-           (is (= (mdb.query/format-sql
-                   (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
-                  inner_query))
-           (is (= (mdb.query/format-sql
-                   (str/join
-                    [(format "CREATE TABLE \"%s\" (" sql_name)
-                     "'X' FLOAT,"
-                     "'X_2' INTEGER)"]))
-                  (mdb.query/format-sql create_table_ddl)))))))))
+          [Card orders-model {:name            "Orders Model"
+                              :dataset_query   q
+                              :result_metadata result-metadata
+                              :dataset         true}]
+          (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
+            (is (= (mdb.query/format-sql
+                    (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
+                   inner_query))
+            (is (= (mdb.query/format-sql
+                    (str/join
+                     [(format "CREATE TABLE \"%s\" (" sql_name)
+                      "'X' FLOAT,"
+                      "'X_2' INTEGER)"]))
+                   (mdb.query/format-sql create_table_ddl)))))))))
 
 (deftest inner-query-with-joins-test
   (testing "Models with joins work"

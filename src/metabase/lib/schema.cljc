@@ -127,7 +127,9 @@
     [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]]
+    [:source-card  {:optional true} [:ref ::id/card]]
+    ;; TODO -- `:page` ???
+    ]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
