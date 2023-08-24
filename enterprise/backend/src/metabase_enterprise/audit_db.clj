@@ -46,7 +46,7 @@
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn adjust-audit-db-to-source!
+(defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
   (when (contains? #{:mysql :h2} mdb.env/db-type)
