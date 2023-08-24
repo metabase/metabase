@@ -163,6 +163,7 @@ export const ReadOnly = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
+    icon={<Icon name="int" />}
     readOnly
   />
 );
@@ -173,6 +174,7 @@ export const MinMax = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
+    icon={<Icon name="int" />}
     min={sampleArgs.min}
     max={sampleArgs.max}
   />
@@ -185,8 +187,9 @@ export const ParserFormatter = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    parser={value => value.replace(/^\$\w*/, "")}
-    formatter={value => (value != null ? `$ ${value}` : "$")}
+    icon={<Icon name="int" />}
+    parser={value => value.replace(/^\$/, "")}
+    formatter={value => (value != null ? `$${value}` : "$")}
   />
 );
 
