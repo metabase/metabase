@@ -76,8 +76,11 @@ jobs:
         name: Check types
 
   fe-tests-unit:
+    strategy:
+      matrix:
+        chunk: [1, 2, 3]
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
+    # if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2204
     timeout-minutes: 60
     steps:
@@ -90,7 +93,7 @@ jobs:
           m2-cache-key: "cljs"
       - name: Run frontend unit tests and collect the code coverage information
         if: github.ref_name == 'master'
-        run: yarn run test-unit --coverage --silent
+        run: yarn run test-unit --coverage --silent --shard=${{matrix.chunk}}/3
       - name: Run frontend unit tests
         if: github.ref_name != 'master'
         run: yarn run test-unit
