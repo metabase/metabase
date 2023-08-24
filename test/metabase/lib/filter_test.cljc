@@ -373,7 +373,6 @@
         (let [query (lib/filter query (-> first-filter
                                           (assoc-in [1 :lib/uuid] (str (random-uuid)))
                                           (assoc-in [2 1 :lib/uuid] (str (random-uuid)))))]
-          first-filter(prn query)
           (is (thrown-with-msg?
-               Exception #"Multiple matching filters found"
+               #?(:clj Exception :cljs :default) #"Multiple matching filters found"
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
