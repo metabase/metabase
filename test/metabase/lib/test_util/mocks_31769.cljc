@@ -50,17 +50,17 @@
   ([]
    (mock-metadata-provider meta/metadata-provider meta/id 1 2))
 
-  ([metadata-provider id card-1-id card-2-id]
+  ([metadata-provider id-fn card-1-id card-2-id]
    (lib/composed-metadata-provider
     (lib.tu/mock-metadata-provider
      {:cards [{:id            card-1-id
                :name          "Card 1"
-               :database-id   (id)
-               :dataset-query (card-1-query metadata-provider id)}
+               :database-id   (id-fn)
+               :dataset-query (card-1-query metadata-provider id-fn)}
               {:id            card-2-id
                :name          "Card 2"
-               :database-id   (id)
-               :dataset-query (card-2-query metadata-provider id)}]})
+               :database-id   (id-fn)
+               :dataset-query (card-2-query metadata-provider id-fn)}]})
     metadata-provider)))
 
 (defn query
