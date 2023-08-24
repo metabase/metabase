@@ -189,6 +189,7 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+
     return {
       id: parameterId,
       value: normalizeValue(value),
@@ -199,6 +200,10 @@ export const setParameterValue = createThunkAction(
 
 function normalizeValue(value) {
   if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  if (value === "") {
     return null;
   }
 
