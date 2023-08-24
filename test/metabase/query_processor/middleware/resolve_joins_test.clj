@@ -9,7 +9,7 @@
    [metabase.test :as mt]))
 
 (defn- resolve-joins [query]
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (resolve-joins/resolve-joins query)))
 
 (deftest ^:parallel joins->fields-test
@@ -25,8 +25,7 @@
             (mt/mbql-query venues))))))
 
 (defn- resolve-joins-and-inspect-store [query]
-  (qp.store/with-store
-    (qp.test-util/store-referenced-database! query)
+  (qp.store/with-metadata-provider (mt/id)
     {:resolved (resolve-joins query)
      :store    (qp.test-util/store-contents)}))
 
@@ -40,8 +39,7 @@
                  :strategy     :left-join
                  :condition    [:= $category_id &c.categories.id]}]})
             :store
-            {:database "test-data"
-             :tables   #{"CATEGORIES" "VENUES"}
+            {:tables   #{"CATEGORIES" "VENUES"}
              :fields   #{["CATEGORIES" "ID"] ["VENUES" "CATEGORY_ID"]}}}
            (resolve-joins-and-inspect-store
             (mt/mbql-query venues
@@ -66,8 +64,7 @@
                              &c.categories.id
                              &c.categories.name]})
                  :store
-                 {:database "test-data"
-                  :tables   #{"CATEGORIES" "VENUES"}
+                 {:tables   #{"CATEGORIES" "VENUES"}
                   :fields   #{["CATEGORIES" "ID"]
                               ["VENUES" "CATEGORY_ID"]
                               ["CATEGORIES" "NAME"]}}}
@@ -93,8 +90,7 @@
                              $venues.name
                              &c.categories.name]})
                  :store
-                 {:database "test-data"
-                  :tables   #{"CATEGORIES" "VENUES"}
+                 {:tables   #{"CATEGORIES" "VENUES"}
                   :fields   #{["CATEGORIES" "ID"]
                               ["VENUES" "CATEGORY_ID"]
                               ["CATEGORIES" "NAME"]}}}
@@ -131,7 +127,7 @@
                    Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Table does not exist, or belongs to a different Database"
+           #"\QFailed to fetch :metadata/table\E"
            (resolve-joins
             (mt/mbql-query venues
               {:joins [{:source-table table-id
@@ -177,8 +173,7 @@
 (deftest join-with-source-query-test
   (testing "Does a join using a source query get its Tables resolved?"
     (is (= {:store
-            {:database "test-data"
-             :tables   #{"VENUES" "CATEGORIES"}
+            {:tables   #{"VENUES" "CATEGORIES"}
              :fields   #{["VENUES" "CATEGORY_ID"]}}
 
             :resolved
@@ -229,8 +224,7 @@
                      :order-by [[:asc $name]]
                      :limit    3})
                   resolved))
-      (is (= {:database "test-data"
-              :tables   #{"CATEGORIES" "VENUES"}
+      (is (= {:tables   #{"CATEGORIES" "VENUES"}
               :fields   #{["CATEGORIES" "ID"] ["VENUES" "CATEGORY_ID"] ["CATEGORIES" "NAME"]}}
              store)))))
 

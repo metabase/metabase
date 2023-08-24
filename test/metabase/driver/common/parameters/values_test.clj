@@ -8,6 +8,10 @@
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.models :refer [Card Collection NativeQuerySnippet]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -279,8 +283,9 @@
                :widget-type  :date/all-options}
               nil))))))
 
-(defn- query->params-map [query]
-  (mt/with-everything-store (params.values/query->params-map query)))
+(defn- query->params-map [inner-query]
+  (qp.store/with-metadata-provider (mt/id)
+    (params.values/query->params-map inner-query)))
 
 (deftest field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
@@ -293,8 +298,6 @@
         (is (thrown?
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
-
-
 
 (deftest card-query-test
   (mt/with-test-user :rasta
@@ -529,26 +532,29 @@
                   :value               "2"
                   :filteringParameters "222b245f"}])))))))
 
-(deftest parse-card-include-parameters-test
+(deftest ^:parallel parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
-    (mt/dataset sample-dataset
-      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
-                                                           {:filter      [:between $total 30 60]
-                                                            :aggregation [[:aggregation-options
-                                                                           [:count-where [:starts-with $product_id->products.category "G"]]
-                                                                           {:name "G Monies", :display-name "G Monies"}]]
-                                                            :breakout    [!month.created_at]})}]
-        (let [card-tag (str "#" (u/the-id card))]
-          (is (=? {:card-id (u/the-id card)
-                   :query   (every-pred string? (complement str/blank?))
-                   :params  ["G%"]}
-                  (#'params.values/parse-tag
-                   {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                    :name         card-tag
-                    :display-name card-tag
-                    :type         :card
-                    :card-id      (u/the-id card)}
-                   nil))))))))
+    (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                      (lib.tu/mock-metadata-provider
+                                       {:cards [(assoc (lib.tu/mock-cards :orders)
+                                                       :id 1
+                                                       :dataset-query (lib.tu.macros/mbql-query orders
+                                                                        {:filter      [:between $total 30 60]
+                                                                         :aggregation [[:aggregation-options
+                                                                                        [:count-where [:starts-with $product-id->products.category "G"]]
+                                                                                        {:name "G Monies", :display-name "G Monies"}]]
+                                                                         :breakout    [!month.created-at]}))]})
+                                      meta/metadata-provider)
+      (is (=? {:card-id 1
+               :query   (every-pred string? (complement str/blank?))
+               :params  ["G%"]}
+              (#'params.values/parse-tag
+               {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                :name         "#1"
+                :display-name "#1"
+                :type         :card
+                :card-id      1}
+               nil))))))
 
 (deftest ^:parallel prefer-template-tag-default-test
   (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
@@ -664,11 +670,11 @@
                                          :name         param-name}}]
           (testing "With no parameters passed in"
             (is (=? {param-name ReferencedCardQuery}
-                    (params.values/query->params-map {:template-tags template-tags}))))
+                    (query->params-map {:template-tags template-tags}))))
           (testing "WITH parameters passed in"
             (let [parameters [{:type   :date/all-options
                                :value  "2022-04-20"
                                :target [:dimension [:template-tag "created_at"]]}]]
               (is (=? {param-name ReferencedCardQuery}
-                      (params.values/query->params-map {:template-tags template-tags
-                                                        :parameters    parameters}))))))))))
+                      (query->params-map {:template-tags template-tags
+                                          :parameters    parameters}))))))))))

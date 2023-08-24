@@ -26,7 +26,7 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (update-h2/update-if-needed url)
+    (update-h2/update-if-needed! url)
     (if properties
       (DriverManager/getConnection url properties)
       (DriverManager/getConnection url)))

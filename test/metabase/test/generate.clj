@@ -323,7 +323,7 @@
 
 (def ^:private unique-name (mbql.u/unique-name-generator))
 
-(defn- unique-email [email]
+(defn- unique-email [^String email]
   (let [at (.indexOf email "@")]
     (str (unique-name (subs email 0 at))
          (subs email at))))

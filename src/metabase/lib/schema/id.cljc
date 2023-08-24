@@ -46,3 +46,6 @@
 
 (mr/def ::snippet
   ::common/positive-int)
+
+(mr/def ::dimension
+  ::common/positive-int)
