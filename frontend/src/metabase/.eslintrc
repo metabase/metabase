@@ -3,11 +3,6 @@
     "no-restricted-imports": [
       "error",
       {
-        "patterns": [
-          "metabase-enterprise",
-          "metabase-enterprise/*",
-          "cljs/metabase.lib*"
-        ],
         "paths": [
           {
             "name": "react-redux",
@@ -16,8 +11,7 @@
           },
           {
             "name": "@mantine/core",
-            "importNames": ["createStyles"],
-            "message": "Avoid using `createStyles` because of breaking changes in the upcoming Mantine update"
+            "message": "Please import from `metabase/ui` instead."
           }
         ]
       }
@@ -39,16 +33,13 @@
     {
       "files": ["lib/redux/hooks.ts"],
       "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              "metabase-enterprise",
-              "metabase-enterprise/*",
-              "cljs/metabase.lib*"
-            ]
-          }
-        ]
+        "no-restricted-imports": 0
+      }
+    },
+    {
+      "files": ["ui/**/*.{js,jsx,ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": 0
       }
     }
   ]
