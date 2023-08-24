@@ -22,45 +22,44 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- change-zone-local-date-time
-  [local-dt clock-zone-id target-zone-id]
-  (-> (.atZone ^LocalDateTime local-dt ^ZoneId clock-zone-id) ^ZonedDateTime
-      (t/with-zone-same-instant target-zone-id)
-      .toLocalDateTime))
-
-(defn do-with-local-date-time-at-same-zone
+(defn do-with-fix-local-date-time-at-zone!
   [clock-zone-id thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-fix-local-date-time-at-zone!")
   (let [original-var t/local-date-time]
     (with-redefs [t/local-date-time (fn [& args]
                                       (if (and (= (count args) 1)
                                                (instance? ZoneId (first args)))
-                                        (change-zone-local-date-time (original-var) clock-zone-id (first args))
+                                        (-> (.atZone ^LocalDateTime (original-var) ^ZoneId (t/zone-id clock-zone-id)) ^ZonedDateTime
+                                            (t/with-zone-same-instant (first args))
+                                            .toLocalDateTime)
                                         (apply original-var args)))]
       (thunk))))
 
-(defmacro with-local-date-time-at-same-zone
+(defmacro with-fix-local-date-time-at-zone!
   "This fixes a very specific bug with [[t/local-date-time]] when called with a timezone-id when it's under a [[mt/with-clock]].
 
   Say if my current time is : 2023-01-01T10:00:00[UTC]
 
-  (mt/with-clock #t \"2000-01-01T08:00:00Z[UTC]\"
-  ;; getting the local time with no params
-  (t/local-date-time)
-  ;; =>  #t \"2000-01-01T08:00\" ✅ correct since the time is taken from the clock
+    (mt/with-clock #t \"2000-01-01T08:00:00Z[UTC]\"
+      ;; getting the local time with no params
+      (t/local-date-time)
+      ;; =>  #t \"2000-01-01T08:00\" ✅ correct since the time is taken from the clock
 
 
-  (t/local-date-time (t/zone-id \"Asia/Ho_Chi_Minh\"))
-  ;; => #t \"2023-01-01T10:00\" ❌ this is my actual current time, not the time from the clok
-  )
+      (t/local-date-time (t/zone-id \"Asia/Ho_Chi_Minh\"))
+      ;; => #t \"2023-01-01T10:00\" ❌ this is my actual current time, not the time from the clok
+    )
 
   So this function fix it so that
-  (t/local-date-time (t/zone-id \"Asia/Ho_Chi_Minh\"))
-  ;; =>  #t \"2000-01-01T15:00\"
-
+    (mt/with-clock #t \"2000-01-01T08:00:00Z[UTC]\"
+      (with-fix-local-date-time-at-zone! \"UTC\"
+        (t/local-date-time (t/zone-id \"Asia/Ho_Chi_Minh\")))
+      ;; =>  #t \"2000-01-01T15:00\"
+    )
   which is the time from clock but in Asia/Ho_Chi_Minh
   "
   [clock-zone-id & body]
-  `(do-with-local-date-time-at-same-zone ~clock-zone-id (fn [] ~@body)))
+  `(do-with-fix-local-date-time-at-zone! ~clock-zone-id (fn [] ~@body)))
 
 (defn do-with-clock [clock thunk]
   (testing (format "\nsystem clock = %s" (pr-str clock))
@@ -72,8 +71,7 @@
                                                                        (pr-str clock)))))]
       #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
-        (with-local-date-time-at-same-zone (t/zone-id clock)
-          (thunk))))))
+        (thunk)))))
 
 (defmacro with-clock
   "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
@@ -84,14 +82,15 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-(deftest with-clock-test
+(deftest with-fix-local-date-time-at-zone!-test
   (with-clock #t "2000-01-01T08:00:00Z[UTC]"
-    (is (= #t "2000-01-01T08:00"
-           (t/local-date-time)))
+    (with-fix-local-date-time-at-zone! "UTC"
+     (is (= #t "2000-01-01T08:00"
+            (t/local-date-time)))
 
-    (testing "get local date time with zone id will returns clock time but shifted to the target tz"
-      (is (= #t "2000-01-01T15:00"
-             (t/local-date-time (t/zone-id "Asia/Ho_Chi_Minh")))))))
+     (testing "get local date time with zone id will returns clock time but shifted to the target tz"
+       (is (= #t "2000-01-01T15:00"
+              (t/local-date-time (t/zone-id "Asia/Ho_Chi_Minh"))))))))
 
 (defn do-with-single-admin-user
   [attributes thunk]

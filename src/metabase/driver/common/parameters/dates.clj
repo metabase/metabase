@@ -416,8 +416,8 @@
   which is *INCLUSIVE*. If the filter clause you're generating is not inclusive, pass the `:inclusive-start?` or
   `:inclusive-end?` options as needed to generate an appropriate range.
 
-  For relative date strings, the datetime is relative with current local time, if you want to change the timezone of
-  local time, use the option `:timezone-id`.
+  For relative date strings, the datetime is relative with current local time,
+  to change the timezone of local time, use the option `:timezone-id`.
 
   Note that some ranges are open-ended on one side, and will have only a `:start` or an `:end`."
   ;; 1-arg version returns inclusive start/end; 2-arg version can adjust as needed
