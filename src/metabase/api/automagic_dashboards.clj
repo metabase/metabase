@@ -5,6 +5,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
+   [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.core
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.rules :as rules]
@@ -13,6 +14,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.metric :refer [Metric]]
+   [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
@@ -155,6 +157,65 @@
     (transform.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
+
+(defn linked-entities
+  "stuff"
+  [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
+  (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
+    (when-let [table-ids (t2/select-fn-set :table_id 'Field :fk_target_field_id field-id)]
+      (t2/select 'Table :id [:in table-ids]))))
+
+(defn create-linked-dashboard [model linked]
+  (let [                                                    ;root-dashboard   (magic/automagic-analysis model {:show :all})
+        child-dashboards (map #(magic/automagic-analysis % {:show :all}) linked)
+        dashboard-id     (gensym)
+        dashboards       (->> child-dashboards
+                              (map (fn [dashboard]
+                                     (let [tab-id (gensym)]
+                                       (-> dashboard
+                                           (assoc :id tab-id)
+                                           (update
+                                             :ordered_cards
+                                             (fn [ocs]
+                                               (map (fn [oc] (assoc oc
+                                                               :dashboard_id dashboard-id
+                                                               :dashboard_tab_id tab-id)) ocs))))))))
+        ordered-tabs     (map-indexed (fn [idx {tab-name :name tab-id :id :as dashboard}]
+                                        {:id           tab-id
+                                         :dashboard_id dashboard-id
+                                         :name         tab-name
+                                         :position     idx})
+                                      dashboards)]
+    (reduce
+      (fn [acc {:keys [ordered_cards parameters]}]
+        (-> acc
+            (update :ordered_cards concat ordered_cards)
+            ;(update :parameters concat parameters)
+            ))
+      (assoc
+        (first child-dashboards)
+        :ordered_tabs ordered-tabs)
+      (rest child-dashboards))))
+
+(api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
+  "Return an automagic dashboard for an entity detail specified by `entity`
+  with id `id` and a primary key of `indexed-value`."
+  [model-index-id pk-id]
+  {model-index-id :int
+   pk-id          :int}
+  ;; Stuff...
+  (api/let-404 [model-index       (t2/select-one ModelIndex :id model-index-id)
+                model             (t2/select-one Card (:model_id model-index))
+                model-index-value (t2/select-one ModelIndexValue
+                                                 :model_index_id model-index-id
+                                                 :model_pk pk-id)
+                linked            (linked-entities {:model             model
+                                                    :model-index       model-index
+                                                    :model-index-value model-index-value})]
+               ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+               (api/read-check Card (:model_id model-index))
+               (or (create-linked-dashboard model linked)
+                   (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
