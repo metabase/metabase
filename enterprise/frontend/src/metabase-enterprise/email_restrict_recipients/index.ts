@@ -3,8 +3,8 @@ import { updateIn } from "icepick";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
-import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
-import { SettingElement } from "metabase/admin/settings/types";
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type { SettingElement } from "metabase/admin/settings/types";
 
 if (hasPremiumFeature("email_restrict_recipients")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(

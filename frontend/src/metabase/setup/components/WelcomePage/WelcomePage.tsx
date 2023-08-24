@@ -33,7 +33,7 @@ export const WelcomePage = (): JSX.Element | null => {
   }
 
   return (
-    <PageRoot>
+    <PageRoot data-testid="welcome-page">
       <PageMain>
         <LogoIcon height={118} />
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>

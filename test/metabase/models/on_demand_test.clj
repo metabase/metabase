@@ -42,17 +42,17 @@
                                          :default      "Widget"}}}})
 
 (defn- do-with-updated-fields-for-card {:style/indent 1} [options & [f]]
-  (mt/with-temp* [Database [db    (:db options)]
-                  Table    [table (merge {:db_id (u/the-id db)}
-                                         (:table options))]
-                  Field    [field (merge {:table_id (u/the-id table), :has_field_values "list"}
-                                         (:field options))]]
+  (mt/with-temp [Database db    (:db options)
+                 Table    table (merge {:db_id (u/the-id db)}
+                                       (:table options))
+                 Field    field (merge {:table_id (u/the-id table) :has_field_values "list"}
+                                       (:field options))]
     (do-with-mocked-field-values-updating
      (fn [updated-field-names]
        (t2.with-temp/with-temp [Card card (merge {:dataset_query (native-query-with-template-tag field)}
                                                  (:card options))]
          (when f
-           (f {:db db, :table table, :field field, :card card, :updated-field-names updated-field-names})))))))
+           (f {:db db :table table :field field :card card :updated-field-names updated-field-names})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

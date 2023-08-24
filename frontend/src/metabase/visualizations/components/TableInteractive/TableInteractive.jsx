@@ -540,6 +540,7 @@ class TableInteractive extends Component {
     return (
       <div
         key={key}
+        role="gridcell"
         style={{
           ...style,
           // use computed left if dragging

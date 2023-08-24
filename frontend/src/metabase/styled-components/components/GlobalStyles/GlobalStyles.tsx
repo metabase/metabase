@@ -2,7 +2,7 @@ import { css, Global } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
-import { FontFile } from "metabase-types/api";
+import type { FontFile } from "metabase-types/api";
 
 export interface GlobalStylesProps {
   font: string;

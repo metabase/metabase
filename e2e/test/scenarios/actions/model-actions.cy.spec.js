@@ -1,5 +1,6 @@
 import { assocIn } from "icepick";
 import {
+  createImplicitActions,
   setActionsEnabledForDB,
   modal,
   popover,
@@ -102,8 +103,13 @@ describe(
       });
 
       cy.intercept("GET", "/api/card/*").as("getModel");
+      cy.intercept("GET", "/api/action/*").as("getAction");
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelAction");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+      cy.intercept("GET", "/api/search?*").as("getSearchResults");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -327,6 +333,37 @@ describe(
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
       cy.findByLabelText("ID").should("be.visible");
+    });
+
+    it("should show detailed form errors for constraint violations when executing model actions", () => {
+      const actionName = "Update";
+
+      cy.get("@modelId").then(modelId => {
+        createImplicitActions({ modelId });
+
+        cy.visit(`/model/${modelId}/detail`);
+        cy.wait("@getModel");
+      });
+
+      cy.findByRole("tablist").findByText("Actions").click();
+
+      runActionFor(actionName);
+
+      cy.wait("@getAction");
+
+      modal().within(() => {
+        cy.findByLabelText("ID").type("1");
+        cy.findByLabelText("User ID").type("999999");
+        cy.button(actionName).click();
+        cy.wait("@executeAction");
+
+        cy.findByLabelText("User ID").should("not.exist");
+        cy.findByLabelText("User ID: This User_id does not exist.").should(
+          "exist",
+        );
+
+        cy.findByText("Unable to update the record.").should("exist");
+      });
     });
   },
 );

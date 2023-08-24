@@ -98,7 +98,7 @@ export const executeRowAction = async ({
       );
     }
 
-    return { success: false, error: message, message };
+    return { success: false, error, message };
   }
 };
 

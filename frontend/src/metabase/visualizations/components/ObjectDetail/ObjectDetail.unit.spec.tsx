@@ -16,7 +16,7 @@ import {
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { WritebackAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,

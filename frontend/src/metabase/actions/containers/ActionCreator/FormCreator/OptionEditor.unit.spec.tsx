@@ -2,11 +2,8 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
-import {
-  OptionPopover,
-  OptionEditorProps,
-  textToOptions,
-} from "./OptionEditor";
+import type { OptionEditorProps } from "./OptionEditor";
+import { OptionPopover, textToOptions } from "./OptionEditor";
 
 async function baseSetup({
   fieldType = "string",

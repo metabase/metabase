@@ -89,8 +89,8 @@
 
 (deftest sort-by-field-position-test
   (testing "when adding sorted implicit Fields, Field positions should be taken into account"
-    (mt/with-temp* [Field [field-1 {:table_id (mt/id :venues), :position 100, :name "bbbbb"}]
-                    Field [field-2 {:table_id (mt/id :venues), :position 101, :name "aaaaa"}]]
+    (mt/with-temp [Field field-1 {:table_id (mt/id :venues) :position 100 :name "bbbbb"}
+                   Field field-2 {:table_id (mt/id :venues) :position 101 :name "aaaaa"}]
       (is (= (:query
               (mt/mbql-query venues
                 {:fields [ ;; all fields with lower positions should get sorted first according to rules above

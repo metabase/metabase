@@ -1,4 +1,5 @@
-import { Text, TextProps } from "@visx/text";
+import type { TextProps } from "@visx/text";
+import { Text } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";

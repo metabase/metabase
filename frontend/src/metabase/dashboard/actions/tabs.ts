@@ -3,14 +3,14 @@ import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
 
-import {
+import type {
   DashCardId,
   DashboardId,
   DashboardOrderedCard,
   DashboardOrderedTab,
   DashboardTabId,
 } from "metabase-types/api";
-import { DashboardState, TabDeletionId } from "metabase-types/store";
+import type { DashboardState, TabDeletionId } from "metabase-types/store";
 import { INITIALIZE } from "metabase/dashboard/actions/core";
 
 import { INITIAL_DASHBOARD_STATE } from "../constants";

@@ -1,4 +1,7 @@
-import { DashboardSidebarName, DashboardState } from "metabase-types/store";
+import type {
+  DashboardSidebarName,
+  DashboardState,
+} from "metabase-types/store";
 
 export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
   {

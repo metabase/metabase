@@ -1,23 +1,44 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import { rem } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import {
   getAccordionOverrides,
   getAnchorOverrides,
+  getButtonOverrides,
   getCheckboxOverrides,
   getMenuOverrides,
   getRadioOverrides,
   getTextOverrides,
+  getTitleOverrides,
 } from "./components";
+
+type ThemeColors = MantineTheme["colors"]["brand"];
+
+const getThemeColors = (colors: string[]): ThemeColors => {
+  return Array.from(
+    { length: 10 },
+    (_, index) => colors[index] ?? "transparent",
+  ) as ThemeColors;
+};
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
-    brand: [color("brand-light"), color("brand")],
-    text: [color("text-light"), color("text-medium"), color("text-dark")],
-    border: [color("border")],
-    bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
+    brand: getThemeColors([color("brand-lighter"), color("brand")]),
+    text: getThemeColors([
+      color("text-light"),
+      color("text-medium"),
+      color("text-dark"),
+    ]),
+    focus: getThemeColors([color("focus")]),
+    border: getThemeColors([color("border")]),
+    bg: getThemeColors([
+      color("bg-light"),
+      color("bg-medium"),
+      color("bg-dark"),
+    ]),
   },
   primaryColor: "brand",
-  primaryShade: 1,
+  primaryShade: 2,
   shadows: {
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
@@ -32,22 +53,51 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     xs: "4px",
     sm: "6px",
     md: "8px",
+    xl: "40px",
   },
   fontSizes: {
-    xs: "11px",
-    sm: "12px",
-    md: "14px",
-    lg: "17px",
-    xl: "21px",
+    xs: rem(11),
+    sm: rem(12),
+    md: rem(14),
+    lg: rem(17),
+    xl: rem(21),
   },
-  fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
+  headings: {
+    sizes: {
+      h1: {
+        fontSize: rem(24),
+        lineHeight: rem(24),
+      },
+      h2: {
+        fontSize: rem(20),
+        lineHeight: rem(24),
+      },
+      h3: {
+        fontSize: rem(14),
+        lineHeight: rem(16),
+      },
+      h4: {
+        fontSize: rem(14),
+        lineHeight: rem(16),
+      },
+    },
+  },
+  fontFamily: "var(--default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
+  focusRingStyles: {
+    styles: theme => ({
+      outline: `0.125rem solid ${theme.colors.focus[0]}`,
+      outlineOffset: "0.125rem",
+    }),
+  },
   components: {
     ...getAccordionOverrides(),
     ...getAnchorOverrides(),
+    ...getButtonOverrides(),
     ...getCheckboxOverrides(),
     ...getMenuOverrides(),
     ...getRadioOverrides(),
     ...getTextOverrides(),
+    ...getTitleOverrides(),
   },
 });

@@ -7,11 +7,15 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [malli.core :as mc]
+   [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
+   [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -376,12 +380,12 @@
     (testing "Deal with complicated identifier (#22967)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "complicated_identifiers"
                                                                  :json-unfolding true})]
-        (mt/with-temp* [Database [database  {:engine :postgres, :details details}]
-                        Table    [table     {:db_id (u/the-id database)
-                                             :name  "complicated_identifiers"}]
-                        Field    [val-field {:table_id      (u/the-id table)
-                                             :nfc_path      [:jsons "values" "qty"]
-                                             :database_type "integer"}]]
+        (mt/with-temp [Database database  {:engine :postgres :details details}
+                       Table    table     {:db_id (u/the-id database)
+                                           :name  "complicated_identifiers"}
+                       Field    val-field {:table_id      (u/the-id table)
+                                           :nfc_path      [:jsons "values" "qty"]
+                                           :database_type "integer"}]
           (qp.store/with-store
             (qp.store/fetch-and-store-database! (u/the-id database))
             (qp.store/fetch-and-store-tables! [(u/the-id table)])
@@ -789,6 +793,108 @@
                                                             "status" "good bird"
                                                             "type"   "turkey"}}))))))))))))
 
+;; API tests are in [[metabase.api.action-test]]
+(deftest actions-maybe-parse-sql-error-test
+  (testing "violate not null constraint"
+    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
+            :message "Ranking must have values."
+            :errors {"ranking" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-not-null-constraint nil :row/created
+            "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))
+
+    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
+            :message "Ranking must have values."
+            :errors {"ranking" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-not-null-constraint nil :row/created
+            "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null)."))))
+
+  (testing "violate unique constraint"
+    (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
+      (is (= {:type :metabase.actions.error/violate-unique-constraint,
+              :message "Ranking already exists.",
+              :errors {"ranking" "This Ranking value already exists."}}
+             (sql-jdbc.actions/maybe-parse-sql-error
+              :postgres actions.error/violate-unique-constraint nil nil
+              "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch.")))))
+
+  (testing "incorrect type"
+    (is (= {:type :metabase.actions.error/incorrect-value-type,
+            :message "Some of your values aren’t of the correct type for the database.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/incorrect-value-type nil nil
+            "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch."))))
+
+  (testing "violate fk constraints"
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to create a new record.",
+            :errors {"group-id" "This Group-id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to update the record.",
+            :errors {"id" "This Id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Other tables rely on this row so it cannot be deleted.",
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
+
+
+;; this contains specical tests case for postgres
+;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest action-error-handling-test
+  (mt/test-driver :postgres
+    (testing "violate not-null constraints with multiple columns"
+      (drop-if-exists-and-create-db! "not-null-constraint-on-multiple-cols")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
+        (doseq [stmt ["CREATE TABLE mytable (id serial PRIMARY KEY,
+                      column1 VARCHAR(50),
+                      column2 VARCHAR(50),
+                      CONSTRAINT unique_columns UNIQUE (column1, column2)
+                      );"
+                      "INSERT INTO mytable (id, column1, column2)
+                      VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
+          (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
+        (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (mt/with-actions-enabled
+              (testing "when creating"
+                (is (= {:errors      {"column1" "This Column1 value already exists."
+                                      "column2" "This Column2 value already exists."}
+                        :message     "Column1 and Column2 already exist."
+                        :status-code 400
+                        :type        actions.error/violate-unique-constraint}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :row/create (mt/$ids {:create-row {:id      3
+                                                           :column1 "A"
+                                                           :column2 "A"}
+                                              :database   (:id database)
+                                              :query      {:source-table $$mytable}
+                                              :type       :query})))))
+              (testing "when updating"
+                (is (= {:errors      {"column1" "This Column1 value already exists."
+                                      "column2" "This Column2 value already exists."}
+                        :message     "Column1 and Column2 already exist."
+                        :status-code 400
+                        :type        actions.error/violate-unique-constraint}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :row/update (mt/$ids {:update-row {:column1 "A"
+                                                           :column2 "A"}
+                                              :database   (:id database)
+                                              :query      {:source-table $$mytable
+                                                           :filter       [:= $mytable.id 2]}
+                                              :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1103,10 +1209,10 @@
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
           (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (mt/with-temp* [:model/Card [_ {:name "model"
-                                            :dataset true
-                                            :dataset_query (mt/mbql-query categories)
-                                            :database_id (mt/id)}]]
+            (mt/with-temp [:model/Card _ {:name "model"
+                                          :dataset true
+                                          :dataset_query (mt/mbql-query categories)
+                                          :database_id (mt/id)}]
               (persist-models!)
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))

@@ -4,7 +4,8 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import EventCard, { EventCardProps } from "./EventCard";
+import type { EventCardProps } from "./EventCard";
+import EventCard from "./EventCard";
 
 describe("EventCard", () => {
   it("should render an event with date", () => {

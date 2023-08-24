@@ -11,7 +11,8 @@ import type {
 
 import { getDefaultFormSettings } from "../../../../utils";
 import type { ActionContextProviderProps } from "../types";
-import { ActionContext, ActionContextType } from "../ActionContext";
+import type { ActionContextType } from "../ActionContext";
+import { ActionContext } from "../ActionContext";
 import {
   EditorBodyRoot,
   EditorTitle,

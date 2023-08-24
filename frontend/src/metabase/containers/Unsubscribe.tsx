@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAsync } from "react-use";
-import { Location } from "history";
+import type { Location } from "history";
 import { t, jt } from "ttag";
 
 import { Center, Stack, Text } from "metabase/ui";

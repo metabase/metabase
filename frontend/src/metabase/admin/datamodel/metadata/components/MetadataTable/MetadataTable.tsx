@@ -1,4 +1,5 @@
-import { ReactNode, useCallback, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,15 +7,15 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
-import {
+import type {
   DatabaseId,
   SchemaId,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
+import type { State } from "metabase-types/store";
+import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
 import MetadataTableSchema from "../MetadataTableSchema";
 import MetadataTableColumnList from "../MetadataTableColumnList";
 import {

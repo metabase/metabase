@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";

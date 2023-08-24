@@ -331,10 +331,10 @@
 (deftest get-current-user-test
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
-      (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
-                                       :device_id (str (random-uuid))
-                                       :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp [LoginHistory _ {:user_id   (mt/user->id :rasta)
+                                     :device_id (str (random-uuid))
+                                     :timestamp #t "2021-03-18T19:52:41.808482Z"}
+                     Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -352,8 +352,8 @@
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp [Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
+                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -378,17 +378,17 @@
       (testing "Not If enabled and set but"
         (testing "user cannot read"
           (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                            Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                       :collection_id coll-id}]]
+            (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                           Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                     :collection_id coll-id}]
               (mt/with-temporary-setting-values [custom-homepage true
                                                  custom-homepage-dashboard dash-id]
                 (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))))
         (testing "Dashboard is archived"
-          (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                          Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                     :archived      true
-                                                     :collection_id coll-id}]]
+          (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                         Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                   :archived      true
+                                                   :collection_id coll-id}]
             (mt/with-temporary-setting-values [custom-homepage true
                                                custom-homepage-dashboard dash-id]
               (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
@@ -398,9 +398,9 @@
             (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
 
       (testing "Otherwise is set"
-        (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                        Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                   :collection_id coll-id}]]
+        (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                       Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                 :collection_id coll-id}]
           (mt/with-temporary-setting-values [custom-homepage true
                                              custom-homepage-dashboard dash-id]
             (is (=? {:first_name      "Rasta"
@@ -522,8 +522,8 @@
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
     (testing "we should be able to put a User in groups the same time we create them"
-      (mt/with-temp* [PermissionsGroup [group-1 {:name "Group 1"}]
-                      PermissionsGroup [group-2 {:name "Group 2"}]]
+      (mt/with-temp [PermissionsGroup group-1 {:name "Group 1"}
+                     PermissionsGroup group-2 {:name "Group 2"}]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 200 "user"
                                 {:first_name             "Cam"
@@ -617,11 +617,11 @@
 (deftest admin-update-other-user-test
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
-      (mt/with-temp* [User [{user-id :id} {:first_name   "Cam"
-                                           :last_name    "Era"
-                                           :email        "cam.era@metabase.com"
-                                           :is_superuser true}]
-                      Collection [_]]
+      (mt/with-temp [User {user-id :id} {:first_name   "Cam"
+                                         :last_name    "Era"
+                                         :email        "cam.era@metabase.com"
+                                         :is_superuser true}
+                     Collection _ {}]
         (letfn [(user [] (into {} (-> (t2/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (t2/hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]
@@ -860,8 +860,8 @@
 (deftest update-groups-test
   (testing "PUT /api/user/:id"
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
-      (mt/with-temp* [User             [user]
-                      PermissionsGroup [group {:name "Blue Man Group"}]]
+      (mt/with-temp [User             user {}
+                     PermissionsGroup group {:name "Blue Man Group"}]
         (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
                               {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
         (is (= #{"All Users" "Blue Man Group"}

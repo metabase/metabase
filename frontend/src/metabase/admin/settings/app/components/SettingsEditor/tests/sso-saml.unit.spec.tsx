@@ -1,11 +1,13 @@
 import { screen } from "__support__/ui";
 import {
   createMockGroup,
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { setupGroupsEndpoint } from "__support__/server-mocks";
-import { setup, SetupOpts } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {
   setupGroupsEndpoint([createMockGroup()]);
@@ -54,5 +56,22 @@ describe("SettingsEditorApp", () => {
     expect(
       await screen.findByText("Notify admins of new SSO users"),
     ).toBeInTheDocument();
+  });
+
+  it("shows proper message when using environment variables for settings", async () => {
+    setupPremium({
+      initialRoute: "/admin/settings/authentication/saml",
+      settings: [
+        createMockSettingDefinition({
+          key: "saml-identity-provider-uri",
+          is_env_setting: true,
+          default: "Using value of env var $MB_SAML_IDENTITY_PROVIDER_URI",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByLabelText("SAML Identity Provider URL"),
+    ).toHaveValue("Using value of env var $MB_SAML_IDENTITY_PROVIDER_URI");
   });
 });

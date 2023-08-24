@@ -15,6 +15,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
@@ -511,3 +512,15 @@
               (is (u.password/verify-password plaintext-password
                                               (salt)
                                               new-hashed-password)))))))))
+
+(deftest has-a-last-acknowledged-version
+  (testing "last-acknowledged-version can be read and set"
+    (mt/with-test-user :rasta
+      (try
+        (is (nil? (setting/get :last-acknowledged-version)))
+        (setting/set! :last-acknowledged-version "47")
+        (is (= "47" (setting/get :last-acknowledged-version)))
+        ;; Ensure it's saved on the user, not globally:
+        (is (= "47" (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+        (finally
+          (setting/set! :last-acknowledged-version nil))))))
