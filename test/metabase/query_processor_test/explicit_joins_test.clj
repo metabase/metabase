@@ -1020,6 +1020,8 @@
                        (lib.tu.mocks-31769/query metadata-provider card-1-id card-2-id))]
             (is (=? {:query {:joins [{:condition [:=
                                                   [:field "Products__CATEGORY" {:base-type :type/Text}]
+                                                  ;; this should probably actually be a nominal Field ref, not a Field
+                                                  ;; ID, once #29763 is fixed.
                                                   [:field integer? {:base-type :type/Text, :join-alias string?}]]}]}}
                     query))
             (mt/with-native-query-testing-context query
