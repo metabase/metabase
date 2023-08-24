@@ -270,7 +270,7 @@
     (let [query (lib/append-stage lib.tu/query-with-join)
           cols  (lib/returned-columns query)
           refs  (map lib.ref/ref cols)
-          a-ref [:field {} (meta/id :categories :name)]]
+          a-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]]
       (is (=? [[:field {} "ID"]          ; 0
                [:field {} "NAME"]        ; 1
                [:field {} "CATEGORY_ID"] ; 2
