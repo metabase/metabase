@@ -52,7 +52,7 @@
                      :id        (grandparent-parent-child-id :child)
                      :base-type :type/Text}]
     (lib.tu/mock-metadata-provider
-     {:database meta/metadata
+     {:database meta/database
       :tables   [(meta/table-metadata :venues)]
       :fields   (mapv (fn [field-metadata]
                         (merge {:visibility-type :normal
@@ -144,6 +144,7 @@
                                                                      [:field (meta/id :products :id) {:join-alias "Products"}]]}]}}
           card-def        {:id            1
                            :name          "Card 1"
+                           :database-id   (meta/id)
                            :dataset-query card-query}
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
@@ -526,6 +527,7 @@
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [card-1            {:name          "My Card"
                              :id            1
+                             :database-id   (meta/id)
                              :dataset-query {:database (meta/id)
                                              :type     :query
                                              :query    {:source-table (meta/id :checkins)
@@ -652,6 +654,7 @@
                                  :name "My Table"}]
                      :cards    [{:id              3
                                  :name            "Card 3"
+                                 :database-id     (meta/id)
                                  :dataset-query   {:lib/type :mbql/query
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql

@@ -9,27 +9,28 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
-   [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util :as u]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    SEGMENTS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- segment-clauses->id->definition [segment-clauses]
-  (when-let [segment-ids (seq (filter integer? (map second segment-clauses)))]
-    (t2/select-pk->fn :definition Segment, :id [:in (set segment-ids)])))
+  (when-let [segment-ids (not-empty (into #{}
+                                          (comp (map second)
+                                                (filter integer?))
+                                          segment-clauses))]
+    (into {}
+          (map (juxt :id :definition))
+          (qp.store/bulk-metadata :metadata/segment segment-ids))))
 
 (defn- replace-segment-clauses [outer-query segment-id->definition]
   (mbql.u/replace-in outer-query [:query]
@@ -80,13 +81,14 @@
 
 (mu/defn ^:private metric-clauses->id->info :- [:map-of ms/PositiveInt MetricInfo]
   [metric-clauses :- [:sequential mbql.s/metric]]
-  (when (seq metric-clauses)
-    (m/index-by :id (for [metric (t2/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
-                          :let   [errors (u/prog1 (metric-info-validation-errors metric)
-                                           (when <>
-                                             (log/warn (trs "Invalid metric: {0} reason: {1}" metric <>))))]
-                          :when  (not errors)]
-                      metric))))
+  (when-let [metric-ids (not-empty (into #{} (map second) metric-clauses))]
+    (into {}
+          (comp (remove (fn [metric]
+                          (when-let [errors (metric-info-validation-errors metric)]
+                            (log/warn (trs "Invalid metric: {0} reason: {1}" metric errors))
+                            errors)))
+                (map (juxt :id #(select-keys % [:id :name :definition]))))
+          (qp.store/bulk-metadata :metadata/metric metric-ids))))
 
 (mu/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
   [inner-query                :- mbql.s/MBQLQuery

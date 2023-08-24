@@ -9,7 +9,7 @@
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -17,6 +17,7 @@
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
+      #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -220,11 +221,8 @@
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
                             db-or-id-or-spec) ; passed in
-                          (t2/select-one [Database :id :engine :details :is_audit] :id database-id) ; look up by ID
-                          (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                          {:status-code 404
-                                           :type        qp.error-type/invalid-query
-                                           :database-id database-id})))
+                          (qp.store/with-metadata-provider database-id
+                            (qp.store/database)))
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond

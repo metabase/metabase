@@ -352,7 +352,6 @@
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
 
-
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
