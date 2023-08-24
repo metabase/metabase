@@ -320,6 +320,34 @@
         (is (= op
                (lib/filter-operator query filter-clause)))))))
 
+(deftest ^:parallel filter-parts-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
+                                (lib/with-join-fields :all)))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
+                                (lib/with-join-fields :all))))]
+    (doseq [col (lib/filterable-columns query)
+            op (lib/filterable-column-operators col)
+            :let [filter-clause (case (:short op)
+                                  :between (lib/filter-clause op col 123 456)
+                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
+                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
+                                  :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (lib/filter-clause op col 123))]]
+      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+        (is (=? {:lib/type :mbql/filter-parts
+                 :operator op
+                 :column {:lib/type :metadata/column
+                          :operators (comp vector? not-empty)}
+                 :args vector?}
+                (lib/filter-parts query filter-clause)))))))
+
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
     (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))

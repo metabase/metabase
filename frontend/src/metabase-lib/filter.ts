@@ -8,6 +8,7 @@ import type {
   ExternalOp,
   FilterOperator,
   FilterClause,
+  FilterParts,
   Query,
 } from "./types";
 
@@ -50,6 +51,14 @@ export function filterOperator(
   filterClause: FilterClause,
 ) {
   return ML.filter_operator(query, stageIndex, filterClause);
+}
+
+export function filterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): FilterParts {
+  return ML.filter_parts(query, stageIndex, filterClause);
 }
 
 export function findFilterForLegacyFilter(

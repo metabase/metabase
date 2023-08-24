@@ -372,6 +372,15 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-operator a-query stage-number a-filter-clause))
 
+(defn ^:export filter-parts
+  "Returns the parts (operator, args, and optionally, options) of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (let [{:keys [operator options column args]} (lib.core/filter-parts a-query stage-number a-filter-clause)]
+    #js {:operator operator
+         :options (clj->js (select-keys options [:case-sensitive :include-current]))
+         :column column
+         :args (to-array args)}))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -434,6 +443,15 @@
     itself should be removed from the query."
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
+
+(defn ^:export find-visible-column-for-legacy-ref
+  "Return the visible column in `a-query` at `stage-number` referenced by `legacy-ref`."
+  [a-query stage-number legacy-ref]
+  (let [ref (-> legacy-ref
+                (js->clj :keywordize-keys true)
+                (update 0 keyword)
+                convert/->pMBQL)]
+    (lib.core/find-visible-column-for-ref a-query stage-number ref)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
