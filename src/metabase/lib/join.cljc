@@ -465,17 +465,16 @@
                         "source")]
     join-alias))
 
-(defn- add-alias-to-join-refs [metadata-providerable form join-alias join-refs]
+(defn- add-alias-to-join-refs [form join-alias join-cols]
   (mbql.u.match/replace form
     (field :guard (fn [field-clause]
                     (and (lib.util/field-clause? field-clause)
-                         (boolean (lib.equality/find-closest-matching-ref
-                                   metadata-providerable field-clause join-refs)))))
+                         (boolean (lib.equality/index-of-closest-matching-metadata field-clause join-cols)))))
     (with-join-alias field join-alias)))
 
 (defn- add-alias-to-condition
-  [metadata-providerable condition join-alias home-refs join-refs]
-  (let [condition (add-alias-to-join-refs metadata-providerable condition join-alias join-refs)]
+  [condition join-alias home-cols join-cols]
+  (let [condition (add-alias-to-join-refs condition join-alias join-cols)]
     ;; Sometimes conditions have field references which cannot be unambigously
     ;; assigned to one of the sides. The following code tries to deal with
     ;; these cases, but only for conditions that look like the ones generated
@@ -488,7 +487,7 @@
         (cond
           ;; no sides obviously belong to joined
           (not (or lhs-alias rhs-alias))
-          (if (lib.equality/find-closest-matching-ref metadata-providerable rhs home-refs)
+          (if (lib.equality/index-of-closest-matching-metadata rhs home-cols)
             [op op-opts (with-join-alias lhs join-alias) rhs]
             [op op-opts lhs (with-join-alias rhs join-alias)])
 
@@ -498,8 +497,8 @@
           (and (= lhs-alias join-alias) (= rhs-alias join-alias))
           (let [bare-lhs (lib.options/update-options lhs dissoc :join-alias)
                 bare-rhs (lib.options/update-options rhs dissoc :join-alias)]
-            (if (and (nil? (lib.equality/find-closest-matching-ref metadata-providerable bare-lhs home-refs))
-                     (lib.equality/find-closest-matching-ref metadata-providerable bare-rhs home-refs))
+            (if (and (nil? (lib.equality/index-of-closest-matching-metadata bare-lhs home-cols))
+                     (lib.equality/index-of-closest-matching-metadata bare-rhs home-cols))
               [op op-opts lhs bare-rhs]
               [op op-opts bare-lhs rhs]))
 
@@ -526,14 +525,12 @@
           home-col    (select-home-column home-cols cond-fields)
           join-alias  (-> (calculate-join-alias query a-join home-col)
                           (generate-unique-name (keep :alias (:joins stage))))
-          home-refs   (mapv lib.ref/ref home-cols)
-          join-refs   (mapv lib.ref/ref
-                            (lib.metadata.calculation/returned-columns
-                              (lib.query/query-with-stages query (:stages a-join))))]
+          join-cols   (lib.metadata.calculation/returned-columns
+                       (lib.query/query-with-stages query (:stages a-join)))]
       (-> a-join
           (update :conditions
                   (fn [conditions]
-                    (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
+                    (mapv #(add-alias-to-condition % join-alias home-cols join-cols)
                           conditions)))
           (with-join-alias join-alias)))))
 
