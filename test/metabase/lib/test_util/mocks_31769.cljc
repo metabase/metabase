@@ -8,13 +8,16 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
 
-(defn card-1-query
+(mu/defn card-1-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `orders` with a join against `products` and another against `people`,
   with a breakout on `products.category` and a `count` aggregation."
-  [metadata-provider id-fn]
+  [metadata-provider :- lib.metadata/MetadataProvider
+   id-fn             :- fn?]
   (let [orders (lib.metadata/table metadata-provider (id-fn :orders))]
     (as-> (lib/query metadata-provider orders) q
       (lib/join q (let [products (lib.metadata/table metadata-provider (id-fn :products))]
@@ -30,10 +33,11 @@
                         breakout))
       (lib/aggregate q (lib/count)))))
 
-(defn card-2-query
+(mu/defn card-2-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `products` with a breakout on `products.category` and a `count`
   aggregation."
-  [metadata-provider id-fn]
+  [metadata-provider :- lib.metadata/MetadataProvider
+   id-fn             :- fn?]
   (let [products (lib.metadata/table metadata-provider (id-fn :products))]
     (as-> (lib/query metadata-provider products) q
       (lib/breakout q (let [breakout (m/find-first #(and (= (:id %) (id-fn :products :category))
@@ -42,38 +46,35 @@
                         (assert breakout)
                         breakout)))))
 
-(defn mock-metadata-provider
+(mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
   "For reproducing #31769: Create a composed metadata provider with two Cards based on [[card-1-query]]
-  and [[card-2-query]]. This is mostly for MLv2 usage rather than QP usage, at least until the
-  QP-use-MLv2-metadata-providers PR lands. Until that lands, QP tests will need to use `with-temp` to create the
-  Cards."
+  and [[card-2-query]]."
   ([]
-   (mock-metadata-provider meta/metadata-provider meta/id 1 2))
+   (mock-metadata-provider meta/metadata-provider meta/id))
 
-  ([metadata-provider id-fn card-1-id card-2-id]
+  ([base-metadata-provider :- lib.metadata/MetadataProvider
+    id-fn                  :- fn?]
    (lib/composed-metadata-provider
     (lib.tu/mock-metadata-provider
-     {:cards [{:id            card-1-id
+     {:cards [{:id            1
                :name          "Card 1"
                :database-id   (id-fn)
-               :dataset-query (card-1-query metadata-provider id-fn)}
-              {:id            card-2-id
+               :dataset-query (card-1-query base-metadata-provider id-fn)}
+              {:id            2
                :name          "Card 2"
                :database-id   (id-fn)
-               :dataset-query (card-2-query metadata-provider id-fn)}]})
-    metadata-provider)))
+               :dataset-query (card-2-query base-metadata-provider id-fn)}]})
+    base-metadata-provider)))
 
-(defn query
+(mu/defn query :- ::lib.schema/query
   "For reproducing #31769: create a query using a `:source-card` with [[card-1-query]] as its source, joining a Card
   with [[card-2-query]]."
   ([]
-   (query (mock-metadata-provider meta/metadata-provider meta/id 1 2)
-          1
-          2))
+   (query (mock-metadata-provider meta/metadata-provider meta/id)))
 
-  ([metadata-provider card-1-id card-2-id]
-   (let [card-1 (lib.metadata/card metadata-provider card-1-id)
-         card-2 (lib.metadata/card metadata-provider card-2-id)]
+  ([metadata-provider :- lib.metadata/MetadataProvider]
+   (let [card-1 (lib.metadata/card metadata-provider 1)
+         card-2 (lib.metadata/card metadata-provider 2)]
      (assert card-1)
      (assert card-2)
      (as-> (lib/query metadata-provider card-1) q

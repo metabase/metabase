@@ -97,7 +97,7 @@
 
 (deftest ^:parallel returned-columns-31769-test
   (testing "Cards with joins should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id 1 2)
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)
           card              (lib.metadata/card metadata-provider 1)
           q                 (:dataset-query card)
           cols              (lib/returned-columns q)]
@@ -118,7 +118,7 @@
 (deftest ^:parallel returned-columns-31769-source-card-test
   (testing "Queries with `:source-card`s with joins should return correct column metadata/refs (#31769)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-          card            (lib.metadata/card metadata-provider 1)
+          card              (lib.metadata/card metadata-provider 1)
           q                 (lib/query metadata-provider card)
           cols              (lib/returned-columns q)]
       (is (=? [{:name                     "CATEGORY"
@@ -137,7 +137,7 @@
 (deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
   (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-          card            (lib.metadata/card metadata-provider 1)
+          card              (lib.metadata/card metadata-provider 1)
           q                 (-> (lib/query metadata-provider card)
                                 lib/append-stage)
           cols              (lib/returned-columns q)]

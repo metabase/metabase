@@ -16,6 +16,7 @@
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -990,18 +991,15 @@
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                    (mt/rows (qp/process-query query))))))))))
 
-(deftest test-31769
+(deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (mt/dataset sample-dataset
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-        (t2.with-temp/with-temp [:model/Card {card-1-id :id} {:dataset_query
-                                                              (lib.convert/->legacy-MBQL
-                                                               (lib.tu.mocks-31769/card-1-query metadata-provider mt/id))}
-                                 :model/Card {card-2-id :id} {:dataset_query
-                                                              (lib.convert/->legacy-MBQL
-                                                               (lib.tu.mocks-31769/card-2-query metadata-provider mt/id))}]
+      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               mt/id)]
+        (qp.store/with-metadata-provider metadata-provider
           (testing "returned columns"
-            (let [card (lib.metadata/card metadata-provider card-1-id)]
+            (let [card (lib.metadata/card metadata-provider 1)]
               (assert card)
               (testing "with Card query as previous stage"
                 (let [query (-> (lib/query metadata-provider (:dataset-query card))
@@ -1017,7 +1015,7 @@
                            [:field {:base-type :type/Integer} "count"]]
                           (map lib.ref/ref cols)))))))
           (let [query (lib.convert/->legacy-MBQL
-                       (lib.tu.mocks-31769/query metadata-provider card-1-id card-2-id))]
+                       (lib.tu.mocks-31769/query metadata-provider))]
             (is (=? {:query {:joins [{:condition [:=
                                                   [:field "Products__CATEGORY" {:base-type :type/Text}]
                                                   ;; this should probably actually be a nominal Field ref, not a Field
