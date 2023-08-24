@@ -99,7 +99,8 @@
    :model_id            :integer
    :model_name          :text
    ;; returned for indexed-entity
-   :pk_ref              :text))
+   :pk_ref              :text
+   :model_index_id      :integer))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -412,7 +413,9 @@
 (mu/defn query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
-  (map #(get (first %) :model)
+  ;; mapv used to realize lazy sequence. In web request, user bindings exist for entirety of request and we realize on
+  ;; serialization. At repl, we print lazy sequence after bindings have elapsed and you get unbound user errors
+  (mapv #(get (first %) :model)
        (filter not-empty
                (for [model search-config/all-models]
                  (let [search-query     (search-query-for-model model search-ctx)
