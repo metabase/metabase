@@ -44,7 +44,6 @@
                  [:status       [:= :failed]]
                  [:class        (ms/InstanceOfClass Class)]
                  [:error        :string]
-                 [:stacktrace   [:sequential ms/NonBlankString]]
                  ;; `:database` is removed by the catch-exceptions middleware for historical reasons
                  [:json_query   (bad-query-schema)]
                  [:preprocessed (bad-query-preprocessed-schema)]
@@ -60,7 +59,6 @@
                  [:native       bad-query-native-schema]
                  [:status       [:= :failed]]
                  [:class        (ms/InstanceOfClass Class)]
-                 [:stacktrace   [:sequential ms/NonBlankString]]
                  [:context      [:= :question]]
                  [:error        ms/NonBlankString]
                  [:row_count    [:= 0]]

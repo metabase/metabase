@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
+   [metabase.config :as config]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -22,10 +23,12 @@
 
 (defmethod format-exception Throwable
   [^Throwable e]
-  {:status     :failed
-   :class      (class e)
-   :error      (.getMessage e)
-   :stacktrace (u/filtered-stacktrace e)})
+  (merge
+   {:status :failed
+    :class  (class e)
+    :error  (.getMessage e)}
+   (when config/is-dev?
+     {:stacktrace (u/filtered-stacktrace e)})))
 
 (defmethod format-exception InterruptedException
   [^InterruptedException _e]

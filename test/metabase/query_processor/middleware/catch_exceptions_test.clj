@@ -30,25 +30,18 @@
         (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
                 :error      "1"
-                :stacktrace true
                 :error_type :qp
                 :ex-data    {:level 1}
                 :via        [{:status     :failed
                               :class      clojure.lang.ExceptionInfo
                               :error      "2"
-                              :stacktrace true
                               :ex-data    {:level 2, :type :qp}
                               :error_type :qp}
                              {:status     :failed
                               :class      clojure.lang.ExceptionInfo
                               :error      "3"
-                              :stacktrace true
                               :ex-data    {:level 3}}]}
-               (-> (#'catch-exceptions/exception-response e3)
-                   (update :stacktrace sequential?)
-                   (update :via (fn [causes]
-                                  (for [cause causes]
-                                    (update cause :stacktrace sequential?)))))))))))
+               (#'catch-exceptions/exception-response e3)))))))
 
 
 (defn- catch-exceptions
@@ -81,28 +74,23 @@
     (is (= {:status     :failed
             :class      java.lang.Exception
             :error      "Something went wrong"
-            :stacktrace true
             :json_query {}
             :row_count  0
             :data       {:cols []}}
-           (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
-               (update :stacktrace boolean))))))
+           (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
 
 (deftest ^:parallel async-exception-test
   (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
     (is (= {:status     :failed
             :class      java.lang.Exception
             :error      "Something went wrong"
-            :stacktrace true
             :json_query {}
             :row_count  0
             :data       {:cols []}}
-           (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                      {} {} []
-                                      {:runf (fn [_ _ context]
-                                               (qp.context/raisef (Exception. "Something went wrong") context))})
-               :metadata
-               (update :stacktrace boolean))))))
+           (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions
+                                             {} {} []
+                                             {:runf (fn [_ _ context]
+                                                      (qp.context/raisef (Exception. "Something went wrong") context))}))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
@@ -110,31 +98,28 @@
       (is (= {:status     :failed
               :class      java.lang.Exception
               :error      "Something went wrong"
-              :stacktrace true
               :card_id    300
               :json_query {}
               :row_count  0
               :data       {:cols []}
               :a          100
               :b          200}
-             (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                        {} {} []
-                                        {:runf (fn [_ _ context]
-                                                 (qp.context/raisef (ex-info "Something went wrong."
-                                                                             {:query-execution {:a            100
-                                                                                                :b            200
-                                                                                                :card_id      300
-                                                                                                ;; these keys should all get removed
-                                                                                                :result_rows  400
-                                                                                                :hash         500
-                                                                                                :executor_id  500
-                                                                                                :dashboard_id 700
-                                                                                                :pulse_id     800
-                                                                                                :native       900}}
-                                                                             (Exception. "Something went wrong"))
-                                                                    context))})
-                 :metadata
-                 (update :stacktrace boolean))))))
+             (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions
+                                               {} {} []
+                                               {:runf (fn [_ _ context]
+                                                        (qp.context/raisef (ex-info "Something went wrong."
+                                                                                    {:query-execution {:a            100
+                                                                                                       :b            200
+                                                                                                       :card_id      300
+                                                                                                       ;; these keys should all get removed
+                                                                                                       :result_rows  400
+                                                                                                       :hash         500
+                                                                                                       :executor_id  500
+                                                                                                       :dashboard_id 700
+                                                                                                       :pulse_id     800
+                                                                                                       :native       900}}
+                                                                                    (Exception. "Something went wrong"))
+                                                                           context))}))))))
   (testing "Should always include :error (#23258, #23281)"
     (testing "Uses error message if present"
       (is (= "Something went wrong"

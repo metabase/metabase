@@ -5,8 +5,6 @@
    [medley.core :as m]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s]))
 
 (deftest basic-query-test
@@ -68,7 +66,6 @@
     (is (schema= {:status     (s/eq :failed)
                   :class      (s/eq org.h2.jdbc.JdbcSQLSyntaxErrorException)
                   :error      #"^Column \"ZID\" not found"
-                  :stacktrace [su/NonBlankString]
                   :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
                                :type     (s/eq :native)
                                s/Keyword s/Any}
