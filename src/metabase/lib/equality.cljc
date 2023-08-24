@@ -8,7 +8,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
-   [metabase.mbql.util.match :as mbql.u.match]))
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -154,15 +156,15 @@
    (or (find-closest-matching-ref-without-metadata-provider a-ref refs)
        (find-closest-match-with-metadata-providerable metadata-providerable a-ref refs))))
 
-(defn index-of-closest-matching-metadata
+(mu/defn index-of-closest-matching-metadata :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
   rather than a sequence of refs. This allows us to do more sophisticated fuzzy matching
   than [[find-closest-matching-ref]], because column metadatas inherently have more information than they do after
   they are converted to refs.
 
-  If a match is found, this returns the index of the matching metadata in `metadatas` (this seemed generally more
-  useful for the places where this is used than returning the matching metadata itself, and less finicky to use in a
-  set or as a map key than a giant metadata map)."
+  If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` (This
+  seemed generally more useful for the places where this is used than returning the matching metadata itself, and less
+  finicky to use in a set or as a map key than a giant metadata map)."
   ([a-ref metadatas]
    (index-of-closest-matching-metadata nil a-ref metadatas))
 
