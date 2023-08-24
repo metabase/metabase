@@ -14,7 +14,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]))
 
-(deftest ^:parallel cast-values-test
+(deftest cast-values-test
   (binding [hx/*honey-sql-version* 2]
     (testing "Should work with underscored Field names (#24166)"
       (is (= {:CATEGORY_ID (hx/cast "INTEGER" 50)}

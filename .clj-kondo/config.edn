@@ -554,7 +554,7 @@
    metabase-enterprise.advanced-config.caching-test/with-temp-persist-models                                                 hooks.common/with-seven-bindings
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
-   metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
+   metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding

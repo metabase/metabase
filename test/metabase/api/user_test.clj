@@ -620,7 +620,7 @@
                                          :last_name    "Era"
                                          :email        "cam.era@metabase.com"
                                          :is_superuser true}
-                     Collection [_]]
+                     Collection _ {}]
         (letfn [(user [] (into {} (-> (t2/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (t2/hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]

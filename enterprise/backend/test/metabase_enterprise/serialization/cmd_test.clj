@@ -143,9 +143,9 @@
         (is (thrown-with-msg? Exception #"Please upgrade"
                               (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
 
-        (testing "load should fail"
-          (mt/with-empty-h2-app-db
-            (is (thrown-with-msg? Exception #"Please upgrade"
-                                  (cmd/load dump-dir
-                                            "--mode"     "update"
-                                            "--on-error" "abort"))))))))
+      (testing "load should fail"
+        (mt/with-empty-h2-app-db
+          (is (thrown-with-msg? Exception #"Please upgrade"
+                                (cmd/load dump-dir
+                                          "--mode"     "update"
+                                          "--on-error" "abort"))))))))

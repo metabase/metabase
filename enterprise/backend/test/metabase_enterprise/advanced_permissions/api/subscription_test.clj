@@ -30,8 +30,8 @@
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups [group {:name "New Group"}
                                user  [group]]
-        (mt/with-temp* [Card  [card]
-                        Pulse [pulse {:creator_id (u/the-id user)}]]
+        (mt/with-temp [Card  card {}
+                       Pulse pulse {:creator_id (u/the-id user)}]
           (let [pulse-default {:name     "A Pulse"
                                :cards    [{:id          (:id card)
                                            :include_csv true
@@ -79,7 +79,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp* [Card [{card-id :id}]]
+        (mt/with-temp [Card {card-id :id} {}]
           (letfn [(add-pulse-recipient [req-user status]
                     (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
                                                                 :pulse   {:creator_id (u/the-id user)}
@@ -136,9 +136,9 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp*
-          [Card       [card {:creator_id (:id user)}]
-           Collection [_collection]]
+        (mt/with-temp
+          [Card       card {:creator_id (:id user)}
+           Collection _collection {}]
           (let [alert-default {:card             {:id                (:id card)
                                                   :include_csv       true
                                                   :include_xls       false
@@ -189,19 +189,19 @@
          user  [group]]
         (t2.with-temp/with-temp [Card _]
           (letfn [(add-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)]
                       (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (alert-test/default-alert-req card pc)))))
 
                   (archive-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card  {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)]
                       (testing (format "- archive alert with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (-> (alert-test/default-alert-req card pc)
@@ -209,11 +209,11 @@
                                                   (assoc-in [:channels 0 :recipients] []))))))
 
                   (remove-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]
-                                    PulseChannelRecipient [_     (alert-test/recipient pc :rasta)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)
+                                   PulseChannelRecipient _     (alert-test/recipient pc :rasta)]
                       (testing (format "- remove alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card pc) [:channels 0 :recipients] [])))))]
