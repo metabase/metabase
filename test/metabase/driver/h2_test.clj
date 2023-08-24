@@ -30,7 +30,7 @@
                       (binding [hx/*honey-sql-version* 2]
                         (thunk))))
 
-(deftest parse-connection-string-test
+(deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
            (#'h2/connection-string->file+options "file:my-file;OPTION_1=TRUE;OPTION_2=100;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY")))))
@@ -40,7 +40,7 @@
     (is (= "file:my-file;OPTION_1=TRUE;OPTION_2=100;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"
            (#'h2/file+options->connection-string "file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"})))))
 
-(deftest set-safe-options-test
+(deftest ^:parallel set-safe-options-test
   (testing "Check that we add safe connection options to connection strings"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
@@ -53,7 +53,7 @@
     (is (= "file:my-file;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
 
-(deftest db-details->user-test
+(deftest ^:parallel db-details->user-test
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", :USER "cam"}))))
@@ -129,7 +129,7 @@
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
 
-(deftest add-interval-honeysql-form-test
+(deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
     (is (= (hx/call :dateadd
                     (hx/literal "millisecond")

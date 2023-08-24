@@ -3,7 +3,7 @@
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
@@ -11,11 +11,11 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -165,10 +166,10 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (t2/select-one Card :id card-id)
+  (let [card           (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
         persisted-info (when (:dataset card)
-                         (t2/select-one PersistedInfo :card_id card-id))
-        query          (or (:dataset_query card)
+                         (:lib/persisted-info card))
+        query          (or (:dataset-query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
@@ -177,7 +178,9 @@
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
                 (or (when (qp.persistence/can-substitute? card persisted-info)
-                      {:query (qp.persistence/persisted-info-native-query persisted-info)})
+                      {:query (qp.persistence/persisted-info-native-query
+                               (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                               persisted-info)})
                     (qp/compile query)))))
       (catch ExceptionInfo e
         (throw (ex-info
@@ -352,10 +355,10 @@
 (mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters}]
+  [{tags :template-tags, params :parameters} :- :map]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
@@ -365,7 +368,7 @@
                ;; kind of query shouldn't be possible from the frontend anyway
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 {k v})))
+                 [k v])))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)

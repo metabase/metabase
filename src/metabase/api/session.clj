@@ -15,7 +15,7 @@
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
-   [metabase.models.setting :as setting]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -232,9 +232,17 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(def ^:private ^:const reset-token-ttl-ms
-  "Number of milliseconds a password reset is considered valid."
-  (* 48 60 60 1000)) ; token considered valid for 48 hours
+
+(defsetting reset-token-ttl-hours
+  (deferred-tru "Number of hours a password reset is considered valid.")
+  :visibility :internal
+  :type       :integer
+  :default    48)
+
+(defn reset-token-ttl-ms
+  "number of milliseconds a password reset is considered valid."
+  []
+  (* (reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -249,7 +257,7 @@
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
-            (when (< token-age reset-token-ttl-ms)
+            (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

@@ -136,7 +136,7 @@
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
-  {:style/indent 1}
+  {:style/indent :defn}
   ([table-name]
    `(mbql-query ~table-name {}))
 
