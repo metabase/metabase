@@ -14,6 +14,8 @@ export const args = {
   withAsterisk: false,
   min: undefined,
   max: undefined,
+  precision: undefined,
+  decimalSeparator: undefined,
 };
 
 export const sampleArgs = {
@@ -58,6 +60,12 @@ export const argTypes = {
   },
   max: {
     control: { type: "number" },
+  },
+  precision: {
+    control: { type: "number" },
+  },
+  decimalSeparator: {
+    control: { type: "text" },
   },
 };
 
@@ -180,6 +188,18 @@ export const MinMax = args => (
   />
 );
 
+export const Precision = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    icon={<Icon name="int" />}
+    precision={2}
+    decimalSeparator="."
+  />
+);
+
 export const ParserFormatter = args => (
   <Template
     {...args}
@@ -269,6 +289,14 @@ export const MinMaxMd = args => <MinMax {...args} size="md" />;
   <Story name="Min / max, md">{MinMaxMd}</Story>
 </Canvas>
 
+#### Precision and decimal separator
+
+export const PrecisionMd = args => <Precision {...args} size="md" />;
+
+<Canvas>
+  <Story name="Precision and decimal separator, md">{PrecisionMd}</Story>
+</Canvas>
+
 #### Parser and formatter
 
 export const ParserFormatterMd = args => (
@@ -349,6 +377,14 @@ export const MinMaxXs = args => <MinMax {...args} size="xs" />;
 
 <Canvas>
   <Story name="Min / max, xs">{MinMaxXs}</Story>
+</Canvas>
+
+#### Precision and decimal separator
+
+export const PrecisionXs = args => <Precision {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Precision and decimal separator, xs">{PrecisionXs}</Story>
 </Canvas>
 
 #### Parser and formatter
