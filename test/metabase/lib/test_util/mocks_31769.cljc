@@ -11,7 +11,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(defn card-1-query [metadata-provider id-fn]
+(defn card-1-query
+  "For reproducing #31769: create a query against `orders` with a join against `products` and another against `people`,
+  with a breakout on `products.category` and a `count` aggregation."
+  [metadata-provider id-fn]
   (let [orders (lib.metadata/table metadata-provider (id-fn :orders))]
     (as-> (lib/query metadata-provider orders) q
       (lib/join q (let [products (lib.metadata/table metadata-provider (id-fn :products))]
@@ -27,7 +30,10 @@
                         breakout))
       (lib/aggregate q (lib/count)))))
 
-(defn card-2-query [metadata-provider id-fn]
+(defn card-2-query
+  "For reproducing #31769: create a query against `products` with a breakout on `products.category` and a `count`
+  aggregation."
+  [metadata-provider id-fn]
   (let [products (lib.metadata/table metadata-provider (id-fn :products))]
     (as-> (lib/query metadata-provider products) q
       (lib/breakout q (let [breakout (m/find-first #(and (= (:id %) (id-fn :products :category))
@@ -37,6 +43,10 @@
                         breakout)))))
 
 (defn mock-metadata-provider
+  "For reproducing #31769: Create a composed metadata provider with two Cards based on [[card-1-query]]
+  and [[card-2-query]]. This is mostly for MLv2 usage rather than QP usage, at least until the
+  QP-use-MLv2-metadata-providers PR lands. Until that lands, QP tests will need to use `with-temp` to create the
+  Cards."
   ([]
    (mock-metadata-provider meta/metadata-provider meta/id 1 2))
 
@@ -54,6 +64,8 @@
     metadata-provider)))
 
 (defn query
+  "For reproducing #31769: create a query using a `:source-card` with [[card-1-query]] as its source, joining a Card
+  with [[card-2-query]]. "
   ([]
    (query (mock-metadata-provider meta/metadata-provider meta/id 1 2)
           1
