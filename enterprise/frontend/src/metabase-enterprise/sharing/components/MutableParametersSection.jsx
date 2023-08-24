@@ -10,7 +10,10 @@ import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
 import { getPulseParameters } from "metabase/lib/pulse";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  getValuePopulatedParameters,
+  isParameterValueEmpty,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
@@ -30,22 +33,17 @@ function MutableParametersSection({
     pulseParamValuesById,
   );
 
-  const normalizeValue = value =>
-    Array.isArray(value) && value.length === 0 ? null : value;
-
   const setParameterValue = (id, value) => {
-    value = normalizeValue(value);
     const parameter = parameters.find(parameter => parameter.id === id);
     const filteredParameters = pulseParameters.filter(
       parameter => parameter.id !== id,
     );
-    const newParameters =
-      value == null
-        ? filteredParameters
-        : filteredParameters.concat({
-            ...parameter,
-            value,
-          });
+    const newParameters = isParameterValueEmpty(value)
+      ? filteredParameters
+      : filteredParameters.concat({
+          ...parameter,
+          value,
+        });
 
     setPulseParameters(newParameters);
   };

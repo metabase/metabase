@@ -14,6 +14,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
+import { isParameterValueEmpty } from "metabase-lib/parameters/utils/parameter-values";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -192,23 +193,11 @@ export const setParameterValue = createThunkAction(
 
     return {
       id: parameterId,
-      value: normalizeValue(value),
+      value: isParameterValueEmpty(value) ? null : value,
       isDraft: isSettingDraftParameterValues,
     };
   },
 );
-
-function normalizeValue(value) {
-  if (Array.isArray(value) && value.length === 0) {
-    return null;
-  }
-
-  if (value === "") {
-    return null;
-  }
-
-  return value;
-}
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);

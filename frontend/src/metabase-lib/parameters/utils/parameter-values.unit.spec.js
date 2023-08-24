@@ -204,7 +204,7 @@ describe("parameters/utils/parameter-values", () => {
       expect(normalizeParameterValue("string/contains", "foo")).toEqual([
         "foo",
       ]);
-      expect(normalizeParameterValue("string/contains", null)).toEqual(null);
+      expect(normalizeParameterValue("string/contains")).toEqual(null);
     });
 
     it("should return normalized value for number parameters", () => {

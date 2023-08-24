@@ -43,11 +43,20 @@ export function normalizeParameters(parameters) {
     }));
 }
 
+export function isParameterValueEmpty(value) {
+  return (
+    value == null ||
+    (Array.isArray(value) && value.length === 0) ||
+    value === ""
+  );
+}
+
 export function normalizeParameterValue(type, value) {
   const fieldType = getParameterType(type);
-
-  if (["string", "number"].includes(fieldType)) {
-    return value == null ? null : [].concat(value);
+  if (isParameterValueEmpty(value)) {
+    return null;
+  } else if (["string", "number"].includes(fieldType)) {
+    return [].concat(value);
   } else {
     return value;
   }
