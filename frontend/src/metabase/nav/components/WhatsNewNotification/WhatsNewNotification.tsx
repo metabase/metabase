@@ -12,7 +12,7 @@ import {
   getLastAcknowledgedVersion,
   getSetting,
 } from "metabase/selectors/settings";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Flex, Stack, Text, Anchor } from "metabase/ui";
 import { getLatestEligibleReleaseNotes } from "./utils";
 import Sparkles from "./sparkles.svg?component";
 
@@ -59,15 +59,8 @@ export function WhatsNewNotification() {
   if (!url) {
     return null;
   }
-
   return (
-    <Paper
-      shadow="md"
-      p="md"
-      m="lg"
-      withBorder
-      style={{ borderColor: "#F0F0F0" }}
-    >
+    <Paper shadow="md" p="md" m="lg" withBorder>
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
@@ -76,16 +69,17 @@ export function WhatsNewNotification() {
           </IconButtonWrapper>
         </Flex>
 
-        <Text weight="bold" color="text.2">{t`Metabase has been updated`}</Text>
+        <Text weight="bold">{t`Metabase has been updated`}</Text>
 
-        <Text
+        <Anchor
           weight="bold"
           component="a"
-          color="brand"
           href={url}
           target="_blank"
           rel="noreferrer"
-        >{t`See what's new`}</Text>
+        >
+          {t`See what's new`}
+        </Anchor>
       </Stack>
     </Paper>
   );
