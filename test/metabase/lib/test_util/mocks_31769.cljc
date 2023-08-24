@@ -65,7 +65,7 @@
 
 (defn query
   "For reproducing #31769: create a query using a `:source-card` with [[card-1-query]] as its source, joining a Card
-  with [[card-2-query]]. "
+  with [[card-2-query]]."
   ([]
    (query (mock-metadata-provider meta/metadata-provider meta/id 1 2)
           1
