@@ -1104,7 +1104,7 @@
                                       :write (throw (ex-info (tru
                                                               (str "Unable to make audit collections writable."))
                                                               {:status-code 400})))]
-            (change-permissions! group-id (str "/db/" (default-audit-db-id) "/schema/"))))))))
+            (change-permissions! group-id (all-schemas-path (default-audit-db-id)))))))))
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
