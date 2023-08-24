@@ -190,7 +190,7 @@
         (t2.with-temp/with-temp [Card _]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
-                                   Card                  card {}
+                                   Card                  card  {}
                                    PulseCard             _     (alert-test/pulse-card alert card)
                                    PulseChannel          pc    (alert-test/pulse-channel alert)]
                       (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
@@ -210,7 +210,7 @@
 
                   (remove-alert-recipient [req-user status]
                     (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
-                                   Card                  card {}
+                                   Card                  card  {}
                                    PulseCard             _     (alert-test/pulse-card alert card)
                                    PulseChannel          pc    (alert-test/pulse-channel alert)
                                    PulseChannelRecipient _     (alert-test/recipient pc :rasta)]
