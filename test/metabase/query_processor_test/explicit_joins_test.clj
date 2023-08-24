@@ -715,9 +715,9 @@
                            (-> query qp/process-query :data :results_metadata :columns))
               query-card (fn [query]
                            {:dataset_query query, :result_metadata (metadata query)})]
-          (mt/with-temp* [Card [{card-1-id :id} (query-card q1)]
-                          Card [{card-2-id :id} (query-card q2)]
-                          Card [{card-3-id :id} (query-card q3)]]
+          (mt/with-temp [Card {card-1-id :id} (query-card q1)
+                         Card {card-2-id :id} (query-card q2)
+                         Card {card-3-id :id} (query-card q3)]
             (let [query (mt/mbql-query products
                           {:source-table (format "card__%d" card-1-id)
                            :joins        [{:fields       :all

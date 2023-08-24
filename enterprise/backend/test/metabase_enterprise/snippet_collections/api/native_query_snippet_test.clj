@@ -99,8 +99,8 @@
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nPerms for moving a Snippet"
       (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-        (mt/with-temp* [Collection [source {:name "Current Parent Collection", :namespace "snippets"}]
-                        Collection [dest   {:name "New Parent Collection", :namespace "snippets"}]]
+        (mt/with-temp [Collection source {:name "Current Parent Collection", :namespace "snippets"}
+                       Collection dest   {:name "New Parent Collection", :namespace "snippets"}]
           (doseq [source-collection [source root-collection]]
             (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
               (doseq [dest-collection [dest root-collection]]
@@ -143,14 +143,14 @@
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"
       (premium-features-test/with-premium-features #{:snippet-collections}
-        (mt/with-temp* [Collection         [collection {:namespace "snippets", :name "My Snippet Collection"}]
-                        Collection         [sub-collection {:namespace "snippets"
-                                                            :name      "Nested Snippet Collection"
-                                                            :location  (collection/location-path collection)}]
-                        NativeQuerySnippet [snippet {:collection_id (:id collection), :name "My Snippet"}]
-                        NativeQuerySnippet [_ {:collection_id (:id sub-collection)
-                                               :name          "Nested Snippet"}]]
+        (mt/with-temp [Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
+                       Collection         sub-collection {:namespace "snippets"
+                                                          :name      "Nested Snippet Collection"
+                                                          :location  (collection/location-path collection)}
+                       NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
+                       NativeQuerySnippet _ {:collection_id (:id sub-collection)
+                                             :name          "Nested Snippet"}]
           (is (=?
-               [{:id (:id snippet), :name "My Snippet"}
-                {:id (:id sub-collection), :name "Nested Snippet Collection"}]
+               [{:id (:id snippet) :name "My Snippet"}
+                {:id (:id sub-collection) :name "Nested Snippet Collection"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))

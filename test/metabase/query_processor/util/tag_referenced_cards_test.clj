@@ -7,8 +7,8 @@
 
 (deftest tags-referenced-cards-lookup-test
   (testing "returns Card instances from raw query"
-    (mt/with-temp* [Card [c1 {}]
-                    Card [c2 {}]]
+    (mt/with-temp [Card c1 {}
+                   Card c2 {}]
       (is (= [c1 c2]
              (qp.u.tag-referenced-cards/tags-referenced-cards
               {:native

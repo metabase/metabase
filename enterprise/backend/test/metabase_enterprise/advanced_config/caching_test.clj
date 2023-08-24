@@ -19,23 +19,23 @@
       (public-settings/enable-query-caching! true)
       ;; corresponding OSS tests in metabase.query-processor.card-test
       (testing "database TTL takes effect when no dashboard or card TTLs are set"
-        (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                        Dashboard [dash]
-                        Card [card {:database_id (u/the-id db)}]]
+        (mt/with-temp [Database db {:cache_ttl 1337}
+                       Dashboard dash {}
+                       Card card {:database_id (u/the-id db)}]
           (is (= (* 3600 1337)
                  (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
       (testing "card ttl only"
-        (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+        (mt/with-temp [Card card {:cache_ttl 1337}]
           (is (= (* 3600 1337) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))
       (testing "multiple ttl, card wins if dash and database TTLs are set"
-        (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                        Dashboard [dash {:cache_ttl 1338}]
-                        Card [card {:database_id (u/the-id db), :cache_ttl 1339}]]
+        (mt/with-temp [Database db {:cache_ttl 1337}
+                       Dashboard dash {:cache_ttl 1338}
+                       Card card {:database_id (u/the-id db) :cache_ttl 1339}]
           (is (= (* 3600 1339) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
       (testing "multiple ttl, dash wins when no card TTLs are set"
-        (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                        Dashboard [dash {:cache_ttl 1338}]
-                        Card [card {:database_id (u/the-id db)}]]
+        (mt/with-temp [Database db {:cache_ttl 1337}
+                       Dashboard dash {:cache_ttl 1338}
+                       Card card {:database_id (u/the-id db)}]
           (is (= (* 3600 1338) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)})))))))))
 
 (defn do-with-persist-models [f]

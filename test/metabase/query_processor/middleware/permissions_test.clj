@@ -58,8 +58,8 @@
     (is (thrown-with-msg?
          ExceptionInfo
          perms-error-msg
-         (mt/with-temp* [Database [db]
-                         Table    [table {:db_id (u/the-id db)}]]
+         (mt/with-temp [Database db {}
+                        Table    table {:db_id (u/the-id db)}]
            ;; All users get perms for all new DBs by default
            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
            (check-perms-for-rasta
@@ -68,8 +68,8 @@
              :query    {:source-table (u/the-id table)}})))))
 
   (testing "...but it should work if user has perms [MBQL]"
-    (mt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/the-id db)}]]
+    (mt/with-temp [Database db {}
+                   Table    table {:db_id (u/the-id db)}]
       ;; query should be returned by middleware unchanged
       (is (= {:database (u/the-id db)
               :type     :query
@@ -105,8 +105,8 @@
     (is (thrown-with-msg?
          ExceptionInfo
          perms-error-msg
-         (mt/with-temp* [Database [db]
-                         Table    [table {:db_id (u/the-id db)}]]
+         (mt/with-temp [Database db {}
+                        Table    table {:db_id (u/the-id db)}]
            ;; All users get perms for all new DBs by default
            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
            (check-perms-for-rasta
@@ -115,8 +115,8 @@
              :query    {:source-query {:source-table (u/the-id table)}}})))))
 
   (testing "...but it should work if user has perms [nested MBQL queries]"
-    (mt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/the-id db)}]]
+    (mt/with-temp [Database db {}
+                   Table    table {:db_id (u/the-id db)}]
       (is (= {:database (u/the-id db)
               :type     :query
               :query    {:source-query {:source-table (u/the-id table)}}}
@@ -130,11 +130,11 @@
     (is (thrown-with-msg?
          ExceptionInfo
          perms-error-msg
-         (mt/with-temp* [Database [db]
-                         Table    [_       {:db_id (u/the-id db)}]
-                         Table    [table-2 {:db_id (u/the-id db)}]
-                         Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                            :query {:source-table (u/the-id table-2)}}}]]
+         (mt/with-temp [Database db {}
+                        Table    _       {:db_id (u/the-id db)}
+                        Table    table-2 {:db_id (u/the-id db)}
+                        Card     card    {:dataset_query {:database (u/the-id db), :type :query,
+                                                          :query {:source-table (u/the-id table-2)}}}]
            ;; All users get perms for all new DBs by default
            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
            (let [card-id  (:id card)
@@ -148,11 +148,11 @@
                                            :type "card", :card card-id}}}}))))))
 
   (testing "...but it should work if user has perms [template tag referenced query]"
-    (mt/with-temp* [Database [db]
-                    Table    [_       {:db_id (u/the-id db)}]
-                    Table    [table-2 {:db_id (u/the-id db)}]
-                    Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                       :query {:source-table (u/the-id table-2)}}}]]
+    (mt/with-temp [Database db {}
+                   Table    _       {:db_id (u/the-id db)}
+                   Table    table-2 {:db_id (u/the-id db)}
+                   Card     card    {:dataset_query {:database (u/the-id db), :type :query,
+                                                     :query {:source-table (u/the-id table-2)}}}]
       (let [card-id   (:id card)
             tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
@@ -174,10 +174,10 @@
     (is (thrown-with-msg?
          ExceptionInfo
          perms-error-msg
-         (mt/with-temp* [Database [db]
-                         Card     [card {:dataset_query
-                                         {:database (u/the-id db), :type :native,
-                                          :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
+         (mt/with-temp [Database db {}
+                        Card     card {:dataset_query
+                                       {:database (u/the-id db), :type :native,
+                                        :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
            ;; All users get perms for all new DBs by default
            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
            (let [card-id  (:id card)
@@ -191,10 +191,10 @@
                                            :type "card", :card card-id}}}}))))))
 
   (testing "...but it should work if user has perms [template tag referenced query]"
-    (mt/with-temp* [Database [db]
-                    Card     [card {:dataset_query
-                                    {:database (u/the-id db), :type :native,
-                                     :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
+    (mt/with-temp [Database db {}
+                   Card     card {:dataset_query
+                                  {:database (u/the-id db), :type :native,
+                                   :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
       (let [card-id  (:id card)
             tag-name (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
@@ -317,9 +317,9 @@
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (mt/with-temp* [Collection [collection]
-                      Card       [card {:collection_id (u/the-id collection)
-                                        :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]]
+      (mt/with-temp [Collection collection {}
+                     Card       card {:collection_id (u/the-id collection)
+                                      :dataset_query (mt/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 2})}]
         ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
         ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)

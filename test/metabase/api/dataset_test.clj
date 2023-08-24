@@ -466,8 +466,8 @@
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
-    (mt/with-temp* [Card [{card-id :id} {:database_id (mt/id)
-                                         :dataset_query (mt/mbql-query products)}]]
+    (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
+                                       :dataset_query (mt/mbql-query products)}]
       (let [parameter {:values_query_type "list",
                        :values_source_type "card",
                        :values_source_config {:card_id card-id,
