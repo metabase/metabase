@@ -24,10 +24,6 @@ export function WhatsNewNotification() {
   const lastAcknowledgedVersion = useSelector(getLastAcknowledgedVersion);
 
   const url: string | undefined = useMemo(() => {
-    if (isEmbedded || currentVersion.tag === undefined) {
-      return undefined;
-    }
-
     const versionsList = [versionInfo?.latest]
       .concat(versionInfo?.older)
       .filter(isNotFalsy);
@@ -36,15 +32,16 @@ export function WhatsNewNotification() {
       versions: versionsList,
       currentVersion: currentVersion.tag,
       lastAcknowledgedVersion: lastAcknowledgedVersion,
+      isEmbedded,
     });
 
     return lastEligibleVersion?.releaseNotesUrl;
   }, [
     currentVersion,
-    isEmbedded,
     lastAcknowledgedVersion,
     versionInfo?.latest,
     versionInfo?.older,
+    isEmbedded,
   ]);
 
   const dimiss = useCallback(() => {

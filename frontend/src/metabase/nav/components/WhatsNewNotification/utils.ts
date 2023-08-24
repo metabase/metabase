@@ -1,4 +1,4 @@
-import { VersionInfoRecord } from "metabase-types/api";
+import type { VersionInfoRecord } from "metabase-types/api";
 import MetabaseUtils from "metabase/lib/utils";
 /**
  * Helper function that:
@@ -9,11 +9,16 @@ export const getLatestEligibleReleaseNotes = ({
   versions,
   currentVersion,
   lastAcknowledgedVersion,
+  isEmbedded,
 }: {
   versions: VersionInfoRecord[];
-  currentVersion: string;
+  currentVersion?: string;
   lastAcknowledgedVersion: string | null;
+  isEmbedded: boolean;
 }): VersionInfoRecord | undefined => {
+  if (isEmbedded || currentVersion === undefined) {
+    return undefined;
+  }
   const eligibleVersions = versions.filter(({ version }) => {
     return (
       //                            version <= currentVersion
