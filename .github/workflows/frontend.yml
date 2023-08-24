@@ -6,7 +6,7 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -119,7 +119,7 @@ jobs:
 
   fe-chromatic:
     needs: files-changed
-    if: github.event.label.name == 'chromatic' || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
