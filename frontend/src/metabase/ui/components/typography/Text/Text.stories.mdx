@@ -95,32 +95,32 @@ export const Default = args => <Text {...args}>{sampleArgs.shortText}</Text>;
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Single-line
+### Sizes
 
-export const SingleLine = args => (
+export const Sizes = args => (
   <Template {...args}>{sampleArgs.shortText}</Template>
 );
 
 <Canvas>
-  <Story name="Single-line">{SingleLine}</Story>
+  <Story name="Sizes">{Sizes}</Story>
 </Canvas>
 
-### Multi-line
+### Multiline
 
 export const Multiline = args => (
   <Template {...args}>{sampleArgs.longText}</Template>
 );
 
 <Canvas>
-  <Story name="Multi-line">{Multiline}</Story>
+  <Story name="Multiline">{Multiline}</Story>
 </Canvas>
 
 ### Truncated
 
-export const MultilineTruncated = args => <Multiline {...args} lineClamp={2} />;
+export const Truncated = args => <Multiline {...args} lineClamp={2} />;
 
 <Canvas>
-  <Story name="Multi-line, truncated">{MultilineTruncated}</Story>
+  <Story name="Truncated">{Truncated}</Story>
 </Canvas>
 
 ## Related components
