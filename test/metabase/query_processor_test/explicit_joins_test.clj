@@ -990,38 +990,6 @@
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                    (mt/rows (qp/process-query query))))))))))
 
-(deftest ^:parallel mlv2-references-in-join-conditions-test-2
-  (mt/dataset sample-dataset
-    (let [q1 (mt/mbql-query orders
-               {:joins       [{:source-table $$products
-                               :alias        "Products"
-                               :condition    [:= $product_id &Products.products.id]
-                               :fields       :all}
-                              {:source-table $$people
-                               :alias        "People — User"
-                               :condition    [:= $user_id [:field %people.id {:join-alias "People — User"}]],
-                               :fields       :all}]
-                :breakout    [[:field
-                               %products.category
-                               {:base-type :type/Text, :join-alias "Products"}]],
-                :aggregation [[:count]]})
-          q2 (mt/mbql-query products
-               {:breakout    [[:field %category {:base-type :type/Text}]]
-                :aggregation [[:count]]})
-          q3 (mt/mbql-query nil
-               {:source-query (:query q1)
-                :joins        [{:source-query (:query q2)
-                                :alias        "🤮"
-                                :condition    [:=
-                                               *CATEGORY/Text
-                                               [:field %products.category {:base-type :type/Text, :join-alias "🤮"}]]
-                                :fields       :all
-                                :strategy     :left-join}]
-                :limit        2})]
-      (mt/with-native-query-testing-context q3
-        (is (= :wow
-               (mt/rows (qp/process-query q3))))))))
-
 (deftest test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (mt/dataset sample-dataset
