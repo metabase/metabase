@@ -19,7 +19,7 @@
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
-(deftest generate-identity-store-test
+(deftest ^:parallel generate-identity-store-test
   (testing "proper key and cert files are read"
     (let [key-string (-> "ssl/mongo/metabase.key" io/resource slurp)
           key-passw "passw"
@@ -42,7 +42,7 @@
 (def ^:private test-server-dn
   "cn=server.local,ou=www,o=someone,l=seattle,st=washington,c=us")
 
-(deftest generate-trust-store-test
+(deftest ^:parallel generate-trust-store-test
   (testing "a proper CA file is read"
     (let [cert-string (slurp "./test_resources/ssl/ca.pem")
           keystore (driver.u/generate-trust-store cert-string)]
@@ -67,7 +67,7 @@
     (is (instance? javax.net.ssl.SSLSocketFactory
                    (driver.u/ssl-socket-factory :trust-cert (slurp "./test_resources/ssl/ca.pem"))))))
 
-(deftest ssl-socket-factory-test
+(deftest ^:parallel ssl-socket-factory-test
   (testing "can create socket factory from identity and trust info"
     (is (instance? SSLSocketFactory
                    (driver.u/ssl-socket-factory
@@ -219,7 +219,7 @@
             #"Cycle detected"
             (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
-(deftest connection-details-client->server-test
+(deftest ^:parallel connection-details-client->server-test
   (testing "db-details-client->server works as expected"
     (let [ks-val      "super duper secret keystore" ; not a real KeyStore "value" (which is a binary thing), but good
                                                     ; enough for our test purposes here
@@ -242,12 +242,12 @@
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
 
-(deftest decode-uploaded-test
+(deftest ^:parallel decode-uploaded-test
   (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
     "hi" "aGk="
     "hi" "data:application/octet-stream;base64,aGk="))
 
-(deftest semantic-version-gte-test
+(deftest ^:parallel semantic-version-gte-test
   (testing "semantic-version-gte works as expected"
     (is (true? (driver.u/semantic-version-gte [5 0] [4 0])))
     (is (true? (driver.u/semantic-version-gte [5 0 1] [4 0])))

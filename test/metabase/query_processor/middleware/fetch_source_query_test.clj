@@ -109,11 +109,11 @@
 
 (deftest nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues
-                                                   {:limit 100})}]
-                    Card [card-2 {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
+    (mt/with-temp [Card card-1 {:dataset_query (mt/mbql-query venues
+                                                              {:limit 100})}
+                   Card card-2 {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                :type     :query
+                                                :query    {:source-table (str "card__" (u/the-id card-1)) :limit 50}}}]
       (is (= (-> (default-result-with-inner-query
                   {:limit          25
                    :source-query   {:limit           50
@@ -131,8 +131,8 @@
                {:source-table (str "card__" (u/the-id card-2)), :limit 25}))))))
   (testing "Marks datasets as from a dataset"
     (testing "top level dataset queries are marked as such"
-      (mt/with-temp* [Card [card {:dataset_query (mt/mbql-query venues {:limit 100})
-                                  :dataset       true}]]
+      (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues {:limit 100})
+                                :dataset       true}]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
@@ -140,11 +140,11 @@
           (is (= {:dataset true :rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))
     (testing "But not when the dataset is lower than top level"
-      (mt/with-temp* [Card [dataset {:dataset_query (mt/mbql-query venues {:limit 100})
-                                     :dataset       true}]
-                      Card [card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                     :type     :query
-                                                     :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
+      (mt/with-temp [Card dataset {:dataset_query (mt/mbql-query venues {:limit 100})
+                                   :dataset       true}
+                     Card card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                   :type     :query
+                                                   :query    {:source-table (str "card__" (u/the-id dataset))}}}]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
@@ -270,8 +270,8 @@
                                    :type     :query
                                    :query    {:source-table (str "card__" card-id)}})]
       ;; Card 1 refers to Card 2, and Card 2 refers to Card 1
-      (mt/with-temp* [Card [{card-1-id :id}]
-                      Card [{card-2-id :id} {:dataset_query (circular-source-query card-1-id)}]]
+      (mt/with-temp [Card {card-1-id :id} {}
+                     Card {card-2-id :id} {:dataset_query (circular-source-query card-1-id)}]
         ;; Make sure save isn't the thing throwing the Exception
         (let [save-error (try
                            ;; `t2/update!` will fail because it will try to validate the query when it saves,
@@ -297,9 +297,9 @@
 ;;
 (deftest complex-topologies-test
   (testing "We should allow complex topologies"
-    (mt/with-temp* [Card [{card-1-id :id} {:dataset_query (mt/mbql-query venues)}]
-                    Card [{card-2-id :id} {:dataset_query (mt/mbql-query nil
-                                                            {:source-table (str "card__" card-1-id)})}]]
+    (mt/with-temp [Card {card-1-id :id} {:dataset_query (mt/mbql-query venues)}
+                   Card {card-2-id :id} {:dataset_query (mt/mbql-query nil
+                                                          {:source-table (str "card__" card-1-id)})}]
       (is (some? (resolve-card-id-source-tables
                   (mt/mbql-query nil
                     {:source-table (str "card__" card-1-id)

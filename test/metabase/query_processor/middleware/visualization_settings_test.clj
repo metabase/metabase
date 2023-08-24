@@ -123,9 +123,9 @@
 
 (deftest includes-global-settings-test
   (testing "Viz settings include global viz settings, in a normalized form"
-    (mt/with-temp* [Field [{field-id-1 :id}]
-                    Field [{field-id-2 :id}]
-                    Card  [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]]
+    (mt/with-temp [Field {field-id-1 :id} {}
+                   Field {field-id-2 :id} {}
+                   Card  {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
       (let [global-viz-settings #:type{:Number   {:number_separators ".,"}
                                        :Currency {:currency "BIF"}}]
         (mt/with-temporary-setting-values [custom-formatting global-viz-settings]

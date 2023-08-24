@@ -36,23 +36,23 @@
             (is (= (* 2 4) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))))
     ;; corresponding EE tests in metabase-enterprise.advanced-config.caching-test
     (testing "card ttl only, does not take effect on OSS so nil result"
-      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+      (mt/with-temp [Card card {:cache_ttl 1337}]
         (is (nil? (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))
     (testing "dash ttl only, does not take effect on OSS so nil result"
-      (mt/with-temp* [Database [db]
-                      Dashboard [dash {:cache_ttl 1338}]
-                      Card [card {:database_id (u/the-id db)}]]
+      (mt/with-temp [Database db {}
+                     Dashboard dash {:cache_ttl 1338}
+                     Card card {:database_id (u/the-id db)}]
         (is (nil? (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "multiple ttl, db ttl does not take effect on OSS so nil result"
       ;; corresponding EE test in metabase-enterprise.advanced-config.caching-test
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
+      (mt/with-temp [Database db {:cache_ttl 1337}
+                     Dashboard dash {}
+                     Card card {:database_id (u/the-id db)}]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "no ttl, nil result"
-      (mt/with-temp* [Database [db]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
+      (mt/with-temp [Database db {}
+                     Dashboard dash {}
+                     Card card {:database_id (u/the-id db)}]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- field-filter-query []
