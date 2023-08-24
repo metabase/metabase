@@ -56,6 +56,7 @@ function getWidgets({
 
   return widgets.filter(
     widget =>
+      !widget.hidden &&
       (!allowlist || allowlist.has(widget.id)) &&
       (!denylist || !denylist.has(widget.id)),
   );
