@@ -896,8 +896,19 @@
   :hierarchy #'hierarchy)
 
 (defmulti table-privileges
-  "Returns the rows of data needed to populate the privilege table, which contains the privileges users have on the
-   given `database`."
+  "Returns the rows of data needed to populate the tabel_privileges table, which contains the privileges user roles
+   have on the given `database`. The privileges include select, insert, update, an delete.
+   Either the row corresponds to the current user of the DB connection, or the role is specified.
+
+   The rows have the following keys and value types:
+     - table           :- :string
+     - schema          :- [:maybe :string]
+     - is_current_user :- :boolean
+     - role            :- [:maybe :string]
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean"
   {:added "0.48.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
