@@ -7,6 +7,7 @@
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -119,18 +120,18 @@
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
            (mbql.u/replace form
-             [:field (id :guard integer?) opts]
+             [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
-                                                    (integer? (:source-field opts))
+                                                    (pos-int? (:source-field opts))
                                                     (update :source-field field-id->name-form))]
 
-             (m :guard (every-pred map? (comp integer? :source-table)))
+             (m :guard (every-pred map? (comp pos-int? :source-table)))
              (add-names* (update m :source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp integer? :metabase.query-processor.util.add-alias-info/source-table)))
+             (m :guard (every-pred map? (comp pos-int? :metabase.query-processor.util.add-alias-info/source-table)))
              (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp integer? :fk-field-id)))
+             (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
              (-> m
                  (update :fk-field-id field-id->name-form)
                  add-names*)
@@ -515,7 +516,7 @@
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
-    [:field (id :guard integer?) nil]
+    [:field (id :guard pos-int?) nil]
     (every? can-symbolize? (field-and-table-name id))
 
     [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
@@ -540,7 +541,7 @@
 (defn- expand [form table]
   (try
     (mbql.u/replace form
-      ([:field (id :guard integer?) nil] :guard can-symbolize?)
+      ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
             table-name              (some-> table-name u/lower-case-en)]
@@ -568,19 +569,19 @@
             expansion          (expand without-join-alias table)]
         [::& (:join-alias opts) expansion])
 
-      [:field (id :guard integer?) opts]
+      [:field (id :guard pos-int?) opts]
       (let [without-opts [:field id nil]
             expansion    (expand without-opts table)]
         (if (= expansion without-opts)
           &match
           [:field [::% (strip-$ expansion)] opts]))
 
-      (m :guard (every-pred map? (comp integer? :source-table)))
+      (m :guard (every-pred map? (comp pos-int? :source-table)))
       (-> (update m :source-table (fn [table-id]
                                     [::$$ (some-> (t2/select-one-fn :name Table :id table-id) u/lower-case-en)]))
           (expand table))
 
-      (m :guard (every-pred map? (comp integer? :fk-field-id)))
+      (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
                                          field-name              (some-> field-name u/lower-case-en)
@@ -616,24 +617,23 @@
 
 (defn- query-table-name [{:keys [source-table source-query]}]
   (cond
-    source-table
-    (do
-      (assert (integer? source-table))
-      (u/lower-case-en (t2/select-one-fn :name Table :id source-table)))
+    (pos-int? source-table)
+    (u/lower-case-en (t2/select-one-fn :name Table :id source-table))
 
     source-query
     (recur source-query)))
 
 (defn to-mbql-shorthand
   ([query]
-   (to-mbql-shorthand query (query-table-name (:query query))))
+   (let [query (mbql.normalize/normalize query)]
+     (to-mbql-shorthand query (query-table-name (:query query)))))
 
   ([query table-name]
    (let [symbolized (-> query (expand table-name) symbolize ->sorted-mbql-query-map)
          table-symb (some-> table-name symbol)]
      (if (:query symbolized)
-       (list 'mt/mbql-query table-symb (-> (:query symbolized)
-                                           (dissoc :source-table)))
+       (list 'mt/mbql-query table-symb (cond-> (:query symbolized)
+                                         table-name (dissoc :source-table)))
        (list 'mt/$ids table-symb symbolized)))))
 
 (defn expand-symbolize [x]

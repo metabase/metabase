@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -1130,3 +1131,16 @@
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))
         (let [[rhs-column] (filter :selected? (lib/join-condition-rhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket rhs-column))))))))
+
+(deftest ^:parallel join-source-card-with-in-previous-stage-with-joins-test
+  (testing "Make sure we generate correct join conditions when joining source cards with joins (#31769)"
+    (is (=? {:stages [{:source-card 1}
+                      {:joins [{:stages     [{:source-card 2}]
+                                :fields     :all
+                                :conditions [[:=
+                                              {}
+                                              [:field {:base-type :type/Text} "Products__CATEGORY"]
+                                              [:field {:join-alias "Question 2 - Category"} (meta/id :products :category)]]]
+                                :alias      "Question 2 - Category"}]
+                       :limit 2}]}
+            (lib.tu.mocks.31769/query)))))

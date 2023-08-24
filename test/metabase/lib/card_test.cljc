@@ -3,8 +3,11 @@
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -91,3 +94,62 @@
              (mapv :name (get-in lib.tu/mock-cards [:orders :result-metadata]))))
       (is (= ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY" "CREATED_AT" "PRODUCT_ID" "USER_ID"]
              (mapv :name (lib/visible-columns venues-query)))))))
+
+(deftest ^:parallel returned-columns-31769-test
+  (testing "Cards with joins should return correct column metadata/refs (#31769)"
+    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider meta/metadata-provider meta/id 1 2)
+          card              (lib.metadata/card metadata-provider 1)
+          q                 (:dataset-query card)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                         "CATEGORY"
+                :lib/source                   :source/breakouts
+                :lib/source-column-alias      "CATEGORY"
+                :metabase.lib.join/join-alias "Products"
+                :lib/desired-column-alias     "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/aggregations
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:join-alias "Products"} (meta/id :products :category)]
+               [:aggregation {} string?]]
+              (map lib.ref/ref cols))))))
+
+(deftest ^:parallel returned-columns-31769-source-card-test
+  (testing "Queries with `:source-card`s with joins should return correct column metadata/refs (#31769)"
+    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
+          card            (lib.metadata/card metadata-provider 1)
+          q                 (lib/query metadata-provider card)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                     "CATEGORY"
+                :lib/source               :source/card
+                :lib/source-column-alias  "CATEGORY"
+                :lib/desired-column-alias "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/card
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+               [:field {:base-type :type/Integer} "count"]]
+              (map lib.ref/ref cols))))))
+
+(deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
+  (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
+    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
+          card            (lib.metadata/card metadata-provider 1)
+          q                 (-> (lib/query metadata-provider card)
+                                lib/append-stage)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                     "CATEGORY"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "Products__CATEGORY"
+                :lib/desired-column-alias "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+               [:field {:base-type :type/Integer} "count"]]
+              (map lib.ref/ref cols))))))

@@ -53,7 +53,11 @@
        (lib.metadata/field metadata-providerable field-id)
        (catch #?(:clj Throwable :cljs :default) _
          nil)))
-   (update-keys col u/->kebab-case-en)
+   (-> col
+       (update-keys u/->kebab-case-en)
+       ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
+       ;; can always calculate a new one.
+       (dissoc :field-ref))
    {:lib/type                :metadata/column
     :lib/source              :source/card
     :lib/card-id             (:id card)
@@ -94,5 +98,9 @@
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
   (mapv (fn [col]
-          (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))
+          (let [source-alias  ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
+                desired-alias (if-let [legacy-join-alias (:source-alias col)]
+                                (lib.util/format "%s__%s" legacy-join-alias source-alias)
+                                source-alias)]
+            (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
         (card-metadata-columns query card)))

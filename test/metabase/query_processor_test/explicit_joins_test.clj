@@ -7,6 +7,11 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.test-util.mocks.31769 :as lib.tu.mocks.31769]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -983,3 +988,92 @@
             (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                    (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel mlv2-references-in-join-conditions-test-2
+  (mt/dataset sample-dataset
+    (let [q1 (mt/mbql-query orders
+               {:joins       [{:source-table $$products
+                               :alias        "Products"
+                               :condition    [:= $product_id &Products.products.id]
+                               :fields       :all}
+                              {:source-table $$people
+                               :alias        "People — User"
+                               :condition    [:= $user_id [:field %people.id {:join-alias "People — User"}]],
+                               :fields       :all}]
+                :breakout    [[:field
+                               %products.category
+                               {:base-type :type/Text, :join-alias "Products"}]],
+                :aggregation [[:count]]})
+          q2 (mt/mbql-query products
+               {:breakout    [[:field %category {:base-type :type/Text}]]
+                :aggregation [[:count]]})
+          q3 (mt/mbql-query nil
+               {:source-query (:query q1)
+                :joins        [{:source-query (:query q2)
+                                :alias        "🤮"
+                                :condition    [:=
+                                               *CATEGORY/Text
+                                               [:field %products.category {:base-type :type/Text, :join-alias "🤮"}]]
+                                :fields       :all
+                                :strategy     :left-join}]
+                :limit        2})]
+      (mt/with-native-query-testing-context q3
+        (is (= :wow
+               (mt/rows (qp/process-query q3))))))))
+
+(deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
+  (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
+    (let [metadata-provider (lib.tu.mocks.31769/mock-metadata-provider)
+          card            (lib.metadata/card metadata-provider 1)
+          q                 (-> (lib/query metadata-provider card)
+                                lib/append-stage)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                     "CATEGORY"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "Products__CATEGORY"
+                :lib/desired-column-alias "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+               [:field {:base-type :type/Integer} "count"]]
+              (map lib.ref/ref cols))))))
+
+(deftest test-31769
+  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+    (mt/dataset sample-dataset
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (t2.with-temp/with-temp [:model/Card {card-1-id :id} {:dataset_query
+                                                              (lib.convert/->legacy-MBQL
+                                                               (lib.tu.mocks.31769/card-1-query metadata-provider mt/id))}
+                                 :model/Card {card-2-id :id} {:dataset_query
+                                                              (lib.convert/->legacy-MBQL
+                                                               (lib.tu.mocks.31769/card-2-query metadata-provider mt/id))}]
+          (testing "returned columns"
+            (let [card (lib.metadata/card metadata-provider card-1-id)]
+              (assert card)
+              (testing "with Card query as previous stage"
+                (let [query (-> (lib/query metadata-provider (:dataset-query card))
+                                lib/append-stage)
+                      cols  (lib/returned-columns query)]
+                  (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+                           [:field {:base-type :type/Integer} "count"]]
+                          (map lib.ref/ref cols)))))
+              (testing "with :source-card"
+                (let [query (lib/query metadata-provider card)
+                      cols  (lib/returned-columns query)]
+                  (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+                           [:field {:base-type :type/Integer} "count"]]
+                          (map lib.ref/ref cols)))))))
+          (let [query (lib.convert/->legacy-MBQL
+                       (lib.tu.mocks.31769/query metadata-provider card-1-id card-2-id))]
+            (is (=? {:query {:joins [{:condition [:=
+                                                  [:field "Products__CATEGORY" {:base-type :type/Text}]
+                                                  [:field integer? {:base-type :type/Text, :join-alias string?}]]}]}}
+                    query))
+            (mt/with-native-query-testing-context query
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows (qp/process-query query)))))))))))

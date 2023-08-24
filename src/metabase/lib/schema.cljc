@@ -92,11 +92,15 @@
 
 (defn- expression-ref-error-for-stage [stage]
   (when-let [err-loc (first (expression-ref-errors-for-stage stage))]
-    (str "Invalid :expression reference: no expression named " (pr-str (get-in err-loc [1 2])))))
+    (if-let [expression-name (get-in err-loc [1 2])]
+      (str "Invalid :expression reference: no expression named " (pr-str expression-name))
+      (str "Invalid :expression reference: " (get err-loc 1)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
   (when-let [err-loc (first (aggregation-ref-errors-for-stage stage))]
-    (str "Invalid :aggregation reference: no aggregation with uuid " (get-in err-loc [1 2]))))
+    (if-let [ag-uuid (get-in err-loc [1 2])]
+      (str "Invalid :aggregation reference: no aggregation with uuid " (pr-str ag-uuid))
+      (str "Invalid :aggregation reference: " (get err-loc 1)))))
 
 (def ^:private ^{:arglists '([stage])} ref-error-for-stage
   "Validate references in the context of a single `stage`, independent of any previous stages. If there is an error with
