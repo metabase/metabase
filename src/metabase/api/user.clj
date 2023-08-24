@@ -223,7 +223,7 @@
      :total  (-> (t2/query
                   (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                           :from   :core_user}
-                         clauses))
+                         (filter-clauses-without-paging clauses)))
                  first
                  :count)
      :limit  mw.offset-paging/*limit*
