@@ -53,8 +53,8 @@
 
 (deftest auto-bucket-in-compound-filter-clause-test
   (testing "Fields should still get auto-bucketed when present in compound filter clauses (#9127)"
-    (mt/with-temp* [Field [field-1 {:effective_type :type/DateTime}]
-                    Field [field-2 {:effective_type :type/Text}]]
+    (mt/with-temp [Field field-1 {:effective_type :type/DateTime}
+                   Field field-2 {:effective_type :type/Text}]
       (is (= {:source-table 1
               :filter       [:and
                              [:= [:field (u/the-id field-1) {:temporal-unit :day}] "2018-11-19"]
