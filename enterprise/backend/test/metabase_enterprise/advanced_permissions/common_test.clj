@@ -192,7 +192,7 @@
 
 (deftest get-schema-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/:schema` endpoint"
-    (mt/with-temp [Database {db-id :id} []
+    (mt/with-temp [Database {db-id :id} {}
                    Table    t1          {:db_id db-id :schema "schema1" :name "t1"}
                    Table    _t2         {:db_id db-id :schema "schema2"}
                    Table    t3          {:db_id db-id :schema "schema1" :name "t3"}]

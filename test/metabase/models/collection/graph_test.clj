@@ -299,7 +299,7 @@
                      Collection {default-ab :id}  {:location (format "/%d/" default-a)}
                      Collection {currency-a :id}  {:namespace "currency" :location "/"}
                      Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
-                     PermissionsGroup [{group-id :id}]]
+                     PermissionsGroup {group-id :id} {}]
         (letfn [(nice-graph [graph]
                   (let [id->alias {default-a   "Default A"
                                    default-ab  "Default A -> B"

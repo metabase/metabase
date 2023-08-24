@@ -2695,11 +2695,11 @@
                                                                :query    {:source-table (str "card__" model-id)}}
                                                :dataset       true}
                        Dashboard dashboard {:name       "Dashboard"
-                                            :parameters {:name      "Native Dropdown"
-                                                         :slug      "native_dropdown"
-                                                         :id        "_NATIVE_CATEGORY_NAME_"
-                                                         :type      :string/=
-                                                         :sectionId "string"}}
+                                            :parameters [{:name      "Native Dropdown"
+                                                           :slug      "native_dropdown"
+                                                           :id        "_NATIVE_CATEGORY_NAME_"
+                                                           :type      :string/=
+                                                           :sectionId "string"}]}
                        DashboardCard _dashcard {:parameter_mappings
                                                 [{:parameter_id "_NATIVE_CATEGORY_NAME_"
                                                   :card_id      question-id
