@@ -12,14 +12,18 @@ export const args = {
   placeholder: "Placeholder",
   disabled: false,
   withAsterisk: false,
+  min: undefined,
+  max: undefined,
 };
 
 export const sampleArgs = {
   value: 1234,
   label: "Goal value",
-  description: "Constant line added as a marker to a chart",
+  description: "Constant line added as a marker to the chart",
   placeholder: "0",
   error: "required",
+  min: 0,
+  max: 100,
 };
 
 export const argTypes = {
@@ -48,6 +52,12 @@ export const argTypes = {
   },
   withAsterisk: {
     control: { type: "boolean" },
+  },
+  min: {
+    control: { type: "number" },
+  },
+  max: {
+    control: { type: "number" },
   },
 };
 
@@ -149,11 +159,34 @@ export const Icons = args => (
 export const ReadOnly = args => (
   <Template
     {...args}
-    value={sampleArgs.value}
+    defaultValue={sampleArgs.value}
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
     readOnly
+  />
+);
+
+export const MinMax = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
+    min={sampleArgs.min}
+    max={sampleArgs.max}
+  />
+);
+
+export const ParserFormatter = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    parser={value => value.replace(/^\$\w*/, "")}
+    formatter={value => (value != null ? `$ ${value}` : "$")}
   />
 );
 
@@ -225,6 +258,24 @@ export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
   <Story name="Raed only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
+#### Min / max
+
+export const MinMaxMd = args => <MinMax {...args} size="md" />;
+
+<Canvas>
+  <Story name="Min / max, md">{MinMaxMd}</Story>
+</Canvas>
+
+#### Parser and formatter
+
+export const ParserFormatterMd = args => (
+  <ParserFormatter {...args} size="md" />
+);
+
+<Canvas>
+  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
+</Canvas>
+
 ### Size - xs
 
 export const EmptyXs = args => <Empty {...args} size="xs" />;
@@ -287,4 +338,22 @@ export const ReadOnlyXs = args => <ReadOnly {...args} size="xs" />;
 
 <Canvas>
   <Story name="Raed only, xs">{ReadOnlyXs}</Story>
+</Canvas>
+
+#### Min / max
+
+export const MinMaxXs = args => <MinMax {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Min / max, xs">{MinMaxXs}</Story>
+</Canvas>
+
+#### Parser and formatter
+
+export const ParserFormatterXs = args => (
+  <ParserFormatter {...args} size="xs" />
+);
+
+<Canvas>
+  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
 </Canvas>
