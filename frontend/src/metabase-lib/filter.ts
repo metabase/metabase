@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import type { FieldFilter } from "metabase-types/api";
 import type {
   ColumnMetadata,
   ColumnWithOperators,
@@ -58,4 +59,16 @@ export function filterParts(
   filterClause: FilterClause,
 ): FilterParts {
   return ML.filter_parts(query, stageIndex, filterClause);
+}
+
+export function findFilterForLegacyFilter(
+  query: Query,
+  stageIndex: number,
+  legacyFilterClause: FieldFilter,
+): FilterClause {
+  return ML.find_filter_for_legacy_filter(
+    query,
+    stageIndex,
+    legacyFilterClause,
+  );
 }

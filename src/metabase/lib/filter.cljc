@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
@@ -249,6 +250,28 @@
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators (ref->col col-ref)))
                       (lib.filter.operator/operator-def op)))))
+
+
+(mu/defn find-filter-for-legacy-filter :- [:maybe ::lib.schema.expression/boolean]
+  "Return the filter clause in `query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  ([query :- ::lib.schema/query
+    legacy-filter]
+   (find-filter-for-legacy-filter query -1 legacy-filter))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    legacy-filter]
+   (let [query-filters (vec (filters query stage-number))
+         matching-filters (clojure.core/filter #(clojure.core/= (lib.convert/->legacy-MBQL %)
+                                                                legacy-filter)
+                                               query-filters)]
+     (when (seq matching-filters)
+       (if (next matching-filters)
+         (throw (ex-info "Multiple matching filters found" {:legacy-filter legacy-filter
+                                                            :query-filters query-filters
+                                                            :matching-filters matching-filters}))
+         (first matching-filters))))))
 
 (def ^:private FilterParts
   [:map

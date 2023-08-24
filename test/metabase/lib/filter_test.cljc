@@ -2,6 +2,8 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -369,3 +371,36 @@
             query'       (lib/replace-clause query filter-clause external-op')]
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
+
+(deftest ^:parallel find-filter-for-legacy-filter-test
+  (testing "existing clauses"
+    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                              (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+          filterable-cols (lib/filterable-columns query)
+          [first-col]     filterable-cols
+          expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
+          first-filter    (lib/filter-clause
+                           (first (lib/filterable-column-operators first-col))
+                           first-col
+                           515)
+          query           (->  query
+                               (lib/filter first-filter)
+                               (lib/filter (lib/filter-clause
+                                            (first (lib/filterable-column-operators expr-col))
+                                            expr-col
+                                            (meta/field-metadata :users :last-login))))
+          filter-clauses (lib/filters query)]
+      (testing "existing clauses"
+        (doseq [filter-clause filter-clauses]
+          (is (= filter-clause
+                 (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+      (testing "missing clause"
+        (let [filter-clause (assoc first-filter 2 43)]
+          (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+      (testing "ambiguous match"
+        (let [query (lib/filter query (-> first-filter
+                                          (assoc-in [1 :lib/uuid] (str (random-uuid)))
+                                          (assoc-in [2 1 :lib/uuid] (str (random-uuid)))))]
+          (is (thrown-with-msg?
+               #?(:clj Exception :cljs :default) #"Multiple matching filters found"
+               (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))

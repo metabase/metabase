@@ -159,6 +159,7 @@
   filter-clause
   filter-operator
   filter-parts
+  find-filter-for-legacy-filter
   and
   or
   not
