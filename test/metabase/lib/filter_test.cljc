@@ -339,14 +339,12 @@
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
                                   (lib/filter-clause op col 123))]]
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
-        (let [parts (lib/filter-parts query filter-clause)]
-          (is (=? {:lib/type :mbql/filter-parts
-                   :operator op}
-                  parts))
-          (is (=? {:lib/type :metadata/column
-                   :operators (comp vector? not-empty)}
-                  (:column parts)))
-          (is (vector? (:args parts))))))))
+        (is (=? {:lib/type :mbql/filter-parts
+                 :operator op
+                 :column {:lib/type :metadata/column
+                          :operators (comp vector? not-empty)}
+                 :args vector?}
+                (lib/filter-parts query filter-clause)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
