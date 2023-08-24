@@ -105,7 +105,7 @@
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
                                    (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
-                                                     :card_id [:in cards-to-add]))
+                                                        :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -261,7 +261,7 @@
              (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
              (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
-                     (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
+                           (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
            (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
                  num-prev-cards (count prev-card-ids)
@@ -272,11 +272,11 @@
                                                       (map keys (:cards removals)))))]
              (cond
                (and
-                (set/subset? prev-card-ids new-card-ids)
-                (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+                 (set/subset? prev-card-ids new-card-ids)
+                 (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
                (and
-                (set/subset? new-card-ids prev-card-ids)
-                (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+                 (set/subset? new-card-ids prev-card-ids)
+                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
                (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
                :else                                                   (deferred-tru "modified the cards"))))
 
@@ -290,12 +290,12 @@
                  num-tabs-diff (abs (- num-prev-tabs num-new-tabs))]
              (cond
                (and
-                (set/subset? prev-tab-ids new-tab-ids)
-                (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
+                 (set/subset? prev-tab-ids new-tab-ids)
+                 (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
 
                (and
-                (set/subset? new-tab-ids prev-tab-ids)
-                (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
+                 (set/subset? new-tab-ids prev-tab-ids)
+                 (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
 
                (= (set (map #(dissoc % :position) prev-tabs))
                   (set (map #(dissoc % :position) new-tabs))) (deferred-tru "rearranged the tabs")
@@ -401,14 +401,23 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        Card
+                        'Card
                         (-> card
                             (update :result_metadata #(or % (-> card
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
-      (events/publish-event! :event/card-create card)
+      (events/publish-event! :card-create card)
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+
+(defn- applied-filters-blurb
+  [applied-filters]
+  (some->> applied-filters
+           not-empty
+           (map (fn [{:keys [field value]}]
+                  (format "%s %s" (str/join " " field) value)))
+           (str/join ", ")
+           (str "Filtered by: ")))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
@@ -423,23 +432,25 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [{dashcards      :ordered_cards
-         tabs           :ordered_tabs
-         dashboard-name :name
-         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+  (let [dashboard  (i18n/localized-strings->strings dashboard)
+        dashcards  (:ordered_cards dashboard)
+        tabs       (:ordered_tabs dashboard)
         collection (populate/create-collection!
-                    (ensure-unique-collection-name dashboard-name parent-collection-id)
+                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
                     (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            :model/Dashboard
-                            (-> dashboard
-                                (dissoc :ordered_cards :ordered_tabs :rule :related
-                                        :transient_name :transient_filters :param_fields :more)
-                                (assoc :description description
-                                       :collection_id (:id collection)
-                                       :collection_position 1))))
+                           :model/Dashboard
+                           (-> dashboard
+                               (dissoc :ordered_cards :ordered_tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more)
+                               (assoc :description         (->> dashboard
+                                                                :transient_filters
+                                                                applied-filters-blurb)
+                                      :collection_id       (:id collection)
+                                      :collection_position 1))))
+
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
