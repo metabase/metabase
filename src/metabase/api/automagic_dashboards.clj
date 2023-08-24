@@ -168,35 +168,33 @@
 (defn create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
   [{:keys [model linked-tables model-index model-index-value query-filter]}]
-  (let [child-dashboards (map
-                           #(magic/automagic-analysis % {:show         :all
-                                                         :query-filter query-filter})
-                           linked-tables)
-        dashboard-id     (gensym)
-        dashboards       (->> child-dashboards
-                              (map (fn [dashboard]
-                                     (let [tab-id (gensym)]
-                                       (-> dashboard
-                                           (assoc :id tab-id)
-                                           (update
-                                             :ordered_cards
-                                             (fn [ocs]
-                                               (map (fn [oc] (assoc oc
-                                                               :dashboard_id dashboard-id
-                                                               :dashboard_tab_id tab-id)) ocs))))))))
-        ordered-tabs     (map-indexed (fn [idx {tab-name :name tab-id :id}]
-                                        {:id           tab-id
-                                         :dashboard_id dashboard-id
-                                         :name         tab-name
-                                         :position     idx})
-                                      dashboards)]
-    (reduce
-      (fn [acc {:keys [ordered_cards parameters]}]
-        (update acc :ordered_cards concat ordered_cards))
-      (assoc
-        (first dashboards)
-        :ordered_tabs ordered-tabs)
-      (rest dashboards))))
+  (let [child-dashboards (map #(magic/automagic-analysis % {:show         :all
+                                                            :query-filter query-filter})
+                              linked-tables)
+        tabs-and-cards   (->> child-dashboards
+                              (map-indexed
+                               (fn [idx dashboard]
+                                 (let [tab-id (gensym)]
+                                   {:tab {:id       tab-id
+                                          :name     (:name dashboard)
+                                          :position idx}
+                                    :dash-cards
+                                    (map (fn [dc]
+                                           (assoc dc :dashboard_tab_id tab-id))
+                                         (:ordered_cards dashboard))}))))]
+    (reduce (fn [dashboard {:keys [tab dash-cards]}]
+              (-> dashboard
+                  (update :ordered_cards into dash-cards)
+                  (update :ordered_tabs conj tab)))
+            (merge
+             (first child-dashboards)
+             {:name          "fix the title of the dashboard to include what we're filtering on"
+              :description   "A dashboard focusing on your stuff"
+              :ordered_cards []
+              :ordered_tabs  []
+              :parameters    []
+              :param_fields  {}})
+            tabs-and-cards)))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
