@@ -29,6 +29,7 @@
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.sync.analyze.classify :as classify]
@@ -737,9 +738,18 @@
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       metrics
-                             :dimensions    (map (comp :name bindings second) dimensions)
-                             :score         score))))))))
+                             :metrics metrics
+                             :dimensions (map (comp :name bindings second) dimensions)
+                             :score score)))))
+         (filter (fn [{:keys [dataset_query] :as card}]
+                   (or
+                     (nil? dataset_query)
+                     (try
+                       (qp/process-query dataset_query)
+                       card
+                       (catch Exception e
+                         (tap> [:bad dataset_query])
+                         false))))))))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.
