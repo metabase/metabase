@@ -673,7 +673,7 @@
                                         columns)]
     (concat pk fk other)))
 
-(defn- mark-selected-column [metadata-providerable existing-column-or-nil columns]
+(defn- mark-selected-column [existing-column-or-nil columns]
   (if-not existing-column-or-nil
     columns
     (mapv (fn [column]
@@ -682,7 +682,7 @@
                 column
                 (lib.temporal-bucket/temporal-bucket existing-column-or-nil))
               column))
-          (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil]))))
+          (lib.equality/mark-selected-columns columns [existing-column-or-nil]))))
 
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
@@ -736,7 +736,7 @@
           (remove (fn [col]
                     (when-let [col-join-alias (current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
-          (mark-selected-column query lhs-column-or-nil)
+          (mark-selected-column lhs-column-or-nil)
           sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
@@ -775,7 +775,7 @@
           (map (fn [col]
                  (cond-> (assoc col :lib/source :source/joins)
                    join-alias (with-join-alias join-alias))))
-          (mark-selected-column query rhs-column-or-nil)
+          (mark-selected-column rhs-column-or-nil)
           sort-join-condition-columns))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]

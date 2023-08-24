@@ -200,17 +200,14 @@
     ;;
     ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
     (mark-selected-columns (visibile-columns query) (:fields stage))"
-  ([cols selected-columns-or-refs]
-   (mark-selected-columns nil cols selected-columns-or-refs))
-
-  ([metadata-providerable cols selected-columns-or-refs]
-   (when (seq cols)
-     (let [selected-refs              (mapv lib.ref/ref selected-columns-or-refs)
-           matching-selected-indecies (into #{}
-                                            (map (fn [selected-ref]
-                                                   (index-of-closest-matching-metadata metadata-providerable selected-ref cols)))
-                                            selected-refs)]
-       (mapv
-        (fn [[i col]]
-          (assoc col :selected? (contains? matching-selected-indecies i)))
-        (m/indexed cols))))))
+  [cols selected-columns-or-refs]
+  (when (seq cols)
+    (let [selected-refs              (mapv lib.ref/ref selected-columns-or-refs)
+          matching-selected-indecies (into #{}
+                                           (map (fn [selected-ref]
+                                                  (index-of-closest-matching-metadata selected-ref cols)))
+                                           selected-refs)]
+      (mapv
+       (fn [[i col]]
+         (assoc col :selected? (contains? matching-selected-indecies i)))
+       (m/indexed cols)))))

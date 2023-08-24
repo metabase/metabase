@@ -263,7 +263,7 @@
               {:name "CREATED_AT", :selected? true}
               {:name "QUANTITY",   :selected? false}]
              (mapv #(select-keys % [:name :selected?])
-                   (lib.equality/mark-selected-columns query cols selected)))))))
+                   (lib.equality/mark-selected-columns cols selected)))))))
 
 (deftest ^:parallel index-of-closest-matching-metadata-test
   (testing "index-of-closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
