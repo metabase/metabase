@@ -169,7 +169,7 @@
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
   [{:keys [model linked-tables model-index model-index-value query-filter]}]
   (let [child-dashboards (map
-                           #(magic/automagic-analysis % {:show :all
+                           #(magic/automagic-analysis % {:show         :all
                                                          :query-filter query-filter})
                            linked-tables)
         dashboard-id     (gensym)
@@ -194,9 +194,9 @@
       (fn [acc {:keys [ordered_cards parameters]}]
         (update acc :ordered_cards concat ordered_cards))
       (assoc
-        (first child-dashboards)
+        (first dashboards)
         :ordered_tabs ordered-tabs)
-      (rest child-dashboards))))
+      (rest dashboards))))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
