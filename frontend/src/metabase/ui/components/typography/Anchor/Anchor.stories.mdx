@@ -1,10 +1,20 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Anchor } from "./";
-import { Text } from "../Text"
+import { Anchor, Text } from "metabase/ui";
+
+export const args = {
+  children: "Weniger",
+  italic: false,
+  strikethrough: false,
+  weight: "normal",
+  lineClamp: -1,
+  align: "unset",
+};
 
 <Meta title="Typography/Anchor" component={Anchor} />
 
-export const Template = (args) => <Anchor href="https://www.youtube.com/@metabasedata" {...args} />;
+export const Template = args => (
+  <Anchor href="https://www.youtube.com/@metabasedata" {...args} />
+);
 
 # Anchor
 
@@ -19,60 +29,36 @@ The Anchor component allows users to display links with themed styles, and repla
 - [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Foundation-%2F-text?type=design&node-id=5-70&mode=design&t=9Sh3xAM7HsIZIN1z-11)
 - [Mantine Anchor Docs](https://mantine.dev/core/anchor/)
 
-## Caveats
-
-N/A
-
-## Usage guidelines
-
-N/A
-
-## General
+## Examples
 
 <Canvas>
-  <Story name="Default" args={{
-    children: "You should subscribe to our Youtube channel!",
-    italic: false,
-    strikethrough: false,
-    weight: "normal",
-    lineClamp: -1,
-    align: "unset",
-  }}
-  argTypes={
-   {
-     children: {
-       control: {
-         type: "text"
-       }
-     },
-     size: {
-       options: ["xs", "sm", "md", "lg", "xl"],
-       control: { type: 'inline-radio' }
-     },
-     weight: {
-       options: ["normal", "bold"],
-       control: { type: 'inline-radio' }
-     },
-     align: {
-       options: ["unset", "left", "right", "center"],
-       control: { type: 'select' }
-     }
-   }
-  }
+  <Story
+    name="Default"
+    args={{
+      children: "You should subscribe to our Youtube channel!",
+      italic: false,
+      strikethrough: false,
+      weight: "normal",
+      lineClamp: -1,
+      align: "unset",
+    }}
+    argTypes={}
   >
     {Template.bind({})}
   </Story>
 </Canvas>
 
 <Canvas>
-  <Story name="Using in conjunction with Text"
-  >
-    <Text span>We've noticed that you've been looking for the latest in BI content. </Text>
-    <Anchor href="https://www.youtube.com/@metabasedata">You should subscribe to our Youtube channel!</Anchor>
+  <Story name="Using in conjunction with Text">
+    <Text span>
+      We've noticed that you've been looking for the latest in BI content.{" "}
+    </Text>
+    <Anchor href="https://www.youtube.com/@metabasedata">
+      You should subscribe to our Youtube channel!
+    </Anchor>
     <Text span> You won't regret it!</Text>
   </Story>
 </Canvas>
-
 
 ## Related components
 
