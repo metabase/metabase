@@ -1,15 +1,17 @@
 (ns metabase-enterprise.audit-db
-  (:require [clojure.java.io :as io]
-            [metabase-enterprise.internal-user :as ee.internal-user]
-            [metabase-enterprise.serialization.cmd :as serialization.cmd]
-            [metabase.config :as config]
-            [metabase.db.env :as mdb.env]
-            [metabase.models.database :refer [Database]]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.util :as u]
-            [metabase.util.log :as log]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.core :as c]
+   [clojure.java.io :as io]
+   [metabase-enterprise.internal-user :as ee.internal-user]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.db.env :as mdb.env]
+   [metabase.models.database :refer [Database]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +33,7 @@
        ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
        (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
        (t2/insert! Database {:is_audit         true
-                             :id               default-audit-db-id
+                             :id               id
                              :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
@@ -39,6 +41,46 @@
                              :is_on_demand     false
                              :creator_id       nil
                              :auto_run_queries true})))))
+
+(def analytics-root-dir-resource
+  "Where to look for analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "instance_analytics"))
+
+(defn adjust-audit-db-to-source!
+  [{audit-db-id :id}]
+  ;; We need to move back to a schema that matches the serialized data
+  (when (contains? #{:mysql :h2} mdb.env/db-type)
+    (t2/update! :model/Database audit-db-id {:engine "postgres"})
+    (when (= :mysql mdb.env/db-type)
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
+    (when (= :h2 mdb.env/db-type)
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :name] :name [:lower :name]})
+      (t2/update! :model/Field
+                  {:table_id
+                   [:in
+                    {:select [:id]
+                     :from [(t2/table-name :model/Table)]
+                     :where [:= :db_id audit-db-id]}]}
+                  {:name [:lower :name]}))
+    (log/infof "Adjusted Audit DB for loading Analytics Content")))
+
+(defn- adjust-audit-db-to-host!
+  [{audit-db-id :id :keys [engine]}]
+  (when (not= engine mdb.env/db-type)
+    ;; We need to move the loaded data back to the host db
+    (t2/update! :model/Database audit-db-id {:engine (name mdb.env/db-type)})
+    (when (= :mysql mdb.env/db-type)
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil}))
+    (when (= :h2 mdb.env/db-type)
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+      (t2/update! :model/Field
+                  {:table_id
+                   [:in
+                    {:select [:id]
+                     :from [(t2/table-name :model/Table)]
+                     :where [:= :db_id audit-db-id]}]}
+                  {:name [:upper :name]}))
+    (log/infof "Adjusted Audit DB to match host engine: %s" (name mdb.env/db-type))))
 
 (defn ensure-db-installed!
   "Called on app startup to ensure the existance of the audit db in enterprise apps.
@@ -55,59 +97,38 @@
       (not= mdb.env/db-type (:engine audit-db))
       (u/prog1 ::updated
         (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
-        (t2/update! Database :is_audit true {:engine mdb.env/db-type})
-        (ensure-db-installed!))
+        (adjust-audit-db-to-host! audit-db))
 
       :else
       ::no-op)))
-
-(def analytics-root-dir-resource
-  "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics"))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
   []
   (u/prog1 (ensure-db-installed!)
-    ;; There's a sync scheduled, but we want to force a sync right away:
-    (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
-      (do (log/info "Beginning Audit DB Sync...")
-          (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
-          (log/info "Audit DB Sync Complete.")
-          ;; We need to move back to a schema that matches the serialized data
-          (when (= :h2 mdb.env/db-type)
-            (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
-            (t2/update! :model/Table {:db_id (:id audit-db)} {:schema [:lower :schema] :name [:lower :name]})
-            (t2/update! :model/Field
-                        {:table_id
-                         [:in
-                          {:select [:id]
-                           :from [(t2/table-name :model/Table)]
-                           :where [:= :db_id (:id audit-db)]}]}
-                        {:name [:lower :name]})))
-      (when (not config/is-prod?)
-        (log/warn "Audit DB was not installed correctly!!")))
-    ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
-    (when analytics-root-dir-resource
-      (ee.internal-user/ensure-internal-user-exists!)
-      (log/info "Loading Analytics Content...")
-      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
-      ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-      (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
-                                                                         {}
-                                                                         :token-check? false))]
-        (if (not-empty (:errors report))
-          (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))
-    (when (= :h2 mdb.env/db-type)
-      (when-let [audit-db-id (t2/select-one-pk :model/Database {:where [:= :is_audit true]})]
-        (t2/update! :model/Database audit-db-id {:engine "h2"})
-        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-        (t2/update! :model/Field
-                    {:table_id
-                     [:in
-                      {:select [:id]
-                       :from [(t2/table-name :model/Table)]
-                       :where [:= :db_id audit-db-id]}]}
-                    {:name [:upper :name]})))))
+    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+      (assert audit-db "Audit DB was not installed correctly!!")
+      ;; There's a sync scheduled, but we want to force a sync right away:
+      (log/info "Beginning Audit DB Sync...")
+      (sync-metadata/sync-db-metadata! audit-db)
+      (log/info "Audit DB Sync Complete.")
+
+      ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
+      (when analytics-root-dir-resource
+        ;; prevent sync while loading
+        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
+           (fn []
+             (ee.internal-user/ensure-internal-user-exists!)
+             (adjust-audit-db-to-source! audit-db)
+             (log/info "Loading Analytics Content...")
+             (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+             (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
+                                                                                {}
+                                                                                :token-check? false))]
+               (if (not-empty (:errors report))
+                 (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
+             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+               (adjust-audit-db-to-host! audit-db)))))))))
