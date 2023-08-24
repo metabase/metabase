@@ -54,6 +54,8 @@ If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tr
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
 3. Click **Save**.
 
+Also, you might want to check if the driver that Metabase is using to connect to your Data Warehouse supports the version of your product. E.g. before v46, we don't support Microsoft SQL 2022
+
 ## Testing a database connection
 
 As you work through the troubleshooting steps in this guide, you can check if each component is working as expected:
