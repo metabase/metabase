@@ -188,6 +188,19 @@ export const MinMax = args => (
   />
 );
 
+export const Controls = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
+    icon={<Icon name="int" />}
+    min={sampleArgs.min}
+    max={sampleArgs.max}
+    hideControls={false}
+  />
+);
+
 export const Precision = args => (
   <Template
     {...args}
@@ -289,6 +302,14 @@ export const MinMaxMd = args => <MinMax {...args} size="md" />;
   <Story name="Min / max, md">{MinMaxMd}</Story>
 </Canvas>
 
+#### Controls
+
+export const ControlsMd = args => <Controls {...args} size="md" />;
+
+<Canvas>
+  <Story name="Controls, md">{ControlsMd}</Story>
+</Canvas>
+
 #### Precision and decimal separator
 
 export const PrecisionMd = args => <Precision {...args} size="md" />;
@@ -377,6 +398,14 @@ export const MinMaxXs = args => <MinMax {...args} size="xs" />;
 
 <Canvas>
   <Story name="Min / max, xs">{MinMaxXs}</Story>
+</Canvas>
+
+#### Controls
+
+export const ControlsXs = args => <Controls {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Controls, xs">{ControlsXs}</Story>
 </Canvas>
 
 #### Precision and decimal separator
