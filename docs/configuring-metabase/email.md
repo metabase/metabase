@@ -102,7 +102,7 @@ You can also set this property using the environment variable [`MB_SUBSCRIPTION_
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-Control which recipients people can see when they create a new subscription. For example, you may want to restrict people to only seeing potential recipients that belong to the same groups they are a member of.
+Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/sharing/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
 
 Options include:
 
