@@ -49,6 +49,24 @@
     (for [id ids]
       (get-in-cache cache [metadata-type id]))))
 
+(defn- tables [metadata-provider cache]
+  (let [fetched-tables #(lib.metadata.protocols/tables metadata-provider)]
+    (doseq [table fetched-tables]
+      (store-in-cache! cache [:metadata/table (:id table)] table))
+    fetched-tables))
+
+(defn- fields [metadata-provider cache table-id]
+  (let [fetched-fields (lib.metadata.protocols/fields metadata-provider table-id)]
+    (doseq [field fetched-fields]
+      (store-in-cache! cache [:metadata/column (:id field)] field))
+    fetched-fields))
+
+(defn- metrics [metadata-provider cache table-id]
+  (let [fetched-metrics (lib.metadata.protocols/metrics metadata-provider table-id)]
+    (doseq [metric fetched-metrics]
+      (store-in-cache! cache [:metadata/metric (:id metric)] metric))
+    fetched-metrics))
+
 ;;; wraps another metadata provider and caches results. Implements
 ;;; the [[lib.metadata.protocols/CachedMetadataProvider]] protocol which allows warming the cache before use.
 (deftype CachedProxyMetadataProvider [cache metadata-provider]
@@ -59,9 +77,9 @@
   (card     [_this card-id]    (get-in-cache-or-fetch cache [:metadata/card card-id]        #(lib.metadata.protocols/card     metadata-provider card-id)))
   (metric   [_this metric-id]  (get-in-cache-or-fetch cache [:metadata/metric metric-id]    #(lib.metadata.protocols/metric   metadata-provider metric-id)))
   (segment  [_this segment-id] (get-in-cache-or-fetch cache [:metadata/segment segment-id]  #(lib.metadata.protocols/segment  metadata-provider segment-id)))
-  (tables   [_this]            (get-in-cache-or-fetch cache [::database-tables]             #(lib.metadata.protocols/tables   metadata-provider)))
-  (fields   [_this table-id]   (get-in-cache-or-fetch cache [::table-fields table-id]       #(lib.metadata.protocols/fields   metadata-provider table-id)))
-  (metrics  [_this table-id]   (get-in-cache-or-fetch cache [::table-metrics table-id]      #(lib.metadata.protocols/metrics  metadata-provider table-id)))
+  (tables   [_this]            (get-in-cache-or-fetch cache [::database-tables]             #(tables metadata-provider cache)))
+  (fields   [_this table-id]   (get-in-cache-or-fetch cache [::table-fields table-id]       #(fields metadata-provider cache table-id)))
+  (metrics  [_this table-id]   (get-in-cache-or-fetch cache [::table-metrics table-id]      #(metrics metadata-provider cache table-id)))
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))

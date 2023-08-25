@@ -520,20 +520,20 @@
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer")))
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer&NAME=x")))))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
-                                                           :embedding_params {:name "enabled"}
-                                                           :parameters       [{:name      "Name"
-                                                                               :slug      "name"
-                                                                               :id        "_name_"
-                                                                               :type      "string/="
-                                                                               :sectionId "string"}]}]
+            (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
+                                                         :embedding_params {:name "enabled"}
+                                                         :parameters       [{:name      "Name"
+                                                                             :slug      "name"
+                                                                             :id        "_name_"
+                                                                             :type      "string/="
+                                                                             :sectionId "string"}]}
 
-                            DashboardCard [dashcard {:card_id            card-id
-                                                     :dashboard_id       dashboard-id
-                                                     :parameter_mappings [{:parameter_id "_name_"
-                                                                           :card_id      card-id
-                                                                           :type         "string/="
-                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
+                           DashboardCard dashcard {:card_id            card-id
+                                                   :dashboard_id       dashboard-id
+                                                   :parameter_mappings [{:parameter_id "_name_"
+                                                                         :card_id      card-id
+                                                                         :type         "string/="
+                                                                         :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
                        (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer")))

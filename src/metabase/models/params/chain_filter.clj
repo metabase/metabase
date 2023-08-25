@@ -16,7 +16,7 @@
   3. Explicit FK Field->Field remapping. FK Fields can be manually remapped to a Field in the Table they point to.
   e.g. `venue.category_id` -> `category.name`. This is done by creating a `Dimension` for the Field in question with a
   `human_readable_field_id`. There is a big explanation of how this works in
-  `metabase.query-processor.middleware.add-dimension-projections` -- see that namespace for more details.
+  [[metabase.query-processor.middleware.add-dimension-projections]] -- see that namespace for more details.
 
   Here's some examples of what this namespace does. Suppose you do
 

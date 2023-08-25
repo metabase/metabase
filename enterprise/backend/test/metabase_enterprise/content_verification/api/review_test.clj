@@ -24,7 +24,7 @@
                                       :moderated_item_type "card"})))))
 
     (premium-features-test/with-premium-features #{:content-verification}
-      (mt/with-temp* [Card [{card-id :id} {:name "Test Card"}]]
+      (mt/with-temp [Card {card-id :id} {:name "Test Card"}]
         (mt/with-model-cleanup [ModerationReview]
           (letfn [(moderate! [status text]
                     (normalized-response

@@ -6,11 +6,13 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (defn- expand-parameters [query]
   (let [query (mbql.normalize/normalize query)]
-    (qp.mbql/expand (dissoc query :parameters) (:parameters query))))
+    (qp.store/with-metadata-provider (mt/id)
+      (qp.mbql/expand (dissoc query :parameters) (:parameters query)))))
 
 (defn- expanded-query-with-filter [filter-clause]
   {:database 1
@@ -26,7 +28,7 @@
                 :breakout     [[:field 17 nil]]}
    :parameters (vec parameters)})
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (testing "adding a simple parameter"
     (is (= (expanded-query-with-filter
             [:= [:field (mt/id :venues :name) nil] "Cam's Toucannery"])
@@ -38,7 +40,7 @@
               :target [:dimension [:field (mt/id :venues :name) nil]]
               :value  "Cam's Toucannery"}))))))
 
-(deftest multiple-filters-test
+(deftest ^:parallel multiple-filters-test
   (testing "multiple filters are conjoined by an :and"
     (is (= (expanded-query-with-filter
             [:and
@@ -59,7 +61,7 @@
                   :value  999})
                 (assoc-in [:query :filter] [:and [:= [:field (mt/id :venues :id) nil] 12]])))))))
 
-(deftest date-range-parameters-test
+(deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
     (doseq [[value expected-filter-clause]
             {"past30days"            [:time-interval [:field (mt/id :users :last_login) nil] -30 :day {:include-current false}]
@@ -89,7 +91,7 @@
 (defn- params-test-drivers []
   (disj (mt/normal-drivers) :redshift))
 
-(deftest date-ranges-e2e-test
+(deftest ^:parallel date-ranges-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that date ranges work correctly"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
@@ -107,7 +109,7 @@
                                  :target [:dimension $date]
                                  :value  "2015-04-01~2015-05-01"}]}))))))))
 
-(deftest ids-e2e-test
+(deftest ^:parallel ids-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that IDs work correctly"
       (doseq [[message value] {"passed in as numbers" 100
@@ -124,7 +126,7 @@
                                      :target [:dimension $id]
                                      :value  value}]}))))))))))
 
-(deftest categories-e2e-test
+(deftest ^:parallel categories-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that Categories work correctly (passed in as strings, as the frontend is wont to do; should get converted)"
       (is (= [[6]]
@@ -137,7 +139,7 @@
                                  :target $price
                                  :value  "4"}]}))))))))
 
-(deftest operations-e2e-test
+(deftest ^:parallel operations-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that operations works correctly"
       (let [f #(mt/formatted-rows [int]
@@ -162,7 +164,7 @@
                                      :target $name
                                      :value ["B"]}]})))))))))
 
-(deftest basic-where-test
+(deftest ^:parallel basic-where-test
   (mt/test-drivers (params-test-drivers)
     (testing "test that we can inject a basic `WHERE field = value` type param"
       (testing "`:id` param type"
@@ -199,7 +201,7 @@
 ;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
 ;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
 ;; ends up generating a SQL `*or*` clause
-(deftest multiple-values-test
+(deftest ^:parallel multiple-values-test
   (testing "Make sure that *multiple* values work."
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
@@ -255,7 +257,7 @@
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
-(deftest date-params-test
+(deftest ^:parallel date-params-test
   (is (= {:query  (str "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                        "WHERE ("
                        "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?))"
@@ -273,10 +275,14 @@
                             :target $date
                             :value  ["2014-06" "2015-06"]}]})))))
 
-(deftest convert-ids-to-numbers-test
+(defn- build-filter-clause [param]
+  (qp.store/with-metadata-provider (mt/id)
+    (#'qp.mbql/build-filter-clause param)))
+
+(deftest ^:parallel convert-ids-to-numbers-test
   (is (= (mt/$ids venues
            [:= $id 1])
-         (#'qp.mbql/build-filter-clause
+         (build-filter-clause
           (mt/$ids venues
             {:type   :id
              :target [:dimension $id]
@@ -285,10 +291,9 @@
              :name   "Venue ID"})))
       "make sure that :id type params get converted to numbers when appropriate"))
 
-;;
-(deftest handle-fk-forms-test
+(deftest ^:parallel handle-fk-forms-test
   (mt/test-drivers (params-test-drivers)
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (when (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
         (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
           (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
@@ -321,7 +326,7 @@
                                              :target [:dimension $category_id->categories.name]
                                              :value  ["BB"]}]}))))))))))
 
-(deftest test-mbql-parameters
+(deftest ^:parallel test-mbql-parameters
   (testing "Should be able to pass parameters in to an MBQL query"
     (letfn [(venues-with-price [param]
               (ffirst

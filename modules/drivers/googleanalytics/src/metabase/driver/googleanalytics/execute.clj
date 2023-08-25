@@ -4,14 +4,13 @@
    [clojure.tools.reader.edn :as edn]
    [java-time :as t]
    [metabase.driver.googleanalytics.metadata :as ga.metadata]
-   [metabase.models :refer [Database]]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.date-2.parse.builder :as u.date.builder]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders)
    (java.time DayOfWeek)
@@ -24,7 +23,10 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (ga.metadata/columns (t2/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
+        (ga.metadata/columns
+         (qp.store/with-metadata-provider (u/the-id database-or-id)
+           (qp.store/database))
+         {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]

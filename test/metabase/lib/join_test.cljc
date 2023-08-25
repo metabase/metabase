@@ -206,6 +206,7 @@
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [card-1            {:name          "My Card"
                            :id            1
+                           :database-id   (meta/id)
                            :dataset-query {:database (meta/id)
                                            :type     :query
                                            :query    {:source-table (meta/id :checkins)

@@ -14,12 +14,12 @@
     (let [coll-id  (u/the-id collection)
           event-names (fn [timelines]
                         (into #{} (comp (mapcat :events) (map :name)) timelines))]
-      (mt/with-temp* [Timeline [tl-a {:name "tl-a" :collection_id coll-id}]
-                      Timeline [tl-b {:name "tl-b" :collection_id coll-id}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "e-a"}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "e-c"}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]]
+      (mt/with-temp [Timeline tl-a {:name "tl-a" :collection_id coll-id}
+                     Timeline tl-b {:name "tl-b" :collection_id coll-id}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "e-a"}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "e-c"}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]
         (testing "Fetching timelines"
           (testing "don't include events by default"
             (is (= #{}

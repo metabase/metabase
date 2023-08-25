@@ -4,15 +4,15 @@
    [clojure.string :as str]
    [metabase.config :as config]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [Database]]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.secret :as secret]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh]
    [monger.core :as mg]
-   [monger.credentials :as mcred]
-   [toucan2.core :as t2])
+   [monger.credentials :as mcred])
   (:import
    (com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI)))
 
@@ -86,11 +86,12 @@
                                             [server-address options credentials]))
 
 (defn- database->details
-  "Make sure DATABASE is in a standard db details format. This is done so we can accept several different types of
-   values for DATABASE, such as plain strings or the usual MB details map."
+  "Make sure `database` is in a standard db details format. This is done so we can accept several different types of
+  values for `database`, such as plain strings or the usual MB details map."
   [database]
   (cond
-    (integer? database)             (t2/select-one [Database :details] :id database)
+    (integer? database)             (qp.store/with-metadata-provider database
+                                      (:details (lib.metadata.protocols/database (qp.store/metadata-provider))))
     (string? database)              {:dbname database}
     (:dbname (:details database))   (:details database) ; entire Database obj
     (:dbname database)              database            ; connection details map only
