@@ -84,7 +84,7 @@ class TagEditorParamInner extends Component<Props> {
   }
 
   setType(type: TemplateTagType) {
-    const { tag, setTemplateTag } = this.props;
+    const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -94,6 +94,8 @@ class TagEditorParamInner extends Component<Props> {
         dimension: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
       });
+
+      setParameterValue(tag.id, null);
     }
   }
 
@@ -375,7 +377,10 @@ class TagEditorParamInner extends Component<Props> {
                     }
               }
               value={tag.default}
-              setValue={value => this.setParameterAttribute("default", value)}
+              setValue={value => {
+                this.setParameterAttribute("default", value);
+                this.props.setParameterValue(tag.id, value);
+              }}
               isEditing
               commitImmediately
             />
