@@ -8,10 +8,7 @@ import { isNotFalsy } from "metabase/core/utils/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
-import {
-  getLastAcknowledgedVersion,
-  getSetting,
-} from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { Flex, Stack, Text, Anchor, Box } from "metabase/ui";
 import { getLatestEligibleReleaseNotes } from "./utils";
 import Sparkles from "./sparkles.svg?component";
@@ -21,7 +18,9 @@ export function WhatsNewNotification() {
   const isEmbedded = useSelector(getIsEmbedded);
   const versionInfo = useSelector(state => getSetting(state, "version-info"));
   const currentVersion = useSelector(state => getSetting(state, "version"));
-  const lastAcknowledgedVersion = useSelector(getLastAcknowledgedVersion);
+  const lastAcknowledgedVersion = useSelector(state =>
+    getSetting(state, "last-acknowledged-version"),
+  );
 
   const url: string | undefined = useMemo(() => {
     const versionsList = [versionInfo?.latest]
