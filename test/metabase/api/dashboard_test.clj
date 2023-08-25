@@ -3132,34 +3132,34 @@
                                                            :dimension    [:field (mt/id :products :category) nil]
                                                            :widget-type  :string/=
                                                            :default      ["Gizmo"]}}})]
-        (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
-                        Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
-                                                                         :slug      "text"
-                                                                         :id        "_text_"
-                                                                         :type      "string/="
-                                                                         :sectionId "string"
-                                                                         :default   ["Doohickey"]}]}]
-                        DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
-                                                                                    :card_id      card-id
-                                                                                    :target       [:dimension [:template-tag "cat"]]}]
-                                                          :card_id                card-id
-                                                          :visualization_settings {}
-                                                          :dashboard_id           dashboard-id}]]
+        (mt/with-temp [Card          {card-id :id} {:dataset_query query}
+                       Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
+                                                                       :slug      "text"
+                                                                       :id        "_text_"
+                                                                       :type      "string/="
+                                                                       :sectionId "string"
+                                                                       :default   ["Doohickey"]}]}
+                       DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
+                                                                                  :card_id      card-id
+                                                                                  :target       [:dimension [:template-tag "cat"]]}]
+                                                        :card_id                card-id
+                                                        :visualization_settings {}
+                                                        :dashboard_id           dashboard-id}]
           (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
             (testing "Sanity check: we can apply a parameter to a native query"
-             (is (schema= (dashboard-card-query-expected-results-schema :row-count 53)
-                          (mt/user-http-request :rasta :post 202 url
-                                                {:parameters [{:id    "_text_"
-                                                               :value ["Gadget"]}]}))))
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 53)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_text_"
+                                                                :value ["Gadget"]}]}))))
             (testing "if the parameter is specified with a nil value the default should not apply"
-             (is (schema= (dashboard-card-query-expected-results-schema :row-count 200)
-                          (mt/user-http-request :rasta :post 202 url
-                                                {:parameters [{:id    "_text_"
-                                                               :value nil}]}))))
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 200)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_text_"
+                                                                :value nil}]}))))
             (testing "if the parameter isn't specified the default should apply"
-             (is (schema= (dashboard-card-query-expected-results-schema :row-count 51)
-                          (mt/user-http-request :rasta :post 202 url
-                                                {:parameters []}))))))))))
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 51)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters []}))))))))))
 
 (defn- parse-export-format-results [^bytes results export-format]
   (with-open [is (java.io.ByteArrayInputStream. results)]
