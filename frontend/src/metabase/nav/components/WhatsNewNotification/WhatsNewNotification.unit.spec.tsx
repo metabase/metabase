@@ -55,6 +55,11 @@ describe("WhatsNewNotification", () => {
       expect(notification()).toBeInTheDocument();
     });
 
+    it("should show the notification for a version in the range (last acknowledged, currentVresion]", () => {
+      setup({ currentVersion: "v0.48.2", lastAcknowledged: "v0.47.1" });
+      expect(notification()).toBeInTheDocument();
+    });
+
     it("should show the notification if the last acknowledged version is the previous major", () => {
       setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.47.0" });
       expect(notification()).toBeInTheDocument();
@@ -91,6 +96,11 @@ describe("WhatsNewNotification", () => {
 
     it("should NOT show the notification for a minor upgrade that doesn't have a release url", () => {
       setup({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
+      expect(notification()).not.toBeInTheDocument();
+    });
+
+    it("should NOT show the notification for a release greater than the current", () => {
+      setup({ currentVersion: "v0.46.0", lastAcknowledged: "v0.45.0" });
       expect(notification()).not.toBeInTheDocument();
     });
 

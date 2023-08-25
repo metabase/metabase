@@ -35,15 +35,16 @@ describe("nav > what's new notification", () => {
 
   it("should show a notification with a link to the release notes, and allow the dismissal of it", () => {
     loadHomepage();
+    navigationSidebar().findByText("See what's new");
 
+    // should persist reloads
+    loadHomepage();
     navigationSidebar().findByText("See what's new");
 
     navigationSidebar().icon("close").click();
-
     navigationSidebar().findByText("See what's new").should("not.exist");
 
     loadHomepage();
-
     navigationSidebar().findByText("See what's new").should("not.exist");
   });
 });
