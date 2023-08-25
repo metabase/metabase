@@ -7,7 +7,7 @@ export const getTextInputOverrides =
         size: "md",
       },
       styles: theme => ({
-        input: {
+        wrapper: {
           marginTop: theme.spacing.xs,
         },
       }),
