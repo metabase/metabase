@@ -1,4 +1,4 @@
-import { VersionInfoRecord } from "metabase-types/api";
+import type { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -13,8 +13,8 @@ import { WhatsNewNotification } from "./WhatsNewNotification";
 
 const notification = () => screen.queryByText("See what's new");
 
-const render = ({
-  embedded = false,
+const setup = ({
+  isEmbedded = false,
   lastAcknowledged = null,
   currentVersion = "v0.48.0",
   versions = [
@@ -26,12 +26,12 @@ const render = ({
     mockVersion({ version: "v0.47.0" }),
   ],
 }: {
-  embedded?: boolean;
+  isEmbedded?: boolean;
   currentVersion?: string;
   lastAcknowledged?: string | null;
   versions?: VersionInfoRecord[];
 }) => {
-  jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(embedded);
+  jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(isEmbedded);
 
   const versionMock = { tag: currentVersion };
 
@@ -50,22 +50,22 @@ const render = ({
 describe("WhatsNewNotification", () => {
   describe("display logic", () => {
     it("should show the notification if the last acknowledged version is null", () => {
-      render({ currentVersion: "v0.48.0", lastAcknowledged: null });
+      setup({ currentVersion: "v0.48.0", lastAcknowledged: null });
       expect(notification()).toBeInTheDocument();
     });
 
     it("should show the notification if the last acknowledged version is the previous major", () => {
-      render({ currentVersion: "v0.48.0", lastAcknowledged: "v0.47.0" });
+      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.47.0" });
       expect(notification()).toBeInTheDocument();
     });
 
     it("should NOT show the notification if the current version has been acknowledged", () => {
-      render({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
+      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
     });
 
     it("should NOT show the notification for releases older than the acknowledged one", () => {
-      render({
+      setup({
         currentVersion: "v0.48.0",
         lastAcknowledged: "v0.47.0",
         versions: [
@@ -79,23 +79,23 @@ describe("WhatsNewNotification", () => {
     });
 
     it("should show the notification if the last acknowledged version is more than 1 major old", () => {
-      render({ currentVersion: "v0.48.0", lastAcknowledged: "v0.46.0" });
+      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.46.0" });
       expect(notification()).toBeInTheDocument();
     });
 
     it("should NOT show the notification in case of downgrades (releaseNotesUrl only in the future releases)", () => {
-      render({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
+      setup({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
     });
 
     it("should NOT show the notification for a minor upgrade that doesn't have a release url", () => {
-      render({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
+      setup({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
     });
 
     it("should NOT show the notification if metabase is embedded", () => {
-      render({
-        embedded: true,
+      setup({
+        isEmbedded: true,
         currentVersion: "v0.48.0",
         lastAcknowledged: null,
       });
@@ -105,12 +105,12 @@ describe("WhatsNewNotification", () => {
 
   describe("link behaviour", () => {
     it("should have target blank", () => {
-      render({});
+      setup({});
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
     });
 
     it("should link the most recent release if two versions have the release notes", () => {
-      render({
+      setup({
         currentVersion: "v0.48.0",
         lastAcknowledged: "v0.46.0",
         versions: [
