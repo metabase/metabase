@@ -4,6 +4,7 @@ import {
   openReviewsTable,
   popover,
   summarize,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -147,6 +148,76 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");
+  });
+
+  describe("column formatting options", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/field/*").as("updateField");
+      cy.intercept("GET", "/api/field/*").as("getField");
+    });
+
+    it("should only show currency formatting options for currency fields", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.DISCOUNT}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByText("Unit of currency");
+        cy.findByText("Currency label style");
+      });
+
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        // shouldnt show currency settings by default for quantity field
+        cy.findByText("Unit of currency").should("not.exist");
+        cy.findByText("Currency label style").should("not.exist");
+
+        cy.get("#number_style").click();
+      });
+
+      // if you change the style to currency, currency settings should appear
+      popover().findByText("Currency").click();
+      cy.wait("@updateField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByText("Unit of currency");
+        cy.findByText("Currency label style");
+      });
+    });
+
+    it("should save and obey field prefix formatting settings", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByTestId("prefix").type("about ").blur();
+      });
+
+      cy.wait("@updateField");
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.QUANTITY, null]]],
+          },
+          type: "query",
+        },
+      });
+
+      cy.findByTestId("visualization-root").findByText("about 69,540");
+    });
   });
 });
 

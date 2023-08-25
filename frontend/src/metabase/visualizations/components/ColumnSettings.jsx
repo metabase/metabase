@@ -84,7 +84,7 @@ const ColumnSettings = ({
   }
 
   return (
-    <div style={{ maxWidth: 300 }}>
+    <div style={{ maxWidth: 300 }} data-testid="column-settings">
       {widgets.length > 0 ? (
         widgets.map(widget => (
           <ChartSettingsWidget
