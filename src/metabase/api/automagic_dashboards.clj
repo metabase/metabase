@@ -5,18 +5,18 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.automagic-dashboards.core
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.permissions :as perms]
-   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
@@ -25,6 +25,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -157,41 +158,33 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(defn calc-linked-queries
+(defn linked-entities
   "stuff"
-  [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model
-    {pk :model_pk} :model-index-value}]
+  [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (when-let [fields (seq (t2/select 'Field :fk_target_field_id field-id))]
-      (let [tables     (t2/select 'Table :id [:in (map :table_id fields)])
-            tid->field (into {} (map (juxt :table_id identity)) fields)
-            model-field (t2/select-one 'Field :id field-id)
-            model-table (t2/select-one 'Table :id (:table_id model-field))]
-        (for [table tables
-              :let [fk-field (tid->field (:id table))
-                    join-alias (str (:name table) "__via__" (:name fk-field))
-                    model-ref (update field-ref 2 assoc :join-alias join-alias)]]
-          ;; seems dumb but i think i've seen code pathways that require both :/
-          {:database_id (:db_id model-table)
-           :database-id (:db_id model-table)
-           :table_id (:id table)
-           :dataset_query
-           {:database (:db_id model-table)
-            :type :query
-            :query {:source-table (:id table)
-                    :where [:= model-ref pk]
-                    :joins [{:alias join-alias
-                             :fields :none
-                             :strategy :left-join
-                             :condition [:= model-ref [:field (:id fk-field) nil]]
-                             :source-table (:id model-table)}]}}})))))
+    (map
+      (fn [{:keys [table_id id]}]
+        {:linked-table-id table_id
+         :linked-field-id id})
+      (t2/select 'Field :fk_target_field_id field-id))))
 
 (defn create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
-  [{:keys [model linked-queries model-index model-index-value query-filter]}]
-  (let [child-dashboards (map #(magic/automagic-analysis % {:show         :all
-                                                            :query-filter query-filter})
-                              (map (partial mi/instance Query) linked-queries))
+  [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
+    {query-filter :pk_ref}                       :model-index
+    {model-name :name}                           :model
+    :keys                                        [linked-tables]}]
+  (let [child-dashboards (map
+                           (fn [{:keys [linked-table-id linked-field-id]}]
+                             (let [table (t2/select-one Table :id linked-table-id)
+                                   q     (update query-filter
+                                                 (dec (count query-filter))
+                                                 assoc :source-field linked-field-id)]
+                               (magic/automagic-analysis
+                                 table
+                                 {:show         :all
+                                  :query-filter [:= q model_pk]})))
+                           linked-tables)
         tabs-and-cards   (->> child-dashboards
                               (map-indexed
                                 (fn [idx dashboard]
@@ -209,7 +202,7 @@
                   (update :ordered_tabs conj tab)))
             (merge
               (first child-dashboards)
-              {:name          "fix the title of the dashboard to include what we're filtering on"
+              {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
                :description   "A dashboard focusing on your stuff"
                :ordered_cards []
                :ordered_tabs  []
@@ -224,43 +217,21 @@
   {model-index-id :int
    pk-id          :int}
   ;; Stuff...
-  (api/let-404 [model-index       (t2/select-one ModelIndex :id model-index-id)
+  (api/let-404 [model-index       (t2/select-one ModelIndex model-index-id)
                 model             (t2/select-one Card (:model_id model-index))
                 model-index-value (t2/select-one ModelIndexValue
                                                  :model_index_id model-index-id
                                                  :model_pk pk-id)
-                linked-queries    (calc-linked-queries {:model             model
-                                                        :model-index       model-index
-                                                        :model-index-value model-index-value})]
-    ;; `->entity` does a read check on the model but this is here as well to be extra sure.
-    (api/read-check Card (:model_id model-index))
-    (or (create-linked-dashboard {:model             model
-                                  :linked-queries    linked-queries
-                                  :model-index       model-index
-                                  :model-index-value model-index-value
-                                  :query-filter      [:= (:pk_ref model-index) pk-id]})
-        (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
-
-(comment
-  (pst 20)
-  (mi/model x)
-  (mi/model (t2/select-one 'Table :id 1))
-  (let [model-index-id 1, pk-id 1]
-    (let [model-index       (t2/select-one ModelIndex :id model-index-id)
-          model             (t2/select-one Card (:model_id model-index))
-          model-index-value (t2/select-one ModelIndexValue
-                                           :model_index_id model-index-id
-                                           :model_pk pk-id)
-          linked-queries    (calc-linked-queries {:model             model
-                                                  :model-index       model-index
-                                                  :model-index-value model-index-value})]
-      (or (create-linked-dashboard {:model             model
-                                    :linked-queries    linked-queries
-                                    :model-index       model-index
-                                    :model-index-value model-index-value
-                                    :query-filter      [:= (:pk_ref model-index) pk-id]})
-          (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
-  )
+                linked            (linked-entities {:model             model
+                                                    :model-index       model-index
+                                                    :model-index-value model-index-value})]
+               ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+               (api/read-check Card (:model_id model-index))
+               (or (create-linked-dashboard {:model model
+                                             :linked-tables linked
+                                             :model-index model-index
+                                             :model-index-value model-index-value})
+                   (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
