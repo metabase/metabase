@@ -169,20 +169,25 @@
       (t2/select 'Field :fk_target_field_id field-id))))
 
 (defn- add-source-model-link
-  "Create a dashboard-wide link to the original source model to be placed at the top of the dashboard."
-  [{model-name :name model-id :id}]
-  {:id                     (gensym)
-   :size_x                 18
-   :size_y                 1
-   :row                    0
-   :col                    0
-   :visualization_settings {:virtual_card {:display                "link"
-                                           :archived               false},
-                            :link         {:entity {:id          model-id
-                                                    :name        model-name
-                                                    :model       "dataset"
-                                                    :display     "table"
-                                                    :description nil}}}})
+  "Insert a source model link card into the sequence of passed in cards."
+  [{model-name :name model-id :id} cards]
+  (let [max-width (->> (map (fn [{:keys [col size_x]}] (+ col size_x)) cards)
+                       (into [4])
+                       (apply max))]
+    (cons
+      {:id                     (gensym)
+       :size_x                 max-width
+       :size_y                 1
+       :row                    0
+       :col                    0
+       :visualization_settings {:virtual_card {:display  "link"
+                                               :archived false},
+                                :link         {:entity {:id          model-id
+                                                        :name        model-name
+                                                        :model       "dataset"
+                                                        :display     "table"
+                                                        :description nil}}}}
+      cards)))
 
 (defn- create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
@@ -210,9 +215,7 @@
                                 :dash-cards
                                 (map (fn [dc]
                                        (assoc dc :dashboard_tab_id tab-id))
-                                     (cons
-                                       (add-source-model-link model)
-                                       tab-cards))}))
+                                     (add-source-model-link model tab-cards))}))
                            child-dashboards)]
     (reduce (fn [dashboard {:keys [tab dash-cards]}]
               (-> dashboard
