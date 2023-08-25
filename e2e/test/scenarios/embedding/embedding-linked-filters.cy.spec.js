@@ -71,7 +71,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.button("Add filter").click();
       });
 
-      cy.location("search").should("eq", "?state=AK");
+      cy.location("search").should("eq", "?state=AK&city=");
 
       getXAxisValues()
         .should("have.length", 1)
@@ -145,7 +145,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
-      cy.location("search").should("eq", "?state=AK");
+      cy.location("search").should("eq", "?state=AK&city=");
 
       getXAxisValues()
         .should("have.length", 1)
@@ -333,7 +333,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       // ID filter already comes with the default value
-      cy.location("search").should("eq", "?id_filter=1");
+      cy.location("search").should("eq", "?id_filter=1&category=");
 
       // But it should still be editable, and that's why we see two filter widgets
       filterWidget().should("have.length", 2).contains("Category").click();

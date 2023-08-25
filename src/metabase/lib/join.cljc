@@ -28,6 +28,7 @@
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def ^:private JoinWithOptionalAlias
@@ -174,6 +175,12 @@
   [field-or-join :- FieldOrPartialJoin
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
+    ;; this should not happen (and cannot happen in CLJ land)
+    ;; but it does seem to happen in JS land with broken MLv1 queries
+    :dispatch-type/nil
+    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+        field-or-join)
+
     :field
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
@@ -318,7 +325,7 @@
                   (lib.metadata.calculation/returned-columns query stage-number join options)))
         (:joins (lib.util/query-stage query stage-number))))
 
-(defmulti join-clause-method
+(defmulti ^:private join-clause-method
   "Convert something to a join clause."
   {:arglists '([joinable])}
   lib.dispatch/dispatch-value
@@ -352,12 +359,15 @@
                  :lib/type :mbql.stage/mbql}]}
       lib.options/ensure-uuid))
 
+(declare with-join-fields)
+
 (defmethod join-clause-method :metadata/table
-  [table]
-  (-> {:lib/type :mbql/join
-       :stages [{:source-table (:id table)
-                 :lib/type :mbql.stage/mbql}]}
-      lib.options/ensure-uuid))
+  [{::keys [join-alias join-fields], :as table-metadata}]
+  (cond-> (join-clause-method {:lib/type     :mbql.stage/mbql
+                               :lib/options  {:lib/uuid (str (random-uuid))}
+                               :source-table (:id table-metadata)})
+    join-alias  (with-join-alias join-alias)
+    join-fields (with-join-fields join-fields)))
 
 (defn- with-join-conditions-add-alias-to-rhses
   "Add `join-alias` to the RHS of all [[standard-join-condition?]] `conditions` that don't already have a `:join-alias`.
@@ -537,6 +547,10 @@
                           conditions)))
           (with-join-alias join-alias)))))
 
+(declare join-conditions
+         joined-thing
+         suggested-join-condition)
+
 (mu/defn join :- ::lib.schema/query
   "Add a join clause to a `query`."
   ([query a-join]
@@ -544,10 +558,15 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- PartialJoin]
-   (let [a-join (add-default-alias query stage-number a-join)]
-     (lib.util/update-query-stage query stage-number update :joins (fn [joins]
-                                                                     (conj (vec joins) a-join))))))
+    a-join       :- [:or PartialJoin Joinable]]
+   (let [a-join              (join-clause a-join)
+         suggested-condition (when (empty? (join-conditions a-join))
+                               (suggested-join-condition query stage-number (joined-thing query a-join)))
+         a-join              (cond-> a-join
+                               suggested-condition (with-join-conditions [suggested-condition]))
+         a-join              (add-default-alias query stage-number a-join)]
+     (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
+                                                                     (conj (vec existing-joins) a-join))))))
 
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
@@ -625,7 +644,7 @@
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
   [metadata-providerable :- lib.metadata/MetadataProviderable
-   a-join                :- ::lib.schema.join/join]
+   a-join                :- PartialJoin]
   (let [origin (-> a-join :stages first)]
     (cond
       (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))
@@ -801,16 +820,23 @@
   (m/find-first lib.types.isa/primary-key?
                 (lib.metadata.calculation/visible-columns query stage-number x)))
 
+(mu/defn ^:private fk-column-for-pk-in :- [:maybe lib.metadata/ColumnMetadata]
+  [pk-col          :- [:maybe lib.metadata/ColumnMetadata]
+   visible-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
+  (when-let [pk-id (:id pk-col)]
+    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
+                    (and (lib.types.isa/foreign-key? col)
+                         (= fk-target-field-id pk-id)))
+                  visible-columns)))
+
 (mu/defn ^:private fk-column-for :- [:maybe lib.metadata/ColumnMetadata]
   "Given a query stage find an FK column that points to the PK `pk-col`."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pk-col       :- [:maybe lib.metadata/ColumnMetadata]]
-  (when-let [pk-id (:id pk-col)]
-    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
-                    (and (lib.types.isa/foreign-key? col)
-                         (= fk-target-field-id pk-id)))
-                  (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))))
+  (when pk-col
+    (let [visible-columns (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number))]
+      (fk-column-for-pk-in pk-col visible-columns))))
 
 (mu/defn suggested-join-condition :- [:maybe ::lib.schema.expression/boolean] ; i.e., a filter clause
   "Return a suggested default join condition when constructing a join against `joinable`, e.g. a Table, Saved
@@ -823,9 +849,14 @@
   ([query         :- ::lib.schema/query
     stage-number  :- :int
     joinable]
-   (when-let [pk-col (pk-column query stage-number joinable)]
-     (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.filter/filter-clause (lib.filter.operator/operator-def :=) fk-col pk-col)))))
+   (letfn [(filter-clause [x y]
+             (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
+     (or (when-let [pk-col (pk-column query stage-number joinable)]
+           (when-let [fk-col (fk-column-for query stage-number pk-col)]
+             (filter-clause fk-col pk-col)))
+         (when-let [pk-col (pk-column query stage-number (lib.util/query-stage query stage-number))]
+           (when-let [fk-col (fk-column-for-pk-in pk-col (lib.metadata.calculation/visible-columns query stage-number joinable))]
+             (filter-clause pk-col fk-col)))))))
 
 (defn- add-join-alias-to-joinable-columns [cols a-join]
   (let [join-alias     (current-join-alias a-join)
