@@ -18,7 +18,6 @@ const SETTING_TYPES = [
     ],
     column: {
       semantic_type: TYPE.Temporal,
-      unit: "second",
     },
   },
   {
