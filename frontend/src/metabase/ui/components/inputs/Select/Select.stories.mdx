@@ -9,17 +9,15 @@ export const args = {
 export const sampleData = {
   list: [
     { value: 1, label: "Entity key" },
-    { value: 2, label: "Entity name" },
-    { value: 3, label: "Foreign key" },
-    { value: 4, label: "Category" },
-    { value: 5, label: "Description" },
+    { value: 2, label: "Foreign key" },
+    { value: 3, label: "Category" },
+    { value: 4, label: "Description" },
   ],
   groups: [
     { value: 1, label: "Entity key", group: "Overall row" },
-    { value: 2, label: "Entity name", group: "Overall row" },
-    { value: 3, label: "Foreign key", group: "Overall row" },
-    { value: 4, label: "Category", group: "Common" },
-    { value: 5, label: "Description", group: "Common" },
+    { value: 2, label: "Foreign key", group: "Overall row" },
+    { value: 3, label: "Category", group: "Common" },
+    { value: 4, label: "Description", group: "Common" },
   ],
 };
 
@@ -55,4 +53,14 @@ export const Default = args => <Select {...args} data={sampleData.list} />;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Grouped items
+
+export const GroupedItems = args => (
+  <Select {...args} data={sampleData.groups} initiallyOpened />
+);
+
+<Canvas>
+  <Story name="Grouped items">{GroupedItems}</Story>
 </Canvas>
