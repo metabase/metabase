@@ -867,8 +867,8 @@
     "  and pg_catalog.has_schema_privilege(r.current_user_or_role, n.nspname, 'USAGE')"
     ")"
     "select"
-    "  t.is_current_user,"
     "  t.role,"
+    "  t.is_current_user,"
     "  t.schema,"
     "  t.table,"
     "  t.select as select,"
@@ -883,7 +883,7 @@
 (defmethod driver/table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/query conn-spec table-privileges-query)))
+    (jdbc/query conn-spec table-privileges-query {:as-arrays? true})))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

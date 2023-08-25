@@ -896,15 +896,18 @@
   :hierarchy #'hierarchy)
 
 (defmulti table-privileges
-  "Returns the rows of data needed to populate the tabel_privileges table, which contains the privileges user roles
-   have on the given `database`. The privileges include select, insert, update, an delete.
-   Either the row corresponds to the current user of the DB connection, or the role is specified.
+  "Returns the rows of data as arrays needed to populate the tabel_privileges table.
+   The data contains the privileges that user roles have on the given `database`.
+   The privileges include select, insert, update, and delete.
+   Either:
+   (1) is_current_user=true and role is null, corresponding to the privileges of the current user of the DB connection
+   (2) is_current_user=false and role is not null, corresponing to the privileges of the role
 
-   The rows have the following keys and value types:
-     - table           :- :string
-     - schema          :- [:maybe :string]
-     - is_current_user :- :boolean
+   The rows have the following keys and value types, and are listed in this order:
      - role            :- [:maybe :string]
+     - is_current_user :- :boolean
+     - schema          :- [:maybe :string]
+     - table           :- :string
      - select          :- :boolean
      - update          :- :boolean
      - insert          :- :boolean

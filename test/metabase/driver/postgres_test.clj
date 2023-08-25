@@ -1226,7 +1226,7 @@
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
                                (->> (driver/table-privileges driver/*driver* (mt/db))
-                                    (filter #(= (:role %) "privilege_rows_test_example_role"))))]
+                                    (filter #(= (first %) "privilege_rows_test_example_role"))))]
           (try
             (jdbc/execute! conn-spec (str "CREATE SCHEMA foo;"
                                           "CREATE TABLE foo.bar (id INTEGER);"
@@ -1239,14 +1239,14 @@
                      (get-privileges))))
             (testing "with USAGE privileges, select is returned"
               (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA foo TO privilege_rows_test_example_role;")
-              (is (= [{:is_current_user false,
-                       :role "privilege_rows_test_example_role",
-                       :schema "foo",
-                       :table "baz",
-                       :select true,
-                       :update true,
-                       :insert false,
-                       :delete false}]
+              (is (= [["privilege_rows_test_example_role" ; role
+                       false                              ; is_current_user
+                       "foo"                              ; schema
+                       "baz"                              ; table
+                       true                               ; select
+                       true                               ; insert
+                       false                              ; update
+                       false]]                            ; delete
                      (get-privileges))))
             (finally
               (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE foo.baz FROM privilege_rows_test_example_role;"
