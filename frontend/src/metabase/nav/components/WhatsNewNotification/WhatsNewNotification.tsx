@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { useCallback, useMemo } from "react";
+import styled from "@emotion/styled";
 import { updateSetting } from "metabase/admin/settings/settings";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
@@ -56,18 +57,7 @@ export function WhatsNewNotification() {
     return null;
   }
   return (
-    <Box
-      p="md"
-      m="lg"
-      // eslint-disable-next-line react/forbid-component-props
-      sx={theme => ({
-        boxShadow: theme.shadows.md,
-        borderWidth: 1,
-        borderColor: theme.colors.gray[1],
-        borderStyle: "solid",
-        borderRadius: theme.radius.md,
-      })}
-    >
+    <NotificationContainer>
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
@@ -88,6 +78,16 @@ export function WhatsNewNotification() {
           {t`See what's new`}
         </Anchor>
       </Stack>
-    </Box>
+    </NotificationContainer>
   );
 }
+
+const NotificationContainer = styled(Box)(({ theme }) => ({
+  margin: theme.spacing.lg,
+  padding: theme.spacing.md,
+  boxShadow: theme.shadows.md,
+  borderWidth: 1,
+  borderColor: theme.colors.border[0],
+  borderStyle: "solid",
+  borderRadius: theme.radius.md,
+}));
