@@ -29,7 +29,6 @@
 
 (mu/defn ^:private resolve-database-id-for-source-card :- ::lib.schema.id/database
   [source-card-id :- ::lib.schema.id/card]
-  (println "source-card-id:" source-card-id) ; NOCOMMIT
   (let [card (or (lib.metadata.protocols/card (bootstrap-metadata-provider) source-card-id)
                  (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                  {:card-id source-card-id, :type qp.error-type/invalid-query, :status-code 404})))]
