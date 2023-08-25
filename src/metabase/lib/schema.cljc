@@ -23,7 +23,7 @@
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.mbql.util.match :as mbql.u.match]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -50,13 +50,32 @@
    ;; `:native` key), but their definition lives under this key.
    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]])
 
-(mr/def ::breakouts
-  [:sequential {:min 1} [:ref ::ref/ref]])
+(mr/def ::breakout
+  [:ref ::ref/ref])
 
-;;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
-;;; twice. (#32489)
+(defn- strip-uuids [exprs]
+  (mbql.u.match/replace exprs
+    (m :guard (every-pred map? :lib/uuid))
+    (dissoc m :lib/uuid)))
+
+(defn- distinct-exprs? [exprs]
+  (or
+   (< (count exprs) 2)
+   (apply distinct? (strip-uuids exprs))))
+
+(mr/def ::breakouts
+  [:and
+   [:sequential {:min 1} ::breakout]
+   [:fn
+    {:error/message "Breakouts must be distinct"}
+    distinct-exprs?]])
+
 (mr/def ::fields
-  [:sequential {:min 1} [:ref ::ref/ref]])
+  [:and
+   [:sequential {:min 1} [:ref ::ref/ref]]
+   [:fn
+    {:error/message ":fields must be distinct"}
+    distinct-exprs?]])
 
 ;; this is just for enabling round-tripping filters with named segment references
 (mr/def ::filterable
