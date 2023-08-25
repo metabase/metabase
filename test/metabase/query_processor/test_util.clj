@@ -521,7 +521,7 @@
     (lib.tu/mock-metadata-provider
      {:cards [{:id              1
                :name            "Card 1"
-               :database-id     1
+               :database-id     (data/id)
                :dataset-query   query
                ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
                ;; subsequent usage.

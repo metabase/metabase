@@ -118,8 +118,12 @@
                                                    {:old-provider old-provider, :new-provider database-id-or-metadata-provider})))
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
-          (throw (ex-info (tru "Attempting to initialize metadata provider with second Database. Queries can only reference one Database.")
-                          {:existing-id existing-database-id, :new-id new-database-id})))))))
+          (throw (ex-info (tru "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
+                               (pr-str new-database-id)
+                               (pr-str existing-database-id))
+                          {:existing-id existing-database-id
+                           :new-id      new-database-id
+                           :type        qp.error-type/invalid-query})))))))
 
 (mu/defn ^:private set-metadata-provider!
   "Create a new metadata provider and save it."

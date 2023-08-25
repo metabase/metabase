@@ -34,7 +34,7 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
-(mu/defn ^:private infer-returned-columns
+(mu/defn ^:private infer-returned-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
@@ -45,27 +45,35 @@
    {:error/message "Card with :dataset-query"}
    [:dataset-query :map]])
 
-(defn- ->card-metadata-column [metadata-providerable card col]
-  (let [col (-> col
-                (update-keys u/->kebab-case-en)
-                ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
-                ;; can always calculate a new one.
-                (dissoc :field-ref))]
-    (merge
-     {:base-type :type/*, :lib/type :metadata/column}
-     (when-let [field-id (:id col)]
-       (try
-         (lib.metadata/field metadata-providerable field-id)
-         (catch #?(:clj Throwable :cljs :default) _
-           nil)))
-     col
-     {:lib/type                :metadata/column
-      :lib/source              :source/card
-      :lib/card-id             (:id card)
-      :lib/source-column-alias (:name col)}
-     ;; this is for legacy metadata only, duplicates the old MLv1/QP behavior.
-     (when-let [legacy-join-alias (:source-alias col)]
-       {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))
+(mu/defn ->card-metadata-column :- lib.metadata/ColumnMetadata
+  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
+  ([metadata-providerable col]
+   (->card-metadata-column metadata-providerable nil col))
+
+  ([metadata-providerable :- lib.metadata/MetadataProviderable
+    card-or-id            :- [:maybe [:or ::lib.schema.id/card lib.metadata/CardMetadata]]
+    col                   :- :map]
+   (let [col (-> col
+                 (update-keys u/->kebab-case-en)
+                 ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
+                 ;; can always calculate a new one.
+                 (dissoc :field-ref))]
+     (merge
+      {:base-type :type/*, :lib/type :metadata/column}
+      (when-let [field-id (:id col)]
+        (try
+          (lib.metadata/field metadata-providerable field-id)
+          (catch #?(:clj Throwable :cljs :default) _
+            nil)))
+      col
+      {:lib/type                :metadata/column
+       :lib/source              :source/card
+       :lib/source-column-alias (:name col)}
+      (when card-or-id
+        {:lib/card-id (u/the-id card-or-id)})
+      ;; this is for legacy metadata only, duplicates the old MLv1/QP behavior.
+      (when-let [legacy-join-alias (:source-alias col)]
+        {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))})))))
 
 (def ^:private CardColumnMetadata
   [:merge
