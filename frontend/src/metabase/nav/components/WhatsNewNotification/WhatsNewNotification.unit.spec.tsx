@@ -1,5 +1,6 @@
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
+  createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
@@ -33,7 +34,7 @@ const setup = ({
 }) => {
   jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(isEmbedded);
 
-  const versionMock = { tag: currentVersion };
+  const versionMock = createMockVersion({ tag: currentVersion });
 
   const [latest, ...older] = versions;
   const mockSettings = createMockSettingsState({
