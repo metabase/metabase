@@ -57,7 +57,7 @@
 (defmethod archived-clause "table"
   [model archived?]
   (if archived?
-    false-clause                        ; No tables should appear in archive searches
+    false-clause ; No tables should appear in archive searches
     [:and
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
@@ -163,6 +163,26 @@
 
 ;; Last edited by filter
 
+(defn- maybe-join
+  "Join the query if we haven't joined already.
+  Note: this does a very shallow check by only checking the join-clause is already the same.
+  For edge cases like same table but different alias, or different join keys, it assumes we can still make the join.
+
+    (-> (sql.helpers/select :*)
+        (sql.helpers/from [:a])
+        (sql.helpers/join :b [:= :a.id :b.id])
+        (maybe-join :join [:b [:= :a.id :b.id]]))
+
+    ;; => {:select [:*], :from [[:a]], :join [[:b [:= :a.id :b.id]]]}"
+  [query join-type table on]
+  (if (some #(= [table on] %) (partition 2 (get query join-type)))
+    query
+    ((case join-type
+       :join       sql.helpers/join
+       :left-join  sql.helpers/left-join
+       :right-join sql.helpers/right-join
+       :cross-join sql.helpers/right-join) query table on)))
+
 (defn- search-model->revision-model
   [model]
   (case model
@@ -173,19 +193,31 @@
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query last-edited-by]
     (-> query
-        (sql.helpers/join :revision
-                          [:= :revision.model_id
-                           (search.config/column-with-model-alias model :id)])
+        ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+        (maybe-join :join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
         (sql.helpers/where [:= :revision.most_recent true]
                            [:= :revision.model (search-model->revision-model model)]
                            [:= :revision.user_id last-edited-by]))))
 
-(doseq [model ["action" "dashboard" "card" "dataset" "metric"]]
+(doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
-    (sql.helpers/where query (date-range-filter-clause
+    (-> query
+        ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+        (maybe-join :join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :revision.most_recent true]
+                           [:= :revision.model (search-model->revision-model model)]
+                           ;; on UI we showed the the last edit info from revision.timestamp
+                           ;; not the model.updated_at column
+                           ;; to be consistent we use revision.timestamp to do the filtering
+                           (date-range-filter-clause :revision.timestamp last-edited-at)))))
+
+;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
+(defmethod build-optional-filter-query [:last-edited-at "action"]
+  [_filter model query last-edited-at]
+  (sql.helpers/where query (date-range-filter-clause
                               (search.config/column-with-model-alias model :updated_at)
-                              last-edited-at))))
+                              last-edited-at)))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.

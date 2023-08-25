@@ -988,6 +988,14 @@
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
+      (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
+                          [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+        (revision/push-revision!
+         :entity      model
+         :id          id
+         :user-id     (mt/user->id :rasta)
+         :is_creation true
+         :object      {:id id}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
@@ -995,9 +1003,9 @@
                    [dash-id   "dashboard"]
                    [model-id  "dataset"]
                    [metric-id "metric"]}
-               (->> (:data resp)
-                    (map (juxt :id :model))
-                    set)))
+                 (->> (:data resp)
+                      (map (juxt :id :model))
+                      set)))
 
           (is (= #{"action" "card" "dashboard" "dataset" "metric"}
                  (-> resp
@@ -1116,24 +1124,16 @@
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id} {:name       search-term
-                                                :updated_at new}
-         :model/Dashboard  {dashboard-old :id} {:name       search-term
-                                                :updated_at two-years-ago}
-         :model/Card       {card-new :id}      {:name       search-term
-                                                :updated_at new}
-         :model/Card       {card-old :id}      {:name       search-term
-                                                :updated_at two-years-ago}
+        [:model/Dashboard  {dashboard-new :id} {:name       search-term}
+         :model/Dashboard  {dashboard-old :id} {:name       search-term}
+         :model/Card       {card-new :id}      {:name       search-term}
+         :model/Card       {card-old :id}      {:name       search-term}
          :model/Card       {model-new :id}     {:name       search-term
-                                                :dataset    true
-                                                :updated_at new}
+                                                :dataset    true}
          :model/Card       {model-old :id}     {:name       search-term
-                                                :dataset    true
-                                                :updated_at two-years-ago}
-         :model/Metric     {metric-new :id}    {:name       search-term
-                                                :updated_at new}
-         :model/Metric     {metric-old :id}    {:name       search-term
-                                                :updated_at two-years-ago}
+                                                :dataset    true}
+         :model/Metric     {metric-new :id}    {:name       search-term}
+         :model/Metric     {metric-old :id}    {:name       search-term}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
@@ -1142,43 +1142,58 @@
                                                 :model_id   model-old
                                                 :type       :http
                                                 :updated_at two-years-ago}]
-          ;; with clock doesn't work if calling via API, so we call the search function directly
-       (let [test-search (fn [last-edited-at expected]
-                          (testing (format "searching with last-edited-at = %s" last-edited-at)
-                            (mt/with-current-user (mt/user->id :crowberto)
-                              (is (= expected
-                                     (->> (#'api.search/search (#'api.search/search-context
-                                                                {:search-string  search-term
-                                                                 :archived       false
-                                                                 :models         search.config/all-models
-                                                                 :last-edited-at last-edited-at}))
-                                          :data
-                                          (map (juxt :model :id))
-                                          set))))))
-             new-result  #{["action"    action-new]
-                           ["card"      card-new]
-                           ["dataset"   model-new]
-                           ["dashboard" dashboard-new]
-                           ["metric"    metric-new]}
-             old-result  #{["action"    action-old]
-                           ["card"      card-old]
-                           ["dataset"   model-old]
-                           ["dashboard" dashboard-old]
-                           ["metric"    metric-old]}]
-         ;; absolute datetime
-        (test-search "Q2-2021" old-result)
-        (test-search "2023-05-04" new-result)
-        (test-search "2021-05-03~" (set/union old-result new-result))
-        ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
-        (test-search "2021-05-04~2023-05-03" old-result)
-        (test-search "2021-05-05~2023-05-04" new-result)
-        (test-search "~2023-05-03" old-result)
-        (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
+        (t2/insert! (t2/table-name :model/Revision) (for [[model model-id timestamp]
+                                                          [["Dashboard" dashboard-new new]
+                                                           ["Dashboard" dashboard-old two-years-ago]
+                                                           ["Card" card-new new]
+                                                           ["Card" card-old two-years-ago]
+                                                           ["Card" model-new new]
+                                                           ["Card" model-old two-years-ago]
+                                                           ["Metric" metric-new new]
+                                                           ["Metric" metric-old two-years-ago]]]
+                                                      {:model       model
+                                                       :model_id    model-id
+                                                       :object      "{}"
+                                                       :user_id     (mt/user->id :rasta)
+                                                       :timestamp   timestamp
+                                                       :most_recent true}))
+        ;; with clock doesn't work if calling via API, so we call the search function directly
+        (let [test-search (fn [last-edited-at expected]
+                            (testing (format "searching with last-edited-at = %s" last-edited-at)
+                              (mt/with-current-user (mt/user->id :crowberto)
+                                (is (= expected
+                                       (->> (#'api.search/search (#'api.search/search-context
+                                                                  {:search-string  search-term
+                                                                   :archived       false
+                                                                   :models         search.config/all-models
+                                                                   :last-edited-at last-edited-at}))
+                                            :data
+                                            (map (juxt :model :id))
+                                            set))))))
+              new-result  #{["action"    action-new]
+                            ["card"      card-new]
+                            ["dataset"   model-new]
+                            ["dashboard" dashboard-new]
+                            ["metric"    metric-new]}
+              old-result  #{["action"    action-old]
+                            ["card"      card-old]
+                            ["dataset"   model-old]
+                            ["dashboard" dashboard-old]
+                            ["metric"    metric-old]}]
+          ;; absolute datetime
+          (test-search "Q2-2021" old-result)
+          (test-search "2023-05-04" new-result)
+          (test-search "2021-05-03~" (set/union old-result new-result))
+          ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
+          (test-search "2021-05-04~2023-05-03" old-result)
+          (test-search "2021-05-05~2023-05-04" new-result)
+          (test-search "~2023-05-03" old-result)
+          (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
 
-        ;; relative times
-        (test-search "thisyear" new-result)
-        (test-search "past1years-from-12months" old-result)
-        (test-search "today" new-result))))))
+          ;; relative times
+          (test-search "thisyear" new-result)
+          (test-search "past1years-from-12months" old-result)
+          (test-search "today" new-result))))))
 
 (deftest available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"

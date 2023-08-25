@@ -15178,7 +15178,7 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-008
       author: qnkhuat
-      comment: Added 0.48.0 - Set revision.most_recent = true for latest revisions
+      comment: Set revision.most_recent = true for latest revisions
       changes:
         - sql:
             dbms: postgresql,h2
@@ -15219,6 +15219,19 @@ databaseChangeLog:
       changes:
           - sql:
                 sql: ALTER TABLE `revision` CHANGE `timestamp` `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # no need
+
+  - changeSet:
+      id: v48.00-011
+      author: qnkhuat
+      comment: Index revision.most_recent
+      changes:
+        - createIndex:
+            tableName: revision
+            indexName: idx_revision_most_recent
+            columns:
+              column:
+                name: most_recent
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

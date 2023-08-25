@@ -90,6 +90,29 @@
                     {:models   #{"dashboard" "dataset" "table"}
                      :last-edited-at "past3days"})))))))
 
+(deftest maybe-join-test
+  (are [expected args]
+       (= expected (apply #'search.filter/maybe-join args))
+
+       {:join [:a [:= :a.b :c.d]]}
+       [{} :join :a [:= :a.b :c.d]]
+
+       ;; do not duplicate join
+       {:join [:a [:= :a.b :c.d]]}
+       [{:join [:a [:= :a.b :c.d]]} :join :a [:= :a.b :c.d]]
+
+       ;; work with multiple join types
+       {:join [:a [:= :a.b :c.d]] :left-join [:d [:= :d.e :e.f]]}
+       [{:join [:a [:= :a.b :c.d]]} :left-join :d [:= :d.e :e.f]]
+
+       ;; concatnate join if can join
+       {:join [:a [:= :a.b :c.d] :d [:= :d.e :e.f]]}
+       [{:join [:a [:= :a.b :c.d]]} :join :d [:= :d.e :e.f]]
+
+       ;; do the same with other join types too
+       {:left-join [:a [:= :a.b :c.d]]}
+       [{:left-join [:a [:= :a.b :c.d]]} :left-join :a [:= :a.b :c.d]]))
+
 (def ^:private base-search-query
   {:select [:*]
    :from   [:table]})
@@ -175,13 +198,44 @@
   (testing "last edited at filter"
     (is (= {:select [:*]
             :from   [:table]
+            :join   [:revision [:= :revision.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
-                     [:>= [:cast :card.updated_at :date] #t "2016-04-18"]
-                     [:< [:cast :card.updated_at :date] #t "2016-04-24"]],}
+                     [:= :revision.most_recent true]
+                     [:= :revision.model "Card"]
+                     [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
+                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
            (search.filter/build-filters
             base-search-query "dataset"
-            (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))))
+            (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
+
+   (testing "do not join twice if has both last-edited-at and last-edited-by"
+     (is (= {:select [:*]
+             :from   [:table]
+             :join   [:revision [:= :revision.model_id :card.id]]
+             :where  [:and
+                      [:= :card.archived false]
+                      [:= :revision.most_recent true]
+                      [:= :revision.model "Card"]
+                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
+                      [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
+                      [:= :revision.most_recent true]
+                      [:= :revision.model "Card"]
+                      [:= :revision.user_id 1]]}
+            (search.filter/build-filters
+             base-search-query "dataset"
+             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
+                                        :last-edited-by 1})))))
+
+   (testing "for actiion"
+     (is (= {:select [:*]
+             :from   [:table]
+             :where  [:and [:= :action.archived false]
+                      [:>= [:cast :action.updated_at :date] #t "2016-04-18"]
+                      [:< [:cast :action.updated_at :date] #t "2016-04-24"]]}
+            (search.filter/build-filters
+             base-search-query "action"
+             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"})))))))
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
