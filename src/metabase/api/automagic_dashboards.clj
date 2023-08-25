@@ -168,11 +168,27 @@
          :linked-field-id id})
       (t2/select 'Field :fk_target_field_id field-id))))
 
+(defn- add-source-model-link
+  "Create a dashboard-wide link to the original source model to be placed at the top of the dashboard."
+  [{model-name :name model-id :id}]
+  {:id                     (gensym)
+   :size_x                 18
+   :size_y                 1
+   :row                    0
+   :col                    0
+   :visualization_settings {:virtual_card {:display                "link"
+                                           :archived               false},
+                            :link         {:entity {:id          model-id
+                                                    :name        model-name
+                                                    :model       "dataset"
+                                                    :display     "table"
+                                                    :description nil}}}})
+
 (defn- create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
   [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
     {query-filter :pk_ref}                       :model-index
-    {model-name :name}                           :model
+    {model-name :name :as model}                 :model
     :keys                                        [linked-tables]}]
   (let [child-dashboards (map
                            (fn [{:keys [linked-table-id linked-field-id]}]
@@ -185,17 +201,19 @@
                                  {:show         :all
                                   :query-filter [:= q model_pk]})))
                            linked-tables)
-        tabs-and-cards   (->> child-dashboards
-                              (map-indexed
-                                (fn [idx dashboard]
-                                  (let [tab-id (gensym)]
-                                    {:tab {:id       tab-id
-                                           :name     (:name dashboard)
-                                           :position idx}
-                                     :dash-cards
-                                     (map (fn [dc]
-                                            (assoc dc :dashboard_tab_id tab-id))
-                                          (:ordered_cards dashboard))}))))]
+        tabs-and-cards   (map-indexed
+                           (fn [idx {tab-name :name tab-cards :ordered_cards}]
+                             (let [tab-id (gensym)]
+                               {:tab {:id       tab-id
+                                      :name     tab-name
+                                      :position idx}
+                                :dash-cards
+                                (map (fn [dc]
+                                       (assoc dc :dashboard_tab_id tab-id))
+                                     (cons
+                                       (add-source-model-link model)
+                                       tab-cards))}))
+                           child-dashboards)]
     (reduce (fn [dashboard {:keys [tab dash-cards]}]
               (-> dashboard
                   (update :ordered_cards into dash-cards)
