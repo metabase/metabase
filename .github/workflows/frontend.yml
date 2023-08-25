@@ -133,6 +133,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Publish to Chromatic
+        id: chromatic
         uses: chromaui/action@v1
         env:
           PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
