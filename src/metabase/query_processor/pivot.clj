@@ -2,6 +2,12 @@
   "Pivot table actions for the query processor"
   (:require
    [clojure.core.async :as a]
+   [medley.core :as m]
+   [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.core :as lib]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -13,7 +19,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,11 +49,28 @@
    (int (dec (Math/pow 2 num-breakouts)))
    indices))
 
-(defn- breakout-combinations
+(def ^:private PivotRows
+  [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]])
+
+(def ^:private PivotCols
+  [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]])
+
+(def ^:private QueryWithPivotInfo
+  [:merge
+   [:ref ::lib.schema/query]
+   [:map
+    [:pivot-rows {:optional true} PivotRows]
+    [:pivot-cols {:optional true} PivotCols]]])
+
+(mu/defn ^:private breakout-combinations :- [:sequential
+                                             [:sequential
+                                              ::lib.schema.common/int-greater-than-or-equal-to-zero]]
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
     (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
-  [num-breakouts pivot-rows pivot-cols]
+  [num-breakouts :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+   pivot-rows    :- PivotRows
+   pivot-cols    :- PivotCols]
   ;; validate pivot-rows/pivot-cols
   (doseq [[k pivots] {:pivot-rows pivot-rows, :pivot-cols pivot-cols}
           i          pivots]
@@ -92,45 +116,49 @@
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
 
-(defn- add-grouping-field
+(mu/defn ^:private add-grouping-field :- ::lib.schema/query
   "Add the grouping field and expression to the query"
-  [query breakout bitmask]
+  [query         :- ::lib.schema/query
+   new-breakouts :- [:maybe [:sequential ::lib.schema/breakout]]
+   bitmask       :- :int]
   (as-> query query
     ;;TODO: replace this value with a bitmask or something to indicate the source better
-    (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
+    (lib/expression query "pivot-grouping" (lib/abs bitmask))
+    ;; remove all existing breakouts.
+    (lib.breakout/remove-all-breakouts query)
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
     ;; grouping expression ref to the breakouts
-    (assoc-in query [:query :breakout] (concat breakout [[:expression "pivot-grouping"]]))
+    (lib.breakout/add-breakouts query (concat new-breakouts [(lib/expression-ref query "pivot-grouping")]))
     (do
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))
 
-(defn- remove-non-aggregation-order-bys
+(mu/defn ^:private remove-non-aggregation-order-bys :- ::lib.schema/query
   "Only keep existing aggregations in `:order-by` clauses from the query.
    Since we're adding our own breakouts (i.e. `GROUP BY` and `ORDER BY` clauses)
    to do the pivot table stuff, existing `:order-by` clauses probably won't work
    -- `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
-  [outer-query]
-  (update
-    outer-query
-    :query
-    (fn [query]
-      (if-let [new-order-by (not-empty (filterv (comp #(= :aggregation %) first second) (:order-by query)))]
-        (assoc query :order-by new-order-by)
-        (dissoc query :order-by)))))
+  [query :- ::lib.schema/query]
+  (transduce
+   (filter (fn [[_tag _opts expr]]
+             (= (lib.dispatch/dispatch-value expr) :aggregation)))
+   (completing lib/remove-clause)
+   query
+   (lib/order-bys query)))
 
-(defn- generate-queries
+(mu/defn ^:private generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
-  [{{all-breakouts :breakout} :query, :keys [pivot-rows pivot-cols query], :as outer-query}]
+  [{:keys [pivot-rows pivot-cols], :as query} :- QueryWithPivotInfo]
   (try
-    (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
-                             (log/tracef "Using breakout combinations: %s" (pr-str <>)))
-          :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indices)
-                            new-breakouts (for [i breakout-indices]
-                                            (nth all-breakouts i))]]
-      (-> outer-query
-          remove-non-aggregation-order-bys
-          (add-grouping-field new-breakouts group-bitmask)))
+    (let [all-breakouts (lib/breakouts query)]
+      (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
+                               (log/tracef "Using breakout combinations: %s" (pr-str <>)))
+            :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indices)
+                              new-breakouts (for [i breakout-indices]
+                                              (nth all-breakouts i))]]
+        (-> query
+            remove-non-aggregation-order-bys
+            (add-grouping-field new-breakouts group-bitmask))))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}
@@ -211,6 +239,21 @@
       (qp/process-query-and-save-with-max-results-constraints! first-query info context)
       (qp/process-query (dissoc first-query :info) context))))
 
+(defn- column-mapping-fn [query]
+  (let [main-breakout           (:breakout (:query query))
+        col-determination-query (add-grouping-field query main-breakout 0)
+        all-expected-cols       (qp/query->expected-cols col-determination-query)]
+    (fn [query]
+      (let [query-cols (qp/query->expected-cols query)]
+        (map (fn [item]
+               (some (fn [[i query-col]]
+                       (println "(:name item):" (:name item)) ; NOCOMMIT
+                       (println "(:name query-col):" (:name query-col)) ; NOCOMMIT
+                       (when (= (:name item) (:name query-col))
+                         i))
+                     (m/indexed query-cols)))
+             all-expected-cols)))))
+
 (defn run-pivot-query
   "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
    its application via `partial`.
@@ -223,26 +266,18 @@
   ([query info context]
    (binding [qp.perms/*card-id* (get info :card-id)]
      (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
-       (let [context                 (merge (context.default/default-context) context)
-             query                   (mbql.normalize/normalize query)
-             main-breakout           (:breakout (:query query))
-             col-determination-query (add-grouping-field query main-breakout 0)
-             all-expected-cols       (qp/query->expected-cols col-determination-query)
-             all-queries             (generate-queries query)]
+       (let [context     (merge (context.default/default-context) context)
+             query       (mbql.normalize/normalize query)
+             all-queries (generate-queries query)]
          (process-multiple-queries
           all-queries
           info
           (assoc context
                  ;; this function needs to be executed at the start of every new query to
                  ;; determine the mapping for maintaining query shape
-                 :column-mapping-fn (fn [query]
-                                      (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
-                                        (map (fn [item]
-                                               (some #(when (= (:name item) (:name (second %)))
-                                                        (first %)) query-cols))
-                                             all-expected-cols)))
-                 ;; this function needs to be called for each row so that it can actually
-                 ;; shape the row according to the `:column-mapping-fn` above
+                 :column-mapping-fn (column-mapping-fn query)
+                 ;; this function needs to be called for each row so that it can actually shape the row according to the
+                 ;; `:column-mapping-fn` above
                  :row-mapping-fn (fn [row context]
                                    ;; the first query doesn't need any special mapping, it already has all the columns
                                    (if-let [col-mapping (:pivot-column-mapping context)]

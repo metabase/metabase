@@ -87,3 +87,26 @@
                    pos (assoc :breakout-position pos))))
              cols
              refs)))))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Remove all breakout from a query stage."
+  ([query]
+   (remove-all-breakouts query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.util/update-query-stage query stage-number dissoc :breakout)))
+
+(mu/defn add-breakouts :- ::lib.schema/query
+  "Add multiple breakouts to a query."
+  ([query new-breakouts]
+   (add-breakouts query -1 new-breakouts))
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    new-breakouts :- [:maybe [:sequential ::lib.schema/breakout]]]
+   (reduce
+    (fn [query new-breakout]
+      (breakout query stage-number new-breakout))
+    query
+    new-breakouts)))

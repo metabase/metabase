@@ -6,6 +6,9 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card Collection]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -85,7 +88,6 @@
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
 
-
 (defn- test-query []
   (mt/dataset sample-dataset
     (mt/$ids orders
@@ -103,13 +105,13 @@
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
-(deftest allow-snake-case-test
+(deftest ^:parallel allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
-(deftest generate-queries-test
+(deftest ^:parallel generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (let [request {:database   (mt/db)
@@ -153,11 +155,15 @@
                                       :pivot-cols [2])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map lib.convert/->legacy-MBQL
+                              (#'qp.pivot/generate-queries
+                               (lib/query
+                                (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                request)))]
             (is (= 6 (count actual)))
-            (is (= expected actual))))))))
+            (is (=? expected actual))))))))
 
-(deftest dont-return-too-many-rows-test
+(deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))
           rows    (mt/rows results)]
@@ -196,7 +202,7 @@
        (map first)
        set))
 
-(deftest return-correct-columns-test
+(deftest ^:parallel return-correct-columns-test
   (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
         rows    (mt/rows results)]
     (testing "Columns should come back in the expected order"
@@ -217,7 +223,7 @@
         (is (schema= [Row]
                      rows))))))
 
-(deftest allow-other-rfs-test
+(deftest ^:parallel allow-other-rfs-test
   (letfn [(rff [_]
             (fn
               ([] 0)
@@ -226,14 +232,14 @@
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
            (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil {:rff rff})))))
 
-(deftest parameters-query-test
+(deftest ^:parallel parameters-query-test
   (mt/dataset sample-dataset
     (is (schema= {:status    (s/eq :completed)
                   :row_count (s/eq 137)
                   s/Keyword  s/Any}
                  (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
-(deftest pivots-should-not-return-expressions-test
+(deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset sample-dataset
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
@@ -322,7 +328,7 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
-(deftest pivot-with-order-by-metric-test
+(deftest ^:parallel pivot-with-order-by-metric-test
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
     (mt/dataset sample-dataset
       (let  [query (mt/mbql-query reviews
