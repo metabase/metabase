@@ -307,7 +307,7 @@
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
-(deftest pivot-with-order-by-test
+(deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query products

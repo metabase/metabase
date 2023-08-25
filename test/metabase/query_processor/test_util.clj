@@ -12,7 +12,10 @@
    [mb.hawk.init]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -487,18 +490,43 @@
                                [(:name table) (:name field)]))))
                    (t2/select-pks-set :model/Field :table_id [:in table-ids]))}))
 
-(defn card-with-source-metadata-for-query
+(defn- query-results [query]
+  (let [results (qp/process-query query)]
+    (or (get-in results [:data :results_metadata :columns])
+        (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))))
+
+(defn ^:deprecated card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
     (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
                                         (data/mbql-query venues {:aggregation [[:count]]}))]
-      ...)"
+      ...)
+
+  Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  (let [results  (qp/process-userland-query query)
-        metadata (or (get-in results [:data :results_metadata :columns])
-                     (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))]
-    {:dataset_query   query
-     :result_metadata metadata}))
+  {:dataset_query   query
+   :result_metadata (query-results query)})
+
+(defn metadata-provider-with-card-with-query-and-actual-result-metadata
+  "Create an MLv2 metadata provide based on the app DB metadata provider that adds a Card with ID `1` with `query` and
+  `:result-metadata` based on actually running that query."
+  ([query]
+   (metadata-provider-with-card-with-query-and-actual-result-metadata
+    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    query))
+
+  ([base-metadata-provider query]
+   (lib/composed-metadata-provider
+    (lib.tu/mock-metadata-provider
+     {:cards [{:id              1
+               :name            "Card 1"
+               :database-id     1
+               :dataset-query   query
+               ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
+               ;; subsequent usage.
+               :result-metadata (qp.store/with-metadata-provider base-metadata-provider
+                                  (query-results query))}]})
+    base-metadata-provider)))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------

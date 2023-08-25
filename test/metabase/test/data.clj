@@ -46,7 +46,8 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,9 +58,9 @@
 
 (defn db
   "Return the current database.
-   Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
+   Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []
-  (data.impl/*get-db*))
+  (data.impl/db))
 
 (defmacro with-db
   "Run body with `db` as the current database. Calls to `db` and `id` use this value."
@@ -187,19 +188,24 @@
   [table-name & [query]]
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
-(defn format-name
+(mu/defn format-name :- :string
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
   driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
-  [a-name]
-  (assert ((some-fn keyword? string? symbol?) a-name)
-    (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
-         " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
+  [a-name :- [:or
+              :keyword
+              :string
+              :symbol
+              [:fn
+               {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
+                                    "(Change the form to `$table.field`, or specify a top-level default Table to "
+                                    "`$ids` or `mbql-query`.)")}
+               (constantly false)]]]
   (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id
-  "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
-  can be rebound with `with-db`."
+  "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic
+  variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   ([]
    (mb.hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (u/the-id (db)))

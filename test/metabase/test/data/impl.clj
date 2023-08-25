@@ -5,6 +5,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
@@ -13,6 +14,7 @@
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan.db :as db]
    [toucan2.core :as t2]))
@@ -44,18 +46,76 @@
   ([]       (get-or-create-test-data-db! (tx/driver)))
   ([driver] (get-or-create-database! driver defs/test-data)))
 
-(def ^:dynamic *get-db*
+(def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
-  get-or-create-test-data-db!)
+  (let [f (mdb.connection/memoize-for-application-db get-or-create-test-data-db!)]
+    (fn []
+      (f (tx/driver)))))
+
+(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+  []
+  (*db-fn*))
+
+;;; ID lookup maps look like these:
+;;;
+;;; Table:
+;;;
+;;;    {"VENUES" 10, "USERS" 11, "CHECKINS" 12, "CATEGORIES" 13}
+;;;
+;;; Field:
+;;;
+;;;    [parent-id name] => ID
+;;;
+;;;    {[nil "PRICE"]       71
+;;;     [nil "CATEGORY_ID"] 72
+;;;     [nil "DATE"]        79
+;;;     [nil "PASSWORD"]    77
+;;;     [nil "VENUE_ID"]    82
+;;;     [nil "ID"]          81
+;;;     [nil "NAME"]        84
+;;;     [nil "ID"]          83
+;;;     [nil "USER_ID"]     80
+;;;     [nil "LAST_LOGIN"]  76
+;;;     [nil "ID"]          75
+;;;     [nil "LONGITUDE"]   70
+;;;     [nil "LATITUDE"]    74
+;;;     [nil "NAME"]        73
+;;;     [nil "NAME"]        78
+;;;     [nil "ID"]          69}
+
+(mu/defn ^:private build-table-lookup-map
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-fn->pk (juxt (constantly database-id) :name)
+                    [:model/Table :id :name]
+                    :db_id database-id))
+
+(mu/defn ^:private build-field-lookup-map
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-fn->pk (juxt :parent_id :name)
+                    [:model/Field :id :name :parent_id]
+                    :table_id table-id
+                    :active   true))
+
+(def ^:private ^{:arglists '([database-id])} table-lookup-map
+  (mdb.connection/memoize-for-application-db build-table-lookup-map))
+
+(def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
+  (mdb.connection/memoize-for-application-db build-field-lookup-map))
+
+(defn- cached-table-id [db-id table-name]
+  (get (table-lookup-map db-id) [db-id table-name]))
+
+(defn- cached-field-id [table-id parent-id field-name]
+  (get (field-lookup-map table-id) [parent-id field-name]))
 
 (defn do-with-db
-  "Internal impl of `data/with-db`."
+  "Internal impl of [[metabase.test.data/with-db]]."
   [db f]
-  (assert (and (map? db) (integer? (:id db)))
+  (assert (and (map? db) (pos-int? (:id db)))
           (format "Not a valid database: %s" (pr-str db)))
-  (binding [*get-db* (constantly db)]
+  (binding [*db-fn* (constantly db)]
     (f)))
 
 
@@ -63,62 +123,76 @@
 ;;; |                                                       id                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn the-table-id
-  "Internal impl of `(data/id table)."
+(defn- table-id-from-app-db
   [db-id table-name]
-  {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
-  (let [table-name        (name table-name)
-        table-id-for-name (partial t2/select-one-pk Table, :db_id db-id, :name)]
-    (or (table-id-for-name table-name)
-        (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
-                             (tx/db-qualified-table-name db-name table-name)))
-        (let [{driver :engine, db-name :name} (t2/select-one [Database :engine :name] :id db-id)]
-          (throw
-           (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
-                               (pr-str table-name) driver db-id (pr-str db-name)
-                               (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))))
+  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name))
 
-(defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
+(defn- throw-unfound-table-error [db-id table-name]
+  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
+    (throw
+     (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
+                         (pr-str table-name) driver db-id (pr-str db-name)
+                         (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))
+
+(mu/defn the-table-id :- ::lib.schema.id/table
+  "Internal impl of `(data/id table)."
+  [db-id      :- ::lib.schema.id/database
+   table-name :- :string]
+  (or (cached-table-id db-id table-name)
+      (table-id-from-app-db db-id table-name)
+      (let [db-name              (t2/select-one-fn :name [:model/Database :name] :id db-id)
+            qualified-table-name (tx/db-qualified-table-name db-name table-name)]
+        (cached-table-id db-id qualified-table-name)
+        (table-id-from-app-db db-id qualified-table-name))
+      (throw-unfound-table-error db-id table-name)))
+
+(defn- field-id-from-app-db [table-id parent-id field-name]
+  (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id))
+
+(defn- qualified-field-name [parent-id field-name]
   (if parent-id
-    (str (qualified-field-name (t2/select-one Field :id parent-id))
+    (str (t2/select-one-fn (fn [field]
+                             (qualified-field-name (:parent_id field) (:name field)))
+                           [:model/Field :parent_id :name]
+                           :id parent-id)
          \.
          field-name)
     field-name))
 
 (defn- all-field-names [table-id]
-  (into {} (for [field (t2/select Field :active true, :table_id table-id)]
-             [(u/the-id field) (qualified-field-name field)])))
+  (t2/select-fn->fn :id
+                    (fn [field]
+                      (qualified-field-name (:parent_id field) (:name field)))
+                    [:model/Field :id :parent_id :name]
+                    :active true, :table_id table-id))
 
-(defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
-  (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (let [{db-id :db_id, table-name :name} (t2/select-one [Table :name :db_id] :id table-id)
-            db-name                          (t2/select-one-fn :name Database :id db-id)
-            field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
-            all-field-names                  (all-field-names table-id)]
-        (throw
-         (ex-info (format "Couldn't find Field %s for Table %s.\nFound:\n%s"
-                          (pr-str field-name) (pr-str table-name) (u/pprint-to-str all-field-names))
-                  {:field-name  field-name
-                   :table       table-name
-                   :table-id    table-id
-                   :database    db-name
-                   :database-id db-id
-                   :all-fields  all-field-names})))))
+(defn- throw-unfound-field-errror
+  [table-id parent-id field-name]
+  (let [table-name      (t2/select-one-fn [:model/Table :name] :id table-id)
+        field-name      (qualified-field-name parent-id field-name)
+        all-field-names (all-field-names table-id)]
+    (throw
+     (ex-info (format "Couldn't find Field %s for Table %s.\nFound:\n%s"
+                      (pr-str field-name) (pr-str table-name) (u/pprint-to-str all-field-names))
+              {:field-name  field-name
+               :table       table-name
+               :table-id    table-id
+               :all-fields  all-field-names}))))
 
-(defn the-field-id
+(defn- the-field-id* [table-id parent-id field-name]
+  (or (cached-field-id table-id parent-id field-name)
+      (field-id-from-app-db table-id parent-id field-name)
+      (throw-unfound-field-errror table-id parent-id field-name)))
+
+(mu/defn the-field-id :- ::lib.schema.id/field
   "Internal impl of `(data/id table field)`."
-  [table-id field-name & nested-field-names]
-  {:pre [(integer? table-id)]}
-  (doseq [field-name (cons field-name nested-field-names)]
-    (assert ((some-fn keyword? string?) field-name)
-            (format "Expected keyword or string field name; got ^%s %s"
-                    (some-> field-name class .getCanonicalName)
-                    (pr-str field-name))))
-  (loop [parent-id (the-field-id* table-id field-name), [nested-field-name & more] nested-field-names]
+  [table-id             :- ::lib.schema.id/table
+   field-name           :- :string
+   & nested-field-names :- [:* :string]]
+  (loop [id (the-field-id* table-id nil field-name), [nested-field-name & more] nested-field-names]
     (if-not nested-field-name
-      parent-id
-      (recur (the-field-id* table-id nested-field-name, :parent-id parent-id) more))))
-
+      id
+      (recur (the-field-id* table-id id nested-field-name) more))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              with-temp-copy-of-db                                              |
@@ -201,7 +275,7 @@
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
-  (let [{old-db-id :id, :as old-db} (*get-db*)
+  (let [{old-db-id :id, :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
@@ -238,6 +312,6 @@
                                  (assert db)
                                  (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
-    (binding [*get-db* (fn []
+    (binding [*db-fn* (fn []
                          (get-db-for-driver (tx/driver)))]
       (f))))

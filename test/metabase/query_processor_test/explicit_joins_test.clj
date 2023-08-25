@@ -7,14 +7,15 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Card]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.interface :as tx]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test.data.interface :as tx]))
 
 (deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -300,40 +301,41 @@
                     :order-by     [[:asc $name]]
                     :limit        3}))))))))
 
-(deftest join-against-card-source-query-test
+(deftest ^:parallel join-against-card-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against a `card__id` source query and use `:fields` `:all`?"
-      (is (= {:rows
-              [[29 "20th Century Cafe" 12 37.775  -122.423 2 12 "Café"]
-               [8  "25°"               11 34.1015 -118.342 2 11 "Burger"]
-               [93 "33 Taps"           7  34.1018 -118.326 2  7 "Bar"]]
+      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                        (mt/mbql-query categories))
+        (is (= {:rows
+                [[29 "20th Century Cafe" 12 37.775  -122.423 2 12 "Café"]
+                 [8  "25°"               11 34.1015 -118.342 2 11 "Burger"]
+                 [93 "33 Taps"           7  34.1018 -118.326 2  7 "Bar"]]
 
-              :columns
-              (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
-             (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
+                :columns
+                (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
                (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
                  (mt/rows+column-names
                   (mt/run-mbql-query venues
                     {:joins    [{:alias        "cat"
-                                 :source-table (str "card__" card-id)
+                                 :source-table "card__1"
                                  :fields       :all
                                  :condition    [:= $category_id &cat.*categories.id]}]
                      :order-by [[:asc $name]]
                      :limit    3})))))))))
 
-(deftest join-on-field-literal-test
+(deftest ^:parallel join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join on a Field literal for a source query?"
-      ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
-      ;; if you include `:source-metadata`)
-      (is (= {:rows [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
-              :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
-             (mt/format-rows-by [int int int int]
-               (mt/rows+column-names
-                (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                             (mt/mbql-query venues
-                                                               {:aggregation [[:count]]
-                                                                :breakout    [$category_id]}))]
+      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                        (mt/mbql-query venues
+                                          {:aggregation [[:count]]
+                                           :breakout    [$category_id]}))
+        ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
+        ;; if you include `:source-metadata`)
+        (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
+                :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
+               (mt/format-rows-by [int int int int]
+                 (mt/rows+column-names
                   (mt/run-mbql-query checkins
                     {:source-query {:source-table $$checkins
                                     :aggregation  [[:count]]
@@ -341,25 +343,25 @@
                      :joins
                      [{:fields       :all
                        :alias        "venues"
-                       :source-table (str "card__" card-id)
-                       :strategy         :inner-join
+                       :source-table "card__1"
+                       :strategy     :inner-join
                        :condition    [:=
                                       [:field "count" {:base-type :type/Number}]
                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
                      :order-by     [[:asc $venue_id]]
                      :limit        3})))))))))
 
-(deftest aggregate-join-results-test
+(deftest ^:parallel aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
-      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/mbql-query checkins
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$user_id]}))]
+      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                        (mt/mbql-query checkins
+                                          {:aggregation [[:count]]
+                                           :breakout    [$user_id]}))
         (let [query (mt/mbql-query users
                       {:joins       [{:fields       :all
                                       :alias        "checkins_by_user"
-                                      :source-table (str "card__" card-id)
+                                      :source-table "card__1"
                                       :condition    [:= $id &checkins_by_user.*checkins.user_id]}]
                        :aggregation [[:avg &checkins_by_user.*count/Float]]
                        :breakout    [!month.last_login]})]
@@ -377,13 +379,13 @@
                      (mt/rows+column-names
                       (qp/process-query query)))))))))))
 
-(deftest get-all-columns-without-metadata-test
+(deftest ^:parallel get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
-      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/mbql-query venues
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$category_id]}))]
+      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                        (mt/mbql-query venues
+                                          {:aggregation [[:count]]
+                                           :breakout    [$category_id]}))
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
@@ -392,7 +394,7 @@
                     {:source-query {:source-table $$checkins
                                     :aggregation  [[:count]]
                                     :breakout     [$venue_id]}
-                     :joins        [{:source-table (str "card__" card-id)
+                     :joins        [{:source-table "card__1"
                                      :alias        "venues"
                                      :fields       :all
                                      :strategy     :inner-join
@@ -462,17 +464,22 @@
                  1 "Red Medicine" 4 10.065 -165.374 3]]
                rows))))))
 
-(deftest sql-question-source-query-test
+(deftest ^:parallel sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
-      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
+      (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                         (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                          app-db-provider
+                                          ;; use the same metadata provider to compile the query to native that we use
+                                          ;; to do subsequent steps gets warmed a bit.
+                                          (qp.store/with-metadata-provider app-db-provider
+                                            (mt/native-query (qp/compile (mt/mbql-query venues))))))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
                  (mt/run-mbql-query checkins
                    {:joins    [{:fields       :all
-                                :source-table (str "card__" card-id)
+                                :source-table "card__1"
                                 :alias        "card"
                                 :condition    [:= $venue_id &card.venues.id]}]
                     :order-by [[:asc $id]]
@@ -697,7 +704,7 @@
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
-(deftest join-against-multiple-saved-questions-with-same-column-test
+(deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -708,20 +715,28 @@
                            {:post [(some? %)]}
                            (-> query qp/process-query :data :results_metadata :columns))
               query-card (fn [query]
-                           {:dataset_query query, :result_metadata (metadata query)})]
-          (mt/with-temp [Card {card-1-id :id} (query-card q1)
-                         Card {card-2-id :id} (query-card q2)
-                         Card {card-3-id :id} (query-card q3)]
+                           {:name            "Card"
+                            :database-id     (mt/id)
+                            :dataset-query   query
+                            :result-metadata (metadata query)})]
+          (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                             (lib/composed-metadata-provider
+                                              (lib.tu/mock-metadata-provider
+                                               {:cards (qp.store/with-metadata-provider app-db-provider
+                                                         [(assoc (query-card q1) :id 1)
+                                                          (assoc (query-card q2) :id 2)
+                                                          (assoc (query-card q3) :id 3)])})
+                                              app-db-provider))
             (let [query (mt/mbql-query products
-                          {:source-table (format "card__%d" card-1-id)
+                          {:source-table "card__1"
                            :joins        [{:fields       :all
-                                           :source-table (format "card__%d" card-2-id)
+                                           :source-table "card__2"
                                            :condition    [:=
                                                           $category
                                                           &Q2.category]
                                            :alias        "Q2"}
                                           {:fields       :all
-                                           :source-table (format "card__%d" card-3-id)
+                                           :source-table "card__3"
                                            :condition    [:=
                                                           $category
                                                           &Q3.category]
@@ -940,30 +955,39 @@
                  (mt/formatted-rows [str str str 2.0 4.0]
                    (qp/process-query query)))))))))
 
-(deftest mlv2-references-in-join-conditions-test
+(deftest ^:parallel mlv2-references-in-join-conditions-test
   (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
     (mt/dataset sample-dataset
-      (t2.with-temp/with-temp [:model/Card {card-1-id :id} {:dataset_query
-                                                            (mt/mbql-query reviews
-                                                              {:joins       [{:source-table $$products
-                                                                              :alias        "Products"
-                                                                              :condition    [:= $product_id &Products.products.id]
-                                                                              :fields       :all}]
-                                                               :breakout    [!month.&Products.products.created_at]
-                                                               :aggregation [[:distinct &Products.products.id]]
-                                                               :filter      [:= &Products.products.category "Doohickey"]})}
-                               :model/Card {card-2-id :id} {:dataset_query
-                                                            (mt/mbql-query reviews
-                                                              {:joins       [{:source-table $$products
-                                                                              :alias        "Products"
-                                                                              :condition    [:= $product_id &Products.products.id]
-                                                                              :fields       :all}]
-                                                               :breakout    [!month.&Products.products.created_at]
-                                                               :aggregation [[:distinct &Products.products.id]]
-                                                               :filter      [:= &Products.products.category "Gizmo"]})}]
+      (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                        (lib.tu/mock-metadata-provider
+                                         {:cards [{:id          1
+                                                   :name        "Card 1"
+                                                   :database-id (mt/id)
+                                                   :dataset-query
+                                                   (mt/mbql-query reviews
+                                                     {:joins       [{:source-table $$products
+                                                                     :alias        "Products"
+                                                                     :condition    [:= $product_id &Products.products.id]
+                                                                     :fields       :all}]
+                                                      :breakout    [!month.&Products.products.created_at]
+                                                      :aggregation [[:distinct &Products.products.id]]
+                                                      :filter      [:= &Products.products.category "Doohickey"]})}
+                                                  {:id          2
+                                                   :name        "Card 2"
+                                                   :database-id (mt/id)
+                                                   :dataset-query
+                                                   (mt/mbql-query reviews
+                                                     {:joins       [{:source-table $$products
+                                                                     :alias        "Products"
+                                                                     :condition    [:= $product_id &Products.products.id]
+                                                                     :fields       :all}]
+                                                      :breakout    [!month.&Products.products.created_at]
+                                                      :aggregation [[:distinct &Products.products.id]]
+                                                      :filter      [:= &Products.products.category "Gizmo"]})}]})
+                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
         (let [query {:database (mt/id)
                      :type     :query
-                     :query    {:source-table (str "card__" card-1-id)
+                     :query    {:source-table "card__1"
                                 :joins        [{:fields       :all
                                                 :strategy     :left-join
                                                 :alias        "Card_2"
@@ -976,9 +1000,9 @@
                                                                 {:base-type     :type/DateTime
                                                                  :temporal-unit :month
                                                                  :join-alias    "Card_2"}]]
-                                                :source-table (str "card__" card-2-id)}]
-                                :order-by [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
-                                :limit 2}}]
+                                                :source-table "card__2"}]
+                                :order-by     [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
+                                :limit        2}}]
           (mt/with-native-query-testing-context query
             (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
