@@ -170,18 +170,20 @@
 
 (defn create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
-  [{:keys [model linked-tables model-index model-index-value query-value]}]
-  (let [query-filter (:pk_ref model-index)
-        preq (pop query-filter)
-        rstq (peek query-filter)
-        child-dashboards (map
+  [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
+    {query-filter :pk_ref}                       :model-index
+    {model-name :name}                           :model
+    :keys                                        [linked-tables]}]
+  (let [child-dashboards (map
                            (fn [{:keys [linked-table-id linked-field-id]}]
                              (let [table (t2/select-one Table :id linked-table-id)
-                                   q (conj preq (assoc rstq :source-field linked-field-id))]
+                                   q     (update query-filter
+                                                 (dec (count query-filter))
+                                                 assoc :source-field linked-field-id)]
                                (magic/automagic-analysis
                                  table
                                  {:show         :all
-                                  :query-filter [:= q query-value]})))
+                                  :query-filter [:= q model_pk]})))
                            linked-tables)
         tabs-and-cards   (->> child-dashboards
                               (map-indexed
@@ -200,7 +202,7 @@
                   (update :ordered_tabs conj tab)))
             (merge
               (first child-dashboards)
-              {:name          "fix the title of the dashboard to include what we're filtering on"
+              {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
                :description   "A dashboard focusing on your stuff"
                :ordered_cards []
                :ordered_tabs  []
@@ -215,7 +217,7 @@
   {model-index-id :int
    pk-id          :int}
   ;; Stuff...
-  (api/let-404 [model-index       (t2/select-one ModelIndex :id model-index-id)
+  (api/let-404 [model-index       (t2/select-one ModelIndex model-index-id)
                 model             (t2/select-one Card (:model_id model-index))
                 model-index-value (t2/select-one ModelIndexValue
                                                  :model_index_id model-index-id
@@ -228,8 +230,7 @@
                (or (create-linked-dashboard {:model model
                                              :linked-tables linked
                                              :model-index model-index
-                                             :model-index-value model-index-value
-                                             :query-value pk-id})
+                                             :model-index-value model-index-value})
                    (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
