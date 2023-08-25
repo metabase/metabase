@@ -41,7 +41,6 @@
    [metabase.models.session :as session]
    [metabase.models.setting :as setting]
    [metabase.models.table :as table]
-   [metabase.models.table-privileges :as table-privileges]
    [metabase.models.task-history :as task-history]
    [metabase.models.timeline :as timeline]
    [metabase.models.timeline-event :as timeline-event]
