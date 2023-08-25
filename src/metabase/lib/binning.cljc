@@ -49,7 +49,7 @@
 
 (defmulti available-binning-strategies-method
   "Implementation for [[available-binning-strategies]]. Return a set of binning strategies from
-  `:metabase.lib.schema.binning/binning-strategies` that are allowed to be used with `x`."
+  `:metabase.lib.schema.binning/strategy` that are allowed to be used with `x`."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))

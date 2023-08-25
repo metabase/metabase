@@ -149,7 +149,7 @@
 (mu/defn ^:private nicer-breakout* :- :map
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
-  [strategy                                         :- ::lib.schema.binning/binning-strategies
+  [strategy                                         :- ::lib.schema.binning/strategy
    {:keys [min-value max-value bin-width num-bins]} :- :map]
   (let [bin-width             (if (= strategy :num-bins)
                                 (nicer-bin-width min-value max-value num-bins)
@@ -163,7 +163,7 @@
      :bin-width bin-width}))
 
 (mu/defn ^:private nicer-breakout :- [:maybe :map]
-  [strategy :- ::lib.schema.binning/binning-strategies
+  [strategy :- ::lib.schema.binning/strategy
    opts     :- :map]
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))

@@ -2,20 +2,24 @@
   "Tests for the `:breakout` clause."
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.field :refer [Field]]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.add-source-metadata
     :as add-source-metadata]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u]))
 
-(deftest ^:parallel basic-test
+(deftest ^:parallel  basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
@@ -68,9 +72,14 @@
                         :order-by    [[:desc $user_id]]
                         :limit       10}))))))))))
 
-(deftest internal-remapping-test
+
+
+(deftest ^:parallel internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
-    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (qp.test-util/field-values-from-def defs/test-data :categories :name))
       (let [{:keys [rows cols]} (qp.test-util/rows-and-cols
                                  (mt/format-rows-by [int int str]
                                    (mt/run-mbql-query venues
@@ -88,9 +97,12 @@
                 [6 2 "Bakery"]]
                rows))))))
 
-(deftest order-by-test
+(deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (mt/with-column-remappings [venues.category_id categories.name]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mt/id :categories :name))
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
                                             "Steakhouse" "Steakhouse" "Southern"]
                                      :asc  ["American" "American" "American" "American" "American" "American" "American"
@@ -166,7 +178,7 @@
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
-(deftest ^:parallel binning-info-test
+(deftest ^:parallel  binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
@@ -200,17 +212,21 @@
                     first
                     (dissoc :base_type :effective_type))))))))
 
-(deftest binning-error-test
+(deftest ^:parallel binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
-    (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-      (is (= {:status :failed
-              :class  clojure.lang.ExceptionInfo
-              :error  "Unable to bin Field without a min/max value"}
-             (-> (qp/process-userland-query
-                  (mt/mbql-query venues
-                                 {:aggregation [[:count]]
-                                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
-                 (select-keys [:status :class :error])))))))
+    (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                       (lib/composed-metadata-provider
+                                        (lib.tu/mock-metadata-provider
+                                         {:fields [(merge (lib.metadata/field app-db-provider (mt/id :venues :latitude))
+                                                          {:fingerprint {:type {:type/Number {:min nil, :max nil}}}})]})
+                                        app-db-provider))
+      (is (=? {:status :failed
+               :class  (partial = clojure.lang.ExceptionInfo)
+               :error  "Unable to bin Field without a min/max value"}
+              (qp/process-userland-query
+               (mt/mbql-query venues
+                 {:aggregation [[:count]]
+                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database lib.schema.id/saved-questions-virtual-database-id
@@ -221,13 +237,13 @@
                               (mt/format-name :latitude)
                               {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}})
 
-(deftest bin-nested-queries-test
+(deftest ^:parallel bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning should be allowed on nested queries that have result metadata"
-      (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
-                                          (mt/mbql-query nil
-                                            {:source-query {:source-table $$venues}}))]
-        (let [query (nested-venues-query card)]
+      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
+                                        (mt/mbql-query nil
+                                          {:source-query {:source-table $$venues}}))
+        (let [query (nested-venues-query 1)]
           (mt/with-native-query-testing-context query
             (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
                    (mt/formatted-rows [1.0 int]
@@ -253,16 +269,21 @@
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
       ;; middleware is doing the right thing
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
-          (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
-            (is (thrown-with-msg?
-                 Exception
-                 #"Cannot update binned field: query is missing source-metadata"
-                 (qp.test-util/rows
-                  (qp/process-query
-                   (nested-venues-query card)))))))))))
+        (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                          (lib.tu/mock-metadata-provider
+                                           {:cards [{:id            1
+                                                     :name          "Card 1"
+                                                     :database-id   (mt/id)
+                                                     :dataset-query (mt/mbql-query venues)}]})
+                                          (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+          (is (thrown-with-msg?
+               Exception
+               #"Cannot update binned field: query is missing source-metadata"
+               (qp.test-util/rows
+                (qp/process-query
+                 (nested-venues-query 1))))))))))
 
-(deftest ^:parallel field-in-breakout-and-fields-test
+(deftest ^:parallel  field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "if we include a Field in both breakout and fields, does the query still work? (Normalization should "
                   "be taking care of this) (#8760)")
@@ -271,3 +292,40 @@
               (mt/run-mbql-query venues
                 {:breakout [$price]
                  :fields   [$price]})))))))
+
+(deftest ^:parallel  binning-with-source-card-with-explicit-joins-test
+  (testing "Make sure binning works with a source card that contains explicit joins"
+    (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (let [source-card-query (mt/mbql-query orders
+                                               {:joins  [{:source-table $$people
+                                                          :alias        "People"
+                                                          :condition    [:= $user_id [:field %people.id {:join-alias "People"}]]
+                                                          :fields       [[:field %people.longitude {:join-alias "People"}]
+                                                                         [:field %people.birth_date {:temporal-unit :default, :join-alias "People"}]]}
+                                                         {:source-table $$products
+                                                          :alias        "Products"
+                                                          :condition    [:= $product_id &Products.products.id]
+                                                          :fields       [&Products.products.price]}]
+                                                :fields [[:field %id {:base-type :type/BigInteger}]]})
+              app-db-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+          (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                            (lib.tu/mock-metadata-provider
+                                             {:cards [{:id              1
+                                                       :database-id     (mt/id)
+                                                       :name            "Card 1"
+                                                       :dataset-query   source-card-query
+                                                       :result-metadata (qp.store/with-metadata-provider app-db-provider
+                                                                          (qp/query->expected-cols source-card-query))}]})
+                                            app-db-provider)
+            (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
+                                       (lib/aggregate (lib/count)))
+                  people-longitude (m/find-first #(= (:id %) (mt/id :people :longitude))
+                                                 (lib/breakoutable-columns query))
+                  _                (is (some? people-longitude))
+                  binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
+                                                 (lib/available-binning-strategies query people-longitude))
+                  _                (is (some? binning-strategy))
+                  query            (-> query
+                                       (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
+              (mt/rows (qp/process-query query)))))))))
