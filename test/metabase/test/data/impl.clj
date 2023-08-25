@@ -50,13 +50,22 @@
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
-  (let [f (mdb.connection/memoize-for-application-db get-or-create-test-data-db!)]
-    (fn []
-      (f (tx/driver)))))
+  #'get-or-create-test-data-db!)
 
 (mu/defn db :- [:map [:id ::lib.schema.id/database]]
   []
   (*db-fn*))
+
+(def ^:private ^:dynamic *db-id-fn*
+  (let [f (mdb.connection/memoize-for-application-db
+           (fn [driver]
+             (u/the-id (get-or-create-test-data-db! driver))))]
+    (fn []
+      (f (tx/driver)))))
+
+(mu/defn db-id :- ::lib.schema.id/database
+  []
+  (*db-id-fn*))
 
 ;;; ID lookup maps look like these:
 ;;;
@@ -110,13 +119,13 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
-(defn do-with-db
+(mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db f]
-  (assert (and (map? db) (pos-int? (:id db)))
-          (format "Not a valid database: %s" (pr-str db)))
-  (binding [*db-fn* (constantly db)]
-    (f)))
+  [db    :- [:map [:id ::lib.schema.id/database]]
+   thunk :- fn?]
+  (binding [*db-fn*    (constantly db)
+            *db-id-fn* (constantly (u/the-id db))]
+    (thunk)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

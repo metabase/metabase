@@ -46,7 +46,6 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -208,7 +207,7 @@
   variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   ([]
    (mb.hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
-   (u/the-id (db)))
+   (data.impl/db-id))
 
   ([table-name]
    (data.impl/the-table-id (id) (format-name table-name)))
