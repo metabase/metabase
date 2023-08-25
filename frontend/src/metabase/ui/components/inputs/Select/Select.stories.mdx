@@ -1,0 +1,45 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Select } from "metabase/ui";
+
+export const args = {
+  size: "md",
+  placeholder: "Semantic type",
+};
+
+export const sampleArgs = {
+  data: ["Entity key", "Entity name", "Foreign key"],
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+};
+
+<Meta
+  title="Inputs/Select"
+  component={Select}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# TextInput
+
+Our themed wrapper around [Mantine Select](https://mantine.dev/core/select/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-Select?type=design&node-id=1-96&mode=design&t=Mk8RP6HsneuWzHtr-0)
+- [Mantine TextInput Docs](https://mantine.dev/core/select/)
+
+## Examples
+
+export const Default = args => <Select {...args} data={sampleArgs.data} />;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
