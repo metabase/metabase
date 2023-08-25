@@ -495,7 +495,8 @@
     (or (get-in results [:data :results_metadata :columns])
         (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))))
 
-(defn ^:deprecated card-with-source-metadata-for-query
+;;; TODO -- we should mark this deprecated, I just don't want to have to update a million usages.
+(defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
     (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
