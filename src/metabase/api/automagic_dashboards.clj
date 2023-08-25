@@ -162,15 +162,27 @@
   "stuff"
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (when-let [table-ids (t2/select-fn-set :table_id 'Field :fk_target_field_id field-id)]
-      (t2/select 'Table :id [:in table-ids]))))
+    (map
+      (fn [{:keys [table_id id]}]
+        {:linked-table-id table_id
+         :linked-field-id id})
+      (t2/select 'Field :fk_target_field_id field-id))))
 
 (defn create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
-  [{:keys [model linked-tables model-index model-index-value query-filter]}]
-  (let [child-dashboards (map #(magic/automagic-analysis % {:show         :all
-                                                            :query-filter query-filter})
-                              linked-tables)
+  [{:keys [model linked-tables model-index model-index-value query-value]}]
+  (let [query-filter (:pk_ref model-index)
+        preq (pop query-filter)
+        rstq (peek query-filter)
+        child-dashboards (map
+                           (fn [{:keys [linked-table-id linked-field-id]}]
+                             (let [table (t2/select-one Table :id linked-table-id)
+                                   q (conj preq (assoc rstq :source-field linked-field-id))]
+                               (magic/automagic-analysis
+                                 table
+                                 {:show         :all
+                                  :query-filter [:= q query-value]})))
+                           linked-tables)
         tabs-and-cards   (->> child-dashboards
                               (map-indexed
                                (fn [idx dashboard]
@@ -217,7 +229,7 @@
                                              :linked-tables linked
                                              :model-index model-index
                                              :model-index-value model-index-value
-                                             :query-filter [:= (:pk_ref model-index) pk-id]})
+                                             :query-value pk-id})
                    (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
