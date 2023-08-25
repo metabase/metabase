@@ -1,5 +1,6 @@
 (ns metabase.api.automagic-dashboards-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.automagic-dashboards.core :as magic]
@@ -334,7 +335,26 @@
                                                      :linked-field-id %orders.product_id}])})]
             (is (=? [{:id #hawk/schema s/Symbol :name "A look at Reviews" :position 0}
                      {:id #hawk/schema s/Symbol :name "A look at Orders" :position 1}]
-                    (:ordered_tabs dash))))))
+                    (:ordered_tabs dash)))
+            (testing "The first card for each tab is a linked model card to the source model"
+              (is (=? (repeat
+                        (count (:ordered_tabs dash))
+                        {:visualization_settings
+                         {:virtual_card {:display "link", :archived false}
+                          :link         {:entity {:id      (:id model)
+                                                  :name    (:name model)
+                                                  :model   "dataset"
+                                                  :display "table"}}}})
+                      (->> (:ordered_cards dash)
+                           (group-by :dashboard_tab_id)
+                           vals
+                           (map first)))))
+            (testing "The generated dashboard has a meaningful name and description"
+              (is (true?
+                    (and
+                      (str/includes? (:name dash) (:name model))
+                      (str/includes? (:name dash) (:name model-index-value)))))
+              (is (true? (str/includes? (:description dash) (:name model-index-value))))))))
 
       (letfn [(l [x] (u/lower-case-en x))
               (by-id [cols col-name] (or (some (fn [col] (when (= (l (:name col)) (l col-name))
