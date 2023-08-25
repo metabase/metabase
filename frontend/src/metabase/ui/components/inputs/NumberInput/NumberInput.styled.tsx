@@ -22,7 +22,7 @@ export const getNumberInputOverrides =
         params: NumberInputStylesParams,
         { size = "md" }: ContextStylesParams,
       ) => ({
-        input: {
+        wrapper: {
           marginTop: theme.spacing.xs,
         },
         control: {
