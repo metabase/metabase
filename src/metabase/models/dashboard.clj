@@ -410,15 +410,6 @@
       (events/publish-event! :card-create card)
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
-(defn- applied-filters-blurb
-  [applied-filters]
-  (some->> applied-filters
-           not-empty
-           (map (fn [{:keys [field value]}]
-                  (format "%s %s" (str/join " " field) value)))
-           (str/join ", ")
-           (str "Filtered by: ")))
-
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
   (let [c (t2/count Collection
@@ -432,24 +423,23 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashboard  (i18n/localized-strings->strings dashboard)
-        dashcards  (:ordered_cards dashboard)
-        tabs       (:ordered_tabs dashboard)
+  (let [{dashcards      :ordered_cards
+         tabs           :ordered_tabs
+         dashboard-name :name
+         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
         collection (populate/create-collection!
-                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth (populate/colors))
-                    "Automatically generated cards."
-                    parent-collection-id)
+                     (ensure-unique-collection-name dashboard-name parent-collection-id)
+                     (rand-nth (populate/colors))
+                     "Automatically generated cards."
+                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                           :model/Dashboard
-                           (-> dashboard
-                               (dissoc :ordered_cards :ordered_tabs :rule :related
-                                       :transient_name :transient_filters :param_fields :more)
-                               (assoc :description         (->> dashboard
-                                                                :transient_filters
-                                                                applied-filters-blurb)
-                                      :collection_id       (:id collection)
-                                      :collection_position 1))))
+                            :model/Dashboard
+                            (-> dashboard
+                                (dissoc :ordered_cards :ordered_tabs :rule :related
+                                        :transient_name :transient_filters :param_fields :more)
+                                (assoc :description description
+                                       :collection_id (:id collection)
+                                       :collection_position 1))))
 
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
