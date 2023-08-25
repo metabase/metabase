@@ -18,7 +18,7 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
 import DatasetEditor from "../DatasetEditor";
-import { NativeQueryEditor } from "../NativeQueryEditor";
+import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
