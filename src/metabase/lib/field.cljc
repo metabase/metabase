@@ -547,7 +547,7 @@
        (mapv (fn [col]
                (assoc col :selected? true))
              visible-columns)
-       (lib.equality/mark-selected-columns query visible-columns selected-fields)))))
+       (lib.equality/mark-selected-columns visible-columns selected-fields)))))
 
 (mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Find the field id for something or nil."
@@ -587,7 +587,7 @@
   (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   field (lib.join/joinable-columns query stage-number join)
-                                  :when (lib.equality/closest-matching-metadata query column-ref [field])]
+                                  :when (lib.equality/closest-matching-metadata column-ref [field])]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
 
@@ -669,7 +669,7 @@
                                    ;; actual ColumnMetdatas, since it's more sophisticated
                                    ;; than [[lib.equality/find-closest-matching-ref]]. We will have to use the latter
                                    ;; if we only have refs to work with
-                                   (remove #(lib.equality/closest-matching-metadata query field-ref [%])
+                                   (remove #(lib.equality/closest-matching-metadata field-ref [%])
                                            resolved-join-fields)
                                    (remove #(lib.equality/find-closest-matching-ref query field-ref [%])
                                            resolved-join-fields))]
@@ -723,4 +723,4 @@
     field-ref    :- ::lib.schema.ref/ref]
    (let [stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)]
-     (lib.equality/closest-matching-metadata query field-ref columns))))
+     (lib.equality/closest-matching-metadata field-ref columns))))

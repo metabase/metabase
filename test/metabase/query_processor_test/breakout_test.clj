@@ -19,7 +19,7 @@
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.util :as u]))
 
-(deftest ^:parallel  basic-test
+(deftest ^:parallel single-column-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
@@ -31,8 +31,11 @@
                    (mt/run-mbql-query checkins
                      {:aggregation [[:count]]
                       :breakout    [$user_id]
-                      :order-by    [[:asc $user_id]]}))))))
+                      :order-by    [[:asc $user_id]]})))))))))
 
+(deftest ^:parallel single-column-without-breakout-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "single column"
       (testing "without breakout"
         (testing "This should act as a \"distinct values\" query and return ordered results"
           (is (=? {:cols [(qp.test-util/breakout-col :checkins :user_id)]
@@ -41,9 +44,10 @@
                    (mt/format-rows-by [int]
                      (mt/run-mbql-query checkins
                        {:breakout [$user_id]
-                        :limit    10}))))))))
+                        :limit    10}))))))))))
 
-
+(deftest ^:parallel multiple-columns-without-order-by-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "multiple columns"
       (testing "without explicit order by"
         (testing "Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order-by`"
@@ -56,8 +60,11 @@
                      (mt/run-mbql-query checkins
                        {:aggregation [[:count]]
                         :breakout    [$user_id $venue_id]
-                        :limit       10})))))))
+                        :limit       10}))))))))))
 
+(deftest ^:parallel multiple-columns-with-order-by-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "multiple columns"
       (testing "with explicit order by"
         (testing "`breakout` should not implicitly order by any fields specified in `order-by`"
           (is (=? {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
@@ -71,8 +78,6 @@
                         :breakout    [$user_id $venue_id]
                         :order-by    [[:desc $user_id]]
                         :limit       10}))))))))))
-
-
 
 (deftest ^:parallel internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -115,7 +120,7 @@
                       qp.test-util/rows
                       (mapv last)))))))))
 
-(deftest binning-test
+(deftest ^:parallel bin-single-column-20-bins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Bin single column"
       (testing "20 bins"
@@ -123,60 +128,74 @@
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
+                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]]}))))))))
 
+(deftest ^:parallel bin-single-column-3-bins-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "Bin single column"
       (testing "3 bins"
         (is (= [[0.0 1] [20.0 90] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 3}}]]}))))))
+                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 3}}]]}))))))))
 
+(deftest ^:parallel bin-two-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Bin two columns"
       (is (= [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
              (mt/formatted-rows [1.0 1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
                   :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]
-                                [:field %longitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
+                                [:field %longitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))))
 
+(deftest ^:parallel binning-default-to-8-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "should default to 8 bins when number of bins isn't specified"
       (is (= [[10.0 1] [30.0 90] [40.0 9]]
              (mt/formatted-rows [1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
-                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))
+                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))
 
+(deftest breakout-bin-width-setting-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "should default to 8 bins when number of bins isn't specified"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
         (is (= [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))
+                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))
+      (mt/with-temporary-setting-values [breakout-bin-width 1.0]
+        (is (= [[33.0 4] [34.0 57]]
+               (mt/formatted-rows [1.0 int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]
+                    :filter      [:and
+                                  [:< $latitude 35]
+                                  [:> $latitude 20]]
+                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))))
 
+(deftest ^:parallel bin-width-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "bin width"
       (is (= [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
              (mt/formatted-rows [1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
-                  :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 1}}]]}))))
+                  :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 1}}]]})))))))
 
+(deftest ^:parallel bin-width-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "bin width"
       (testing "using a float"
         (is (= [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 2.5}}]]}))))
-
-        (mt/with-temporary-setting-values [breakout-bin-width 1.0]
-          (is (= [[33.0 4] [34.0 57]]
-                 (mt/formatted-rows [1.0 int]
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:count]]
-                      :filter      [:and
-                                    [:< $latitude 35]
-                                    [:> $latitude 20]]
-                      :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
+                    :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 2.5}}]]}))))))))
 
 (deftest ^:parallel  binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)

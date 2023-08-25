@@ -91,8 +91,10 @@
     {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}))
 
 (deftest ^:parallel resolve-default-strategy-test
-  (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
-         (#'binning/resolve-default-strategy {:semantic_type :type/Income} 12.061602936923117 238.32732001721533))))
+  (let [metadata (assoc (meta/field-metadata :orders :total)
+                        :semantic-type :type/Income)]
+    (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
+           (#'binning/resolve-default-strategy metadata 12.061602936923117 238.32732001721533)))))
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []

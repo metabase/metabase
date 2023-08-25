@@ -193,7 +193,7 @@
 
 (def ^:private PossiblyLegacyColumnMetadata
   [:map
-   [:id ::lib.schema.id/field]])
+   [:name :string]])
 
 (mu/defn ^:private matching-metadata-from-source-metadata :- lib.metadata/ColumnMetadata
   [field-name      :- ::lib.schema.common/non-blank-string

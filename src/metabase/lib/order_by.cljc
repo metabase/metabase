@@ -154,7 +154,6 @@
                                        (map-indexed
                                         (fn [pos [_tag _opts expr]]
                                           (when-let [col-index (lib.equality/index-of-closest-matching-metadata
-                                                                query
                                                                 (lib.ref/ref expr)
                                                                 columns)]
                                             [col-index pos])))
