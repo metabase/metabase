@@ -18,6 +18,7 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
+const peopleTable = metadata.table(PEOPLE_ID);
 
 describe("UnderlyingRecordsDrill", () => {
   it("should not be valid for top level actions", () => {
@@ -187,6 +188,20 @@ describe("UnderlyingRecordsDrill", () => {
       const [action] = actions;
       expect(action.title).toEqual("See these SomeTitles");
     });
+
+    // NOTE: this test is valid only until lib drill returns metric value instead of underlying rows count
+    it("should return correct pluralized title for negative numeric values", () => {
+      const query = peopleTable
+        .query()
+        .aggregate(["sum", ["field", PEOPLE.LATITUDE, null]])
+        .breakout(metadata.field(PEOPLE.STATE));
+
+      const actions = UnderlyingRecordsDrill(getActionProps(query, -1000));
+      expect(actions).toHaveLength(1);
+
+      const [action] = actions;
+      expect(action.title).toEqual("See these People");
+    });
   });
 });
 
@@ -195,7 +210,7 @@ function getActionProps(query, value) {
     question: query.question(),
     clicked: {
       column: query.aggregationDimensions()[0].column(),
-      value: 42,
+      value: value,
       dimensions: [
         {
           column: query.breakouts()[0].dimension().column(),

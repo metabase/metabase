@@ -13,12 +13,14 @@ export function underlyingRecordsDrill({ question, clicked }) {
     return null;
   }
 
-  // the metric value should be the number of rows that will be displayed
-  const rowCount = typeof clicked.value === "number" ? clicked.value : 2;
+  // here we expect rows count of an aggregated query item, but actually we have numeric metric value, so
+  // we don't really know number of rows in original un-aggregated data
+  const value = typeof clicked.value === "number" ? clicked.value : 2;
+
   const tableName = query.table() && query.table().displayName();
 
   return {
-    rowCount,
+    value: value < 0 ? 2 : value,
     tableName,
   };
 }
