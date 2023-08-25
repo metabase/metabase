@@ -7,7 +7,6 @@ import {
 describe("nav > what's new notification", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
 
     mockVersions({
       currentVersion: "v0.48.0",
@@ -34,6 +33,8 @@ describe("nav > what's new notification", () => {
   });
 
   it("should show a notification with a link to the release notes, and allow the dismissal of it", () => {
+    cy.signInAsAdmin();
+
     loadHomepage();
     navigationSidebar().findByText("See what's new");
 
@@ -46,6 +47,17 @@ describe("nav > what's new notification", () => {
 
     loadHomepage();
     navigationSidebar().findByText("See what's new").should("not.exist");
+  });
+
+  it("it should show the notification for other users after one user dismissed it", () => {
+    cy.signInAsAdmin();
+    loadHomepage();
+    navigationSidebar().findByText("See what's new");
+    navigationSidebar().icon("close").click();
+
+    cy.signInAsNormalUser();
+    loadHomepage();
+    navigationSidebar().findByText("See what's new");
   });
 });
 
