@@ -1,11 +1,10 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
 import { Stack } from "metabase/ui";
-import { TextInput } from "./";
+import { NumberInput } from "./";
 
 export const args = {
   variant: "default",
-  type: "text",
   size: "md",
   label: "Label",
   description: "",
@@ -13,14 +12,22 @@ export const args = {
   placeholder: "Placeholder",
   disabled: false,
   withAsterisk: false,
+  min: undefined,
+  max: undefined,
+  step: undefined,
+  hideControls: true,
+  precision: undefined,
+  decimalSeparator: undefined,
 };
 
 export const sampleArgs = {
-  value: "Metabase",
-  label: "Company or team name",
-  description: "Name used for this instance",
-  placeholder: "Department of awesome",
+  value: 1234,
+  label: "Goal value",
+  description: "Constant line added as a marker to the chart",
+  placeholder: "0",
   error: "required",
+  min: 0,
+  max: 100,
 };
 
 export const argTypes = {
@@ -28,25 +35,21 @@ export const argTypes = {
     options: ["default", "unstyled"],
     control: { type: "inline-radio" },
   },
-  type: {
-    options: ["text", "password"],
-    control: { type: "inline-radio" },
-  },
   size: {
     options: ["xs", "md"],
     control: { type: "inline-radio" },
   },
   label: {
-    control: { type: "text" },
+    control: { type: "number" },
   },
   description: {
-    control: { type: "text" },
+    control: { type: "number" },
   },
   placeholder: {
-    control: { type: "text" },
+    control: { type: "number" },
   },
   error: {
-    control: { type: "text" },
+    control: { type: "number" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -54,32 +57,50 @@ export const argTypes = {
   withAsterisk: {
     control: { type: "boolean" },
   },
+  min: {
+    control: { type: "number" },
+  },
+  max: {
+    control: { type: "number" },
+  },
+  step: {
+    control: { type: "number" },
+  },
+  hideControls: {
+    control: { type: "boolean" },
+  },
+  precision: {
+    control: { type: "number" },
+  },
+  decimalSeparator: {
+    control: { type: "text" },
+  },
 };
 
 <Meta
-  title="Inputs/TextInput"
-  component={TextInput}
+  title="Inputs/NumberInput"
+  component={NumberInput}
   args={args}
   argTypes={argTypes}
 />
 
-# TextInput
+# NumberInput
 
-Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-input/).
+Our themed wrapper around [Mantine NumberInput](https://mantine.dev/core/number-input/).
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine TextInput Docs](https://mantine.dev/core/text-input/)
+- [Figma File](https://www.figma.com/file/YWyb541aUHtYXJVPzyYSbg/Input-%2F-Numbers?type=design&node-id=1-96&mode=design&t=1bDfUrJc5alZmVpx-0)
+- [Mantine NumberInput Docs](https://mantine.dev/core/number-input/)
 
 ## Examples
 
-export const Default = args => <TextInput {...args} />;
+export const Default = args => <NumberInput {...args} />;
 
 export const Template = args => (
   <Stack>
-    <TextInput {...args} variant="default" />
-    <TextInput {...args} variant="unstyled" />
+    <NumberInput {...args} variant="default" />
+    <NumberInput {...args} variant="unstyled" />
   </Stack>
 );
 
@@ -146,18 +167,7 @@ export const Icons = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    icon={<Icon name="dashboard" />}
-    withAsterisk
-  />
-);
-
-export const RightSection = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    rightSection={<Icon name="chevrondown" />}
+    icon={<Icon name="int" />}
     withAsterisk
   />
 );
@@ -169,8 +179,58 @@ export const ReadOnly = args => (
     label={sampleArgs.label}
     description={sampleArgs.description}
     placeholder={sampleArgs.placeholder}
-    rightSection={<Icon name="chevrondown" />}
+    icon={<Icon name="int" />}
     readOnly
+  />
+);
+
+export const MinMax = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
+    icon={<Icon name="int" />}
+    min={sampleArgs.min}
+    max={sampleArgs.max}
+  />
+);
+
+export const Controls = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
+    icon={<Icon name="int" />}
+    min={sampleArgs.min}
+    max={sampleArgs.max}
+    hideControls={false}
+  />
+);
+
+export const Precision = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    icon={<Icon name="int" />}
+    precision={2}
+    decimalSeparator="."
+  />
+);
+
+export const ParserFormatter = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    icon={<Icon name="int" />}
+    parser={value => value.replace(/^\$/, "")}
+    formatter={value => (value != null ? `$${value}` : "$")}
   />
 );
 
@@ -234,20 +294,46 @@ export const IconMd = args => <Icons {...args} size="md" />;
   <Story name="Icon, md">{IconMd}</Story>
 </Canvas>
 
-#### Right section
-
-export const RightSectionMd = args => <RightSection {...args} size="md" />;
-
-<Canvas>
-  <Story name="Right section, md">{RightSectionMd}</Story>
-</Canvas>
-
 #### Read only
 
 export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
 
 <Canvas>
   <Story name="Raed only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
+#### Min / max
+
+export const MinMaxMd = args => <MinMax {...args} size="md" />;
+
+<Canvas>
+  <Story name="Min / max, md">{MinMaxMd}</Story>
+</Canvas>
+
+#### Controls
+
+export const ControlsMd = args => <Controls {...args} size="md" />;
+
+<Canvas>
+  <Story name="Controls, md">{ControlsMd}</Story>
+</Canvas>
+
+#### Precision and decimal separator
+
+export const PrecisionMd = args => <Precision {...args} size="md" />;
+
+<Canvas>
+  <Story name="Precision and decimal separator, md">{PrecisionMd}</Story>
+</Canvas>
+
+#### Parser and formatter
+
+export const ParserFormatterMd = args => (
+  <ParserFormatter {...args} size="md" />
+);
+
+<Canvas>
+  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
 </Canvas>
 
 ### Size - xs
@@ -306,18 +392,44 @@ export const IconXs = args => <Icons {...args} size="xs" />;
   <Story name="Icon, xs">{IconXs}</Story>
 </Canvas>
 
-#### Right section
-
-export const RightSectionXs = args => <RightSection {...args} size="xs" />;
-
-<Canvas>
-  <Story name="Right section, xs">{RightSectionXs}</Story>
-</Canvas>
-
 #### Read only
 
 export const ReadOnlyXs = args => <ReadOnly {...args} size="xs" />;
 
 <Canvas>
   <Story name="Raed only, xs">{ReadOnlyXs}</Story>
+</Canvas>
+
+#### Min / max
+
+export const MinMaxXs = args => <MinMax {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Min / max, xs">{MinMaxXs}</Story>
+</Canvas>
+
+#### Controls
+
+export const ControlsXs = args => <Controls {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Controls, xs">{ControlsXs}</Story>
+</Canvas>
+
+#### Precision and decimal separator
+
+export const PrecisionXs = args => <Precision {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Precision and decimal separator, xs">{PrecisionXs}</Story>
+</Canvas>
+
+#### Parser and formatter
+
+export const ParserFormatterXs = args => (
+  <ParserFormatter {...args} size="xs" />
+);
+
+<Canvas>
+  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
 </Canvas>
