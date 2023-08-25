@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard Metric Segment]]
+   [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
+                            ModelIndexValue Segment]]
+   [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -17,6 +19,7 @@
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
    [schema.core :as s]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
@@ -266,6 +269,8 @@
                                       :dataset_query
                                       qp/process-query))))))))))))
 
+;;; ------------------- Index Entities Xrays -------------------
+
 (deftest add-source-model-link-auto-width-test
   (testing "An empty set of input cards will return a default card of width 4"
     (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} nil)]
@@ -277,3 +282,99 @@
     (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} [{:col 1 :size_x 1}
                                                                     {:col 10 :size_x 10}])]
       (is (= 20 size_x)))))
+
+(defn- do-with-testing-model
+  [{:keys [query pk-ref value-ref]} f]
+  (t2.with-temp/with-temp [Card model {:dataset       true
+                                       :dataset_query query}]
+    (mt/with-model-cleanup [ModelIndex]
+      (let [model-index (model-index/create {:model-id   (:id model)
+                                             :pk-ref     pk-ref
+                                             :value-ref  value-ref
+                                             :creator-id (mt/user->id :crowberto)})]
+        (model-index/add-values! model-index)
+        (f {:model             model
+            :model-index       (t2/select-one ModelIndex :id (:id model-index))
+            :model-index-value (t2/select-one ModelIndexValue
+                                              :model_index_id (:id model-index)
+                                              :model_pk 1)})))))
+
+(defmacro with-indexed-model
+  "Creates a model based on `query-info`, which is indexed.
+
+  `query-info` is a map with keys:
+  - query: a dataset_query for the model
+  - pk-ref: a field_ref for the model's pk
+  - value-ref: a field_ref for the model's label."
+  {:clj-kondo/ignore [:unresolved-symbol]}
+  [[bindings query-info] & body]
+  `(do-with-testing-model ~query-info
+                          (fn [~bindings] ~@body)))
+
+
+(deftest create-linked-dashboard-test
+  (testing "If there are no linked-tables, then no dashboard"
+    (is (nil? (#'api.magic/create-linked-dashboard {:model             nil
+                                                  :linked-tables     ()
+                                                  :model-index       nil
+                                                  :model-index-value nil})))
+    (mt/dataset sample-dataset
+      (testing "x-ray an mbql model"
+        (with-indexed-model [{:keys [model model-index model-index-value]}
+                             {:query     (mt/mbql-query products)
+                              :pk-ref    (mt/$ids :products $id)
+                              :value-ref (mt/$ids :products $title)}]
+          (let [dash (#'api.magic/create-linked-dashboard
+                      {:model             model
+                       :model-index       model-index
+                       :model-index-value model-index-value
+                       :linked-tables     (mt/$ids [{:linked-table-id $$reviews
+                                                     :linked-field-id %reviews.product_id}
+                                                    {:linked-table-id $$orders
+                                                     :linked-field-id %orders.product_id}])})]
+            (is (=? [{:id #hawk/schema s/Symbol :name "A look at Reviews" :position 0}
+                     {:id #hawk/schema s/Symbol :name "A look at Orders" :position 1}]
+                    (:ordered_tabs dash))))))
+
+      (letfn [(l [x] (u/lower-case-en x))
+              (by-id [cols col-name] (or (some (fn [col] (when (= (l (:name col)) (l col-name))
+                                                           col))
+                                               cols)
+                                         (throw (ex-info (str "could not find column " col-name)
+                                                         {:name    col-name
+                                                          :present (map :name cols)}))))
+              (annotating [cols ref f]
+                (map (fn [{:keys [field_ref] :as col}]
+                       (if (= ref field_ref) (f col) col))
+                     cols))]
+        (testing "X-ray a native model"
+          (let [query           (mt/native-query {:query "select * from products"})
+                results-meta    (->> (qp/process-userland-query query)
+                                     :data :results_metadata :columns)
+                id-field-ref    (:field_ref (by-id results-meta "id"))
+                title-field-ref (:field_ref (by-id results-meta "title"))
+                id-field-id     (mt/id :products :id)]
+            (with-indexed-model [{:keys [model model-index model-index-value]}
+                                 {:query     (mt/native-query {:query "select * from products"})
+                                  :pk-ref    id-field-ref
+                                  :value-ref title-field-ref}]
+              ;; need user metadata edits to find linked tables to an otherwise opaque native query
+              (t2/update! :model/Card (:id model)
+                          {:result_metadata (annotating results-meta id-field-ref
+                                                        #(assoc % :id id-field-id))})
+              (assert (= (-> (t2/select-one-fn :result_metadata :model/Card
+                                               :id (:id model))
+                             (by-id "id") :id)
+                         id-field-id)
+                      "Metadata not updated with the mapping to the database column")
+              (let [dash (#'api.magic/create-linked-dashboard
+                          {:model             model
+                           :model-index       model-index
+                           :model-index-value model-index-value
+                           :linked-tables     (mt/$ids [{:linked-table-id $$reviews
+                                                         :linked-field-id %reviews.product_id}
+                                                        {:linked-table-id $$orders
+                                                         :linked-field-id %orders.product_id}])})]
+                (is (=? [{:id #hawk/schema s/Symbol :name "A look at Reviews" :position 0}
+                         {:id #hawk/schema s/Symbol :name "A look at Orders" :position 1}]
+                        (:ordered_tabs dash)))))))))))

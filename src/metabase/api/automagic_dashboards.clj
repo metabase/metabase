@@ -5,8 +5,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic]
-   [metabase.automagic-dashboards.core
+   [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.models.card :refer [Card]]
@@ -22,10 +21,9 @@
    [metabase.models.table :refer [Table]]
    [metabase.transforms.dashboard :as transform.dashboard]
    [metabase.transforms.materialize :as tf.materialize]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -158,8 +156,8 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(defn- linked-entities
-  "Determine what tables point to the specified model and index."
+(defn linked-entities
+  "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
     (map
@@ -195,41 +193,40 @@
     {query-filter :pk_ref}                       :model-index
     {model-name :name :as model}                 :model
     :keys                                        [linked-tables]}]
-  (let [child-dashboards (map
-                           (fn [{:keys [linked-table-id linked-field-id]}]
-                             (let [table (t2/select-one Table :id linked-table-id)
-                                   q     (update query-filter
-                                                 (dec (count query-filter))
-                                                 assoc :source-field linked-field-id)]
-                               (magic/automagic-analysis
-                                 table
-                                 {:show         :all
-                                  :query-filter [:= q model_pk]})))
-                           linked-tables)
-        tabs-and-cards   (map-indexed
-                           (fn [idx {tab-name :name tab-cards :ordered_cards}]
-                             (let [tab-id (gensym)]
-                               {:tab {:id       tab-id
-                                      :name     tab-name
-                                      :position idx}
-                                :dash-cards
-                                (map (fn [dc]
-                                       (assoc dc :dashboard_tab_id tab-id))
-                                     (add-source-model-link model tab-cards))}))
-                           child-dashboards)]
-    (reduce (fn [dashboard {:keys [tab dash-cards]}]
-              (-> dashboard
-                  (update :ordered_cards into dash-cards)
-                  (update :ordered_tabs conj tab)))
-            (merge
-              (first child-dashboards)
-              {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-               :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
-               :ordered_cards []
-               :ordered_tabs  []
-               :parameters    []
-               :param_fields  {}})
-            tabs-and-cards)))
+  (when (seq linked-tables)
+    (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
+                                  (let [table (t2/select-one Table :id linked-table-id)
+                                        q     (update query-filter
+                                                      (dec (count query-filter))
+                                                      assoc :source-field linked-field-id)]
+                                    (magic/automagic-analysis
+                                     table
+                                     {:show         :all
+                                      :query-filter [:= q model_pk]})))
+                                linked-tables)
+          tabs-and-cards   (map-indexed (fn [idx {tab-name :name tab-cards :ordered_cards}]
+                                          (let [tab-id (gensym)]
+                                            {:tab {:id       tab-id
+                                                   :name     tab-name
+                                                   :position idx}
+                                             :dash-cards
+                                             (map (fn [dc]
+                                                    (assoc dc :dashboard_tab_id tab-id))
+                                                  (add-source-model-link model tab-cards))}))
+                                        child-dashboards)]
+      (reduce (fn [dashboard {:keys [tab dash-cards]}]
+                (-> dashboard
+                    (update :ordered_cards into dash-cards)
+                    (update :ordered_tabs conj tab)))
+              (merge
+               (first child-dashboards)
+               {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+                :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                :ordered_cards []
+                :ordered_tabs  []
+                :parameters    []
+                :param_fields  {}})
+              tabs-and-cards))))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
@@ -248,11 +245,13 @@
                                                     :model-index-value model-index-value})]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
                (api/read-check Card (:model_id model-index))
-               (or (create-linked-dashboard {:model model
-                                             :linked-tables linked
-                                             :model-index model-index
+               (or (create-linked-dashboard {:model             model
+                                             :linked-tables     linked
+                                             :model-index       model-index
                                              :model-index-value model-index-value})
-                   (throw (ex-info "No linked entities" {:model-index-id model-index-id})))))
+                   (throw (ex-info (tru "No linked entities")
+                                   {:model-index-id model-index-id
+                                    :status-code    400})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
