@@ -158,8 +158,8 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(defn linked-entities
-  "stuff"
+(defn- linked-entities
+  "Determine what tables point to the specified model and index."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
     (map
@@ -168,7 +168,7 @@
          :linked-field-id id})
       (t2/select 'Field :fk_target_field_id field-id))))
 
-(defn create-linked-dashboard
+(defn- create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
   [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
     {query-filter :pk_ref}                       :model-index
@@ -203,7 +203,7 @@
             (merge
               (first child-dashboards)
               {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-               :description   "A dashboard focusing on your stuff"
+               :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
                :ordered_cards []
                :ordered_tabs  []
                :parameters    []
