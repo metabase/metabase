@@ -382,8 +382,8 @@
                                                   [k (lib.metadata.calculation/describe-top-level-key query stage-number k)])))
                                      [display-name-source-parts display-name-other-parts])
             source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
-            other-descriptions (remove str/blank? (map part->description display-name-other-parts))]
-        (str/join ", " (cons source-description other-descriptions))))
+            other-descriptions (map part->description display-name-other-parts)]
+        (str/join ", " (remove str/blank? (cons source-description other-descriptions)))))
      (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
        (lib.metadata.calculation/display-name query
                                               previous-stage-number
