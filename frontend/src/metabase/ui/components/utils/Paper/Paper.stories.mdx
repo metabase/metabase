@@ -1,0 +1,70 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Paper } from "metabase/ui";
+
+export const args = {
+  p: "md",
+  radius: undefined,
+  shadow: undefined,
+  withBorder: false,
+};
+
+export const argTypes = {
+  p: {
+    options: ["xs", "sm", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  radius: {
+    options: ["xs", "sm", "md"],
+    control: { type: "inline-radio" },
+  },
+  shadow: {
+    options: ["md"],
+    control: { type: "inline-radio" },
+  },
+  withBorder: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta title="Utils/Paper" component={Paper} args={args} argTypes={argTypes} />
+
+# Paper
+
+Our themed wrapper around [Mantine Paper](https://mantine.dev/core/paper/).
+
+## Docs
+
+- [Mantine Paper Docs](https://mantine.dev/core/paper/)
+
+## Examples
+
+export const Template = args => (
+  <Paper {...args}>
+    <Text>
+      Having small touches of colour makes it more colourful than having the
+      whole thing in colour
+    </Text>
+  </Paper>
+);
+
+export const Default = args => <Template {...args} />;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Border
+
+export const Border = args => <Template {...args} withBorder />;
+
+<Canvas>
+  <Story name="Border">{Border}</Story>
+</Canvas>
+
+### Shadow
+
+export const Shadow = args => <Template {...args} shadow="md" withBorder />;
+
+<Canvas>
+  <Story name="Shadow">{Shadow}</Story>
+</Canvas>
