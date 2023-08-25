@@ -6,6 +6,11 @@ const SIZES = {
   md: rem(40),
 };
 
+const LINE_HEIGHTS = {
+  xs: rem(16),
+  md: rem(24),
+};
+
 const PADDING = 12;
 const DEFAULT_ICON_WIDTH = 40;
 const UNSTYLED_ICON_WIDTH = 28;
@@ -22,6 +27,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         borderRadius: theme.radius.xs,
         height: multiline ? "auto" : getSize({ size, sizes: SIZES }),
         minHeight: getSize({ size, sizes: SIZES }),
+        lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
         "&::placeholder": {
           color: theme.colors.text[0],
         },
@@ -75,6 +81,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         { withRightSection, rightSectionWidth }: InputStylesParams,
       ) => ({
         input: {
+          paddingLeft: 0,
           paddingRight: withRightSection ? rightSectionWidth : 0,
           "&[data-with-icon]": {
             paddingLeft: rem(UNSTYLED_ICON_WIDTH),

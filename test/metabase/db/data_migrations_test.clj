@@ -300,11 +300,11 @@
                          "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                          "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                          "graph.metrics"    ["count"]})]
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                      Card          [{card-id :id} {:visualization_settings card-vis}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id           dashboard-id
-                                                        :card_id                card-id
-                                                        :visualization_settings dashcard-vis}]]
+      (mt/with-temp [Dashboard     {dashboard-id :id} {}
+                     Card          {card-id :id} {:visualization_settings card-vis}
+                     DashboardCard {dashcard-id :id} {:dashboard_id           dashboard-id
+                                                      :card_id                card-id
+                                                      :visualization_settings dashcard-vis}]
         (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                  :graph.metrics    ["count"],
                                  :click            "link",

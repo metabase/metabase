@@ -2142,7 +2142,8 @@
   Here so we can test things that should consume Database metadata without relying on having a REST API
   available (i.e., in Cljs tests).
 
-  This metadata matches the [[metabase.lib.metadata/DatabaseMetadata]] schema."
+  For mock Database metadata, you should probably use [[database]] instead, which doesn't include extra noise like
+  `:tables`, which are only useful to the graph metadata provider."
   {:description                 nil
    :features                    #{:actions
                                   :actions/custom
@@ -2191,7 +2192,12 @@
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
    :points-of-interest          nil
-   :lib/type                    :metadata/database})
+   :lib/type                    :metadata/database
+   :details                     {}})
+
+(def database
+  "Mock Database metadata. This metadata matches the [[metabase.lib.metadata/DatabaseMetadata]] schema."
+  (dissoc metadata :tables))
 
 (def metadata-provider
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."

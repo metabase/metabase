@@ -129,13 +129,13 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules))))))
 
-    (mt/with-temp* [Database [db  {:name "My DB", :engine ::test-driver}]
-                    Table    [t1  {:name "Table 1", :db_id (:id db)}]
-                    Table    [t2  {:name "Table 2", :db_id (:id db)}]
-                    Table    [_t3 {:name "Table 3", :db_id (:id db), :visibility_type "hidden"}]
-                    Field    [f1  {:name "Field 1.1", :table_id (:id t1)}]
-                    Field    [f2  {:name "Field 2.1", :table_id (:id t2)}]
-                    Field    [f3  {:name "Field 2.2", :table_id (:id t2)}]]
+    (mt/with-temp [Database db  {:name "My DB" :engine ::test-driver}
+                   Table    t1  {:name "Table 1" :db_id (:id db)}
+                   Table    t2  {:name "Table 2" :db_id (:id db)}
+                   Table    _t3 {:name "Table 3" :db_id (:id db) :visibility_type "hidden"}
+                   Field    f1  {:name "Field 1.1" :table_id (:id t1)}
+                   Field    f2  {:name "Field 2.1" :table_id (:id t2)}
+                   Field    f3  {:name "Field 2.2" :table_id (:id t2)}]
       (testing "`?include=tables` -- should be able to include Tables"
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
@@ -159,28 +159,27 @@
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
 (deftest get-database-usage-info-test
-  (mt/with-temp*
-    [Database [{db-id :id}]
-     Table    [{table-id-1 :id} {:db_id db-id}]
-     Table    [{table-id-2 :id} {:db_id db-id}]
+  (mt/with-temp
+    [Database {db-id :id}      {}
+     Table    {table-id-1 :id} {:db_id db-id}
+     Table    {table-id-2 :id} {:db_id db-id}
      ;; question
-     Card     [_                {:database_id db-id
-                                 :table_id    table-id-1
-                                 :dataset     false}]
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :dataset     false}
      ;; dataset
-     Card     [_                {:database_id db-id
-                                 :table_id    table-id-1
-                                 :dataset     true}]
-     Card     [_                {:database_id db-id
-                                 :table_id    table-id-2
-                                 :dataset     true
-                                 :archived    true}]
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :dataset     true}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-2
+                                :dataset     true
+                                :archived    true}
 
-     Metric   [_                {:table_id table-id-1}]
-     Metric   [_                {:table_id table-id-1}]
-     Metric   [_                {:table_id table-id-2}]
-     Segment  [_                {:table_id table-id-2}]]
-
+     Metric   _                {:table_id table-id-1}
+     Metric   _                {:table_id table-id-1}
+     Metric   _                {:table_id table-id-2}
+     Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
@@ -197,8 +196,8 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id)))))))
-  (mt/with-temp*
-    [Database [{db-id :id}]]
+  (mt/with-temp
+    [Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
       (is (= {:question 0
               :dataset  0
@@ -480,10 +479,10 @@
                                          :table_name "CHECKINS"}}
                     (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id))))))
       (testing "shows display names"
-        (mt/with-temp* [Table [{t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
-                                           :db_id (mt/id)}]
-                        Field [_ {:name "F_NAME" :display_name "user editable"
-                                  :table_id t-id}]]
+        (mt/with-temp [Table {t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
+                                         :db_id (mt/id)}
+                       Field _ {:name "F_NAME" :display_name "user editable"
+                                :table_id t-id}]
           (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
                                              :table_name "FOO_TABLE"}}
                         (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
@@ -514,8 +513,8 @@
                         (some (partial = "PRICE"))))))))))
 
 (deftest fetch-database-metadata-remove-inactive-test
-  (mt/with-temp* [Database [{db-id :id}]
-                  Table    [_ {:db_id db-id, :active false}]]
+  (mt/with-temp [Database {db-id :id} {}
+                 Table    _ {:db_id db-id, :active false}]
     (testing "GET /api/database/:id/metadata?include_hidden=true"
         (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
                           :tables)]
@@ -567,10 +566,11 @@
 
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
-    (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
-                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))]
-                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :dataset true)]
-                    Card       [card-3 (card-with-native-query "Maz Quote Views Per Day")]]
+    (mt/with-temp
+      [Collection collection {:name "Maz Analytics"}
+       Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
+       Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :dataset true)
+       Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
       (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name (:name collection))
                           card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name nil)
                           card-3 (assoc (select-keys card-3 [:id :name :dataset]) :collection_name nil)}]
@@ -594,8 +594,8 @@
                                              (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                              :query query))))))))
       (testing "should reject requests for databases for which the user has no perms"
-        (mt/with-temp* [Database [{database-id :id}]
-                        Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
+        (mt/with-temp [Database {database-id :id} {}
+                       Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
@@ -630,9 +630,9 @@
               (is (= expected-keys
                      (set (keys db))))))))
       (testing "Make sure databases don't paginate"
-        (mt/with-temp* [Database [_ {:engine ::test-driver}]
-                        Database [_ {:engine ::test-driver}]
-                        Database [_ {:engine ::test-driver}]]
+        (mt/with-temp [Database _ {:engine ::test-driver}
+                       Database _ {:engine ::test-driver}
+                       Database _ {:engine ::test-driver}]
           (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
 
@@ -745,10 +745,10 @@
                      (fetch-virtual-database)))))))
 
       (testing "should pretend Collections are schemas"
-        (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
-                        Collection [coin-collection  {:name "Coins"}]
-                        Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
-                        Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
+        (mt/with-temp [Collection stamp-collection {:name "Stamps"}
+                       Collection coin-collection  {:name "Coins"}
+                       Card       stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))
+                       Card       coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]
           ;; run the Cards which will populate their result_metadata columns
           (doseq [card [stamp-card coin-card]]
             (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -763,8 +763,8 @@
              (virtual-table-for-card stamp-card :schema "Stamps")))))
 
       (testing "should remove Cards that have ambiguous columns"
-        (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
-                        Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+        (mt/with-temp [Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])
+                       Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]
           (let [response (fetch-virtual-database)]
             (is (schema= SavedQuestionsDB
                          response))
@@ -772,15 +772,15 @@
             (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))
 
       (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-        (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
-                        Card     [bad-card {:name            "Bad Card"
-                                            :dataset_query   {:database (u/the-id bad-db)
-                                                              :type     :native
-                                                              :native   {:query "[QUERY GOES HERE]"}}
-                                            :result_metadata [{:name "sparrows"}]
-                                            :database_id     (u/the-id bad-db)}]
-                        Card     [ok-card  (assoc (card-with-native-query "OK Card")
-                                                  :result_metadata [{:name "finches"}])]]
+        (mt/with-temp [Database bad-db   {:engine ::no-nested-query-support, :details {}}
+                       Card     bad-card {:name            "Bad Card"
+                                          :dataset_query   {:database (u/the-id bad-db)
+                                                            :type     :native
+                                                            :native   {:query "[QUERY GOES HERE]"}}
+                                          :result_metadata [{:name "sparrows"}]
+                                          :database_id     (u/the-id bad-db)}
+                       Card     ok-card  (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name "finches"}])]
           (let [response (fetch-virtual-database)]
             (is (schema= SavedQuestionsDB
                          response))
@@ -796,14 +796,14 @@
           (is (nil? (fetch-virtual-database)))))
 
       (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-        (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
-                        Card [bad-card (merge
-                                        (mt/$ids checkins
-                                          (card-with-mbql-query "Cum Count Card"
-                                            :source-table $$checkins
-                                            :aggregation  [[:cum-count]]
-                                            :breakout     [!month.date]))
-                                        {:result_metadata [{:name "num_toucans"}]})]]
+        (mt/with-temp [Card ok-card  (ok-mbql-card)
+                       Card bad-card (merge
+                                      (mt/$ids checkins
+                                               (card-with-mbql-query "Cum Count Card"
+                                                                     :source-table $$checkins
+                                                                     :aggregation  [[:cum-count]]
+                                                                     :breakout     [!month.date]))
+                                      {:result_metadata [{:name "num_toucans"}]})]
           (let [response (fetch-virtual-database)]
             (is (schema= SavedQuestionsDB
                          response))
@@ -992,13 +992,13 @@
 
 (deftest discard-db-fieldvalues
   (testing "Can we DISCARD all the FieldValues for a DB?"
-    (mt/with-temp* [Database    [db       {:engine "h2", :details (:details (mt/db))}]
-                    Table       [table-1  {:db_id (u/the-id db)}]
-                    Table       [table-2  {:db_id (u/the-id db)}]
-                    Field       [field-1  {:table_id (u/the-id table-1)}]
-                    Field       [field-2  {:table_id (u/the-id table-2)}]
-                    FieldValues [values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}]
-                    FieldValues [values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]]
+    (mt/with-temp [Database    db       {:engine "h2", :details (:details (mt/db))}
+                   Table       table-1  {:db_id (u/the-id db)}
+                   Table       table-2  {:db_id (u/the-id db)}
+                   Field       field-1  {:table_id (u/the-id table-1)}
+                   Field       field-2  {:table_id (u/the-id table-2)}
+                   FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
+                   FieldValues values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]
       (is (= {:status "ok"}
              (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
       (testing "values-1 still exists?"
@@ -1100,10 +1100,11 @@
 (deftest get-schemas-test
   (testing "GET /api/database/:id/schemas"
     (testing "Multiple schemas are ordered by name"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [_ {:db_id db-id, :schema "schema3"}]
-                      Table    [_ {:db_id db-id, :schema "schema2"}]
-                      Table    [_ {:db_id db-id, :schema "schema1"}]]
+      (mt/with-temp
+        [Database {db-id :id} {}
+         Table    _           {:db_id db-id :schema "schema3"}
+         Table    _           {:db_id db-id :schema "schema2"}
+         Table    _           {:db_id db-id :schema "schema1"}]
         (is (= ["schema1" "schema2" "schema3"]
                (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
@@ -1112,9 +1113,9 @@
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))
 
     (testing "should work for the saved questions 'virtual' database"
-      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]]
+      (mt/with-temp [Collection coll   {:name "My Collection"}
+                     Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
+                     Card       card-2 (card-with-native-query "Card 2")]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1122,10 +1123,10 @@
           (is (contains? schemas "Everything else"))
           (is (contains? schemas "My Collection")))))
     (testing "null and empty schemas should both come back as blank strings"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [_ {:db_id db-id, :schema ""}]
-                      Table    [_ {:db_id db-id, :schema nil}]
-                      Table    [_ {:db_id db-id, :schema " "}]]
+      (mt/with-temp [Database {db-id :id} {}
+                     Table    _ {:db_id db-id :schema ""}
+                     Table    _ {:db_id db-id :schema nil}
+                     Table    _ {:db_id db-id :schema " "}]
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
@@ -1141,15 +1142,16 @@
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
 
 (deftest get-schemas-for-schemas-with-no-visible-tables
-  (mt/with-temp* [Database [{db-id :id}]
-                  Table    [_ {:db_id db-id, :schema "schema_1a", :name "table_1"}]
-                  Table    [_ {:db_id db-id, :schema "schema_1c", :name "table_1"}] ;; out of order for sorting
-                  Table    [_ {:db_id db-id, :schema "schema_1b", :name "table_1"}]
-                  ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
-                  Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2a", :visibility_type "hidden"}]
-                  Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2b", :visibility_type "cruft"}]
-                    ;; table is not active
-                  Table    [_ {:db_id db-id, :schema "schema_3", :name "table_3", :active false}]]
+  (mt/with-temp
+    [Database {db-id :id} {}
+     Table    _ {:db_id db-id :schema "schema_1a" :name "table_1"}
+     Table    _ {:db_id db-id :schema "schema_1c" :name "table_1"} ;; out of order for sorting
+     Table    _ {:db_id db-id :schema "schema_1b" :name "table_1"}
+     ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
+     Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :visibility_type "hidden"}
+     Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :visibility_type "cruft"}
+       ;; table is not active
+     Table    _ {:db_id db-id :schema "schema_3" :name "table_3" :active false}]
     (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
       (is (= ["schema_1a" "schema_1b" "schema_1c"]
              (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id)))))
@@ -1159,9 +1161,9 @@
 
 (deftest get-schemas-permissions-test
   (testing "GET /api/database/:id/schemas against permissions"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [t1 {:db_id db-id, :schema "schema1"}]
-                    Table    [t2 {:db_id db-id, :schema "schema1"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    t1 {:db_id db-id :schema "schema1"}
+                   Table    t2 {:db_id db-id :schema "schema1"}]
       (testing "should work if user has full DB perms..."
         (is (= ["schema1"]
                (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
@@ -1192,9 +1194,9 @@
                (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
     (testing "should exclude schemas for which the user has no perms"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
-                      Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    _ {:db_id database-id :schema "schema-with-perms"}
+                     Table    _ {:db_id database-id :schema "schema-without-perms"}]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
         (is (= ["schema-with-perms"]
@@ -1206,46 +1208,46 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))
     (testing "Should return a 404 if the schema isn't found"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [_ {:db_id db-id, :schema "schema1"}]]
+      (mt/with-temp [Database {db-id :id} {}
+                     Table    _ {:db_id db-id :schema "schema1"}]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))
 
     (testing "should exclude Tables for which the user has no perms"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [table-with-perms {:db_id database-id, :schema "public", :name "table-with-perms"}]
-                      Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
+                     Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (perms/grant-permissions! (perms-group/all-users) database-id "public" table-with-perms)
         (is (= ["table-with-perms"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
     (testing "should exclude inactive Tables"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    _ {:db_id database-id :schema "public" :name "table"}
+                     Table    _ {:db_id database-id :schema "public" :name "inactive-table" :active false}]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
     (testing "should exclude hidden Tables"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    _ {:db_id database-id :schema "public" :name "table"}
+                     Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
     (testing "should show hidden Tables when explicitly asked for"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    _ {:db_id database-id :schema "public" :name "table"}
+                     Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= #{"table" "hidden-table"}
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
                                                      :include_hidden true)))))))
 
     (testing "should work for the saved questions 'virtual' database"
-      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]]
+      (mt/with-temp [Collection coll   {:name "My Collection"}
+                     Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
+                     Card       card-2 (card-with-native-query "Card 2")]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1283,15 +1285,15 @@
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
     (testing "should work for the datasets in the 'virtual' database"
-      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1")
-                                                :collection_id (:id coll)
-                                                :dataset true)]
-                      Card       [card-2 (assoc (card-with-native-query "Card 2")
-                                                :dataset true)]
-                      Card       [_card-3 (assoc (card-with-native-query "error")
-                                                 ;; regular saved question should not be in the results
-                                                 :dataset false)]]
+      (mt/with-temp [Collection coll   {:name "My Collection"}
+                     Card       card-1 (assoc (card-with-native-query "Card 1")
+                                              :collection_id (:id coll)
+                                              :dataset true)
+                     Card       card-2 (assoc (card-with-native-query "Card 2")
+                                              :dataset true)
+                     Card       _card-3 (assoc (card-with-native-query "error")
+                                               ;; regular saved question should not be in the results
+                                               :dataset false)]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (is (=? {:status "completed"}
@@ -1329,19 +1331,19 @@
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
 
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [_ {:db_id db-id, :schema nil, :name "t1"}]
-                    Table    [_ {:db_id db-id, :schema "", :name "t2"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    _ {:db_id db-id :schema nil :name "t1"}
+                   Table    _ {:db_id db-id :schema "" :name "t2"}]
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
-                    Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    t1  {:db_id db-id :schema "schema1" :name "t1"}
+                   Table    _t2 {:db_id db-id :schema "schema2"}
+                   Table    t3  {:db_id db-id :schema "schema1" :name "t3"}]
       (testing "if we have full DB perms"
         (is (= ["t1" "t3"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
@@ -1362,16 +1364,16 @@
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
-        (mt/with-temp* [Database [{database-id :id}]
-                        Table    [_ {:db_id database-id, :schema "test"}]]
+        (mt/with-temp [Database {database-id :id} {}
+                       Table    _ {:db_id database-id :schema "test"}]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
 
       (testing "for the schema"
-        (mt/with-temp* [Database [{database-id :id}]
-                        Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
-                        Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+        (mt/with-temp [Database {database-id :id} {}
+                       Table    _ {:db_id database-id :schema "schema-with-perms"}
+                       Table    _ {:db_id database-id :schema "schema-without-perms"}]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
           (is (= "You don't have permissions to do that."
@@ -1401,13 +1403,15 @@
                                  s/Keyword s/Any}]
                                (mt/user-http-request :rasta :get 200 url))))))))))))
 
-(deftest upsert-sensitive-values-test
+(deftest ^:parallel upsert-sensitive-fields-no-changes-test
   (testing "empty maps are okay"
     (is (= {}
-           (api.database/upsert-sensitive-fields {} {}))))
+           (#'api.database/upsert-sensitive-fields {} {}))))
   (testing "no details updates are okay"
     (is (= nil
-           (api.database/upsert-sensitive-fields nil nil))))
+           (#'api.database/upsert-sensitive-fields nil nil)))))
+
+(deftest ^:parallel upsert-sensitive-fields-fields-are-replaced-test
   (testing "fields are replaced"
     (is (= {:use-service-account           nil
             :dataset-id                    "dacort"
@@ -1420,63 +1424,30 @@
             :tunnel-private-key-passphrase "fooquux"
             :access-token                  "foobarfoo"
             :refresh-token                 "foobarquux"}
-           (api.database/upsert-sensitive-fields {:description nil
-                                                  :name        "customer success BQ"
-                                                  :details     {:use-service-account           nil
-                                                                :dataset-id                    "dacort"
-                                                                :service-account-json          "{}"
-                                                                :use-jvm-timezone              false
-                                                                :password                      "password"
-                                                                :pass                          "pass"
-                                                                :tunnel-pass                   "tunnel-pass"
-                                                                :tunnel-private-key            "tunnel-private-key"
-                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                :access-token                  "access-token"
-                                                                :refresh-token                 "refresh-token"}
-                                                  :id          2}
-                                                 {:service-account-json          "{\"foo\": \"bar\"}"
-                                                  :password                      "foo"
-                                                  :pass                          "bar"
-                                                  :tunnel-pass                   "quux"
-                                                  :tunnel-private-key            "foobar"
-                                                  :tunnel-private-key-passphrase "fooquux"
-                                                  :access-token                  "foobarfoo"
-                                                  :refresh-token                 "foobarquux"}))))
-  (testing "no fields are replaced"
-    (is (= {:use-service-account           nil
-            :dataset-id                    "dacort"
-            :use-jvm-timezone              false
-            :service-account-json          "{}"
-            :password                      "password"
-            :pass                          "pass"
-            :tunnel-pass                   "tunnel-pass"
-            :tunnel-private-key            "tunnel-private-key"
-            :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-            :access-token                  "access-token"
-            :refresh-token                 "refresh-token"}
-           (api.database/upsert-sensitive-fields {:description nil
-                                                  :name        "customer success BQ"
-                                                  :details     {:use-service-account           nil
-                                                                :dataset-id                    "dacort"
-                                                                :use-jvm-timezone              false
-                                                                :service-account-json          "{}"
-                                                                :password                      "password"
-                                                                :pass                          "pass"
-                                                                :tunnel-pass                   "tunnel-pass"
-                                                                :tunnel-private-key            "tunnel-private-key"
-                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                :access-token                  "access-token"
-                                                                :refresh-token                 "refresh-token"}
-                                                  :id          2}
-                                                 {:service-account-json          protected-password
-                                                  :password                      protected-password
-                                                  :pass                          protected-password
-                                                  :tunnel-pass                   protected-password
-                                                  :tunnel-private-key            protected-password
-                                                  :tunnel-private-key-passphrase protected-password
-                                                  :access-token                  protected-password
-                                                  :refresh-token                 protected-password}))))
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :service-account-json          "{}"
+                                                                  :use-jvm-timezone              false
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
+                                                   {:service-account-json          "{\"foo\": \"bar\"}"
+                                                    :password                      "foo"
+                                                    :pass                          "bar"
+                                                    :tunnel-pass                   "quux"
+                                                    :tunnel-private-key            "foobar"
+                                                    :tunnel-private-key-passphrase "fooquux"
+                                                    :access-token                  "foobarfoo"
+                                                    :refresh-token                 "foobarquux"})))))
 
+(deftest ^:parallel upsert-sensitive-fields-one-field-replaced-test
   (testing "only one field is replaced"
     (is (= {:use-service-account           nil
             :dataset-id                    "dacort"
@@ -1489,28 +1460,64 @@
             :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
             :access-token                  "access-token"
             :refresh-token                 "refresh-token"}
-           (api.database/upsert-sensitive-fields {:description nil
-                                                  :name        "customer success BQ"
-                                                  :details     {:use-service-account           nil
-                                                                :dataset-id                    "dacort"
-                                                                :use-jvm-timezone              false
-                                                                :service-account-json          "{}"
-                                                                :password                      "password"
-                                                                :pass                          "pass"
-                                                                :tunnel-pass                   "tunnel-pass"
-                                                                :tunnel-private-key            "tunnel-private-key"
-                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
-                                                                :access-token                  "access-token"
-                                                                :refresh-token                 "refresh-token"}
-                                                  :id          2}
-                                                 {:service-account-json          protected-password
-                                                  :password                      "new-password"
-                                                  :pass                          protected-password
-                                                  :tunnel-pass                   protected-password
-                                                  :tunnel-private-key            protected-password
-                                                  :tunnel-private-key-passphrase protected-password
-                                                  :access-token                  protected-password
-                                                  :refresh-token                 protected-password})))))
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
+                                                   {:service-account-json          protected-password
+                                                    :password                      "new-password"
+                                                    :pass                          protected-password
+                                                    :tunnel-pass                   protected-password
+                                                    :tunnel-private-key            protected-password
+                                                    :tunnel-private-key-passphrase protected-password
+                                                    :access-token                  protected-password
+                                                    :refresh-token                 protected-password})))))
+
+(deftest ^:parallel upsert-sensitive-fields-no-fields-replaced-test
+  (testing "no fields are replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{}"
+            :password                      "password"
+            :pass                          "pass"
+            :tunnel-pass                   "tunnel-pass"
+            :tunnel-private-key            "tunnel-private-key"
+            :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+            :access-token                  "access-token"
+            :refresh-token                 "refresh-token"}
+           (#'api.database/upsert-sensitive-fields {:description nil
+                                                    :name        "customer success BQ"
+                                                    :details     {:use-service-account           nil
+                                                                  :dataset-id                    "dacort"
+                                                                  :use-jvm-timezone              false
+                                                                  :service-account-json          "{}"
+                                                                  :password                      "password"
+                                                                  :pass                          "pass"
+                                                                  :tunnel-pass                   "tunnel-pass"
+                                                                  :tunnel-private-key            "tunnel-private-key"
+                                                                  :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                  :access-token                  "access-token"
+                                                                  :refresh-token                 "refresh-token"}
+                                                    :id          (mt/id)}
+                                                   {:service-account-json          protected-password
+                                                    :password                      protected-password
+                                                    :pass                          protected-password
+                                                    :tunnel-pass                   protected-password
+                                                    :tunnel-private-key            protected-password
+                                                    :tunnel-private-key-passphrase protected-password
+                                                    :access-token                  protected-password
+                                                    :refresh-token                 protected-password})))))
 
 
 (deftest secret-file-paths-returned-by-api-test

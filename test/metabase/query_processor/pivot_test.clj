@@ -294,8 +294,8 @@
           (testing "Should be able to run the query via a Card that All Users has perms for"
             ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
             ;; Collection inherits Root Collection perms when created
-            (mt/with-temp* [Collection [collection]
-                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
+            (mt/with-temp [Collection collection {}
+                           Card       card {:collection_id (u/the-id collection), :dataset_query query}]
               (is (schema= {:status   (s/eq "completed")
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
