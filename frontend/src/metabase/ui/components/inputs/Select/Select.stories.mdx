@@ -3,11 +3,24 @@ import { Select } from "metabase/ui";
 
 export const args = {
   size: "md",
-  placeholder: "Semantic type",
+  placeholder: "No semantic type",
 };
 
-export const sampleArgs = {
-  data: ["Entity key", "Entity name", "Foreign key"],
+export const sampleData = {
+  list: [
+    { value: 1, label: "Entity key" },
+    { value: 2, label: "Entity name" },
+    { value: 3, label: "Foreign key" },
+    { value: 4, label: "Category" },
+    { value: 5, label: "Description" },
+  ],
+  groups: [
+    { value: 1, label: "Entity key", group: "Overall row" },
+    { value: 2, label: "Entity name", group: "Overall row" },
+    { value: 3, label: "Foreign key", group: "Overall row" },
+    { value: 4, label: "Category", group: "Common" },
+    { value: 5, label: "Description", group: "Common" },
+  ],
 };
 
 export const argTypes = {
@@ -27,18 +40,18 @@ export const argTypes = {
   argTypes={argTypes}
 />
 
-# TextInput
+# Select
 
 Our themed wrapper around [Mantine Select](https://mantine.dev/core/select/).
 
 ## Docs
 
 - [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-Select?type=design&node-id=1-96&mode=design&t=Mk8RP6HsneuWzHtr-0)
-- [Mantine TextInput Docs](https://mantine.dev/core/select/)
+- [Mantine Select Docs](https://mantine.dev/core/select/)
 
 ## Examples
 
-export const Default = args => <Select {...args} data={sampleArgs.data} />;
+export const Default = args => <Select {...args} data={sampleData.list} />;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
