@@ -60,7 +60,7 @@ if [ $(id -u) -ne 0 ]; then
     # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
     # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
     docker_setup_env
-    exec /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $@"
+    exec /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $*"
 else
     # Avoid running metabase (or any server) as root where possible
     # If you want to use specific user and group ids that matches an existing
@@ -155,7 +155,7 @@ else
     if [ -f "${INITIAL_DB}" ]; then
         echo "Initializing Metabase database from H2 database ${INITIAL_DB}..."
         chmod o+r ${INITIAL_DB}
-        su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar load-from-h2 ${INITIAL_DB%.mv.db} $@"
+        su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar load-from-h2 ${INITIAL_DB%.mv.db} $*"
 
         if [ $? -ne 0 ]; then
             echo "Failed to initialize database from H2 database!"
@@ -168,5 +168,5 @@ else
     # Launch the application
     # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
     # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
-    exec su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $@"
+    exec su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $*"
 fi
