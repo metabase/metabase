@@ -185,27 +185,27 @@
                            linked-tables)
         tabs-and-cards   (->> child-dashboards
                               (map-indexed
-                               (fn [idx dashboard]
-                                 (let [tab-id (gensym)]
-                                   {:tab {:id       tab-id
-                                          :name     (:name dashboard)
-                                          :position idx}
-                                    :dash-cards
-                                    (map (fn [dc]
-                                           (assoc dc :dashboard_tab_id tab-id))
-                                         (:ordered_cards dashboard))}))))]
+                                (fn [idx dashboard]
+                                  (let [tab-id (gensym)]
+                                    {:tab {:id       tab-id
+                                           :name     (:name dashboard)
+                                           :position idx}
+                                     :dash-cards
+                                     (map (fn [dc]
+                                            (assoc dc :dashboard_tab_id tab-id))
+                                          (:ordered_cards dashboard))}))))]
     (reduce (fn [dashboard {:keys [tab dash-cards]}]
               (-> dashboard
                   (update :ordered_cards into dash-cards)
                   (update :ordered_tabs conj tab)))
             (merge
-             (first child-dashboards)
-             {:name          "fix the title of the dashboard to include what we're filtering on"
-              :description   "A dashboard focusing on your stuff"
-              :ordered_cards []
-              :ordered_tabs  []
-              :parameters    []
-              :param_fields  {}})
+              (first child-dashboards)
+              {:name          "fix the title of the dashboard to include what we're filtering on"
+               :description   "A dashboard focusing on your stuff"
+               :ordered_cards []
+               :ordered_tabs  []
+               :parameters    []
+               :param_fields  {}})
             tabs-and-cards)))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
