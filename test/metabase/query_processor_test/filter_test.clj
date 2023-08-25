@@ -41,9 +41,9 @@
                    {:aggregation [[:count]]
                     :filter      [:= $liked false]}))))))))
 
-(defn- ->bool [x]                       ; SQLite returns 0/1 for false/true;
-  (condp = x                            ; Redshift returns nil/true.
-    0   false                           ; convert to false/true and restore sanity.
+(defn- ->bool [x] ; SQLite returns 0/1 for false/true;
+  (condp = x      ; Redshift returns nil/true.
+    0   false     ; convert to false/true and restore sanity.
     0M  false
     1   true
     1M  true

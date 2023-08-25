@@ -20,8 +20,8 @@
 (deftest first-login-on-this-device?-test
   (let [device-1 (str (random-uuid))
         device-2 (str (random-uuid))]
-    (mt/with-temp* [User         [{user-id :id}]
-                    LoginHistory [history-1 {:user_id user-id, :device_id device-1}]]
+    (mt/with-temp [User         {user-id :id} {}
+                   LoginHistory history-1 {:user_id user-id, :device_id device-1}]
       (testing "one login to device 1 -- should be the first login with this device"
         (is (= true
                (#'login-history/first-login-on-this-device? history-1)))
@@ -59,11 +59,11 @@
                             (when-let [futur (original-maybe-send login-history)]
                               ;; block in tests
                               (u/deref-with-timeout futur 10000)))]
-              (mt/with-temp* [LoginHistory [_ {:user_id   user-id
-                                               :device_id (str (random-uuid))}]
-                              LoginHistory [_ {:user_id   user-id
-                                               :device_id device
-                                               :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]]
+              (mt/with-temp [LoginHistory _ {:user_id   user-id
+                                             :device_id (str (random-uuid))}
+                             LoginHistory _ {:user_id   user-id
+                                             :device_id device
+                                             :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
 
                 (is (schema= {(s/eq email)
                               [{:from    su/Email
@@ -98,7 +98,7 @@
       (mt/with-fake-inbox
         ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
         (mt/with-temp-env-var-value [mb-send-email-on-first-login-from-new-device "FALSE"]
-          (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (random-uuid))}]
-                          LoginHistory [_ {:user_id user-id, :device_id (str (random-uuid))}]]
+          (mt/with-temp [LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}
+                         LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}
                    @mt/inbox))))))))

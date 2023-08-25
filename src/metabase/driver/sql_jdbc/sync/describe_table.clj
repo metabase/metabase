@@ -21,6 +21,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
