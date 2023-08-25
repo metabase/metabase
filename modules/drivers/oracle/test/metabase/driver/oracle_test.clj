@@ -240,10 +240,7 @@
                                           :display_name  "Field"
                                           :database_type "char"
                                           :base_type     :type/Text}]
-      (qp.store/with-store
-        (qp.store/store-database! db)
-        (qp.store/store-table! table)
-        (qp.store/store-field! field)
+      (qp.store/with-metadata-provider (u/the-id db)
         (let [hsql (sql.qp/mbql->honeysql :oracle
                                           {:query {:source-table (:id table)
                                                    :expressions  {"s" [:substring [:field (:id field) nil] 2]}

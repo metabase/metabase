@@ -11,12 +11,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
+   [metabase.query-processor.store :as qp.store]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -151,7 +151,8 @@
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (t2/select-one Database :id db-or-id-or-spec)
+        (qp.store/with-metadata-provider db-or-id-or-spec
+          (qp.store/database))
 
         :else
         nil))
