@@ -75,7 +75,7 @@
          col-index->breakout-index (into {}
                                          (map-indexed
                                           (fn [breakout-index breakout-ref]
-                                            (when-let [col-index (lib.equality/index-of-closest-matching-metadata breakout-ref cols)]
+                                            (when-let [col-index (lib.equality/index-of-closest-matching-metadata query breakout-ref cols)]
                                               [col-index breakout-index])))
                                          (breakouts query stage-number))]
      (when (seq cols)

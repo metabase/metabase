@@ -160,45 +160,61 @@
 
   If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` If you
   want the metadata instead, use [[closest-matching-metadata]]."
-  [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
-  (when (seq metadatas)
-    ;; create refs in a lazy fashion, e.g. if the very first metadata ends up matching we don't need to create refs
-    ;; for all of the other metadatas.
-    (letfn [(index-with-ref-fn [ref-fn]
-              ;; store the associated index in metadata attached to the created ref.
-              (let [refs (for [[i metadata] (m/indexed metadatas)]
-                           (vary-meta (ref-fn metadata) assoc ::index i))]
-                (when-let [matching-ref (find-closest-matching-ref a-ref refs)]
-                  (::index (meta matching-ref)))))]
-      (or
-       ;; attempt to find a matching ref using the same logic as [[find-closest-matching-ref]] ...
-       (index-with-ref-fn lib.ref/ref)
-       ;; if that fails, and we're comparing a "Field ID" ref like
-       ;;
-       ;;    [:field {} 1]
-       ;;
-       ;; then try again forcing creation of Field ID refs for all of the metadatas. This way we can match
-       ;; things where the FE incorrectly used a Field ID ref even tho we were expecting a nominal :field
-       ;; literal ref like
-       ;;
-       ;;    [:field {} "my_field"]
-       (when (field-id-ref? a-ref)
-         ;; force creation of a Field ID ref by giving it a source that will make the ref creation code
-         ;; treat this as coming from a source table. This only makes sense for metadatas that have an
-         ;; associated Field `:id`, so only do it for those ones.
-         (index-with-ref-fn (fn [metadata]
-                              (lib.ref/ref
-                               (cond-> metadata
-                                 (:id metadata) (assoc :lib/source :source/table-defaults))))))))))
+  ([a-ref metadatas]
+   (when (seq metadatas)
+     ;; create refs in a lazy fashion, e.g. if the very first metadata ends up matching we don't need to create refs
+     ;; for all of the other metadatas.
+     (letfn [(index-with-ref-fn [ref-fn]
+               ;; store the associated index in metadata attached to the created ref.
+               (let [refs (for [[i metadata] (m/indexed metadatas)]
+                            (vary-meta (ref-fn metadata) assoc ::index i))]
+                 (when-let [matching-ref (find-closest-matching-ref a-ref refs)]
+                   (::index (meta matching-ref)))))]
+       (or
+        ;; attempt to find a matching ref using the same logic as [[find-closest-matching-ref]] ...
+        (index-with-ref-fn lib.ref/ref)
+        ;; if that fails, and we're comparing a "Field ID" ref like
+        ;;
+        ;;    [:field {} 1]
+        ;;
+        ;; then try again forcing creation of Field ID refs for all of the metadatas. This way we can match
+        ;; things where the FE incorrectly used a Field ID ref even tho we were expecting a nominal :field
+        ;; literal ref like
+        ;;
+        ;;    [:field {} "my_field"]
+        (when (field-id-ref? a-ref)
+          ;; force creation of a Field ID ref by giving it a source that will make the ref creation code
+          ;; treat this as coming from a source table. This only makes sense for metadatas that have an
+          ;; associated Field `:id`, so only do it for those ones.
+          (index-with-ref-fn (fn [metadata]
+                               (lib.ref/ref
+                                (cond-> metadata
+                                  (:id metadata) (assoc :lib/source :source/table-defaults))))))))))
+
+  ([metadata-providerable :- [:maybe lib.metadata/MetadataProviderable]
+    a-ref                 :- ::lib.schema.ref/ref
+    metadatas             :- [:sequential lib.metadata/ColumnMetadata]]
+   (or
+    (index-of-closest-matching-metadata a-ref metadatas)
+    ;; if all of THAT fails then I guess we need to fallback and try matching just by name like the three-arity
+    ;; version of [[find-closest-matching-ref]].
+    (when (and metadata-providerable
+               (field-id-ref? a-ref))
+      (let [[_field opts field-id] a-ref]
+        (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+          (index-of-closest-matching-metadata [:field opts field-name] metadatas)))))))
 
 (mu/defn closest-matching-metadata :- [:maybe lib.metadata/ColumnMetadata]
   "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
   rather than a sequence of refs. See [[index-of-closet-matching-metadata]] for more info."
-  [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
-  (when-let [i (index-of-closest-matching-metadata a-ref metadatas)]
-    (nth metadatas i)))
+  ([a-ref metadatas]
+   (closest-matching-metadata nil a-ref metadatas))
+
+  ([metadata-providerable :- [:maybe lib.metadata/MetadataProviderable]
+    a-ref                 :- ::lib.schema.ref/ref
+    metadatas             :- [:sequential lib.metadata/ColumnMetadata]]
+   (when-let [i (index-of-closest-matching-metadata metadata-providerable a-ref metadatas)]
+     (nth metadatas i))))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
@@ -210,14 +226,17 @@
     ;;
     ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
     (mark-selected-columns (visibile-columns query) (:fields stage))"
-  [cols selected-columns-or-refs]
-  (when (seq cols)
-    (let [selected-refs              (mapv lib.ref/ref selected-columns-or-refs)
-          matching-selected-indecies (into #{}
-                                           (map (fn [selected-ref]
-                                                  (index-of-closest-matching-metadata selected-ref cols)))
-                                           selected-refs)]
-      (mapv
-       (fn [[i col]]
-         (assoc col :selected? (contains? matching-selected-indecies i)))
-       (m/indexed cols)))))
+  ([cols selected-columns-or-refs]
+   (mark-selected-columns nil cols selected-columns-or-refs))
+
+  ([metadata-providerable cols selected-columns-or-refs]
+   (when (seq cols)
+     (let [selected-refs              (mapv lib.ref/ref selected-columns-or-refs)
+           matching-selected-indecies (into #{}
+                                            (map (fn [selected-ref]
+                                                   (index-of-closest-matching-metadata metadata-providerable selected-ref cols)))
+                                            selected-refs)]
+       (mapv
+        (fn [[i col]]
+          (assoc col :selected? (contains? matching-selected-indecies i)))
+        (m/indexed cols))))))
