@@ -28,6 +28,7 @@
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def ^:private JoinWithOptionalAlias
@@ -174,6 +175,12 @@
   [field-or-join :- FieldOrPartialJoin
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
+    ;; this should not happen (and cannot happen in CLJ land)
+    ;; but it does seem to happen in JS land with broken MLv1 queries
+    :dispatch-type/nil
+    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+        field-or-join)
+
     :field
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
