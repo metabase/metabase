@@ -1158,3 +1158,8 @@
                                                        [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}]}
               (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                   (lib/join (meta/table-metadata :orders))))))))
+
+(deftest ^:parallel suggested-name-include-joins-test
+  (testing "Include the names of joined tables in suggested query names (#24703)"
+    (is (= "Venues + Categories"
+           (lib/suggested-name lib.tu/query-with-join)))))

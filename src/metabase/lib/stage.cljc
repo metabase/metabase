@@ -359,10 +359,13 @@
   [_query _stage-number _stage _style]
   (i18n/tru "Native query"))
 
-(def ^:private display-name-parts
+(def ^:private display-name-source-parts
   [:source-table
    :source-card
-   :aggregation
+   :joins])
+
+(def ^:private display-name-other-parts
+  [:aggregation
    :breakout
    :filters
    :order-by
@@ -373,9 +376,14 @@
   (let [query (ensure-previous-stages-have-metadata query stage-number)]
     (or
      (not-empty
-      (let [descriptions (for [k display-name-parts]
-                           (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-        (str/join ", " (remove str/blank? descriptions))))
+      (let [part->description  (into {}
+                                     (comp cat
+                                           (map (fn [k]
+                                                  [k (lib.metadata.calculation/describe-top-level-key query stage-number k)])))
+                                     [display-name-source-parts display-name-other-parts])
+            source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
+            other-descriptions (remove str/blank? (map part->description display-name-other-parts))]
+        (str/join ", " (cons source-description other-descriptions))))
      (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
        (lib.metadata.calculation/display-name query
                                               previous-stage-number
