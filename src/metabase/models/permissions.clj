@@ -1089,22 +1089,7 @@
 (defenterprise default-audit-collection-entity-id
   "OSS implementation of `audit-db/default-audit-collection-entity-id`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] [])
-
-(defn update-audit-collection-permissions
-  "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
-  [group-id changes]
-  (when config/ee-available?
-    (let [audit-collection-id (t2/select-one-fn :id 'Collection :entity_id (default-audit-collection-entity-id)]
-      (doseq [[change-id type] changes]
-        (when (= change-id audit-collection-id)
-          (let [change-permissions! (case type
-                                      :read  grant-permissions!
-                                      :none  delete-related-permissions!
-                                      :write (throw (ex-info (tru
-                                                              (str "Unable to make audit collections writable."))
-                                                              {:status-code 400})))]
-            (change-permissions! group-id (all-schemas-path (default-audit-db-id)))))))))
+  metabase-enterprise.audit-db [] ::noop)
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
