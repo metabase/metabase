@@ -14,6 +14,8 @@ export const args = {
   withAsterisk: false,
   min: undefined,
   max: undefined,
+  step: undefined,
+  hideControls: true,
   precision: undefined,
   decimalSeparator: undefined,
 };
@@ -60,6 +62,12 @@ export const argTypes = {
   },
   max: {
     control: { type: "number" },
+  },
+  step: {
+    control: { type: "number" },
+  },
+  hideControls: {
+    control: { type: "boolean" },
   },
   precision: {
     control: { type: "number" },
