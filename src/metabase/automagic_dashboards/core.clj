@@ -740,16 +740,7 @@
                       (assoc :dataset_query query
                              :metrics metrics
                              :dimensions (map (comp :name bindings second) dimensions)
-                             :score score)))))
-         (filter (fn [{:keys [dataset_query] :as card}]
-                   (or
-                     (nil? dataset_query)
-                     (try
-                       (qp/process-query dataset_query)
-                       card
-                       (catch Exception e
-                         (tap> [:bad dataset_query])
-                         false))))))))
+                             :score score))))))))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.
