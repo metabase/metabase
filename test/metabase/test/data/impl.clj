@@ -56,7 +56,7 @@
   []
   (*db-fn*))
 
-(def ^:private ^:dynamic *db-id-fn*
+(def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
   (let [f (mdb.connection/memoize-for-application-db
            (fn [driver]
              (u/the-id (get-or-create-test-data-db! driver))))]
@@ -319,8 +319,9 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (t2/exists? Database :id (u/the-id db)))
-                                 db))))]
-    (binding [*db-fn* (fn []
-                         (get-db-for-driver (tx/driver)))]
+                                 (assert (pos-int? (:id db)))
+                                 db))))
+        db-fn             #(get-db-for-driver (tx/driver))]
+    (binding [*db-fn*    db-fn
+              *db-id-fn* #(u/the-id (db-fn))]
       (f))))
