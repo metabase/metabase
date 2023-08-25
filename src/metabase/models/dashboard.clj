@@ -440,7 +440,6 @@
                                 (assoc :description description
                                        :collection_id (:id collection)
                                        :collection_position 1))))
-
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
