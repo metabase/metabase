@@ -1,23 +1,23 @@
 (ns metabase.api.automagic-dashboards-test
   (:require
-    [clojure.test :refer :all]
-    [metabase.api.automagic-dashboards :as api.magic]
-    [metabase.automagic-dashboards.core :as magic]
-    [metabase.models :refer [Card Collection Dashboard Metric Segment]]
-    [metabase.models.permissions :as perms]
-    [metabase.models.permissions-group :as perms-group]
-    [metabase.query-processor :as qp]
-    [metabase.test :as mt]
-    [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-    [metabase.test.domain-entities :as test.de]
-    [metabase.test.fixtures :as fixtures]
-    [metabase.test.transforms :as transforms.test]
-    [metabase.transforms.core :as tf]
-    [metabase.transforms.materialize :as tf.materialize]
-    [metabase.transforms.specs :as tf.specs]
-    [metabase.util :as u]
-    [schema.core :as s]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [clojure.test :refer :all]
+   [metabase.api.automagic-dashboards :as api.magic]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.models :refer [Card Collection Dashboard Metric Segment]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+   [metabase.test.domain-entities :as test.de]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.transforms :as transforms.test]
+   [metabase.transforms.core :as tf]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.transforms.specs :as tf.specs]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
