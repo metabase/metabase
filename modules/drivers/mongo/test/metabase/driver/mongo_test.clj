@@ -19,7 +19,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test :refer [rows]]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -30,7 +30,8 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
-  (:import org.bson.types.ObjectId))
+  (:import
+   (org.bson.types ObjectId)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -81,8 +82,7 @@
            (str message))))))
 
 (deftest database-supports?-test
- (mt/test-driver
-    :mongo
+  (mt/test-driver :mongo
     (doseq [{:keys [dbms_version expected]}
             [{:dbms_version {:semantic-version [5 0 0 0]}
               :expected true}
@@ -93,10 +93,11 @@
              {:dbms_version  {:semantic-version [2 2134234]}
               :expected false}]]
       (testing (str "supports with " dbms_version)
-        (is (= expected
-               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
+        (t2.with-temp/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
+          (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
-    (is (= #{:collection} (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+    (is (= #{:collection}
+           (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
 
 
 (def ^:private native-query
@@ -355,64 +356,63 @@
       (testing "BSON IDs"
         (testing "Check that we support Mongo BSON ID and can filter by it (#1367)"
           (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]
-                          :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "handle null ObjectId queries properly (#11134)"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-null $bird_id]
-                          :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-null $bird_id]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "treat null ObjectId as empty (#15801)"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                        {:filter [:is-empty $bird_id]
-                         :fields [$id $name $bird_id]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-empty $bird_id]
+                             :fields [$id $name $bird_id]})))))
 
         (testing "treat non-null ObjectId as not-empty (#15801)"
           (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                   [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-                 (rows (mt/run-mbql-query birds
-                        {:filter [:not-empty $bird_id]
-                         :fields [$id $name $bird_id]}))))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:not-empty $bird_id]
+                             :fields [$id $name $bird_id]}))))))
 
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
           (is (= [[2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-                          :fields [$id $name $bird_uuid]})))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                             :fields [$id $name $bird_uuid]})))))
 
         (testing "handle null UUID queries properly"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-null $bird_uuid]
-                          :fields [$id $name $bird_uuid]})))))
-
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-null $bird_uuid]
+                             :fields [$id $name $bird_uuid]})))))
 
         (testing "treat null UUID as empty"
           (is (= [[3 "Unlucky Raven" nil]]
-                 (rows (mt/run-mbql-query birds
-                         {:filter [:is-empty $bird_uuid]
-                          :fields [$id $name $bird_uuid]}))))))
+                 (mt/rows (mt/run-mbql-query birds
+                            {:filter [:is-empty $bird_uuid]
+                             :fields [$id $name $bird_uuid]}))))))
 
       (testing "treat non-null UUID as not-empty"
         (is (= [[1 "Rasta Toucan" "11111111-1111-1111-1111-111111111111"]
                 [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-               (rows (mt/run-mbql-query birds
-                         {:filter [:not-empty $bird_uuid]
-                          :fields [$id $name $bird_uuid]}))))))))
+               (mt/rows (mt/run-mbql-query birds
+                          {:filter [:not-empty $bird_uuid]
+                           :fields [$id $name $bird_uuid]}))))))))
 
 
-(deftest bson-fn-call-forms-test
+(deftest ^:parallel bson-fn-call-forms-test
   (mt/test-driver :mongo
     (testing "Make sure we can handle arbitarty BSON fn-call forms like ISODate() (#3741, #4448)"
       (letfn [(rows-count [query]
-                (count (rows (qp/process-query {:native   query
-                                                :type     :native
-                                                :database (mt/id)}))))]
+                (count (mt/rows (qp/process-query {:native   query
+                                                   :type     :native
+                                                   :database (mt/id)}))))]
         (mt/dataset with-bson-ids
           (is (= 1
                  (rows-count {:query      "[{\"$match\": {\"bird_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")}}]"
@@ -426,7 +426,7 @@
                (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
                             :collection "checkins"})))))))
 
-(deftest most-common-object-type-test
+(deftest ^:parallel most-common-object-type-test
   (is (= String
          (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
   (testing "make sure it handles `nil` types correctly as well (#6880)"
@@ -459,11 +459,11 @@
                   (mt/run-mbql-query categories
                     {:order-by [[:asc $id]]
                      :limit    3})
-                  qp.test/data
+                  qp.test-util/data
                   (select-keys [:columns :rows])))))))))
 
 ;; Make sure we correctly (un-)freeze BSON IDs
-(deftest ObjectId-serialization
+(deftest ^:parallel ObjectId-serialization
   (let [oid (ObjectId. "012345678901234567890123")]
     (is (= oid (nippy/thaw (nippy/freeze oid))))))
 

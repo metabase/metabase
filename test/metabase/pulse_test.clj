@@ -52,21 +52,21 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp* [Pulse        [{pulse-id :id, :as pulse}
-                                (-> pulse
-                                    (merge {:name "Pulse Name"}))]
-                  PulseCard    [_ (merge {:pulse_id pulse-id
-                                          :card_id  (u/the-id card)
-                                          :position 0}
-                                         pulse-card)]
-                  PulseChannel [{pc-id :id} (case channel
-                                              :email
-                                              {:pulse_id pulse-id}
+  (mt/with-temp [Pulse        {pulse-id :id, :as pulse}
+                 (-> pulse
+                     (merge {:name "Pulse Name"}))
+                 PulseCard    _ (merge {:pulse_id pulse-id
+                                        :card_id  (u/the-id card)
+                                        :position 0}
+                                       pulse-card)
+                 PulseChannel {pc-id :id} (case channel
+                                            :email
+                                            {:pulse_id pulse-id}
 
-                                              :slack
-                                              {:pulse_id     pulse-id
-                                               :channel_type "slack"
-                                               :details      {:channel "#general"}})]]
+                                            :slack
+                                            {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}})]
     (if (= channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                         :pulse_channel_id pc-id}]
@@ -103,9 +103,9 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name    pulse.test-util/card-name
-                                                           :display (or display :line)}
-                                                          card)]]
+      (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                         :display (or display :line)}
+                                                        card)]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
                                :pulse      pulse
@@ -397,12 +397,12 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (mt/with-temp* [Card [{card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
-                                                     :name "card 2"
-                                                     :display :line)]
-                        PulseCard [_ {:pulse_id pulse-id
-                                      :card_id  card-id-2
-                                      :position 1}]]
+        (mt/with-temp [Card {card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
+                                                   :name "card 2"
+                                                   :display :line)
+                       PulseCard _ {:pulse_id pulse-id
+                                    :card_id  card-id-2
+                                    :position 1}]
           (thunk)))
 
       :assert
@@ -685,18 +685,18 @@
 
 (deftest dashboard-description-markdown-test
   (testing "Dashboard description renders markdown"
-    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
-                    Dashboard             [{dashboard-id :id} {:description "# dashboard description"}]
-                    DashboardCard         [{dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                                    :card_id card-id}]
-                    Pulse                 [{pulse-id :id} {:name "Pulse Name"
-                                                           :dashboard_id dashboard-id}]
-                    PulseCard             [_ {:pulse_id pulse-id
-                                              :card_id  card-id
-                                              :dashboard_card_id dashboard-card-id}]
-                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id}]
-                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]]
+    (mt/with-temp [Card                  {card-id :id} {:name "Test card"}
+                   Dashboard             {dashboard-id :id} {:description "# dashboard description"}
+                   DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id card-id}
+                   Pulse                 {pulse-id :id} {:name "Pulse Name"
+                                                         :dashboard_id dashboard-id}
+                   PulseCard             _ {:pulse_id pulse-id
+                                            :card_id  card-id
+                                            :dashboard_card_id dashboard-card-id}
+                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   PulseChannelRecipient _ {:user_id (pulse.test-util/rasta-id)
+                                            :pulse_channel_id pc-id}]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (mt/email-to :rasta {:subject "Pulse Name"
@@ -705,14 +705,14 @@
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
-    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
-                    Pulse                 [{pulse-id :id} {:name "Pulse Name"}]
-                    PulseCard             [_ {:pulse_id pulse-id
-                                              :card_id  card-id}]
-                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id
-                                                        :details {:emails ["nonuser@metabase.com"]}}]
-                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]]
+    (mt/with-temp [Card                  {card-id :id} {:name "Test card"}
+                   Pulse                 {pulse-id :id} {:name "Pulse Name"}
+                   PulseCard             _ {:pulse_id pulse-id
+                                            :card_id  card-id}
+                   PulseChannel          {pc-id :id} {:pulse_id pulse-id
+                                                      :details {:emails ["nonuser@metabase.com"]}}
+                   PulseChannelRecipient _ {:user_id (pulse.test-util/rasta-id)
+                                            :pulse_channel_id pc-id}]
       (pulse.test-util/email-test-setup
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
@@ -720,21 +720,21 @@
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
-    (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
-                    Card         [{card-id-2 :id} (-> {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}
-                                                      pulse.test-util/checkins-query-card
-                                                      (assoc :name "Test card 2"))]
-                    Pulse        [{pulse-id :id}  {:name          "Pulse Name"
-                                                   :skip_if_empty false}]
-                    PulseCard    [_               {:pulse_id pulse-id
-                                                   :card_id  card-id-1
-                                                   :position 0}]
-                    PulseCard    [_               {:pulse_id pulse-id
-                                                   :card_id  card-id-2
-                                                   :position 1}]
-                    PulseChannel [_               {:pulse_id     pulse-id
-                                                   :channel_type "slack"
-                                                   :details      {:channel "#general"}}]]
+    (mt/with-temp [Card         {card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                   Card         {card-id-2 :id} (-> {:breakout [:field (mt/id :checkins :date) {:temporal-unit :month}]}
+                                                    pulse.test-util/checkins-query-card
+                                                    (assoc :name "Test card 2"))
+                   Pulse        {pulse-id :id}  {:name          "Pulse Name"
+                                                 :skip_if_empty false}
+                   PulseCard    _               {:pulse_id pulse-id
+                                                 :card_id  card-id-1
+                                                 :position 0}
+                   PulseCard    _               {:pulse_id pulse-id
+                                                 :card_id  card-id-2
+                                                 :position 1}
+                   PulseChannel _               {:pulse_id     pulse-id
+                                                 :channel_type "slack"
+                                                 :details      {:channel "#general"}}]
       (pulse.test-util/slack-test-setup
        (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
@@ -848,11 +848,11 @@
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
     (letfn [(send-pulse-created-by-user!* [user-kw]
-              (mt/with-temp* [Collection [coll]
-                              Card       [card {:dataset_query (mt/mbql-query checkins
-                                                                 {:order-by [[:asc $id]]
-                                                                  :limit    1})
-                                                :collection_id (:id coll)}]]
+              (mt/with-temp [Collection coll {}
+                             Card       card {:dataset_query (mt/mbql-query checkins
+                                                                            {:order-by [[:asc $id]]
+                                                                             :limit    1})
+                                              :collection_id (:id coll)}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
                 (pulse.test-util/send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
@@ -885,9 +885,9 @@
 
 (def ^:private fake-email-notification
   [{:subject      "test-message"
-   :recipients   ["whoever@example.com"]
-   :message-type :text
-   :message      "test message body"}])
+    :recipients   ["whoever@example.com"]
+    :message-type :text
+    :message      "test message body"}])
 
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"

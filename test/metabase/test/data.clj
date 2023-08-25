@@ -64,7 +64,7 @@
 (defmacro with-db
   "Run body with `db` as the current database. Calls to `db` and `id` use this value."
   [db & body]
-  `(data.impl/do-with-db ~db (fn [] ~@body)))
+  `(data.impl/do-with-db ~db (^:once fn* [] ~@body)))
 
 (defmacro $ids
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
@@ -136,7 +136,7 @@
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
-  {:style/indent 1}
+  {:style/indent :defn}
   ([table-name]
    `(mbql-query ~table-name {}))
 
@@ -243,14 +243,14 @@
                                           (not (get &env dataset)))
                                    `(data.impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
                                    dataset)
-                                (fn [] ~@body))))
+                                (^:once fn* [] ~@body))))
 
 (defmacro with-temp-copy-of-db
   "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(data.impl/do-with-temp-copy-of-db (fn [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been

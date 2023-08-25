@@ -1,5 +1,6 @@
 import { render, screen } from "__support__/ui";
-import { HomeModelCard, HomeModelIconProps } from "./HomeModelCard";
+import type { HomeModelIconProps } from "./HomeModelCard";
+import { HomeModelCard } from "./HomeModelCard";
 
 interface SetupOpts {
   title: string;

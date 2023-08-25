@@ -4,7 +4,7 @@ import { useDispatch } from "metabase/lib/redux";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { TableListQuery } from "metabase-types/api";
+import type { TableListQuery } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   setupDatabasesEndpoints,
@@ -16,8 +16,8 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
 import { useEntityListQuery } from "./use-entity-list-query";
 
 const TEST_DB = createMockDatabase();

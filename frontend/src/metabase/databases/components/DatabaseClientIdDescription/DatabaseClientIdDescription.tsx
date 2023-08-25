@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseData } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 
 const CREDENTIAL_URLS: Record<string, string> = {
   bigquery:

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { BodyRoot } from "./ModalBody.styled";
 
 export interface ModalBodyProps {

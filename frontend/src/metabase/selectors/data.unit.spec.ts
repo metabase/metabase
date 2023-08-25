@@ -1,5 +1,5 @@
 import { checkNotNull } from "metabase/core/utils/types";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 import {

@@ -17,7 +17,7 @@ import {
   TableSchema,
   UserSchema,
 } from "metabase/schema";
-import {
+import type {
   Alert,
   Card,
   Collection,
@@ -33,7 +33,7 @@ import {
   WritebackAction,
   SavedQuestionDatabase,
 } from "metabase-types/api";
-import { EntitiesState } from "metabase-types/store";
+import type { EntitiesState } from "metabase-types/store";
 import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {

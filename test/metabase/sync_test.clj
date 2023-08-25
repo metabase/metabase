@@ -229,8 +229,8 @@
                (map :name results)))))))
 
 (deftest sync-table-test
-  (mt/with-temp* [Database [db {:engine ::sync-test}]
-                  Table    [table {:name "movie", :schema "default", :db_id (u/the-id db)}]]
+  (mt/with-temp [Database db {:engine ::sync-test}
+                 Table    table {:name "movie", :schema "default", :db_id (u/the-id db)}]
     (sync/sync-table! table)
     (is (= (merge
             (table-defaults)

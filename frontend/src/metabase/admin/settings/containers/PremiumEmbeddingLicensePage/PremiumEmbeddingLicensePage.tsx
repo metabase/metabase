@@ -5,12 +5,13 @@ import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { SettingDefinition } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { SettingDefinition } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import { LicenseInput } from "../../components/LicenseInput";
 import { initializeSettings } from "../../settings";
 import { getSettings } from "../../selectors";
-import { TokenStatus, useLicense } from "../../hooks/use-license";
+import type { TokenStatus } from "../../hooks/use-license";
+import { useLicense } from "../../hooks/use-license";
 import {
   LicenseInputTitle,
   Loader,

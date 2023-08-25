@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { TemplateTag, ParameterOptions } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
+import type { TemplateTag, ParameterOptions } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 import {
   ID_OPTION,
   OPTIONS_WITH_OPERATOR_SUBTYPES,

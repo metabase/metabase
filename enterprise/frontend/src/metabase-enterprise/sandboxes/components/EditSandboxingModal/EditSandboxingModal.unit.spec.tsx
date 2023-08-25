@@ -13,7 +13,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { GroupTableAccessPolicy } from "metabase-types/api";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

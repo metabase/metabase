@@ -1,6 +1,6 @@
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { createMockUser } from "metabase-types/api/mocks";
-import { EnterpriseState } from "metabase-enterprise/settings/types";
+import type { EnterpriseState } from "metabase-enterprise/settings/types";
 import { createMockAdminState } from "./admin";
 import { createMockAppState } from "./app";
 import { createMockDashboardState } from "./dashboard";

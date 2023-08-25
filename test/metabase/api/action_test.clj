@@ -188,10 +188,10 @@
             (mt/dataset test-data
               (mt/with-actions-enabled
                 (is (not= (mt/id) sample-dataset-id))
-                (mt/with-temp* [Card [model {:dataset true
-                                             :dataset_query
-                                             (mt/native-query
-                                              {:query "select * from checkins limit 1"})}]]
+                (mt/with-temp [Card model {:dataset true
+                                           :dataset_query
+                                           (mt/native-query
+                                            {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) sample-dataset-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -347,7 +347,7 @@
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
-    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+    (mt/with-temp [Card {card-id :id} {:dataset true}]
       (mt/with-model-cleanup [Action]
         (let [initial-action {:name "Get example"
                               :type "http"

@@ -23,8 +23,8 @@
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
@@ -72,22 +72,22 @@
 
 (defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
   (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
-    (mt/with-temp* [Dashboard     [dashboard (merge
-                                              (when-not (:parameters dash)
-                                                {:parameters [{:id      "_VENUE_ID_"
-                                                               :name    "Venue ID"
-                                                               :slug    "venue_id"
-                                                               :type    "id"
-                                                               :target  [:dimension (mt/id :venues :id)]
-                                                               :default nil}]})
-                                              dash)]
-                    DashboardCard [dashcard  (merge {:dashboard_id       (u/the-id dashboard)
-                                                     :card_id            (u/the-id card)
-                                                     :parameter_mappings (or (:parameter_mappings dashcard)
-                                                                             [{:parameter_id "_VENUE_ID_"
-                                                                               :card_id      (u/the-id card)
-                                                                               :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
-                                                    dashcard)]]
+    (mt/with-temp [Dashboard     dashboard (merge
+                                            (when-not (:parameters dash)
+                                              {:parameters [{:id      "_VENUE_ID_"
+                                                             :name    "Venue ID"
+                                                             :slug    "venue_id"
+                                                             :type    "id"
+                                                             :target  [:dimension (mt/id :venues :id)]
+                                                             :default nil}]})
+                                            dash)
+                   DashboardCard dashcard  (merge {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings (or (:parameter_mappings dashcard)
+                                                                           [{:parameter_id "_VENUE_ID_"
+                                                                             :card_id      (u/the-id card)
+                                                                             :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
+                                                  dashcard)]
       (f dashcard))))
 
 (defmacro with-temp-dashcard
@@ -106,7 +106,7 @@
 (defn ^:deprecated test-query-results
   "DEPRECATED -- you should use `schema=` instead"
   ([actual]
-   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                          :rows             [[100]]
                          :insights         nil
                          :results_timezone "UTC"}
@@ -484,13 +484,13 @@
 (deftest locked-params-are-substituted-into-text-cards
   (testing "check that locked params are substituted into text cards with mapped variables on the backend"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp* [Dashboard     [dash {:enable_embedding true
-                                           :parameters       [{:id "_a" :slug "a", :name "a", :type :string/=}]}]
-                      DashboardCard [_ {:dashboard_id           (:id dash)
-                                        :parameter_mappings     [{:parameter_id "_a",
-                                                                  :target       [:text-tag "foo"]}]
-                                        :visualization_settings {:virtual_card {:display "text"}
-                                                                 :text         "Text card with variable: {{foo}}"}}]]
+      (mt/with-temp [Dashboard     dash {:enable_embedding true
+                                         :parameters       [{:id "_a" :slug "a" :name "a" :type :string/=}]}
+                     DashboardCard _ {:dashboard_id           (:id dash)
+                                      :parameter_mappings     [{:parameter_id "_a"
+                                                                :target       [:text-tag "foo"]}]
+                                      :visualization_settings {:virtual_card {:display "text"}
+                                                               :text         "Text card with variable: {{foo}}"}}]
         (is (= "Text card with variable: bar"
                (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
                    :ordered_cards
@@ -743,14 +743,14 @@
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp* [Dashboard     [dashboard {:enable_embedding true}]
-                    Card          [card      (public-test/mbql-card-referencing table-kw field-kw)]
-                    DashboardCard [dashcard  {:dashboard_id       (u/the-id dashboard)
-                                              :card_id            (u/the-id card)
-                                              :parameter_mappings [{:card_id (u/the-id card)
-                                                                    :target  [:dimension
-                                                                              [:field
-                                                                               (mt/id table-kw field-kw) nil]]}]}]]
+    (mt/with-temp [Dashboard     dashboard {:enable_embedding true}
+                   Card          card      (public-test/mbql-card-referencing table-kw field-kw)
+                   DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                            :card_id            (u/the-id card)
+                                            :parameter_mappings [{:card_id (u/the-id card)
+                                                                  :target  [:dimension
+                                                                            [:field
+                                                                             (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
 
@@ -1278,19 +1278,19 @@
                    (mt/rows (client/client :get 202 (card-query-url card "") :NAME "Hudson Borer"))
                    (mt/rows (client/client :get 202 (card-query-url card "") :NAME "Hudson Borer" :NAME "x")))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
-                                                           :embedding_params {:name "enabled"}
-                                                           :parameters       [{:name      "Name"
-                                                                               :slug      "name"
-                                                                               :id        "_name_"
-                                                                               :type      "string/="
-                                                                               :sectionId "string"}]}]
+            (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
+                                                         :embedding_params {:name "enabled"}
+                                                         :parameters       [{:name      "Name"
+                                                                             :slug      "name"
+                                                                             :id        "_name_"
+                                                                             :type      "string/="
+                                                                             :sectionId "string"}]}
 
-                            DashboardCard [dashcard {:card_id            card-id
-                                                     :dashboard_id       dashboard-id
-                                                     :parameter_mappings [{:parameter_id "_name_"
-                                                                           :card_id      card-id
-                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
+                           DashboardCard dashcard {:card_id            card-id
+                                                   :dashboard_id       dashboard-id
+                                                   :parameter_mappings [{:parameter_id "_name_"
+                                                                         :card_id      card-id
+                                                                         :target       [:dimension [:template-tag "NAME"]]}]}]
               (is (= [[1]]
                      (mt/rows (client/client :get 202 (dashcard-url dashcard) :name "Hudson Borer"))
                      (mt/rows (client/client :get 202 (dashcard-url dashcard) :name "Hudson Borer" :name "x")))))))))))

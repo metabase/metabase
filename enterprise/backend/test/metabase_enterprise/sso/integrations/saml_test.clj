@@ -534,8 +534,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}
@@ -557,8 +557,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}

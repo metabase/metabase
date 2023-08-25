@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 
@@ -11,11 +11,11 @@ import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
-  CollectionTreeItem,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
 import { logout } from "metabase/auth/actions";
@@ -27,9 +27,9 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 
-import { MainNavbarProps, SelectedItem } from "../types";
+import type { MainNavbarProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
 
 import MainNavbarView from "./MainNavbarView";

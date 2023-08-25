@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,

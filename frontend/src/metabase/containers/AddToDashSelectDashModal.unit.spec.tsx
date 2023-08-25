@@ -18,7 +18,7 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { Collection, Dashboard } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 

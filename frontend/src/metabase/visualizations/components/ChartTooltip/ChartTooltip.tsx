@@ -6,7 +6,7 @@ import type {
   HoveredObject,
   HoveredTimelineEvent,
 } from "metabase/visualizations/types";
-import { VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 import StackedDataTooltip from "./StackedDataTooltip";
 import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";

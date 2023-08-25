@@ -7,11 +7,14 @@ import {
   ORDERS_ID,
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
-import StructuredQuery, {
-  isDimensionOption,
+/* eslint-disable import/no-duplicates */
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type {
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
+/* eslint-enable import/no-duplicates */
+import { isDimensionOption } from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 
 import {

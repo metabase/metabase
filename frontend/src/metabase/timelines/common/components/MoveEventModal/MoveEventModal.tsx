@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import Button from "metabase/core/components/Button/Button";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import ModalFooter from "../ModalFooter";
 import TimelinePicker from "../TimelinePicker";

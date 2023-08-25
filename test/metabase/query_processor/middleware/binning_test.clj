@@ -2,15 +2,15 @@
   "There are more 'e2e' tests related to binning in [[metabase.query-processor-test.breakout-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test
   (is (= {}
@@ -92,25 +92,28 @@
          (#'binning/resolve-default-strategy {:semantic_type :type/Income} 12.061602936923117 238.32732001721533))))
 
 ;; Try an end-to-end test of the middleware
-(defn- test-field []
-  (mi/instance
-   Field
-   {:database_type  "DOUBLE"
-    :table_id       (mt/id :checkins)
-    :semantic_type  :type/Income
-    :name           "TOTAL"
-    :display_name   "Total"
-    :fingerprint    {:global {:distinct-count 10000}
-                     :type   {:type/Number {:min 12.061602936923117
-                                            :max 238.32732001721533
-                                            :avg 82.96014815230829}}}
-    :base_type      :type/Float
-    :effective_type :type/Float}))
+(defn- mock-field-metadata-provider []
+  (lib/composed-metadata-provider
+   (lib.tu/mock-metadata-provider
+    {:fields [(merge (meta/field-metadata :orders :total)
+                     {:id             1
+                      :database-type  "DOUBLE"
+                      :table-id       (meta/id :checkins)
+                      :semantic-type  :type/Income
+                      :name           "TOTAL"
+                      :display-name   "Total"
+                      :fingerprint    {:global {:distinct-count 10000}
+                                       :type   {:type/Number {:min 12.061602936923117
+                                                              :max 238.32732001721533
+                                                              :avg 82.96014815230829}}}
+                      :base-type      :type/Float
+                      :effective-type :type/Float})]})
+   meta/metadata-provider))
 
-(deftest update-binning-strategy-test
-  (t2.with-temp/with-temp [Field field (test-field)]
-    (is (= {:query    {:source-table (mt/id :checkins)
-                       :breakout     [[:field (u/the-id field)
+(deftest ^:parallel update-binning-strategy-test
+  (qp.store/with-metadata-provider (mock-field-metadata-provider)
+    (is (= {:query    {:source-table (meta/id :checkins)
+                       :breakout     [[:field 1
                                        {:binning
                                         {:strategy  :num-bins
                                          :num-bins  8
@@ -118,42 +121,48 @@
                                          :max-value 240.0
                                          :bin-width 30}}]]}
             :type     :query
-            :database (mt/id)}
-           (mt/with-everything-store
-             (binning/update-binning-strategy
-              {:query    {:source-table (mt/id :checkins)
-                          :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}
-               :type     :query
-               :database (mt/id)}))))
+            :database (meta/id)}
+           (binning/update-binning-strategy
+            {:query    {:source-table (meta/id :checkins)
+                        :breakout     [[:field 1 {:binning {:strategy :default}}]]}
+             :type     :query
+             :database (meta/id)})))))
 
+(deftest ^:parallel update-binning-strategy-test-2
+  (qp.store/with-metadata-provider (mock-field-metadata-provider)
     (testing "should work recursively on nested queries"
       (is (= {:query    {:source-query
-                         {:source-table (mt/id :checkins)
-                          :breakout     [[:field (u/the-id field) {:binning {:strategy  :num-bins
-                                                                             :num-bins  8
-                                                                             :min-value 0.0
-                                                                             :max-value 240.0
-                                                                             :bin-width 30}}]]}}
+                         {:source-table (meta/id :checkins)
+                          :breakout     [[:field 1 {:binning {:strategy  :num-bins
+                                                              :num-bins  8
+                                                              :min-value 0.0
+                                                              :max-value 240.0
+                                                              :bin-width 30}}]]}}
               :type     :query
-              :database (mt/id)}
-             (mt/with-everything-store
-               (binning/update-binning-strategy
-                {:query    {:source-query
-                            {:source-table (mt/id :checkins)
-                             :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}}
-                 :type     :query
-                 :database (mt/id)})))))))
+              :database (meta/id)}
+             (binning/update-binning-strategy
+              {:query    {:source-query
+                          {:source-table (meta/id :checkins)
+                           :breakout     [[:field 1 {:binning {:strategy :default}}]]}}
+               :type     :query
+               :database (meta/id)}))))))
 
-(deftest binning-nested-questions-test
-  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query {:database (mt/id)
+(deftest ^:parallel binning-nested-questions-test
+  (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                    (lib.tu/mock-metadata-provider
+                                     {:cards [{:id            1
+                                               :name          "Card 1"
+                                               :database-id   (mt/id)
+                                               :dataset-query {:database (mt/id)
                                                                :type     :query
-                                                               :query    {:source-table (mt/id :venues)}}}]
+                                                               :query    {:source-table (mt/id :venues)}}}]})
+                                    (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
     (is (= [[1 22]
             [2 59]
             [3 13]
             [4 6]]
            (->> (mt/run-mbql-query nil
-                  {:source-table (str "card__" card-id)
+                  {:source-table "card__1"
                    :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
                    :aggregation  [[:count]]})
                 (mt/formatted-rows [int int]))))))
@@ -167,7 +176,7 @@
           :semantic-type :type/Longitude}]
     [[-27.137453079223633 -52.5982666015625]]]])
 
-(deftest auto-bin-single-row-test
+(deftest ^:synchronized auto-bin-single-row-test
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
     (mt/dataset single-row
       ;; sync the Database so we have valid fingerprints for our columns.

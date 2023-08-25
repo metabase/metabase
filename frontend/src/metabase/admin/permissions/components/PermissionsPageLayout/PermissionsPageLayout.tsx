@@ -1,16 +1,18 @@
-import { ReactNode, useCallback } from "react";
+import type { ReactNode } from "react";
+import { useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import { Route, Router, withRouter } from "react-router";
+import type { Route, Router } from "react-router";
+import { withRouter } from "react-router";
 
-import { Location } from "history";
+import type { Location } from "history";
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import { PermissionsGraph } from "metabase-types/api";
+import type { PermissionsGraph } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -22,7 +24,7 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import {

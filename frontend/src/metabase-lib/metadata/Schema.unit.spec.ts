@@ -1,4 +1,4 @@
-import { Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 
