@@ -813,7 +813,7 @@
                          (StringReader.))]
            (.copyIn copy-manager ^String sql tsvs)))))))
 
-(def ^:private query-privileges-query
+(def ^:private table-privileges-query
   (str/join
    "\n"
    ["with current_user_or_role as ("
@@ -883,7 +883,7 @@
 (defmethod driver/table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/query conn-spec query-privileges-query)))
+    (jdbc/query conn-spec table-privileges-query)))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
