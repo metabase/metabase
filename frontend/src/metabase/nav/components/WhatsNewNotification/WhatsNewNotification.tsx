@@ -1,4 +1,3 @@
-import { Paper } from "@mantine/core";
 import { t } from "ttag";
 import { useCallback, useMemo } from "react";
 import { updateSetting } from "metabase/admin/settings/settings";
@@ -12,7 +11,7 @@ import {
   getLastAcknowledgedVersion,
   getSetting,
 } from "metabase/selectors/settings";
-import { Flex, Stack, Text, Anchor } from "metabase/ui";
+import { Flex, Stack, Text, Anchor, Box } from "metabase/ui";
 import { getLatestEligibleReleaseNotes } from "./utils";
 import Sparkles from "./sparkles.svg?component";
 
@@ -57,7 +56,18 @@ export function WhatsNewNotification() {
     return null;
   }
   return (
-    <Paper shadow="md" p="md" m="lg" withBorder>
+    <Box
+      p="md"
+      m="lg"
+      // eslint-disable-next-line react/forbid-component-props
+      sx={theme => ({
+        boxShadow: theme.shadows.md,
+        borderWidth: 1,
+        borderColor: theme.colors.gray[1],
+        borderStyle: "solid",
+        borderRadius: theme.radius.md,
+      })}
+    >
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
@@ -78,6 +88,6 @@ export function WhatsNewNotification() {
           {t`See what's new`}
         </Anchor>
       </Stack>
-    </Paper>
+    </Box>
   );
 }
