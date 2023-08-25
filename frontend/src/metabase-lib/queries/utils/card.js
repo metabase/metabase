@@ -61,9 +61,6 @@ export function applyParameters(
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];
-    if (value == null) {
-      continue;
-    }
 
     const cardId = card.id || card.original_card_id;
     const mapping = _.findWhere(
