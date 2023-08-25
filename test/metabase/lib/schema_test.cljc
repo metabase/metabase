@@ -192,3 +192,19 @@
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]]}]
     nil))
+
+(deftest ^:parallel enforce-distinct-breakouts-and-fields-test
+  (let [duplicate-refs [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]]
+    (testing #'lib.schema/distinct-refs?
+      (is (not (#'lib.schema/distinct-refs? duplicate-refs))))
+    (testing "breakouts/fields schemas"
+      (are [schema error] (= error
+                             (me/humanize (mc/explain schema duplicate-refs)))
+        ::lib.schema/breakouts ["Breakouts must be distinct"]
+        ::lib.schema/fields    [":fields must be distinct"]))
+    (testing "stage schema"
+      (are [k error] (= error
+                        (me/humanize (mc/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
+        :breakout {:breakout ["Breakouts must be distinct"]}
+        :fields   {:fields [":fields must be distinct"]}))))

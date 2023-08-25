@@ -6,7 +6,9 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
+  (:refer-clojure :exclude [ref])
   (:require
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -23,7 +25,7 @@
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -53,29 +55,27 @@
 (mr/def ::breakout
   [:ref ::ref/ref])
 
-(defn- strip-uuids [exprs]
-  (mbql.u.match/replace exprs
-    (m :guard (every-pred map? :lib/uuid))
-    (dissoc m :lib/uuid)))
-
-(defn- distinct-exprs? [exprs]
+(defn- distinct-refs? [refs]
   (or
-   (< (count exprs) 2)
-   (apply distinct? (strip-uuids exprs))))
+   (< (count refs) 2)
+   (apply
+    distinct?
+    (for [ref refs]
+      (lib.options/update-options ref dissoc :lib/uuid)))))
 
 (mr/def ::breakouts
   [:and
    [:sequential {:min 1} ::breakout]
    [:fn
     {:error/message "Breakouts must be distinct"}
-    distinct-exprs?]])
+    distinct-refs?]])
 
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
    [:fn
     {:error/message ":fields must be distinct"}
-    distinct-exprs?]])
+    distinct-refs?]])
 
 ;; this is just for enabling round-tripping filters with named segment references
 (mr/def ::filterable
