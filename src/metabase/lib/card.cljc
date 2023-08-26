@@ -79,10 +79,9 @@
       (when card-or-id
         {:lib/card-id (u/the-id card-or-id)})
       (when *force-broken-card-refs*
-        (merge
-         {::force-broken-id-refs true}
-         #_(when-let [legacy-join-alias (:source-alias col)]
-             {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))})))))))
+        {::force-broken-id-refs true}
+        #_(when-let [legacy-join-alias (:source-alias col)]
+            {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))))
 
 (def ^:private CardColumnMetadata
   [:merge
