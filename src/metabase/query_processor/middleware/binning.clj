@@ -206,8 +206,6 @@
     ;; try to find field in source-metadata with matching name
     (let [mlv2-metadatas (for [col source-metadata]
                            (lib.card/->card-metadata-column (qp.store/metadata-provider) col))]
-      (println "field-name:" field-name) ; NOCOMMIT
-      (clojure.pprint/pprint mlv2-metadatas)
       (or
        (lib.equality/closest-matching-metadata
         [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
