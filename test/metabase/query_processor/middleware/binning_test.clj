@@ -2,14 +2,18 @@
   "There are more 'e2e' tests related to binning in [[metabase.query-processor-test.breakout-test]]."
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test
@@ -88,8 +92,10 @@
     {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}))
 
 (deftest ^:parallel resolve-default-strategy-test
-  (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
-         (#'binning/resolve-default-strategy {:semantic_type :type/Income} 12.061602936923117 238.32732001721533))))
+  (let [metadata (assoc (meta/field-metadata :orders :total)
+                        :semantic-type :type/Income)]
+    (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
+           (#'binning/resolve-default-strategy metadata 12.061602936923117 238.32732001721533)))))
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []
@@ -161,10 +167,10 @@
             [2 59]
             [3 13]
             [4 6]]
-           (->> (mt/run-mbql-query nil
-                  {:source-table "card__1"
+           (->> {:source-table "card__1"
                    :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
-                   :aggregation  [[:count]]})
+                   :aggregation  [[:count]]}
+                (mt/run-mbql-query nil)
                 (mt/formatted-rows [int int]))))))
 
 (mt/defdataset single-row
@@ -176,15 +182,80 @@
           :semantic-type :type/Longitude}]
     [[-27.137453079223633 -52.5982666015625]]]])
 
-(deftest ^:synchronized auto-bin-single-row-test
+(def ^:private single-row-fingerprints
+  {:lat {:global {:distinct-count 10, :nil% 0.0}
+         :type   {:type/Number {:min -27.0
+                                :max -27.0}}}
+   :lon {:global {:distinct-count 10, :nil% 0.0}
+         :type   {:type/Number {:min -53.0
+                                :max -53.0}}}})
+
+(deftest ^:parallel auto-bin-single-row-test
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
     (mt/dataset single-row
-      ;; sync the Database so we have valid fingerprints for our columns.
-      (sync/sync-database! (mt/db))
-      (let [query (mt/mbql-query t
-                    {:breakout    [[:field %lat {:binning {:strategy :default}}]
-                                   [:field %lon {:binning {:strategy :default}}]]
-                     :aggregation [[:count]]})]
-        (mt/with-native-query-testing-context query
-          (is (= [[-30.00M -60.00M 1]]
-                 (mt/rows (qp/process-query query)))))))))
+      (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                         ;; add some mocked fingerprints to these Fields.
+                                         (lib/composed-metadata-provider
+                                          (lib.tu/mock-metadata-provider
+                                           {:fields [(merge (lib.metadata/field app-db-provider (mt/id :t :lat))
+                                                            {:fingerprint (single-row-fingerprints :lat)})
+                                                     (merge (lib.metadata/field app-db-provider (mt/id :t :lon))
+                                                            {:fingerprint (single-row-fingerprints :lon)})]})
+                                          app-db-provider))
+        (let [query (mt/mbql-query t
+                      {:breakout    [[:field %lat {:binning {:strategy :default}}]
+                                     [:field %lon {:binning {:strategy :default}}]]
+                       :aggregation [[:count]]})]
+          (is (=? {:query {:breakout [[:field integer? {:binning {:strategy  :bin-width
+                                                                  :min-value -30.0
+                                                                  :max-value -20.0
+                                                                  :num-bins  1
+                                                                  :bin-width 10.0}}]
+                                      [:field integer? {:binning {:strategy  :bin-width
+                                                                  :min-value -60.0
+                                                                  :max-value -50.0
+                                                                  :num-bins  1
+                                                                  :bin-width 10.0}}]]}}
+                  (into {} (binning/update-binning-strategy query))))
+          (mt/with-native-query-testing-context query
+            (is (= [[-30.00M -60.00M 1]]
+                   (mt/rows (qp/process-query query))))))))))
+(deftest ^:parallel fuzzy-metadata-matching-test
+  (testing "Make sure we use fuzzy metadata matching to update binning strategies so it works for queries generated by MLv2"
+    ;; this is disabled for now, but once we stop generating broken card refs it should work again -- see #33453
+    (when-not lib.card/*force-broken-card-refs*
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (let [source-card-query (lib.tu.macros/mbql-query orders
+                                  {:joins  [{:source-table $$people
+                                             :alias        "People"
+                                             :condition    [:= $user-id [:field %people.id {:join-alias "People"}]]
+                                             :fields       [[:field %people.longitude {:join-alias "People"}]
+                                                            [:field %people.birth-date {:temporal-unit :default, :join-alias "People"}]]}
+                                            {:source-table $$products
+                                             :alias        "Products"
+                                             :condition    [:= $product-id &Products.products.id]
+                                             :fields       [&Products.products.price]}]
+                                   :fields [[:field %id {:base-type :type/BigInteger}]]})
+              source-metadata   (qp/query->expected-cols source-card-query)
+              query             (-> (lib/query meta/metadata-provider source-card-query)
+                                    lib/append-stage
+                                    (lib/aggregate (lib/count)))]
+          (let [people-longitude (m/find-first #(= (:id %) (meta/id :people :longitude))
+                                               (lib/breakoutable-columns query))
+                _                (is (some? people-longitude))
+                binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
+                                               (lib/available-binning-strategies query people-longitude))
+                _                (is (some? binning-strategy))
+                query            (-> query
+                                     (lib/breakout (lib/with-binning people-longitude binning-strategy)))
+                legacy-query     (-> (lib.convert/->legacy-MBQL query)
+                                     (assoc-in [:query :source-metadata] source-metadata))]
+            (is (=? {:query {:breakout [[:field
+                                         "People__LONGITUDE"
+                                         {:base-type :type/Float,
+                                          :binning   {:strategy  :bin-width
+                                                      :bin-width 20.0
+                                                      :min-value -180.0
+                                                      :max-value -60.0
+                                                      :num-bins  6}}]]}}
+                    (binning/update-binning-strategy legacy-query)))))))))

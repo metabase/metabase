@@ -177,7 +177,7 @@
 
 (defn- throw-unfound-field-errror
   [table-id parent-id field-name]
-  (let [table-name      (t2/select-one-fn [:model/Table :name] :id table-id)
+  (let [table-name      (t2/select-one-fn :name [:model/Table :name] :id table-id)
         field-name      (qualified-field-name parent-id field-name)
         all-field-names (all-field-names table-id)]
     (throw

@@ -26,6 +26,7 @@
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -97,7 +98,9 @@
 (defn- source-query
   "Get the query to be run from the card"
   [{dataset-query :dataset-query, card-id :id, :as card}]
-  (let [{db-id                                           :database
+  (let [dataset-query (cond-> dataset-query
+                        (:lib/type dataset-query) lib.convert/->legacy-MBQL)
+        {db-id                                           :database
          mbql-query                                      :query
          {template-tags :template-tags :as native-query} :native} dataset-query]
     (or
@@ -111,7 +114,7 @@
                                                   :query      pipeline}))
            (empty? template-tags) (dissoc :template-tags))))
      (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                     {:card card})))))
+                     {:card card, :dataset-query dataset-query})))))
 
 (mu/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable

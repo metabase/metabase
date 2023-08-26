@@ -245,10 +245,9 @@
    (let [[op _ first-arg] a-filter-clause
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         ref->col (zipmap (map lib.ref/ref columns) columns)
-         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+         col (lib.equality/closest-matching-metadata first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                                    (lib.filter.operator/filter-operators col))
                       (lib.filter.operator/operator-def op)))))
 
 
@@ -293,9 +292,7 @@
    (let [[op options first-arg & rest-args] a-filter-clause
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         ref->col (m/index-by lib.ref/ref columns)
-         col-ref (lib.equality/find-closest-matching-ref query first-arg (keys ref->col))
-         col (ref->col col-ref)]
+         col (lib.equality/closest-matching-metadata first-arg columns)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                                (lib.filter.operator/filter-operators col))
