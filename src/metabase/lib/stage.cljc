@@ -143,10 +143,13 @@
                                                            (lib.util/query-stage query previous-stage-number))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (-> col
-           (assoc :lib/source               :source/previous-stage
-                  :lib/source-column-alias  source-alias
-                  :lib/desired-column-alias (unique-name-fn source-alias))
+       (-> (merge
+            col
+            {:lib/source               :source/previous-stage
+             :lib/source-column-alias  source-alias
+             :lib/desired-column-alias (unique-name-fn source-alias)}
+            (when (:metabase.lib.card/force-broken-id-refs col)
+              (select-keys col [:metabase.lib.card/force-broken-id-refs])))
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort

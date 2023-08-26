@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -374,21 +375,22 @@
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."
     (let [query lib.tu/query-with-source-card]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (let [name-col (m/find-first #(= (:name %) "USER_ID")
-                                     (lib/breakoutable-columns query))]
-          (is (=? {:name      "USER_ID"
-                   :base-type :type/Integer}
-                  name-col))
-          (let [query' (lib/breakout query name-col)]
-            (is (=? {:stages
-                     [{:source-card 1
-                       :breakout [[:field {:base-type :type/Integer} "USER_ID"]]}]}
-                    query'))
-            (is (= "My Card, Grouped by User ID"
-                   (lib/describe-query query')))
-            (is (= ["User ID"]
-                   (for [breakout (lib/breakouts query')]
-                     (lib/display-name query' breakout))))))))))
+        (binding [lib.card/*force-broken-card-refs* false]
+          (let [name-col (m/find-first #(= (:name %) "USER_ID")
+                                       (lib/breakoutable-columns query))]
+            (is (=? {:name      "USER_ID"
+                     :base-type :type/Integer}
+                    name-col))
+            (let [query' (lib/breakout query name-col)]
+               (is (=? {:stages
+                        [{:source-card 1
+                          :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
+                       query'))
+               (is (= "My Card, Grouped by User ID"
+                      (lib/describe-query query')))
+               (is (= ["User ID"]
+                      (for [breakout (lib/breakouts query')]
+                        (lib/display-name query' breakout)))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> lib.tu/venues-query

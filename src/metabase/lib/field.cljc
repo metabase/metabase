@@ -427,7 +427,8 @@
 
 (defn- column-metadata->field-ref
   [metadata]
-  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+  (let [inherited-column? (when-not (::lib.card/force-broken-id-refs metadata)
+                            (#{:source/card :source/native :source/previous-stage} (:lib/source metadata)))
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -438,10 +439,12 @@
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (:fk-field-id metadata)]
-                                   {:source-field source-field-id}))]
-    [:field options (if inherited-column?
-                      (or (:lib/desired-column-alias metadata) (:name metadata))
-                      (or (:id metadata) (:name metadata)))]))
+                                   {:source-field source-field-id}))
+        id-or-name        ((if inherited-column?
+                             (some-fn :lib/desired-column-alias :name)
+                             (some-fn :id :name))
+                           metadata)]
+    [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]

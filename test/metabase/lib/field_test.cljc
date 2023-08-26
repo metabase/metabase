@@ -1,8 +1,9 @@
 (ns metabase.lib.field-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,6 +18,10 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each (fn [thunk]
+                      (binding [lib.card/*force-broken-card-refs* false]
+                        (thunk))))
 
 (deftest ^:parallel field-from-results-metadata-test
   (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card

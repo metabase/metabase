@@ -7,7 +7,8 @@
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.db.setup :as mdb.setup])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -81,6 +82,10 @@
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
       (increment-app-db-unique-indentifier!)
+      (try
+        (mdb.setup/migrate! :h2 mdb.connection/*application-db* :up)
+        (catch Throwable e
+          (log/error e "Failed to migrate")))
       (finally
         (.. lock writeLock unlock))))
   :ok)

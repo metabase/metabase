@@ -615,10 +615,12 @@
     [::$$ table-name]
     (symbol (format "$$%s" table-name))))
 
-(defn- query-table-name [{:keys [source-table source-query]}]
+(defn- query-table-name [{:keys [source-table source-query], :as inner-query}]
   (cond
     (pos-int? source-table)
-    (u/lower-case-en (t2/select-one-fn :name Table :id source-table))
+    (u/lower-case-en (or (t2/select-one-fn :name Table :id source-table)
+                         (throw (ex-info (format "Table %d does not exist!" source-table)
+                                         {:source-table source-table, :inner-query inner-query}))))
 
     source-query
     (recur source-query)))

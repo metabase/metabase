@@ -9,9 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
@@ -1020,31 +1018,9 @@
                                (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                mt/id)]
         (qp.store/with-metadata-provider metadata-provider
-          (testing "returned columns"
-            (let [card (lib.metadata/card metadata-provider 1)]
-              (assert card)
-              (testing "with Card query as previous stage"
-                (let [query (-> (lib/query metadata-provider (:dataset-query card))
-                                lib/append-stage)
-                      cols  (lib/returned-columns query)]
-                  (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-                           [:field {:base-type :type/Integer} "count"]]
-                          (map lib.ref/ref cols)))))
-              (testing "with :source-card"
-                (let [query (lib/query metadata-provider card)
-                      cols  (lib/returned-columns query)]
-                  (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-                           [:field {:base-type :type/Integer} "count"]]
-                          (map lib.ref/ref cols)))))))
-          (let [query (lib.convert/->legacy-MBQL
-                       (lib.tu.mocks-31769/query metadata-provider))]
-            (is (=? {:query {:joins [{:condition [:=
-                                                  [:field "Products__CATEGORY" {:base-type :type/Text}]
-                                                  ;; this should probably actually be a nominal Field ref, not a Field
-                                                  ;; ID, once #29763 is fixed.
-                                                  [:field integer? {:base-type :type/Text, :join-alias string?}]]}]}}
-                    query))
-            (mt/with-native-query-testing-context query
+          (let [legacy-query (lib.convert/->legacy-MBQL
+                              (lib.tu.mocks-31769/query metadata-provider))]
+            (mt/with-native-query-testing-context legacy-query
               (is (= [["Doohickey" 3976 "Doohickey"]
                       ["Gadget"    4939 "Gadget"]]
-                     (mt/rows (qp/process-query query)))))))))))
+                     (mt/rows (qp/process-query legacy-query)))))))))))

@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.ref :as lib.ref]
@@ -117,39 +118,41 @@
 
 (deftest ^:parallel returned-columns-31769-source-card-test
   (testing "Queries with `:source-card`s with joins should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-          card              (lib.metadata/card metadata-provider 1)
-          q                 (lib/query metadata-provider card)
-          cols              (lib/returned-columns q)]
-      (is (=? [{:name                     "CATEGORY"
-                :lib/source               :source/card
-                :lib/source-column-alias  "CATEGORY"
-                :lib/desired-column-alias "Products__CATEGORY"}
-               {:name                     "count"
-                :lib/source               :source/card
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"}]
-              cols))
-      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-               [:field {:base-type :type/Integer} "count"]]
-              (map lib.ref/ref cols))))))
+    (binding [lib.card/*force-broken-card-refs* false]
+      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
+            card              (lib.metadata/card metadata-provider 1)
+            q                 (lib/query metadata-provider card)
+            cols              (lib/returned-columns q)]
+        (is (=? [{:name                     "CATEGORY"
+                  :lib/source               :source/card
+                  :lib/source-column-alias  "CATEGORY"
+                  :lib/desired-column-alias "Products__CATEGORY"}
+                 {:name                     "count"
+                  :lib/source               :source/card
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"}]
+                cols))
+        (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+                 [:field {:base-type :type/Integer} "count"]]
+                (map lib.ref/ref cols)))))))
 
 (deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
   (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
-    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-          card              (lib.metadata/card metadata-provider 1)
-          q                 (-> (lib/query metadata-provider card)
-                                lib/append-stage)
-          cols              (lib/returned-columns q)]
-      (is (=? [{:name                     "CATEGORY"
-                :lib/source               :source/previous-stage
-                :lib/source-column-alias  "Products__CATEGORY"
-                :lib/desired-column-alias "Products__CATEGORY"}
-               {:name                     "count"
-                :lib/source               :source/previous-stage
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"}]
-              cols))
-      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-               [:field {:base-type :type/Integer} "count"]]
-              (map lib.ref/ref cols))))))
+    (binding [lib.card/*force-broken-card-refs* false]
+      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
+            card              (lib.metadata/card metadata-provider 1)
+            q                 (-> (lib/query metadata-provider card)
+                                  lib/append-stage)
+            cols              (lib/returned-columns q)]
+        (is (=? [{:name                     "CATEGORY"
+                  :lib/source               :source/previous-stage
+                  :lib/source-column-alias  "Products__CATEGORY"
+                  :lib/desired-column-alias "Products__CATEGORY"}
+                 {:name                     "count"
+                  :lib/source               :source/previous-stage
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"}]
+                cols))
+        (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+                 [:field {:base-type :type/Integer} "count"]]
+                (map lib.ref/ref cols)))))))
