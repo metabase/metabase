@@ -52,7 +52,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]))
 
