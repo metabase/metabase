@@ -127,7 +127,7 @@
       (let [db-name "add_new_table_sync_test_table"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
         (drop-if-exists-and-create-db! db-name)
-        (mt/with-temp* [Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]]
+        (mt/with-temp [Database database {:engine :postgres :details (assoc details :dbname db-name)}]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
                 tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))

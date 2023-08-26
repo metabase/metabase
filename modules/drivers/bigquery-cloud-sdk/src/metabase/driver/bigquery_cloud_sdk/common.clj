@@ -3,6 +3,7 @@
   (:require
    [metabase.models :refer [Database]]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)

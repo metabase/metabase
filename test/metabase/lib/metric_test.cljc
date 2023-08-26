@@ -18,7 +18,7 @@
 
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider
-   {:database meta/metadata
+   {:database meta/database
     :tables   [(meta/table-metadata :venues)]
     :fields   [(meta/field-metadata :venues :price)]
     :metrics  [{:id          metric-id

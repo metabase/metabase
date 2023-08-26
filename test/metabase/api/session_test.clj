@@ -358,6 +358,28 @@
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
+(deftest reset-token-ttl-hours-test
+  (testing "Test reset-token-ttl-hours-test"
+    (testing "reset-token-ttl-hours-test is reset to default when not set"
+      (mt/with-temp-env-var-value [mb-reset-token-ttl-hours nil]
+        (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+
+    (testing "reset-token-ttl-hours-test is set to positive value"
+      (mt/with-temp-env-var-value [mb-reset-token-ttl-hours 36]
+        (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+
+    (testing "reset-token-ttl-hours-test is set to large positive value"
+      (mt/with-temp-env-var-value [mb-reset-token-ttl-hours (+ Integer/MAX_VALUE 1)]
+        (is (= (+ Integer/MAX_VALUE 1) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+
+    (testing "reset-token-ttl-hours-test is set to zero"
+      (mt/with-temp-env-var-value [mb-reset-token-ttl-hours 0]
+        (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+
+    (testing "reset-token-ttl-hours-test is set to negative value"
+      (mt/with-temp-env-var-value [mb-reset-token-ttl-hours -1]
+        (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
+
 (deftest properties-test
   (reset-throttlers!)
   (testing "GET /session/properties"
@@ -532,18 +554,18 @@
                                                                  :hash     "fake-hash"}))))
 
       (testing "Valid hash but not email"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
-                        PulseChannel [_ {:pulse_id pulse-id}]]
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _              {:pulse_id pulse-id}]
           (is (= "Email for pulse-id doesnt exist."
                  (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
-                        PulseChannel [_ {:pulse_id     pulse-id
-                                         :channel_type "email"
-                                         :details      {:emails [email]}}]]
+        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
+                       PulseChannel _              {:pulse_id     pulse-id
+                                                    :channel_type "email"
+                                                    :details      {:emails [email]}}]
           (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
@@ -560,18 +582,18 @@
                                                                       :hash     "fake-hash"}))))
 
       (testing "Valid hash and email doesn't exist"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
-                        PulseChannel [_ {:pulse_id pulse-id}]]
+        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
+                       PulseChannel _              {:pulse_id pulse-id}]
           (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
                                                                         :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email already exists"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
-                        PulseChannel [_ {:pulse_id     pulse-id
-                                         :channel_type "email"
-                                         :details      {:emails [email]}}]]
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _              {:pulse_id     pulse-id
+                                                    :channel_type "email"
+                                                    :details      {:emails [email]}}]
           (is (= "Email for pulse-id already exists."
                  (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email

@@ -36,10 +36,10 @@
 (deftest list-snippets-api-test
   (grant-native-perms)
   (testing "GET /api/native-query-snippet"
-    (mt/with-temp* [NativeQuerySnippet [snippet-1 {:content "1"
-                                                   :name    "snippet_1"}]
-                    NativeQuerySnippet [snippet-2 {:content "2"
-                                                   :name    "snippet_2"}]]
+    (mt/with-temp [NativeQuerySnippet snippet-1 {:content "1"
+                                                 :name    "snippet_1"}
+                   NativeQuerySnippet snippet-2 {:content "2"
+                                                 :name    "snippet_2"}]
       (testing "list returns all snippets. Should work for all users"
         (doseq [test-user [:crowberto :rasta]]
           (testing (format "test user = %s" test-user)
@@ -167,8 +167,8 @@
               (is (= updated-desc (:description updated-snippet)))))))
 
       (testing "Attempting to change Snippet's name to one that's already in use should throw an error"
-        (mt/with-temp* [NativeQuerySnippet [_         {:name "test-snippet-1", :content "1"}]
-                        NativeQuerySnippet [snippet-2 {:name "test-snippet-2", :content "2"}]]
+        (mt/with-temp [NativeQuerySnippet _         {:name "test-snippet-1" :content "1"}
+                       NativeQuerySnippet snippet-2 {:name "test-snippet-2" :content "2"}]
           (is (= "A snippet with that name already exists. Please pick a different name."
                  (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet-2)) {:name "test-snippet-1"})))
           (is (= 1
@@ -189,8 +189,8 @@
   (grant-native-perms)
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nChange collection_id"
-      (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection", :namespace "snippets"}
-                               Collection collection-2 {:name "another Collection", :namespace "snippets"}]
+      (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection" :namespace "snippets"}
+                               Collection collection-2 {:name "another Collection" :namespace "snippets"}]
         (let [no-collection {:name "no Collection"}]
           (doseq [[source dest] [[no-collection collection-1]
                                  [collection-1 collection-2]

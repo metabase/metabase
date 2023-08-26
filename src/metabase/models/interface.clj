@@ -207,6 +207,7 @@
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
+  ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (seq (map mbql.normalize/normalize-source-metadata metadata))))
 

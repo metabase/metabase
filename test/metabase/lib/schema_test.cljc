@@ -25,7 +25,7 @@
     2]])
 
 (deftest ^:parallel check-aggregation-references-test
-  (let [bad-ref (str (random-uuid))
+  (let [bad-ref  (str (random-uuid))
         good-ref (:lib/uuid (second valid-ag-1))]
     (are [stage errors] (= errors
                            (me/humanize (mc/explain ::lib.schema/stage stage)))
@@ -45,6 +45,11 @@
        :aggregation  [valid-ag-1]
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
+
+      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
+      {:lib/type                           :mbql.stage/mbql
+       :metabase.lib.stage/cached-metadata {:field-ref [:aggregation 0]}}
+      ["Invalid :aggregation reference: [:aggregation 0]"]
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql

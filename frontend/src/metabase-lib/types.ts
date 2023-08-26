@@ -168,6 +168,13 @@ export type JoinConditionExternalOp = Omit<ExternalOp, "args"> & {
   args: [ColumnMetadata, ColumnMetadata];
 };
 
+export type FilterParts = {
+  operator: FilterOperator;
+  options: Record<string, unknown>;
+  column: ColumnWithOperators | null;
+  args: ExpressionArg[];
+};
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 

@@ -1,4 +1,4 @@
-import { Loader as MantineLoader } from "@mantine/core";
+import { Loader as MantineLoader, getSize } from "@mantine/core";
 import type { LoaderProps } from "@mantine/core";
 
 const SIZES: Record<string, string> = {
@@ -10,5 +10,5 @@ const SIZES: Record<string, string> = {
 };
 
 export const Loader = ({ size = "md", ...props }: LoaderProps) => (
-  <MantineLoader {...props} size={SIZES[size] ?? size} />
+  <MantineLoader {...props} size={getSize({ size, sizes: SIZES })} />
 );

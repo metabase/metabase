@@ -129,17 +129,17 @@
     (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are archived"
         (mt/with-actions [{:keys [action-id]} {}]
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:action_id action-id
-                                                            :dashboard_id dashboard-id}]]
+          (mt/with-temp [Dashboard {dashboard-id :id} {}
+                         DashboardCard {dashcard-id :id} {:action_id action-id
+                                                          :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (action/update! {:id action-id, :archived true} {:id action-id})
             (is (zero? (t2/count DashboardCard :id dashcard-id))))))
       (testing "Dashcards are deleted after actions are deleted entirely"
         (mt/with-actions [{:keys [action-id]} {}]
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:action_id action-id
-                                                            :dashboard_id dashboard-id}]]
+          (mt/with-temp [Dashboard {dashboard-id :id} {}
+                         DashboardCard {dashcard-id :id} {:action_id action-id
+                                                          :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (t2/delete! Action :id action-id)
             (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))

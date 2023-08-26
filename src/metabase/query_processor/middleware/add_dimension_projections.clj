@@ -22,54 +22,66 @@
   In both cases, to accomplish values replacement on the frontend, the post-processing part of this middleware adds
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
-  `name` is `:remapped_from` `:category_id`."
+  `name` is `:remapped_from` `:category_id`.
+
+  See also [[metabase.models.params.chain-filter]] for another explanation of remapping."
   (:require
    [clojure.data :as data]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.dimension :refer [Dimension]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
-
-(def ^:private ExternalRemappingDimensionInitialInfo
-  "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
-  [:map
-   [:id                      ms/PositiveInt]   ; unique ID for the remapping
-   [:name                    ms/NonBlankString]       ; display name for the remapping
-   [:field_id                ms/PositiveInt]   ; ID of the Field being remapped
-   [:human_readable_field_id ms/PositiveInt]]) ; ID of the FK Field to remap values to
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
-  [:merge
-   ExternalRemappingDimensionInitialInfo
-   [:map
-    [:field_name                ms/NonBlankString]    ; Name of the Field being remapped
-    [:human_readable_field_name ms/NonBlankString]]]) ; Name of the FK field to remap values to
+  [:map
+   [:id                        ms/PositiveInt]      ; unique ID for the remapping
+   [:name                      ms/NonBlankString]   ; display name for the remapping
+   [:field-id                  ms/PositiveInt]      ; ID of the Field being remapped
+   [:field-name                ms/NonBlankString]   ; Name of the Field being remapped
+   [:human-readable-field-id   ms/PositiveInt]      ; ID of the FK Field to remap values to
+   [:human-readable-field-name ms/NonBlankString]]) ; Name of the FK Field to remap values to
 
 ;;;; Pre-processing
 
-(mu/defn ^:private fields->field-id->remapping-dimension :- [:maybe [:map-of ms/PositiveInt ExternalRemappingDimensionInitialInfo]]
+(mu/defn ^:private fields->field-id->remapping-dimension :- [:maybe [:map-of ::lib.schema.id/field ExternalRemappingDimension]]
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
-    (letfn [(thunk []
-              (m/index-by :field_id (t2/select [Dimension :id :field_id :name :human_readable_field_id]
-                                      :field_id [:in field-ids]
-                                      :type     "external")))]
-      (if (qp.store/initialized?)
-        (qp.store/cached [::fetch-dimensions field-ids]
-          (thunk))
-        (thunk)))))
+    (let [field-metadatas (qp.store/bulk-metadata :metadata/column field-ids)]
+      (when-let [remap-field-ids (not-empty (into #{}
+                                                  (keep (comp :field-id :lib/external-remap))
+                                                  field-metadatas))]
+        ;; do a bulk fetch of the remaps.
+        (qp.store/bulk-metadata :metadata/column remap-field-ids)
+        (into {}
+              (comp (filter :lib/external-remap)
+                    (keep (fn [field]
+                            (let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap field)
+                                  remap-field                                                (lib.metadata.protocols/field
+                                                                                              (qp.store/metadata-provider)
+                                                                                              remap-field-id)]
+                              (when remap-field
+                                [(:id field) {:id                        remap-id
+                                              :name                      remap-name
+                                              :field-id                  (:id field)
+                                              :field-name                (:name field)
+                                              :human-readable-field-id   remap-field-id
+                                              :human-readable-field-name (:name remap-field)}])))))
+              field-metadatas)))))
 
 (def ^:private RemapColumnInfo
   [:map
@@ -90,7 +102,7 @@
     ;; deduplication instead.
     (let [name-generator (mbql.u/unique-name-generator)
           unique-name    (fn [field-id]
-                           (qp.store/fetch-and-store-fields! #{field-id})
+                           (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                            (let [field (qp.store/field field-id)]
                              (name-generator (:name field))))]
       (vec
@@ -102,12 +114,12 @@
          (let [dimension (field-id->remapping-dimension id)]
            {:original-field-clause &match
             :new-field-clause      [:field
-                                    (u/the-id (:human_readable_field_id dimension))
+                                    (u/the-id (:human-readable-field-id dimension))
                                     {:source-field            id
                                      ::new-field-dimension-id (u/the-id dimension)}]
             :dimension             (assoc dimension
-                                          :field_name                (-> dimension :field_id unique-name)
-                                          :human_readable_field_name (-> dimension :human_readable_field_id unique-name))}))))))
+                                          :field-name                (-> dimension :field-id unique-name)
+                                          :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))))
 
 (mu/defn ^:private add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
@@ -280,8 +292,8 @@
 ;;     :id                        1000
 ;;     :field_id                  %messages.sender_id
 ;;     :field_name                "SENDER_ID"
-;;     :human_readable_field_id   %users.name
-;;     :human_readable_field_name "NAME"}
+;;     :human-readable-field-id   %users.name
+;;     :human-readable-field-name "NAME"}
 ;;
 ;; Example remap-from column (need to add info about column it is `:remapped_to`):
 ;;
@@ -304,7 +316,7 @@
    {dimension-id      :id
     from-name         :field_name
     from-display-name :name
-    to-name           :human_readable_field_name} :- ExternalRemappingDimension]
+    to-name           :human-readable-field-name} :- ExternalRemappingDimension]
   (log/trace "Considering column\n"
              (u/pprint-to-str 'cyan (select-keys column [:id :name :fk_field_id :display_name :options]))
              (u/colorize :magenta "\nAdd :remapped_to metadata?")
@@ -361,14 +373,13 @@
   middleware below for internal columns."
   [columns              :- [:maybe [:sequential :map]]
    remapping-dimensions :- [:maybe [:sequential ExternalRemappingDimension]]
-   internal-cols-info    :- [:maybe InternalColumnsInfo]]
+   internal-cols-info   :- [:maybe InternalColumnsInfo]]
   (-> columns
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))
 
 
 ;;;; Transform to add additional cols to results
-
 
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
@@ -383,10 +394,10 @@
    :semantic_type nil})
 
 (defn- transform-values-for-col
-  "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
-  with the values returned from the database for the given `col`."
-  [{:keys [base_type]} values]
-  (let [transform (condp #(isa? %2 %1) base_type
+  "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
+  comparable with the values returned from the database for the given `col`."
+  [{:keys [base-type], :as _column-metadata} values]
+  (let [transform (condp #(isa? %2 %1) base-type
                     :type/Decimal    bigdec
                     :type/Float      double
                     :type/BigInteger bigint
@@ -407,14 +418,22 @@
       (first types)
       :type/*)))
 
+(def ^:private ColumnMetadataWithOptionalBaseType
+  "ColumnMetadata, but `:base-type` is optional, because we may not have that information if this is this is the initial
+  metadata we get back when running a native query against a DB that doesn't return type metadata for query
+  results (such as MongoDB, since it isn't strongly typed)."
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:base-type {:optional true} ::lib.schema.common/base-type]]])
+
 (mu/defn ^:private col->dim-map :- [:maybe InternalDimensionInfo]
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
-        {values :values, human-readable-values :human_readable_values} :values
-        :as                                                            col} :- :map]
-  (when (and field-id
-             (= remap-type :internal))
+  [idx :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+   {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
+    :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
+  (when (seq values)
     (let [remap-from (:name col)]
       {:col-index       idx
        :from            remap-from
@@ -438,12 +457,10 @@
 
 (mu/defn ^:private internal-columns-info :- InternalColumnsInfo
   "Info about the internal-only columns we add to the query."
-  [cols]
+  [cols :- [:maybe [:sequential ColumnMetadataWithOptionalBaseType]]]
   ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
   ;; each one that is `internal` type
-  (let [internal-only-dims (->> (t2/hydrate cols :values :dimensions)
-                                (keep-indexed col->dim-map)
-                                (filter identity))]
+  (let [internal-only-dims (keep-indexed col->dim-map cols)]
     {:internal-only-dims internal-only-dims
      ;; Get the entries we're going to add to `:cols` for each of the remapped values we add
      :internal-only-cols (map :new-column internal-only-dims)}))
@@ -451,7 +468,8 @@
 (mu/defn ^:private add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
-  [metadata
+  [metadata                                             :- [:map
+                                                            [:cols [:maybe [:sequential :map]]]]
    remapping-dimensions                                 :- [:maybe [:sequential ExternalRemappingDimension]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe InternalColumnsInfo]]
   (update metadata :cols (fn [cols]
@@ -466,15 +484,7 @@
   remapped column."
   [{:keys [internal-only-dims]} :- InternalColumnsInfo rf]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
-    (fn
-      ([]
-       (rf))
-
-      ([result]
-       (rf result))
-
-      ([result row]
-       (rf result (remap-fn row))))
+    ((map remap-fn) rf)
     rf))
 
 (defn remap-results
@@ -484,6 +494,9 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (let [internal-cols-info (internal-columns-info (:cols metadata))
+      (let [mlv2-cols          (map
+                                #(lib.metadata.jvm/instance->metadata % :metadata/column)
+                                (:cols metadata))
+            internal-cols-info (internal-columns-info mlv2-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
