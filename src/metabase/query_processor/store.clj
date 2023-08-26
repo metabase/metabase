@@ -14,6 +14,7 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -280,7 +281,8 @@
     (-> mlv2-metadata
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)
-        (vary-meta assoc :type model))))
+        (vary-meta assoc :type model)
+        (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
 
 ;;; TODO -- these should be considered deprecated in favor of using MLv2 metadata directly via
 ;;; the [[metabase.lib.metadata]] functions

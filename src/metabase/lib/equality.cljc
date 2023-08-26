@@ -136,6 +136,8 @@
                                        #(lib.options/update-options % dissoc :base-type :effective-type)
                                        ;; ignore temporal-unit
                                        #(lib.options/update-options % dissoc :temporal-unit)
+                                       ;; ignore binning altogether
+                                       #(lib.options/update-options % dissoc :binning)
                                        ;; ignore join alias
                                        #(lib.options/update-options % dissoc :join-alias)]]
      (or (let [a-ref (xform a-ref)]
@@ -161,7 +163,7 @@
   If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` If you
   want the metadata instead, use [[closest-matching-metadata]]."
   [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+   metadatas :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
   (when (seq metadatas)
     ;; create refs in a lazy fashion, e.g. if the very first metadata ends up matching we don't need to create refs
     ;; for all of the other metadatas.
@@ -196,7 +198,7 @@
   "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
   rather than a sequence of refs. See [[index-of-closet-matching-metadata]] for more info."
   [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+   metadatas :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
   (when-let [i (index-of-closest-matching-metadata a-ref metadatas)]
     (nth metadatas i)))
 

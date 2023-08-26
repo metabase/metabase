@@ -222,7 +222,21 @@
     [:field {} 1]
     [[:field {:join-alias "J"} 1]
      [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]))
+    [:field {:join-alias "J"} 1]
+
+    ;; ignore binning altogether if we need to.
+    [:field {:base-type :type/Float
+             :binning   {:strategy :bin-width, :bin-width 20}
+             :lib/uuid  "ead5b63d-a326-4fab-bacb-69e1b08f807d"}
+     "People__LONGITUDE"]
+    [[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
+              :base-type      :type/Float
+              :effective-type :type/Float}
+      "People__LONGITUDE"]]
+    [:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
+             :base-type      :type/Float
+             :effective-type :type/Float}
+     "People__LONGITUDE"]))
 
 (deftest ^:parallel find-closest-matching-ref-3-arity-test
   (is (= [:field {} "CATEGORY"]
