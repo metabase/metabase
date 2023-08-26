@@ -56,6 +56,7 @@
     "html2canvas": "^1.4.1",
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
+    "immer": "^9.0.17",
     "iframe-resizer": "^4.3.2",
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",

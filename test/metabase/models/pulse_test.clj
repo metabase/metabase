@@ -112,10 +112,10 @@
                  mt/derecordize))))))
 
 (deftest update-notification-cards!-test
-  (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "card1"}]
-                  Card  [card-2 {:name "card2"}]
-                  Card  [card-3 {:name "card3"}]]
+  (mt/with-temp [Pulse pulse {}
+                 Card  card-1 {:name "card1"}
+                 Card  card-2 {:name "card2"}
+                 Card  card-3 {:name "card3"}]
     (letfn [(update-cards! [card-nums]
               (let [cards (for [card-num card-nums]
                             (case (int card-num)
@@ -194,10 +194,10 @@
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
     (mt/with-model-cleanup [Pulse]
-      (mt/with-temp* [Collection    [{collection-id :id}]
-                      Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
-                      Card          [{card-id :id, :as card}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+      (mt/with-temp [Collection    {collection-id :id} {}
+                     Dashboard     {dashboard-id :id} {:collection_id collection-id}
+                     Card          {card-id :id :as card} {}
+                     DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
         (is (schema= {:name          (s/eq "Abnormal Pulse")
                       :dashboard_id  (s/eq dashboard-id)
                       :collection_id (s/eq collection-id)
@@ -227,9 +227,9 @@
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
 (deftest update-pulse-test
-  (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "Test Card"}]
-                  Card  [card-2 {:name "Bar Card", :display :bar}]]
+  (mt/with-temp [Pulse pulse {}
+                 Card  card-1 {:name "Test Card"}
+                 Card  card-2 {:name "Bar Card" :display :bar}]
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
@@ -272,9 +272,9 @@
 
 (deftest dashboard-subscription-update-test
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
-      (mt/with-temp* [Collection [{collection-id :id}]
-                      Dashboard  [{dashboard-id :id}]
-                      Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
+      (mt/with-temp [Collection {collection-id :id} {}
+                     Dashboard  {dashboard-id :id} {}
+                     Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
         (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
               (t2/update! Pulse pulse-id {:collection_id (inc collection-id)})))
         (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
@@ -282,20 +282,20 @@
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
-    (mt/with-temp* [Pulse     [pulse]
-                    Card      [card-1 {:archived true}]
-                    Card      [card-2]
-                    PulseCard [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card-1), :position 0}]
-                    PulseCard [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card-2), :position 1}]]
+    (mt/with-temp [Pulse     pulse {}
+                   Card      card-1 {:archived true}
+                   Card      card-2 {}
+                   PulseCard _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card-1) :position 0}
+                   PulseCard _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card-2) :position 1}]
       (is (= 1
              (count (:cards (pulse/retrieve-pulse (u/the-id pulse)))))))))
 
 (deftest archive-pulse-when-last-user-unsubscribes-test
   (letfn [(do-with-objects [f]
-            (mt/with-temp* [User                  [{user-id :id}]
-                            Pulse                 [{pulse-id :id}]
-                            PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
-                            PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
+            (mt/with-temp [User                  {user-id :id} {}
+                           Pulse                 {pulse-id :id} {}
+                           PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                           PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-id}]
               (f {:user-id          user-id
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
@@ -314,8 +314,8 @@
          (fn [{:keys [archived? user-id pulse-channel-id]}]
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
-           (mt/with-temp* [User                  [{user-2-id :id}]
-                           PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-2-id}]]
+           (mt/with-temp [User                  {user-2-id :id} {}
+                          PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
                (is (pos? (t2/update! User user-id {:is_active false})))
@@ -330,9 +330,9 @@
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
-           (mt/with-temp* [User                  [{user-2-id :id}]
-                           PulseChannel          [{channel-2-id :id} {:pulse_id pulse-id}]
-                           PulseChannelRecipient [_ {:pulse_channel_id channel-2-id, :user_id user-2-id}]]
+           (mt/with-temp [User                  {user-2-id :id} {}
+                          PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
+                          PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
                (is (t2/update! User user-id {:is_active false})))
              (testing "Pulse should not be archived"
@@ -373,14 +373,14 @@
 
 (defn do-with-pulse-in-collection [f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp* [Collection [collection]
-                    Pulse      [pulse {:collection_id (u/the-id collection)}]
-                    Database   [db    {:engine :h2}]
-                    Table      [table {:db_id (u/the-id db)}]
-                    Card       [card  {:dataset_query {:database (u/the-id db)
-                                                       :type     :query
-                                                       :query    {:source-table (u/the-id table)}}}]
-                    PulseCard  [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card)}]]
+    (mt/with-temp [Collection collection {}
+                   Pulse      pulse {:collection_id (u/the-id collection)}
+                   Database   db    {:engine :h2}
+                   Table      table {:db_id (u/the-id db)}
+                   Card       card  {:dataset_query {:database (u/the-id db)
+                                                     :type     :query
+                                                     :query    {:source-table (u/the-id table)}}}
+                   PulseCard  _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card)}]
       (f db collection pulse card))))
 
 (defmacro with-pulse-in-collection
@@ -416,12 +416,12 @@
 
 (defn- do-with-dashboard-subscription-in-collection [f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp* [Collection [collection]
-                    Dashboard  [dashboard {:collection_id (u/the-id collection)}]
-                    Pulse      [pulse     {:collection_id (u/the-id collection)
-                                           :dashboard_id  (u/the-id dashboard)
-                                           :creator_id    (mt/user->id :rasta)}]
-                    Database   [db        {:engine :h2}]]
+    (mt/with-temp [Collection collection {}
+                   Dashboard  dashboard {:collection_id (u/the-id collection)}
+                   Pulse      pulse     {:collection_id (u/the-id collection)
+                                         :dashboard_id  (u/the-id dashboard)
+                                         :creator_id    (mt/user->id :rasta)}
+                   Database   db        {:engine :h2}]
       (f db collection dashboard pulse))))
 
 (defmacro with-dashboard-subscription-in-collection
@@ -447,27 +447,27 @@
 
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
-          (mt/with-temp* [Pulse                [subscription            {:collection_id (u/the-id collection)
-                                                                         :dashboard_id  (u/the-id dashboard)
-                                                                         :creator_id    (mt/user->id :crowberto)}]
-                          PulseChannel          [{pulse-channel-id :id} {:pulse_id (u/the-id subscription)}]
-                          PulseChannelRecipient [_                      {:pulse_channel_id pulse-channel-id
-                                                                         :user_id (mt/user->id :rasta)}]]
+          (mt/with-temp [Pulse                subscription            {:collection_id (u/the-id collection)
+                                                                       :dashboard_id  (u/the-id dashboard)
+                                                                       :creator_id    (mt/user->id :crowberto)}
+                         PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
+                         PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
+                                                                       :user_id (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
 
        (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
-         (mt/with-temp* [Pulse [subscription {:collection_id (u/the-id collection)
-                                              :dashboard_id  (u/the-id dashboard)
-                                              :creator_id    (mt/user->id :crowberto)}]]
+         (mt/with-temp [Pulse subscription {:collection_id (u/the-id collection)
+                                            :dashboard_id  (u/the-id dashboard)
+                                            :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
 
 (deftest identity-hash-test
   (testing "Pulse hashes are composed of the name and the collection hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
-                      Pulse       [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]]
+      (mt/with-temp [Collection  coll  {:name "field-db" :location "/" :created_at now}
+                     Pulse       pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
         (is (= "82553101"
                (serdes/raw-hash ["my pulse" (serdes/identity-hash coll) now])
                (serdes/identity-hash pulse)))))))

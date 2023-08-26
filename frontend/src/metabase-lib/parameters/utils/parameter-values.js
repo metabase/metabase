@@ -7,16 +7,10 @@ import {
 } from "./parameter-source";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
-  return parameterValues
-    ? parameters.map(parameter => {
-        return parameter.id in parameterValues
-          ? {
-              ...parameter,
-              value: parameterValues[parameter.id],
-            }
-          : parameter;
-      })
-    : parameters;
+  return parameters.map(parameter => ({
+    ...parameter,
+    value: parameterValues?.[parameter.id] ?? null,
+  }));
 }
 
 export function hasDefaultParameterValue(parameter) {
@@ -53,46 +47,19 @@ export function normalizeParameterValue(type, value) {
   const fieldType = getParameterType(type);
 
   if (["string", "number"].includes(fieldType)) {
-    return value == null ? [] : [].concat(value);
+    return value == null ? null : [].concat(value);
   } else {
     return value;
   }
 }
 
-function removeNilValuedPairs(pairs) {
-  return pairs.filter(([, value]) => value != null);
-}
-
-function removeUndefaultedNilValuedPairs(pairs) {
-  return pairs.filter(
-    ([parameter, value]) =>
-      hasDefaultParameterValue(parameter) || value != null,
+export function getParameterValuesBySlug(parameters, parameterValuesById) {
+  parameters = parameters ?? [];
+  parameterValuesById = parameterValuesById ?? {};
+  return Object.fromEntries(
+    parameters.map(parameter => [
+      parameter.slug,
+      parameter.value ?? parameterValuesById[parameter.id] ?? null,
+    ]),
   );
-}
-
-// when `preserveDefaultedParameters` is true, we don't remove defaulted parameters with nil values
-// so that they can be set in the URL query without a value. Used alongside `getParameterValuesByIdFromQueryParams`
-// with `forcefullyUnsetDefaultedParametersWithEmptyStringValue` set to true.
-export function getParameterValuesBySlug(
-  parameters,
-  parameterValuesById,
-  { preserveDefaultedParameters } = {},
-) {
-  parameters = parameters || [];
-  parameterValuesById = parameterValuesById || {};
-  const parameterValuePairs = parameters.map(parameter => [
-    parameter,
-    parameter.value ?? parameterValuesById[parameter.id],
-  ]);
-
-  const transformedPairs = preserveDefaultedParameters
-    ? removeUndefaultedNilValuedPairs(parameterValuePairs)
-    : removeNilValuedPairs(parameterValuePairs);
-
-  const slugValuePairs = transformedPairs.map(([parameter, value]) => [
-    parameter.slug,
-    value,
-  ]);
-
-  return Object.fromEntries(slugValuePairs);
 }

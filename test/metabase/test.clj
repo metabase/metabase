@@ -201,6 +201,7 @@
   with-temp*]
 
  [t2.with-temp
+  with-temp
   with-temp-defaults]
 
  [tu

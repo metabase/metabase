@@ -8,5 +8,7 @@
   "Initialize the QP Store (resolved objects cache) for this query execution."
   [qp]
   (fn [query rff context]
-    (qp.store/with-store
+    (assert (pos-int? (:database query))
+            "Query :database ID should have resolved by now by the metabase.query-processor.middleware.resolve-database-and-driver middleware")
+    (qp.store/with-metadata-provider (:database query)
       (qp query rff context))))

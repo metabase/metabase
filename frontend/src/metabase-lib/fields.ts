@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+import type { FieldReference } from "metabase-types/api";
 import type { Clause, ColumnMetadata, Query } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
@@ -29,4 +30,12 @@ export function fieldableColumns(
  */
 export function _fieldId(column: ColumnMetadata): number | null {
   return ML.field_id(column);
+}
+
+export function findVisibleColumnForLegacyRef(
+  query: Query,
+  stageIndex: number,
+  fieldRef: FieldReference,
+): ColumnMetadata | null {
+  return ML.find_visible_column_for_legacy_ref(query, stageIndex, fieldRef);
 }
