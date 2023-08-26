@@ -818,18 +818,11 @@ export class FieldDimension extends Dimension {
   }
 
   _createFallbackField(): Field {
-    const mlv2Query = this._query?.question()?._getMLv2Query();
-    const ref = this.mbql();
-    const mlv2Metadata =
-      mlv2Query && ref && Lib.findVisibleColumnForLegacyRef(mlv2Query, -1, ref);
-
     return this._createField({
       id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
       field_ref: this.mbql(),
       name: this.isStringFieldName() && this.fieldIdOrName(),
-      display_name: mlv2Metadata
-        ? Lib.displayName(mlv2Query, mlv2Metadata)
-        : this.fieldIdOrName(),
+      display_name: this.fieldIdOrName(),
       base_type: this.getOption("base-type"),
     });
   }

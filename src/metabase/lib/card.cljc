@@ -72,8 +72,8 @@
       (when card-or-id
         {:lib/card-id (u/the-id card-or-id)})
       ;; this is for legacy metadata only, duplicates the old MLv1/QP behavior.
-      (when-let [legacy-join-alias (:source-alias col)]
-        {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))})))))
+      #_(when-let [legacy-join-alias (:source-alias col)]
+          {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))})))))
 
 (def ^:private CardColumnMetadata
   [:merge
@@ -110,6 +110,7 @@
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
   (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
-            (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
+          #_(let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
+              (assoc col :lib/desired-column-alias (unique-name-fn desired-alias)))
+          (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))
         (card-metadata-columns query card)))
