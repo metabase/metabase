@@ -65,6 +65,14 @@ describe("WhatsNewNotification", () => {
       expect(notification()).toBeInTheDocument();
     });
 
+    it("should show the notification if the current version is not in version-info and all other requirements apply", () => {
+      setup({
+        currentVersion: "v0.48.99",
+        lastAcknowledged: null,
+      });
+      expect(notification()).toBeInTheDocument();
+    });
+
     it("should NOT show the notification if the current version has been acknowledged", () => {
       setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
