@@ -813,64 +813,30 @@
                          (StringReader.))]
            (.copyIn copy-manager ^String sql tsvs)))))))
 
-(def ^:private table-privileges-query
-  (str/join
-   "\n"
-   ["with current_user_or_role as ("
-    "  select"
-    "    current_user = r.rolname as is_current_user,"
-    "    r.oid as role_oid,"
-    "    r.rolname as role"
-    "  from pg_roles r"
-    "  where r.rolname not in ("
-    "      'pg_database_owner',"
-    "      'pg_read_all_data',"
-    "      'pg_write_all_data',"
-    "      'pg_monitor',"
-    "      'pg_read_all_settings',"
-    "      'pg_read_all_stats',"
-    "      'pg_stat_scan_tables',"
-    "      'pg_read_server_files',"
-    "      'pg_write_server_files',"
-    "      'pg_execute_server_program',"
-    "      'pg_signal_backend'"
-    "    )"
-    "    and has_database_privilege(r.rolname, current_database(), 'CONNECT')"
-    "),"
-    "table_privileges as ("
-    "select"
-    "  r.is_current_user,"
-    "  r.role as role,"
-    "  r.role_oid as role_oid,"
-    "  t.schemaname as schema,"
-    "  t.tablename as table,"
-    "  pg_catalog.has_table_privilege(r.role_oid, t.schemaname || '.' || t.tablename, 'SELECT') as select,"
-    "  pg_catalog.has_table_privilege(r.role_oid, t.schemaname || '.' || t.tablename, 'UPDATE') as update,"
-    "  pg_catalog.has_table_privilege(r.role_oid, t.schemaname || '.' || t.tablename, 'INSERT') as insert,"
-    "  pg_catalog.has_table_privilege(r.role_oid, t.schemaname || '.' || t.tablename, 'DELETE') as delete"
-    "from pg_tables t"
-    "cross join current_user_or_role r"
-    "where t.schemaname not in ('pg_toast', 'pg_catalog', 'information_schema')"
-    ")"
-    "select"
-    "  t.role,"
-    "  t.is_current_user,"
-    "  t.schema,"
-    "  t.table,"
-    "  t.select as select,"
-    "  t.update as update,"
-    "  t.insert as insert,"
-    "  t.delete as delete"
-    "from pg_catalog.pg_namespace n"
-    "join table_privileges t on n.nspname = t.schema"
-    " and (t.select or t.update or t.insert or t.delete)"
-    " and pg_catalog.has_schema_privilege(t.role_oid, n.oid, 'USAGE')"
-    "where n.nspname not in ('pg_toast', 'pg_catalog', 'information_schema')"]))
-
-(defmethod driver/table-privileges :postgres
+(defmethod driver/current-user-table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (drop 1 (jdbc/query conn-spec table-privileges-query {:as-arrays? true}))))
+    (jdbc/query
+     conn-spec
+     (str/join
+        "\n"
+        ["with table_privileges as ("
+         "select"
+         "  true as is_current_user,"
+         "  current_user as role,"
+         "  t.schemaname as schema,"
+         "  t.tablename as table,"
+         "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'SELECT') as select,"
+         "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'UPDATE') as update,"
+         "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'INSERT') as insert,"
+         "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'DELETE') as delete"
+         "from pg_catalog.pg_tables t"
+         "where t.schemaname not in ('pg_toast', 'pg_catalog', 'information_schema')"
+         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+         ")"
+         "select t.*"
+         "from table_privileges t"
+         "where t.select or t.update or t.insert or t.delete"]))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

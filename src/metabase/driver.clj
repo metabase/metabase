@@ -895,7 +895,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti table-privileges
+(defmulti current-user-table-privileges
   "Returns the rows of data as arrays needed to populate the tabel_privileges table.
    The data contains the privileges that user roles have on the given `database`.
    The privileges include select, insert, update, and delete.
