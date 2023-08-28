@@ -419,6 +419,6 @@
       [:field (meta/id :venues :name) nil]
       [:field (meta/id :venues :name) {}]
       ["field" (meta/id :venues :name) nil]
-      #?(:cljs
-         [#js ["field" (meta/id :venues :name) nil]
-          #js ["field" (meta/id :venues :name) #js {}]]))))
+      #?@(:cljs
+          [#js ["field" (meta/id :venues :name) nil]
+           #js ["field" (meta/id :venues :name) #js {}]]))))

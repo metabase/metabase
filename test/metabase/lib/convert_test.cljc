@@ -686,7 +686,12 @@
     ["field" (meta/id :venues :name)]
     #?@(:cljs
         [#js ["field" (meta/id :venues :name) nil]
-         #js ["field" (meta/id :venues :name) #js {}]])))
+         #js ["field" (meta/id :venues :name) #js {}]]))
+  #?(:cljs
+     (is (=? [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :name)]
+             (lib.convert/legacy-ref->pMBQL
+              lib.tu/venues-query
+              #js ["field" (meta/id :venues :name) #js {"base-type" "type/Integer"}])))))
 
 (deftest ^:parallel legacy-ref->pMBQL-expression-test
   (are [legacy-ref] (=? [:expression {:lib/uuid string?} "expr"]
