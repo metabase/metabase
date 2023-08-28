@@ -8,7 +8,6 @@ import type {
   FilterOperator,
   Join,
   JoinConditionClause,
-  JoinConditionExternalOp,
   JoinStrategy,
   Query,
   TableMetadata,
@@ -33,7 +32,7 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: JoinConditionClause[] | JoinConditionExternalOp[],
+  conditions: JoinConditionClause[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
@@ -71,7 +70,7 @@ export function joinConditions(join: Join): JoinConditionClause[] {
 
 export function withJoinConditions(
   join: Join,
-  newConditions: JoinConditionClause[] | JoinConditionExternalOp[],
+  newConditions: JoinConditionClause[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }

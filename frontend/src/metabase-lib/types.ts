@@ -171,8 +171,9 @@ export type FilterParts = {
   args: ExpressionArg[];
 };
 
-export type JoinConditionExternalOp = Omit<ExternalOp, "args"> & {
-  args: [ColumnMetadata, ColumnMetadata];
+export type JoinConditionParts = Omit<FilterParts, "column" | "args"> & {
+  lhsColumn: ColumnMetadata;
+  rhsColumn: ColumnMetadata;
 };
 
 declare const Join: unique symbol;
