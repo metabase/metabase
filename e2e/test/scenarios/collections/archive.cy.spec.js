@@ -1,4 +1,8 @@
-import { getCollectionIdFromSlug, restore } from "e2e/support/helpers";
+import {
+  createAndArchiveDashboard,
+  getCollectionIdFromSlug,
+  restore,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -12,10 +16,47 @@ const getQuestionDetails = collectionId => ({
 describe("scenarios > collections > archive", () => {
   beforeEach(() => {
     restore();
+  });
+
+  it("should hide read-only archived items (metabase#24018)", () => {
+    const READ_ONLY_NAME = "read-only dashboard";
+    const CURATEABLE_NAME = "curate-able dashboard";
+
+    // setup archive with read-only collection items
     cy.signInAsAdmin();
+    createAndArchiveDashboard({
+      name: READ_ONLY_NAME,
+      collection_id: null,
+    });
+
+    // setup archive with curate-able collection items (user created items)
+    cy.signIn("readonly");
+
+    createAndArchiveDashboard({
+      name: CURATEABLE_NAME,
+      collection_id: 6,
+    });
+
+    // assert on desired behavior for read-only user
+    cy.visit("/archive");
+
+    cy.get("main").within(() => {
+      cy.findByText(READ_ONLY_NAME).should("not.exist");
+      cy.findByText(CURATEABLE_NAME).should("be.visible");
+    });
+
+    // assert on desired behavior for admin user
+    cy.signInAsAdmin();
+    cy.visit("/archive");
+
+    cy.get("main").within(() => {
+      cy.findByText(READ_ONLY_NAME).should("be.visible");
+      cy.findByText(CURATEABLE_NAME).should("be.visible");
+    });
   });
 
   it("should load initially hidden archived items on scroll (metabase#24213)", () => {
+    cy.signInAsAdmin();
     const stubbedItems = Array.from({ length: 50 }, (v, i) => ({
       name: "Item " + i,
       id: i + 1,
@@ -39,6 +80,7 @@ describe("scenarios > collections > archive", () => {
   });
 
   it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
+    cy.signInAsAdmin();
     getCollectionIdFromSlug("first_collection", collectionId => {
       const questionDetails = getQuestionDetails(collectionId);
 
