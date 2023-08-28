@@ -39,7 +39,11 @@ Our themed wrapper around [Mantine Paper](https://mantine.dev/core/paper/).
 
 ## Examples
 
-export const Template = args => (
+export const DefaultTemplate = args => (
+  <Paper {...args}>{sampleArgs.text}</Paper>
+);
+
+export const GridTemplate = args => (
   <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
     <Grid.Col span={1} />
     {argTypes.radius.options.map(radius => (
@@ -64,7 +68,7 @@ export const Template = args => (
   </Grid>
 );
 
-export const Default = args => <Paper {...args}>{sampleArgs.text}</Paper>;
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -72,7 +76,7 @@ export const Default = args => <Paper {...args}>{sampleArgs.text}</Paper>;
 
 ### No border
 
-export const NoBorder = args => <Template {...args} />;
+export const NoBorder = GridTemplate.bind({});
 
 <Canvas>
   <Story name="No border">{NoBorder}</Story>
@@ -80,8 +84,13 @@ export const NoBorder = args => <Template {...args} />;
 
 ### Border
 
-export const Border = args => <Template {...args} withBorder />;
+export const Border = GridTemplate.bind({});
+Border.args = {
+  withBorder: true,
+};
 
 <Canvas>
-  <Story name="Border">{Border}</Story>
+  <Story name="Border" args={Border.args}>
+    {Border}
+  </Story>
 </Canvas>
