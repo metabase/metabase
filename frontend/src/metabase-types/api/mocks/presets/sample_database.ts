@@ -1,5 +1,6 @@
 import type {
   Database,
+  DatasetColumn,
   Field,
   FieldDimensionOption,
   FieldValuesResult,
@@ -14,6 +15,7 @@ import {
   createMockTextFieldFingerprint,
   createMockNumberFieldFingerprint,
   createMockDateTimeFieldFingerprint,
+  createMockColumn,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
@@ -1339,3 +1341,49 @@ function createNumericFieldBinningOptions() {
 function createCoordinateFieldBinningOptions() {
   return Object.values(createCoordinateBinningOptions());
 }
+
+export const createOrdersIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description:
+      "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
+    semantic_type: "type/PK",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "ID",
+    source: "fields",
+    field_ref: ["field", ORDERS.ID, null],
+    effective_type: "type/BigInteger",
+    id: ORDERS.ID,
+    visibility_type: "normal",
+    display_name: "ID",
+    fingerprint: null,
+    base_type: "type/BigInteger",
+    ...opts,
+  });
+
+export const createOrdersUserIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description:
+      "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
+    semantic_type: "type/FK",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "USER_ID",
+    source: "fields",
+    field_ref: ["field", ORDERS.USER_ID, null],
+    effective_type: "type/Integer",
+    id: ORDERS.USER_ID,
+    visibility_type: "normal",
+    display_name: "User ID",
+    fingerprint: {
+      global: {
+        "distinct-count": 929,
+        "nil%": 0,
+      },
+    },
+    base_type: "type/Integer",
+  });
