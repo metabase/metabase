@@ -525,22 +525,15 @@
 
 (deftest dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/dashboard/:id"
-    (t2.with-temp/with-temp [:model/Dashboard
-                             {dashboard-id :id}
-                             {:name "Test Dashboard"}
-
-                             :model/Card
-                             {card-id :id}
-                             {:name "Dashboard Test Card"}
-
-                             :model/DashboardCard
-                             _
-                             {:dashboard_id       dashboard-id
-                              :card_id            card-id
-                              :parameter_mappings [{:card_id      card-id
-                                                    :parameter_id "foo"
-                                                    :target       [:dimension
-                                                                   [:field (mt/id :venues :name) nil]]}]}]
+    (t2.with-temp/with-temp
+      [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+       :model/Card {card-id :id} {:name "Dashboard Test Card"}
+       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                               :card_id            card-id
+                               :parameter_mappings [{:card_id      card-id
+                                                     :parameter_id "foo"
+                                                     :target       [:dimension
+                                                                    [:field (mt/id :venues :name) nil]]}]}]
       (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
       (testing "Request triggers computation of field values if missing (#30218)"
         (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"

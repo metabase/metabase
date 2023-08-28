@@ -463,24 +463,25 @@
 (deftest public-dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [:model/Dashboard
-                               {dashboard-id :id
-                                uuid         :public_uuid}
-                               {:name        "Test Dashboard"
-                                :public_uuid (str (java.util.UUID/randomUUID))}
+      (t2.with-temp/with-temp
+        [:model/Dashboard
+         {dashboard-id :id
+          uuid         :public_uuid}
+         {:name        "Test Dashboard"
+          :public_uuid (str (java.util.UUID/randomUUID))}
 
-                               :model/Card
-                               {card-id :id}
-                               {:name "Dashboard Test Card"}
+         :model/Card
+         {card-id :id}
+         {:name "Dashboard Test Card"}
 
-                               :model/DashboardCard
-                               _
-                               {:dashboard_id       dashboard-id
-                                :card_id            card-id
-                                :parameter_mappings [{:card_id      card-id
-                                                      :parameter_id "foo"
-                                                      :target       [:dimension
-                                                                     [:field (mt/id :venues :name) nil]]}]}]
+         :model/DashboardCard
+         _
+         {:dashboard_id       dashboard-id
+          :card_id            card-id
+          :parameter_mappings [{:card_id      card-id
+                                :parameter_id "foo"
+                                :target       [:dimension
+                                               [:field (mt/id :venues :name) nil]]}]}]
         (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
         (testing "Request triggers computation of field values if missing (#30218)"
           (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
