@@ -5,7 +5,6 @@
    [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -421,8 +420,8 @@
         :when              (and a-segment (= (:table-id a-segment) table-id))]
     a-segment))
 
-(defn- setting [key]
-  (.get js/__metabaseSettings (name key)))
+(defn- setting [setting-key]
+  (.get js/__metabaseSettings (name setting-key)))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
@@ -430,17 +429,17 @@
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]            (database metadata database-id))
-      (table    [_this table-id]   (table    metadata table-id))
-      (field    [_this field-id]   (field    metadata field-id))
-      (metric   [_this metric-id]  (metric   metadata metric-id))
-      (segment  [_this segment-id] (segment  metadata segment-id))
-      (card     [_this card-id]    (card     metadata card-id))
-      (tables   [_this]            (tables   metadata database-id))
-      (fields   [_this table-id]   (fields   metadata table-id))
-      (metrics  [_this table-id]   (metrics  metadata table-id))
-      (segments [_this table-id]   (segments metadata table-id))
-      (setting  [_this key]        (setting  key))
+      (database [_this]             (database metadata database-id))
+      (table    [_this table-id]    (table    metadata table-id))
+      (field    [_this field-id]    (field    metadata field-id))
+      (metric   [_this metric-id]   (metric   metadata metric-id))
+      (segment  [_this segment-id]  (segment  metadata segment-id))
+      (card     [_this card-id]     (card     metadata card-id))
+      (tables   [_this]             (tables   metadata database-id))
+      (fields   [_this table-id]    (fields   metadata table-id))
+      (metrics  [_this table-id]    (metrics  metadata table-id))
+      (segments [_this table-id]    (segments metadata table-id))
+      (setting  [_this setting-key] (setting  setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
