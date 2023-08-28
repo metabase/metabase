@@ -25,6 +25,8 @@ describe("nav > what's new notification", () => {
 
   // replace `skip` with `only` to manually test this feature with the mocks set up
   it.skip("mock setup for manual tests", () => {
+    cy.signInAsAdmin();
+
     loadHomepage();
 
     navigationSidebar().findByText("See what's new");
