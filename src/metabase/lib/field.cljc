@@ -182,19 +182,14 @@
                    :lib/source-uuid source-uuid}
                   metadata
                   {:display-name (or (:display-name opts)
-                                     (lib.metadata.calculation/display-name query stage-number field-ref))}
-                  (when effective-type
-                    {:effective-type effective-type})
-                  (when base-type
-                    {:base-type base-type})
-                  (when temporal-unit
-                    {::temporal-unit temporal-unit})
-                  (when binning
-                    {::binning binning})
-                  (when source-field
-                    {:fk-field-id source-field}))]
+                                     (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
-      join-alias (lib.join/with-join-alias join-alias))))
+      effective-type (assoc :effective-type effective-type)
+      base-type      (assoc :base-type base-type)
+      temporal-unit  (assoc ::temporal-unit temporal-unit)
+      binning        (assoc ::binning binning)
+      source-field   (assoc :fk-field-id source-field)
+      join-alias     (lib.join/with-join-alias join-alias))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
