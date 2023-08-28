@@ -314,7 +314,7 @@
                   :type       :drill-thru/underlying-records
                   :row-count  87
                   :table-name "People"}
-                 #_{:lib/type  :metabase.lib.drill-thru/drill-thru
+                 {:lib/type  :metabase.lib.drill-thru/drill-thru
                   :type      :drill-thru/zoom
                   :column    (meta/field-metadata :people :state)
                   :object-id "WI"
