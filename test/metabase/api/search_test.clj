@@ -1018,6 +1018,10 @@
             (test-search "2021-05-05~2023-05-04" new-result)
             (test-search "~2023-05-03" old-result)
             (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
+            ;; make sure that we created_at are always filtered at UTC, regardless of system timezone
+            (mt/with-system-timezone-id "Asia/Tokyo"
+             (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result))
+            (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
 
             ;; relative times
             (test-search "thisyear" new-result)
