@@ -14,6 +14,7 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -118,8 +119,12 @@
                                                    {:old-provider old-provider, :new-provider database-id-or-metadata-provider})))
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
-          (throw (ex-info (tru "Attempting to initialize metadata provider with second Database. Queries can only reference one Database.")
-                          {:existing-id existing-database-id, :new-id new-database-id})))))))
+          (throw (ex-info (tru "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
+                               (pr-str new-database-id)
+                               (pr-str existing-database-id))
+                          {:existing-id existing-database-id
+                           :new-id      new-database-id
+                           :type        qp.error-type/invalid-query})))))))
 
 (mu/defn ^:private set-metadata-provider!
   "Create a new metadata provider and save it."
@@ -276,7 +281,8 @@
     (-> mlv2-metadata
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)
-        (vary-meta assoc :type model))))
+        (vary-meta assoc :type model)
+        (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
 
 ;;; TODO -- these should be considered deprecated in favor of using MLv2 metadata directly via
 ;;; the [[metabase.lib.metadata]] functions

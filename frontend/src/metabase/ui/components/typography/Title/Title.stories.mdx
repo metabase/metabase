@@ -1,6 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Box, Stack } from "metabase/ui";
-import { Title } from "./";
+import { Box, Stack, Title } from "metabase/ui";
 
 export const args = {
   align: "left",
@@ -43,7 +42,7 @@ TBD
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/SEQS7bshKQ4y4V5FwvdROv/Typography-%2F-Title?type=design&node-id=5-70&mode=design&t=EmLhPoPqbYgYV1aP-0)
+- [Figma File](https://www.figma.com/file/SEQS7bshKQ4y4V5FwvdROv/Typography-%2F-Title?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
 - [Mantine Title Docs](https://mantine.dev/core/title/)
 
 ## Caveats
@@ -104,28 +103,12 @@ export const Default = args => <Title {...args}>Header</Title>;
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Left alignment
+### Sizes
 
-export const LeftAlignment = args => <Template {...args} />;
-
-<Canvas>
-  <Story name="Left alignment">{LeftAlignment}</Story>
-</Canvas>
-
-### Center alignment
-
-export const CenterAlignment = args => <Template {...args} align="center" />;
+export const Sizes = args => <Template {...args} />;
 
 <Canvas>
-  <Story name="Center alignment">{CenterAlignment}</Story>
-</Canvas>
-
-### Right alignment
-
-export const RightAlignment = args => <Template {...args} align="right" />;
-
-<Canvas>
-  <Story name="Right alignment">{RightAlignment}</Story>
+  <Story name="Sizes">{Sizes}</Story>
 </Canvas>
 
 ### Underlined

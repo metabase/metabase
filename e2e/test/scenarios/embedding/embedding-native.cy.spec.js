@@ -2,11 +2,13 @@ import {
   restore,
   popover,
   filterWidget,
+  clearFilterWidget,
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
 
 import { questionDetails } from "./shared/embedding-native";
+import { questionDetailsWithDefaults } from "./shared/embedding-dashboard";
 
 describe("scenarios > embedding > native questions", () => {
   beforeEach(() => {
@@ -125,7 +127,10 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
-      cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
+      cy.location("search").should(
+        "eq",
+        "?id=926&created_at=&state=KS&product_id=10",
+      );
     });
   });
 
@@ -247,6 +252,37 @@ describe("scenarios > embedding > native questions", () => {
         filterWidget().should("not.exist");
       });
     });
+  });
+});
+
+describe("scenarios > embedding > native questions with default parameters", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
+    cy.createNativeQuestion(questionDetailsWithDefaults, {
+      visitQuestion: true,
+    });
+    enableSharing();
+    // Note: ID is disabled
+    setParameter("Source", "Locked");
+    setParameter("Name", "Editable");
+    publishChanges(({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {
+        source: "locked",
+        name: "enabled",
+      });
+    });
+    visitIframe();
+    // Remove default filter value
+    clearFilterWidget();
+    // The ID default (1, 2) should apply, because it is disabled.
+    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
+    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+    // If either the Name or Source default applied the result would be 0.
+    cy.get(".ScalarValue").invoke("text").should("eq", "2");
   });
 });
 
