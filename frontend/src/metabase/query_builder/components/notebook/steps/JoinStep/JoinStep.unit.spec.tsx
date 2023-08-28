@@ -522,7 +522,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { fields } = getRecentJoin();
-      expect(fields).toHaveLength(0);
+      expect(fields).toBe("none");
     });
 
     it("should select a few columns for an existing join", async () => {
