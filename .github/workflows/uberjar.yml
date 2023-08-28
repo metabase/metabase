@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - "auditv2-main"
     paths-ignore:
       # config files
       - ".**"
