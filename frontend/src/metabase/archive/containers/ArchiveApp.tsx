@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +19,7 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getCollectionsById } from "metabase/selectors/collection";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import ArchivedItem from "../../components/ArchivedItem";
 
@@ -39,6 +40,20 @@ interface ArchiveAppRootProps {
 }
 
 function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const collectionsById = useSelector(getCollectionsById);
+
+  const [writableList, setWritableList] = useState(list);
+
+  useEffect(() => {
+    const newWritableList = list.filter(
+      item => collectionsById[item.getCollection().id]?.can_write,
+    );
+
+    setWritableList(newWritableList);
+  }, [list, collectionsById]);
+
   const mainElement = useMemo(() => getMainElement(), []);
   useEffect(() => {
     if (!isSmallScreen()) {
@@ -50,16 +65,13 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
     useListSelect(item => `${item.model}:${item.id}`);
 
   const selectAllItems = useCallback(() => {
-    selectOnlyTheseItems(list);
-  }, [list, selectOnlyTheseItems]);
+    selectOnlyTheseItems(writableList);
+  }, [writableList, selectOnlyTheseItems]);
 
   const allSelected = useMemo(
-    () => selected.length === list.length,
-    [selected, list],
+    () => selected.length === writableList.length,
+    [selected, writableList],
   );
-
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
-  const isAdmin = useSelector(getUserIsAdmin);
 
   return (
     <ArchiveRoot>
@@ -69,13 +81,16 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
       <ArchiveBody>
         <Card
           style={{
-            height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
+            height:
+              writableList.length > 0
+                ? ROW_HEIGHT * writableList.length
+                : "auto",
           }}
         >
-          {list.length > 0 ? (
+          {writableList.length > 0 ? (
             <VirtualizedList
               scrollElement={mainElement}
-              items={list}
+              items={writableList}
               rowHeight={ROW_HEIGHT}
               renderItem={({ item }: { item: EntityWrappedCollectionItem }) => (
                 <ArchivedItem
@@ -116,7 +131,11 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
             selectAll={selectAllItems}
             clear={clear}
           />
-          <BulkActionControls selected={selected} reload={reload} />
+          <BulkActionControls
+            selected={selected}
+            reload={reload}
+            clear={clear}
+          />
           <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
         </ArchiveBarContent>
       </BulkActionBar>
@@ -135,9 +154,11 @@ export const ArchiveApp = _.compose(
 const BulkActionControls = ({
   selected,
   reload,
+  clear,
 }: {
   selected: any[];
   reload: () => void;
+  clear: () => void;
 }) => (
   <span>
     <Button
@@ -150,6 +171,7 @@ const BulkActionControls = ({
           );
         } finally {
           reload();
+          clear();
         }
       }}
     >{t`Unarchive`}</Button>
@@ -161,6 +183,7 @@ const BulkActionControls = ({
           await Promise.all(selected.map(item => item.delete && item.delete()));
         } finally {
           reload();
+          clear();
         }
       }}
     >{t`Delete`}</Button>

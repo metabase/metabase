@@ -79,6 +79,7 @@ export type EntityWrappedCollectionItem = CollectionItem & {
   getName: () => string;
   getColor: () => string;
   delete?: () => void;
+  getCollection: () => Collection;
 };
 
 export interface CollectionListQuery {
