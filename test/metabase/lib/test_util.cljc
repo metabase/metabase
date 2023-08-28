@@ -378,8 +378,10 @@
       (external-remapped-column metadata-provider original remap)
       (internal-remapped-column original remap))))
 
-(mu/defn remap-metadata-provider :- lib.metadata/MetadataProvider
-  "Composed metadata provider that adds an internal or external remap for `original` Field with [[remapped-column]]."
+(mu/defn remap-metadata-provider  :- lib.metadata/MetadataProvider
+  "Composed metadata provider that adds an internal or external remap for `original` Field with [[remapped-column]].
+  For QP tests, you may want to use [[metabase.query-processor.test-util/field-values-from-def]] to get values to
+  create an internal remap."
   [metadata-provider :- lib.metadata/MetadataProvider
    original          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]
    remap             :- [:or

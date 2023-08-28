@@ -7,9 +7,11 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.store :as qp.store]
@@ -1008,3 +1010,17 @@
             (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                    (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel test-31769
+  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+    (mt/dataset sample-dataset
+      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               mt/id)]
+        (qp.store/with-metadata-provider metadata-provider
+          (let [legacy-query (lib.convert/->legacy-MBQL
+                              (lib.tu.mocks-31769/query metadata-provider))]
+            (mt/with-native-query-testing-context legacy-query
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows (qp/process-query legacy-query)))))))))))

@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.init]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -521,13 +522,33 @@
     (lib.tu/mock-metadata-provider
      {:cards [{:id              1
                :name            "Card 1"
-               :database-id     1
+               :database-id     (data/id)
                :dataset-query   query
                ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
                ;; subsequent usage.
                :result-metadata (qp.store/with-metadata-provider base-metadata-provider
                                   (query-results query))}]})
     base-metadata-provider)))
+
+(defn field-values-from-def
+  "Get values for a specific Field from a dataset definition, convenient for use with things
+  like [[metabase.lib.test-util/remap-metadata-provider]].
+
+    (qp.test-util/field-values-from-def defs/test-data :categories :name)
+    ;; => [\"African\" \"American\" \"Artisan\" ...]"
+  [db-def table-name field-name]
+  (let [db-def    (or (tx/get-dataset-definition db-def)
+                      (throw (ex-info "Invalid DB def" {:db-def db-def})))
+        table-def (or (m/find-first #(= (:table-name %) (name table-name))
+                                    (:table-definitions db-def))
+                      (throw (ex-info (format "DB def does not have a Table named %s" (pr-str (name table-name)))
+                                      {:db-def db-def})))
+        i         (or (u/index-of #(= (:field-name %) (name field-name))
+                                  (:field-definitions table-def))
+                      (throw (ex-info (format "Table def does not have a Field named %d" (pr-str (name field-name)))
+                                      {:table-def table-def})))]
+    (for [row (:rows table-def)]
+      (nth row i))))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
