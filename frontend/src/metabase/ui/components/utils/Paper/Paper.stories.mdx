@@ -8,6 +8,10 @@ export const args = {
   withBorder: false,
 };
 
+export const sampleArgs = {
+  text: "The elm tree planted by Eleanor Bold, the judge’s daughter, fell last night.",
+};
+
 export const argTypes = {
   p: {
     options: ["xs", "sm", "md", "lg", "xl"],
@@ -30,6 +34,7 @@ Our themed wrapper around [Mantine Paper](https://mantine.dev/core/paper/).
 
 ## Docs
 
+- [Figma File](https://www.figma.com/file/uc2OFS4lu0GvVDFB7Sz1hw/Paper?type=design&node-id=1-227&mode=design&t=x44LGyAYVvvURkVS-0)
 - [Mantine Paper Docs](https://mantine.dev/core/paper/)
 
 ## Examples
@@ -50,10 +55,7 @@ export const Template = args => (
         {argTypes.radius.options.map(radius => (
           <Grid.Col key={radius} span={1}>
             <Paper {...args} p={padding} radius={radius}>
-              <Text>
-                The elm tree planted by Eleanor Bold, the judge’s daughter, fell
-                last night.
-              </Text>
+              <Text>{sampleArgs.text}</Text>
             </Paper>
           </Grid.Col>
         ))}
@@ -62,10 +64,18 @@ export const Template = args => (
   </Grid>
 );
 
-export const Default = args => <Template {...args} />;
+export const Default = args => <Paper {...args}>{sampleArgs.text}</Paper>;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### No border
+
+export const NoBorder = args => <Template {...args} />;
+
+<Canvas>
+  <Story name="No border">{NoBorder}</Story>
 </Canvas>
 
 ### Border
