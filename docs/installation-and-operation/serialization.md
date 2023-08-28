@@ -121,7 +121,7 @@ Otherwise, you're good.
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java -jar metabase.jar export [export_name]
+java -jar metabase.jar export export_name
 ```
 
 ## Export options
@@ -155,7 +155,7 @@ The `--collection` flag (alias `-c`) lets you specify by ID one or more collecti
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export --collection 1,2,3
+java -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 ### `--no-collections`
@@ -180,10 +180,10 @@ The `--include-database-secrets` flag (alias `-s`) tells Metabase to include con
 
 ## Importing to a Metabase
 
-To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `[my_export]` is the path to the export you want to import:
+To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java -jar metabase.jar import [my_export]
+java -jar metabase.jar import path_to_export
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
