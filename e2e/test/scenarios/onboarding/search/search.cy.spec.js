@@ -176,28 +176,23 @@ describe("scenarios > search", () => {
       });
 
       it("should hydrate search with search text and filter", () => {
-        const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
+        const { filterName, resultInfoText } = typeFilters[0];
         cy.visit(`/search?q=orders&type=${filterName}`);
         cy.wait("@search");
 
         getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-bar-filter-button").should(
-          "have.attr",
-          "data-is-filtered",
-          "true",
-        );
 
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
         });
 
-        cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-        cy.findByTestId("type-sidebar").within(() => {
-          cy.findByText(sidebarLabel).should("exist");
-        });
         cy.findAllByTestId("result-link-info-text").each(result => {
           cy.wrap(result).should("contain.text", resultInfoText);
         });
+
+        throw new Error(
+          "This test needs to be changed: Add logic for checking sidebar filter here.",
+        );
       });
     });
 
@@ -207,11 +202,6 @@ describe("scenarios > search", () => {
 
         cy.visit("/");
 
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
         getSearchBar().click().type("{enter}");
 
         cy.wait("@getRecentViews");
@@ -224,11 +214,7 @@ describe("scenarios > search", () => {
 
       it("should render full page search when search text is present and user clicks 'Enter'", () => {
         cy.visit("/");
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
+
         getSearchBar().click().type("orders{enter}");
         cy.wait("@search");
 
@@ -238,7 +224,7 @@ describe("scenarios > search", () => {
 
         cy.location().should(loc => {
           expect(loc.pathname).to.eq("/search");
-          expect(loc.search).to.eq("?q=orders&type=card");
+          expect(loc.search).to.eq("?q=orders");
         });
       });
     });
@@ -249,48 +235,19 @@ describe("scenarios > search", () => {
           it(`should filter results by ${label}`, () => {
             cy.visit("/");
 
-            cy.findByTestId("search-bar-filter-button").click();
-            getSearchModalContainer().within(() => {
-              cy.findByText(label).click();
-              cy.findByText("Apply all filters").click();
-            });
-
             getSearchBar().clear().type("e{enter}");
             cy.wait("@search");
-
-            cy.url().should("include", `type=${filterName}`);
 
             cy.findAllByTestId("result-link-info-text").each(result => {
               cy.wrap(result).should("contain.text", resultInfoText);
             });
 
-            cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-            cy.findByTestId("type-sidebar").within(() => {
-              cy.findByText(sidebarLabel).should("exist");
-            });
+            throw new Error(
+              "This test needs to be changed: Change filter modal logic to clicking on a sidebar dropdown instead.",
+            );
           });
         },
       );
-
-      it("should not filter results when `Clear all filters` is applied", () => {
-        cy.visit("/search?q=order&type=card");
-        cy.wait("@search");
-
-        cy.findAllByTestId("search-result-item-name");
-        cy.findByTestId("search-bar-filter-button").click();
-
-        getSearchModalContainer().within(() => {
-          cy.findByText("Clear all filters").click();
-        });
-
-        getSearchBar().clear().type("e{enter}");
-        cy.wait("@search");
-
-        cy.findAllByTestId("type-sidebar-item").should(
-          "have.length",
-          typeFilters.length + 1,
-        );
-      });
     });
   });
 });
@@ -327,8 +284,4 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
-}
-
-function getSearchModalContainer() {
-  return cy.findByTestId("search-filter-modal-container");
 }
