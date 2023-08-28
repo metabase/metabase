@@ -214,7 +214,7 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _ _ _ _ _] chart-type))
 
-(defn- filter-rows [data viz-settings]
+(defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [[ordered-cols output-order] (qp.streaming/order-cols (:cols data) viz-settings)
           keep-filtered-idx           (fn [row] (if output-order
@@ -227,7 +227,7 @@
 
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
-  (let [[ordered-cols ordered-rows] (filter-rows data viz-settings)
+  (let [[ordered-cols ordered-rows] (order-data data viz-settings)
         data                        (-> data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
