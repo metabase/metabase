@@ -13,12 +13,12 @@
 
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
-    (mt/with-temp* [Collection    [{collection-id   :id
-                                    collection-eid  :entity_id
-                                    collection-slug :slug}]
-                    Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
-                    Card          [{card-id :id}      {:collection_id collection-id}]
-                    DashboardCard [_                  {:card_id card-id, :dashboard_id dashboard-id}]]
+    (mt/with-temp [Collection    {collection-id   :id
+                                  collection-eid  :entity_id
+                                  collection-slug :slug} {}
+                   Dashboard     {dashboard-id :id} {:collection_id collection-id}
+                   Card          {card-id :id}      {:collection_id collection-id}
+                   DashboardCard _                  {:card_id card-id :dashboard_id dashboard-id}]
       (testing "Sanity Check"
         (is (integer? collection-id))
         (is (= collection-id

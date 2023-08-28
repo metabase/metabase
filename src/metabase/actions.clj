@@ -11,7 +11,9 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
@@ -156,7 +158,8 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (t2/select-one Database :id (:database arg-map)))]
+    (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
+                                                   (qp.store/database)))]
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
@@ -206,7 +209,7 @@
      (when-let [error (me/humanize (mc/explain mbql.s/Query query))]
        (throw (ex-info
                (i18n/tru "Invalid query: {0}" (pr-str error))
-               {:status-code 400})))
+               {:status-code 400, :type qp.error-type/invalid-query})))
      query))
 
   ([query & {:keys [exclude]}]

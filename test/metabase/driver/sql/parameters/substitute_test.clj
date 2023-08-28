@@ -838,9 +838,8 @@
                                 :template-tags {"x" {:name         "x"
                                                      :display-name "X"
                                                      :type         :text
-                                                     :required     true
-                                                     :default      "%Toucan%"}}}
-                   :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+                                                     :required     true}}}
+                   :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
   (testing "make sure that you can use the same parameter multiple times (#4659)"
     (is (= {:query  "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
             :params ["%Toucan%" "%Toucan%"]}
@@ -848,9 +847,8 @@
                                   :template-tags {"x" {:name         "x"
                                                        :display-name "X"
                                                        :type         :text
-                                                       :required     true
-                                                       :default      "%Toucan%"}}}
-                     :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+                                                       :required     true}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
     (is (= {:query  "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
             :params ["2" "2"]}
            (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"

@@ -814,12 +814,12 @@
   ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
-      (mt/with-temp*
-        [Card [card (qp.test-util/card-with-source-metadata-for-query
-                     (mt/native-query {:query (str "select"
-                                                   " date '2022-01-01' as d,"
-                                                   " timestamp '2022-01-01 00:00:00.000' as dt,"
-                                                   " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]]
+      (mt/with-temp
+        [Card card (qp.test-util/card-with-source-metadata-for-query
+                    (mt/native-query {:query (str "select"
+                                                  " date '2022-01-01' as d,"
+                                                  " timestamp '2022-01-01 00:00:00.000' as dt,"
+                                                  " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]
         (let [d       [:field "d" {:base-type :type/Date}]
               dt      [:field "dt" {:base-type :type/DateTime}]
               dt_tz   [:field "dt_tz" {:base-type :type/DateTimeWithZoneID}]
@@ -1038,8 +1038,8 @@
   ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (mt/dataset diff-time-zones-athena-cases
-      (mt/with-temp* [Card [card (qp.test-util/card-with-source-metadata-for-query
-                                  (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
+      (mt/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
+                                (mt/native-query {:query diff-time-zones-athena-cases-query}))]
         (let [diffs
               (fn [a-str b-str]
                 (let [units   [:second :minute :hour :day :week :month :quarter :year]

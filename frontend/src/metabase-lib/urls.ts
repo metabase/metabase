@@ -71,7 +71,7 @@ export function getUrlWithParameters(
         clean,
         originalQuestion: question,
         includeDisplayIsLocked,
-        query: { objectId },
+        query: objectId === undefined ? {} : { objectId },
       });
     }
 

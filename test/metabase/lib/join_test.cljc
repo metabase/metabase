@@ -1,6 +1,7 @@
 (ns metabase.lib.join-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
@@ -8,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -206,6 +208,7 @@
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [card-1            {:name          "My Card"
                            :id            1
+                           :database-id   (meta/id)
                            :dataset-query {:database (meta/id)
                                            :type     :query
                                            :query    {:source-table (meta/id :checkins)
@@ -603,7 +606,7 @@
            {:input :none, :expected {:fields :none}}
            ;; (with-join-fields ... []) should set :fields to :none
            {:input [], :expected {:fields :none}}
-           {:input nil, :expected nil}]]
+           {:input nil, :expected {:fields :all}}]]
     (test-with-join-fields input expected)))
 
 (deftest ^:parallel with-join-fields-explicit-fields-test
@@ -857,11 +860,14 @@
   ;; this is to preserve the existing behavior from MLv1, it doesn't necessarily make sense, but we don't want to have
   ;; to update a million tests, right? Once v1-compatible joins lands then maybe we can go in and make this work,
   ;; since it seems like it SHOULD work.
-  (testing "Don't suggest join conditions for a PK -> FK relationship"
-    (is (nil?
-         (lib/suggested-join-condition
-          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          (meta/table-metadata :venues))))))
+  (testing "DO suggest join conditions for a PK -> FK relationship"
+    (is (=? [:=
+             {}
+             [:field {} (meta/id :categories :id)]
+             [:field {} (meta/id :venues :category-id)]]
+            (lib/suggested-join-condition
+             (lib/query meta/metadata-provider (meta/table-metadata :categories))
+             (meta/table-metadata :venues))))))
 
 (deftest ^:parallel suggested-join-condition-fk-from-join-test
   (testing "DO suggest join conditions for a FK -> PK relationship if the FK comes from a join"
@@ -1130,3 +1136,45 @@
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))
         (let [[rhs-column] (filter :selected? (lib/join-condition-rhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket rhs-column))))))))
+
+(deftest ^:parallel join-a-table-test
+  (testing "As a convenience, we should support calling `join` with a Table metadata and do the right thing automatically"
+    (is (=? {:stages [{:source-table (meta/id :orders)
+                       :joins        [{:stages     [{:source-table (meta/id :products)}]
+                                       :fields     :all
+                                       :alias      "Products"
+                                       :conditions [[:=
+                                                     {}
+                                                     [:field {} (meta/id :orders :product-id)]
+                                                     [:field {:join-alias "Products"} (meta/id :products :id)]]]}]}]}
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (lib/join (meta/table-metadata :products)))))
+    (testing "with reverse PK <- FK relationship"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :joins        [{:stages     [{:source-table (meta/id :orders)}]
+                                         :fields     :all
+                                         :alias      "Orders"
+                                         :conditions [[:=
+                                                       {}
+                                                       [:field {} (meta/id :products :id)]
+                                                       [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}]}
+              (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  (lib/join (meta/table-metadata :orders))))))))
+
+(deftest ^:parallel join-source-card-with-in-previous-stage-with-joins-test
+  (testing "Make sure we generate correct join conditions when joining source cards with joins (#31769)"
+    (doseq [broken-refs? [true false]]
+      (testing (str "\nbroken-refs? = " (pr-str broken-refs?))
+        (binding [lib.card/*force-broken-card-refs* broken-refs?]
+          (is (=? {:stages [{:source-card 1}
+                            {:joins [{:stages     [{:source-card 2}]
+                                      :fields     :all
+                                      :conditions [[:=
+                                                    {}
+                                                    (if broken-refs?
+                                                      [:field {} (meta/id :products :category)]
+                                                      [:field {:base-type :type/Text} "Products__CATEGORY"])
+                                                    [:field {:join-alias "Question 2 - Category"} (meta/id :products :category)]]]
+                                      :alias      "Question 2 - Category"}]
+                             :limit 2}]}
+                  (lib.tu.mocks-31769/query))))))))

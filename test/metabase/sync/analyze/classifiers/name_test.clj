@@ -38,18 +38,18 @@
         (is (= :entity/GenericTable (classify "foo"))))))
   (testing "When using field info"
     (testing "doesn't infer on PK/FK semantic_types"
-      (mt/with-temp* [Table [{table-id :id}]
-                      Field [{field-id :id} {:table_id      table-id
-                                             :semantic_type :type/FK
-                                             :name          "City"
-                                             :base_type     :type/Text}]]
+      (mt/with-temp [Table {table-id :id} {}
+                     Field {field-id :id} {:table_id      table-id
+                                           :semantic_type :type/FK
+                                           :name          "City"
+                                           :base_type     :type/Text}]
         (is (nil? (-> (t2/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
     (testing "but does infer on non-PK/FK fields"
-      (mt/with-temp* [Table [{table-id :id}]
-                      Field [{field-id :id} {:table_id      table-id
-                                             :semantic_type :type/Category
-                                             :name          "City"
-                                             :base_type     :type/Text}]]
+      (mt/with-temp [Table {table-id :id} {}
+                     Field {field-id :id} {:table_id      table-id
+                                           :semantic_type :type/Category
+                                           :name          "City"
+                                           :base_type     :type/Text}]
         (-> (t2/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
 
 (deftest infer-semantic-type-test

@@ -9,6 +9,7 @@
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -31,7 +32,7 @@
                (driver/database-supports? driver/*driver* :nested-queries (qp.store/database))
                card-id
                (not source-card-id))
-      (t2/update! 'Card card-id {:result_metadata metadata}))
+      (t2/update! :model/Card card-id {:result_metadata metadata}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -67,7 +68,8 @@
        (record! metadata)
        (rf (cond-> result
              (map? result)
-             (update :data             assoc
+             (update :data
+                     assoc
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
