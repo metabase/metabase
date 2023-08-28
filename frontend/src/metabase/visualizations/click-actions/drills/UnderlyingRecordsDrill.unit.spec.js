@@ -190,7 +190,7 @@ describe("UnderlyingRecordsDrill", () => {
     });
 
     // NOTE: this test is valid only until lib drill returns metric value instead of underlying rows count
-    it("should return correct pluralized title for negative numeric values", () => {
+    it("should return correct pluralized title for negative numeric values (metabase#32108)", () => {
       const query = peopleTable
         .query()
         .aggregate(["sum", ["field", PEOPLE.LATITUDE, null]])

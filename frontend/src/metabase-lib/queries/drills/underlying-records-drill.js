@@ -13,16 +13,20 @@ export function underlyingRecordsDrill({ question, clicked }) {
     return null;
   }
 
-  // here we expect rows count of an aggregated query item, but actually we have numeric metric value, so
-  // we don't really know number of rows in original un-aggregated data
-  const value = typeof clicked.value === "number" ? clicked.value : 2;
-
   const tableName = query.table() && query.table().displayName();
 
   return {
-    value: value < 0 ? 2 : value,
+    // here we expect rows count of an aggregated query item, but actually we have numeric metric value, so
+    // we don't really know number of rows in original un-aggregated data
+    value: getNormalizedValue(clicked.value),
     tableName,
   };
+}
+
+function getNormalizedValue(value) {
+  const numberValue = typeof value === "number" ? value : 2;
+
+  return numberValue < 0 ? 2 : numberValue;
 }
 
 export function underlyingRecordsDrillQuestion({ question, clicked }) {
