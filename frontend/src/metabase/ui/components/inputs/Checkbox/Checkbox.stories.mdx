@@ -61,10 +61,10 @@ export const CheckboxGroupTemplate = args => (
     description="But which one to use?"
   >
     <Stack mt="md">
-      <Checkbox value="react" label="React" />
-      <Checkbox value="svelte" label="Svelte" />
-      <Checkbox value="ng" label="Angular" />
-      <Checkbox value="vue" label="Vue" />
+      <Checkbox {...args} value="react" label="React" />
+      <Checkbox {...args} value="svelte" label="Svelte" />
+      <Checkbox {...args} value="ng" label="Angular" />
+      <Checkbox {...args} value="vue" label="Vue" />
     </Stack>
   </Checkbox.Group>
 );
