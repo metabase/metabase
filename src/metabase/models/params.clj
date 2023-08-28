@@ -78,12 +78,12 @@
 
 (defn- field-ids->param-field-values-ignoring-current-user
   [param-field-ids]
-  (->> (t2/select :model/Field :id [:in (set param-field-ids)])
-       (map (comp (juxt :field_id identity)
-                  #(select-keys % [:field_id :human_readable_values :values])
-                  field-values/get-or-create-full-field-values!))
-       (into {})
-       not-empty))
+  (not-empty
+   (into {}
+         (map (comp (juxt :field_id identity)
+                    #(select-keys % [:field_id :human_readable_values :values])
+                    field-values/get-or-create-full-field-values!))
+         (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
