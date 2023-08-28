@@ -20,6 +20,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
+   [metabase.test.util.misc :as test.util.misc]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
@@ -935,92 +936,93 @@
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
 
 (deftest created-at-correctness-test
-  (let [search-term "created-at-filtering"
-        new          #t "2023-05-04T10:00Z[UTC]"
+  (let [search-term  "created-at-filtering"
+        new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id}{:name       search-term
-                                               :created_at new}
-         :model/Dashboard  {dashboard-old :id}{:name       search-term
-                                               :created_at two-years-ago}
-         :model/Database   {db-new :id}       {:name       search-term
-                                               :created_at new}
-         :model/Database   {db-old :id }      {:name       search-term
-                                               :created_at two-years-ago}
-         :model/Table      {table-new :id}    {:name       search-term
-                                               :db_id      db-new
-                                               :created_at new}
-         :model/Table      {table-old :id}    {:name       search-term
-                                               :db_id      db-old
-                                               :created_at two-years-ago}
-         :model/Collection {coll-new :id}     {:name       search-term
-                                               :created_at new}
-         :model/Collection {coll-old :id}     {:name       search-term
-                                               :created_at two-years-ago}
-         :model/Card       {card-new :id}     {:name       search-term
-                                               :created_at new}
-         :model/Card       {card-old :id}     {:name       search-term
-                                               :created_at two-years-ago}
-         :model/Card       {model-new :id}    {:name       search-term
-                                               :dataset    true
-                                               :created_at new}
-         :model/Card       {model-old :id}    {:name       search-term
-                                               :dataset    true
-                                               :created_at two-years-ago}
-         :model/Action     {action-new :id}   {:name       search-term
-                                               :model_id   model-new
-                                               :type       :http
-                                               :created_at new}
-         :model/Action     {action-old :id}   {:name       search-term
-                                               :model_id   model-old
-                                               :type       :http
-                                               :created_at two-years-ago}
-         :model/Segment    {_segment-new :id} {:name       search-term
-                                               :created_at new}
-         :model/Metric     {_metric-new :id}  {:name       search-term
-                                               :created_at new}]
-        ;; with clock doesn't work if calling via API, so we call the search function directly
-        (let [test-search (fn [created-at expected]
-                           (testing (format "searching with created-at = %s" created-at)
-                             (mt/with-current-user (mt/user->id :crowberto)
-                               (is (= expected
-                                      (->> (#'api.search/search (#'api.search/search-context
-                                                                 {:search-string search-term
-                                                                  :archived      false
-                                                                  :models        search.config/all-models
-                                                                  :created-at    created-at}))
-                                           :data
-                                           (map (juxt :model :id))
-                                           set))))))
-              new-result  #{["action"     action-new]
-                            ["card"       card-new]
-                            ["collection" coll-new]
-                            ["database"   db-new]
-                            ["dataset"    model-new]
-                            ["dashboard"  dashboard-new]
-                            ["table"      table-new]}
-              old-result  #{["action"     action-old]
-                            ["card"       card-old]
-                            ["collection" coll-old]
-                            ["database"   db-old]
-                            ["dataset"    model-old]
-                            ["dashboard"  dashboard-old]
-                            ["table"      table-old]}]
-          ;; absolute datetime
-         (test-search "Q2-2021" old-result)
-         (test-search "2023-05-04" new-result)
-         (test-search "2021-05-03~" (set/union old-result new-result))
-         ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
-         (test-search "2021-05-04~2023-05-03" old-result)
-         (test-search "2021-05-05~2023-05-04" new-result)
-         (test-search "~2023-05-03" old-result)
-         (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
+      (test.util.misc/with-fix-local-date-time-at-zone! "UTC"
+        (t2.with-temp/with-temp
+          [:model/Dashboard  {dashboard-new :id}{:name       search-term
+                                                 :created_at new}
+           :model/Dashboard  {dashboard-old :id}{:name       search-term
+                                                 :created_at two-years-ago}
+           :model/Database   {db-new :id}       {:name       search-term
+                                                 :created_at new}
+           :model/Database   {db-old :id }      {:name       search-term
+                                                 :created_at two-years-ago}
+           :model/Table      {table-new :id}    {:name       search-term
+                                                 :db_id      db-new
+                                                 :created_at new}
+           :model/Table      {table-old :id}    {:name       search-term
+                                                 :db_id      db-old
+                                                 :created_at two-years-ago}
+           :model/Collection {coll-new :id}     {:name       search-term
+                                                 :created_at new}
+           :model/Collection {coll-old :id}     {:name       search-term
+                                                 :created_at two-years-ago}
+           :model/Card       {card-new :id}     {:name       search-term
+                                                 :created_at new}
+           :model/Card       {card-old :id}     {:name       search-term
+                                                 :created_at two-years-ago}
+           :model/Card       {model-new :id}    {:name       search-term
+                                                 :dataset    true
+                                                 :created_at new}
+           :model/Card       {model-old :id}    {:name       search-term
+                                                 :dataset    true
+                                                 :created_at two-years-ago}
+           :model/Action     {action-new :id}   {:name       search-term
+                                                 :model_id   model-new
+                                                 :type       :http
+                                                 :created_at new}
+           :model/Action     {action-old :id}   {:name       search-term
+                                                 :model_id   model-old
+                                                 :type       :http
+                                                 :created_at two-years-ago}
+           :model/Segment    {_segment-new :id} {:name       search-term
+                                                 :created_at new}
+           :model/Metric     {_metric-new :id}  {:name       search-term
+                                                 :created_at new}]
+          ;; with clock doesn't work if calling via API, so we call the search function directly
+          (let [test-search (fn [created-at expected]
+                              (testing (format "searching with created-at = %s" created-at)
+                                (mt/with-current-user (mt/user->id :crowberto)
+                                  (is (= expected
+                                         (->> (#'api.search/search (#'api.search/search-context
+                                                                    {:search-string search-term
+                                                                     :archived      false
+                                                                     :models        search.config/all-models
+                                                                     :created-at    created-at}))
+                                              :data
+                                              (map (juxt :model :id))
+                                              set))))))
+                new-result  #{["action"     action-new]
+                              ["card"       card-new]
+                              ["collection" coll-new]
+                              ["database"   db-new]
+                              ["dataset"    model-new]
+                              ["dashboard"  dashboard-new]
+                              ["table"      table-new]}
+                old-result  #{["action"     action-old]
+                              ["card"       card-old]
+                              ["collection" coll-old]
+                              ["database"   db-old]
+                              ["dataset"    model-old]
+                              ["dashboard"  dashboard-old]
+                              ["table"      table-old]}]
+            ;; absolute datetime
+            (test-search "Q2-2021" old-result)
+            (test-search "2023-05-04" new-result)
+            (test-search "2021-05-03~" (set/union old-result new-result))
+            ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
+            (test-search "2021-05-04~2023-05-03" old-result)
+            (test-search "2021-05-05~2023-05-04" new-result)
+            (test-search "~2023-05-03" old-result)
+            (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
 
-         ;; relative times
-         (test-search "thisyear" new-result)
-         (test-search "past1years-from-12months" old-result)
-         (test-search "today" new-result))))))
+            ;; relative times
+            (test-search "thisyear" new-result)
+            (test-search "past1years-from-12months" old-result)
+            (test-search "today" new-result)))))))
 
 (deftest available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"

@@ -409,7 +409,7 @@
                  (mt/with-system-timezone-id "Asia/Tokyo"
                    (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"})))))
 
-        (testing "default should be at UTC"
+        (testing "default should be at the system timezone"
           (is (= {:start "2016-06-07T12:00:00", :end "2016-06-07T12:00:00"}
                  (params.dates/date-string->range "thishour"))))
 
