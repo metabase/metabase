@@ -22,19 +22,19 @@ jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 3,
 }));
 
-const ALL_RESULTS_SIDEBAR_NAME = "All results";
-
-const SIDEBAR_NAMES: Record<string, string> = {
-  collection: "Collections",
-  dashboard: "Dashboards",
-  database: "Databases",
-  dataset: "Models",
-  metric: "Metrics",
-  pulse: "Pulses",
-  segment: "Segments",
-  table: "Raw Tables",
-  card: "Questions",
-};
+// const ALL_RESULTS_SIDEBAR_NAME = "All results";
+//
+// const SIDEBAR_NAMES: Record<string, string> = {
+//   collection: "Collections",
+//   dashboard: "Dashboards",
+//   database: "Databases",
+//   dataset: "Models",
+//   metric: "Metrics",
+//   pulse: "Pulses",
+//   segment: "Segments",
+//   table: "Raw Tables",
+//   card: "Questions",
+// };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [
   { name: "Test Card", model: "card" },
@@ -159,25 +159,19 @@ describe("SearchApp", () => {
 
   describe("filtering search results with the sidebar", () => {
     it.each(TEST_SEARCH_RESULTS)(
-      "should reload with filtered searches when type=$model on the right sidebar is clicked without changing URL",
+      "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
       async ({ model, name }) => {
-        const { history } = await setup({
+        // const { history } = await setup({
+        await setup({
           searchText: "Test",
         });
 
-        let url = history.getCurrentLocation();
-        const { pathname: prevPathname, search: prevSearch } = url ?? {};
+        // let url = history.getCurrentLocation();
+        // const { pathname: prevPathname, search: prevSearch } = url ?? {};
 
-        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
-        expect(sidebarItems).toHaveLength(10);
-        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
-
-        const sidebarItem = screen.getByText(SIDEBAR_NAMES[model]);
-        userEvent.click(sidebarItem);
-        url = history.getCurrentLocation();
-        const { pathname, search } = url ?? {};
-        expect(pathname).toEqual(prevPathname);
-        expect(search).toEqual(prevSearch);
+        throw new Error(
+          "TODO: Check that the sidebar type filter isn't activated, then change the filter, then check if the url HAS changed.",
+        );
 
         const searchResultItem = await screen.findByTestId(
           "search-result-item",
@@ -205,11 +199,9 @@ describe("SearchApp", () => {
           name,
         );
 
-        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
-
-        expect(sidebarItems).toHaveLength(2);
-        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
-        expect(sidebarItems[1]).toHaveTextContent(SIDEBAR_NAMES[model]);
+        throw new Error(
+          "TODO: expect the sidebar's type filter to contain the type's name",
+        );
       },
     );
   });

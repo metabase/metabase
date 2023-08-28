@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
-import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
+import { SearchFilterSidebar } from "metabase/search/components/SearchFilterSidebar/SearchFilterSidebar";
 import type { SearchModelType } from "metabase-types/api";
 import type { SearchFilters } from "metabase/search/types";
 
@@ -19,12 +19,7 @@ const TestSearchFilterModal = ({
   onChangeFilters.mockImplementation(newFilters => setFilters(newFilters));
 
   return (
-    <SearchFilterModal
-      isOpen={true}
-      setIsOpen={jest.fn()}
-      value={filters}
-      onChangeFilters={onChangeFilters}
-    />
+    <SearchFilterSidebar value={filters} onChangeFilters={onChangeFilters} />
   );
 };
 
@@ -71,7 +66,7 @@ const setup = async ({
   };
 };
 
-describe("SearchFilterModal", () => {
+describe("SearchFilterSidebar", () => {
   it("should populate selected filters when `value` is passed in", async () => {
     await setup({
       initialFilters: TEST_INITIAL_FILTERS,

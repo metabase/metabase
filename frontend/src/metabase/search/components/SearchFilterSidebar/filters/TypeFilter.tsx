@@ -4,10 +4,10 @@ import { getTranslatedEntityName } from "metabase/nav/utils";
 import { Checkbox } from "metabase/ui";
 import { useSearchListQuery } from "metabase/common/hooks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { SearchFilterView } from "metabase/search/components/SearchFilterModal/filters/SearchFilterView";
+import { SearchFilterView } from "metabase/search/components/SearchFilterSidebar/filters/SearchFilterView";
 
 import type { SearchFilterComponent } from "metabase/search/types";
-import { TypeCheckboxGroupWrapper } from "metabase/search/components/SearchFilterModal/filters/TypeFilter.styled";
+import { TypeCheckboxGroupWrapper } from "metabase/search/components/SearchFilterSidebar/filters/TypeFilter.styled";
 import { enabledSearchTypes } from "metabase/search/constants";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
