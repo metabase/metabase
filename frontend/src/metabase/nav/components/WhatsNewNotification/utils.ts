@@ -19,6 +19,12 @@ export const getLatestEligibleReleaseNotes = ({
   if (isEmbedded || currentVersion === undefined) {
     return undefined;
   }
+
+  const versionInVersionInfo = versions.find(v => v.version === currentVersion);
+  if (!versionInVersionInfo) {
+    return undefined;
+  }
+
   const eligibleVersions = versions.filter(({ version }) => {
     return (
       //                            version <= currentVersion

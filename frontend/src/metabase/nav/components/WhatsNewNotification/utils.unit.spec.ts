@@ -7,6 +7,7 @@ describe("What's new - utils", () => {
       expect(
         getLatestEligibleReleaseNotes({
           versions: [
+            createMockVersionInfoRecord({ version: "v0.48" }),
             createMockVersionInfoRecord({
               version: "v0.43",
               releaseNotesUrl: "url",
@@ -80,6 +81,9 @@ describe("What's new - utils", () => {
       expect(
         getLatestEligibleReleaseNotes({
           versions: [
+            createMockVersionInfoRecord({
+              version: "v0.49.2",
+            }),
             createMockVersionInfoRecord({
               version: "v0.49.1",
               releaseNotesUrl: "url",

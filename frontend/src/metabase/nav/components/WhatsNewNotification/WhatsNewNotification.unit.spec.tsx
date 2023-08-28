@@ -19,6 +19,7 @@ const setup = ({
   lastAcknowledged = null,
   currentVersion = "v0.48.0",
   versions = [
+    mockVersion({ version: "v0.48.2" }),
     mockVersion({ version: "v0.48.1" }),
     mockVersion({
       version: "v0.48.0",
@@ -65,12 +66,12 @@ describe("WhatsNewNotification", () => {
       expect(notification()).toBeInTheDocument();
     });
 
-    it("should show the notification if the current version is not in version-info and all other requirements apply", () => {
+    it("should NOT show the notification if the current version is not in version-info, for example for RCs", () => {
       setup({
-        currentVersion: "v0.48.99",
-        lastAcknowledged: null,
+        currentVersion: "v0.48.0-RC",
+        lastAcknowledged: "v0.47.0",
       });
-      expect(notification()).toBeInTheDocument();
+      expect(notification()).not.toBeInTheDocument();
     });
 
     it("should NOT show the notification if the current version has been acknowledged", () => {
