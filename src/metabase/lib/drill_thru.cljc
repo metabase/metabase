@@ -1,6 +1,5 @@
 (ns metabase.lib.drill-thru
   (:require
-   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
@@ -26,6 +25,7 @@
 
 ;; TODO: ActionMode, PublicMode, MetabotMode need to be captured in the FE before calling `available-drill-thrus`.
 
+;; TODO: Directly clicking on a table's primary key opens the object detail, with no popup? How does that work?
 
 ;;; ---------------------------------------- Internals -------------------------------------------
 (defn- structured-query? [query stage-number]
@@ -572,8 +572,7 @@
      :row-count  (if (number? value) value 2)
      :table-name (some->> (lib.util/source-table-id query)
                           (lib.metadata/table query)
-                          (lib.metadata.calculation/display-name query stage-number))})
-  )
+                          (lib.metadata.calculation/display-name query stage-number))}))
 
 ;;; --------------------------------------- Top Level --------------------------------------------
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
@@ -597,7 +596,8 @@
          sort-drill
          summarize-column-drill
          summarize-column-by-time-drill
-         underlying-records-drill]))
+         underlying-records-drill
+         zoom-in-drill]))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
