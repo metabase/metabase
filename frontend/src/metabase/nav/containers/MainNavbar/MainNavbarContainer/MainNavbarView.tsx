@@ -184,7 +184,7 @@ function CollectionSectionHeading({
           icon="add"
           onClick={() => {
             closePopover();
-            handleCreateNewCollection;
+            handleCreateNewCollection();
           }}
         >
           {t`New collection`}
