@@ -11,14 +11,15 @@ export function useJoinCondition(
 ) {
   const previousCondition = usePrevious(condition);
 
-  const externalOp = condition ? Lib.externalOp(condition) : undefined;
-  const [initialLHSColumn, initialRHSColumn] = externalOp?.args || [];
+  const conditionParts = condition
+    ? Lib.joinConditionParts(query, stageIndex, condition)
+    : undefined;
 
   const [lhsColumn, _setLHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    initialLHSColumn,
+    conditionParts?.lhsColumn,
   );
   const [rhsColumn, _setRHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    initialRHSColumn,
+    conditionParts?.rhsColumn,
   );
   const [operator, _setOperator] = useState<Lib.FilterOperator | undefined>(
     getInitialConditionOperator(query, stageIndex, condition),
@@ -26,10 +27,14 @@ export function useJoinCondition(
 
   useEffect(() => {
     if (condition && previousCondition !== condition) {
-      const externalOp = Lib.externalOp(condition);
-      _setLHSColumn(externalOp?.args[0]);
-      _setRHSColumn(externalOp?.args[1]);
-      _setOperator(getConditionOperator(query, stageIndex, condition));
+      const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
+        query,
+        stageIndex,
+        condition,
+      );
+      _setLHSColumn(lhsColumn);
+      _setRHSColumn(rhsColumn);
+      _setOperator(operator);
     }
   }, [query, stageIndex, condition, previousCondition]);
 
@@ -93,7 +98,9 @@ export function useJoinCondition(
       let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
       condition = maybeSyncTemporalUnit(condition, lhsColumn, rhsColumn);
 
-      const [nextLHSColumn, nextRHSColumn] = Lib.externalOp(condition).args;
+      const { lhsColumn: nextLHSColumn, rhsColumn: nextRHSColumn } =
+        Lib.joinConditionParts(query, stageIndex, condition);
+
       _setLHSColumn(nextLHSColumn);
       _setRHSColumn(nextRHSColumn);
 
@@ -108,7 +115,9 @@ export function useJoinCondition(
       let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
       condition = maybeSyncTemporalUnit(condition, rhsColumn, lhsColumn);
 
-      const [nextLHSColumn, nextRHSColumn] = Lib.externalOp(condition).args;
+      const { lhsColumn: nextLHSColumn, rhsColumn: nextRHSColumn } =
+        Lib.joinConditionParts(query, stageIndex, condition);
+
       _setLHSColumn(nextLHSColumn);
       _setRHSColumn(nextRHSColumn);
 
@@ -129,18 +138,6 @@ export function useJoinCondition(
     setLHSColumn,
     setRHSColumn,
   };
-}
-
-function getConditionOperator(
-  query: Lib.Query,
-  stageIndex: number,
-  condition: Lib.JoinConditionClause,
-) {
-  const operators = Lib.joinConditionOperators(query, stageIndex);
-  const { operator } = Lib.externalOp(condition);
-  return operators.find(
-    op => Lib.displayInfo(query, stageIndex, op).shortName === operator,
-  );
 }
 
 function getDefaultJoinOperator(
@@ -167,10 +164,13 @@ function getInitialConditionOperator(
   condition?: Lib.JoinConditionClause,
 ) {
   if (condition) {
-    const externalOp = Lib.externalOp(condition);
-    const [lhsColumn, rhsColumn] = externalOp.args;
+    const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
+      query,
+      stageIndex,
+      condition,
+    );
     return (
-      getConditionOperator(query, stageIndex, condition) ||
+      operator ||
       getDefaultJoinOperator(query, stageIndex, lhsColumn, rhsColumn)
     );
   } else {
