@@ -104,7 +104,7 @@ export const VariantTemplate = args => (
   </Stack>
 );
 
-export const VariantIconTemplate = args => (
+export const IconTemplate = args => (
   <VariantTemplate {...args} icon={<Icon name="int" />} />
 );
 
@@ -209,7 +209,7 @@ ErrorMd.args = {
 
 #### Icon
 
-export const IconMd = VariantIconTemplate.bind({});
+export const IconMd = IconTemplate.bind({});
 IconMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
@@ -225,7 +225,7 @@ IconMd.args = {
 
 #### Read only
 
-export const ReadOnlyMd = VariantIconTemplate.bind({});
+export const ReadOnlyMd = IconTemplate.bind({});
 ReadOnlyMd.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
@@ -242,7 +242,7 @@ ReadOnlyMd.args = {
 
 #### Min / max
 
-export const MinMaxMd = args => VariantIconTemplate.bind({});
+export const MinMaxMd = args => IconTemplate.bind({});
 MinMaxMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
@@ -259,7 +259,7 @@ MinMaxMd.args = {
 
 #### Controls
 
-export const ControlsMd = VariantIconTemplate.bind({});
+export const ControlsMd = IconTemplate.bind({});
 ControlsMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
@@ -277,7 +277,7 @@ ControlsMd.args = {
 
 #### Precision and decimal separator
 
-export const PrecisionMd = VariantIconTemplate.bind({});
+export const PrecisionMd = IconTemplate.bind({});
 PrecisionMd.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
@@ -294,7 +294,7 @@ PrecisionMd.args = {
 
 #### Parser and formatter
 
-export const ParserFormatterMd = VariantIconTemplate.bind({});
+export const ParserFormatterMd = IconTemplate.bind({});
 VariantTemplate.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
