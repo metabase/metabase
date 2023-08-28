@@ -97,13 +97,7 @@ export default function SearchApp({ location }) {
                 </Flex>
               </SearchMain>
               <SearchControls>
-                <TypeSearchSidebar
-                  availableModels={getAvailableModels(
-                    metadata.available_models,
-                  )}
-                  selectedType={selectedSidebarType}
-                  onSelectType={onChangeSelectedType}
-                />
+                
               </SearchControls>
             </SearchBody>
           ) : (
