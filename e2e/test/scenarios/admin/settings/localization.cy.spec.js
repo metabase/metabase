@@ -180,9 +180,12 @@ describe("scenarios > admin > localization", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("January 7, 2018").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click();
+    cy.findByText("2018/1/7 (year, month, day)").click();
     cy.wait("@updateFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findAllByTestId("select-button-content").should(
+      "contain",
+      "2018/1/7 (year, month, day)",
+    );
 
     // update the time style setting to 24 hour
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

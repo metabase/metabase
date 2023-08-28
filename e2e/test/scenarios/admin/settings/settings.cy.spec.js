@@ -154,9 +154,12 @@ describe("scenarios > admin > settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("January 7, 2018").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click({ force: true });
+    cy.findByText("2018/1/7 (year, month, day)").click({ force: true });
     cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findAllByTestId("select-button-content").should(
+      "contain",
+      "2018/1/7 (year, month, day)",
+    );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("17:24 (24-hour clock)").click();
