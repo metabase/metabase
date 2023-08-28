@@ -7,7 +7,7 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.test :as mt]))
 
-(deftest date-string->filter-test
+(deftest ^:parallel date-string->filter-test
   (testing "year and month"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
@@ -126,7 +126,7 @@
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-minutes-15-30\""
                (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}])))))))
 
-(deftest date-string->range-test
+(deftest ^:parallel date-string->range-test
   (mt/with-clock #t "2016-06-07T12:13:55Z"
     (doseq [[group s->expected]
             {"absolute datetimes"         {"Q1-2016"               [{:start "2016-01-01" :end "2016-03-31"}  ;; inclusive start + end = true (default)
@@ -395,7 +395,7 @@
            (is (= expected-range
                   (params.dates/date-string->range s option)))))))))
 
-(deftest relative-dates-with-starting-from-zero-must-match
+(deftest ^:parallel relative-dates-with-starting-from-zero-must-match
   (testing "relative dates need to behave the same way, offset or not."
     (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "'past1months-from-0months' should be the same as: 'past1months'"

@@ -18,6 +18,7 @@ import {
   createSampleDatabase,
   ORDERS,
   PEOPLE,
+  REVIEWS,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
@@ -164,6 +165,25 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         dimension: ["field", ORDERS.QUANTITY, null],
+        "widget-type": "number/=",
+        options: undefined,
+      });
+    });
+
+    it("should default to number/= for a new reviews->rating field filter (metabase#16151)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(await screen.findByText("Reviews"));
+      userEvent.click(await screen.findByText("Rating"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", REVIEWS.RATING, null],
         "widget-type": "number/=",
         options: undefined,
       });

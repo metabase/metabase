@@ -123,7 +123,7 @@
       {:tables tables})))
 
 (deftest native-download-perms-sync-test
-  (mt/with-temp* [Database [{db-id :id :as database} {:engine ::download-permissions}]]
+  (mt/with-temp [Database {db-id :id :as database} {:engine ::download-permissions}]
     (replace-tables ["Table 1" "Table 2"])
     (letfn [(all-users-native-download-perms []
               (get-in (perms/data-perms-graph) [:groups (u/the-id (perms-group/all-users)) db-id :download :native]))]

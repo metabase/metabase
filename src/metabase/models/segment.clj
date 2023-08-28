@@ -10,6 +10,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
@@ -59,18 +60,18 @@
   [metadata-provider :- lib.metadata/MetadataProvider
    {table-id :table_id, :keys [definition], :as _segment}]
   (when (seq definition)
-    (when-let [{database-id :db-id} (when table-id (lib.metadata.protocols/table metadata-provider table-id))]
-      (try
-        (let [definition (merge {:source-table table-id}
-                                definition)
-              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-top-level-key query :filters))
-        (catch Throwable e
-          (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
-          nil)))))
+    (try
+      (let [definition  (merge {:source-table table-id}
+                               definition)
+            database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
+            query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-top-level-key query :filters))
+      (catch Throwable e
+        (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+        nil))))
 
-(defn- warmed-metadata-provider [segments]
-  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+(defn- warmed-metadata-provider [database-id segments]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
         fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
@@ -81,10 +82,27 @@
     (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
+(defn- segments->table-id->warmed-metadata-provider
+  [segments]
+  (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id segments)))]
+                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+        db-id->metadata-provider    (memoize
+                                     (mu/fn db-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+                                       [database-id :- ::lib.schema.id/database]
+                                       (let [segments-for-db (filter (fn [segment]
+                                                                       (= (table-id->db-id (:table_id segment))
+                                                                          database-id))
+                                                                     segments)]
+                                         (warmed-metadata-provider database-id segments-for-db))))]
+    (mu/fn table-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+      [table-id :- ::lib.schema.id/table]
+      (-> table-id table-id->db-id db-id->metadata-provider))))
+
 (methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]
   [_model _key segments]
-  (let [metadata-provider (warmed-metadata-provider segments)]
-    (for [segment segments]
+  (let [table-id->warmed-metadata-provider (segments->table-id->warmed-metadata-provider segments)]
+    (for [segment segments
+          :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id segment))]]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
 

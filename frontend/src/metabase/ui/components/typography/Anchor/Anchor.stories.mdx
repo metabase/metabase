@@ -1,10 +1,38 @@
+import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Anchor } from "./";
-import { Text } from "../Text"
+import { Anchor, Grid, Text } from "metabase/ui";
 
-<Meta title="Typography/Anchor" component={Anchor} />
+export const args = {
+  size: "md",
+  align: "unset",
+  truncate: false,
+};
 
-export const Template = (args) => <Anchor href="https://www.youtube.com/@metabasedata" {...args} />;
+export const sampleArgs = {
+  text: "Weniger",
+  href: "https://example.test",
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "sm", "md", "lg"],
+    control: { type: "inline-radio" },
+  },
+  align: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+  truncate: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Typography/Anchor"
+  component={Anchor}
+  args={args}
+  argTypes={argTypes}
+/>
 
 # Anchor
 
@@ -16,63 +44,41 @@ The Anchor component allows users to display links with themed styles, and repla
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Foundation-%2F-text?type=design&node-id=5-70&mode=design&t=9Sh3xAM7HsIZIN1z-11)
+- [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
 - [Mantine Anchor Docs](https://mantine.dev/core/anchor/)
 
-## Caveats
+## Examples
 
-N/A
-
-## Usage guidelines
-
-N/A
-
-## General
+export const Default = args => (
+  <Anchor href={sampleArgs.href}>{sampleArgs.text}</Anchor>
+);
 
 <Canvas>
-  <Story name="Default" args={{
-    children: "You should subscribe to our Youtube channel!",
-    italic: false,
-    strikethrough: false,
-    weight: "normal",
-    lineClamp: -1,
-    align: "unset",
-  }}
-  argTypes={
-   {
-     children: {
-       control: {
-         type: "text"
-       }
-     },
-     size: {
-       options: ["xs", "sm", "md", "lg", "xl"],
-       control: { type: 'inline-radio' }
-     },
-     weight: {
-       options: ["normal", "bold"],
-       control: { type: 'inline-radio' }
-     },
-     align: {
-       options: ["unset", "left", "right", "center"],
-       control: { type: 'select' }
-     }
-   }
-  }
-  >
-    {Template.bind({})}
-  </Story>
+  <Story name="Default">{Default}</Story>
 </Canvas>
+
+### Sizes
+
+export const Sizes = args => (
+  <Grid align="center" maw="18rem">
+    {argTypes.size.options.map(size => (
+      <Fragment key={size}>
+        <Grid.Col span={2}>
+          <Text weight="bold">{size}</Text>
+        </Grid.Col>
+        <Grid.Col span={10}>
+          <Anchor {...args} size={size} href={sampleArgs.href}>
+            {sampleArgs.text}
+          </Anchor>
+        </Grid.Col>
+      </Fragment>
+    ))}
+  </Grid>
+);
 
 <Canvas>
-  <Story name="Using in conjunction with Text"
-  >
-    <Text span>We've noticed that you've been looking for the latest in BI content. </Text>
-    <Anchor href="https://www.youtube.com/@metabasedata">You should subscribe to our Youtube channel!</Anchor>
-    <Text span> You won't regret it!</Text>
-  </Story>
+  <Story name="Sizes">{Sizes}</Story>
 </Canvas>
-
 
 ## Related components
 

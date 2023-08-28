@@ -22,13 +22,4 @@
                    (lib/database-id query))))
           (testing "CardMetadata not present in MetadataProvider"
             (let [query (assoc query :lib/metadata meta/metadata-provider)]
-              (is (nil? (lib/database-id query)))))
-          (testing "CardMetadata is missing `:database-id`"
-            (let [metadata-provider (lib/composed-metadata-provider
-                                     meta/metadata-provider
-                                     (lib.tu/mock-metadata-provider
-                                      {:cards [{:name          "My Card"
-                                                :id            1
-                                                :dataset-query (dissoc lib.tu/venues-query :lib/metadata)}]}))
-                  query             (assoc query :lib/metadata metadata-provider)]
               (is (nil? (lib/database-id query))))))))))
