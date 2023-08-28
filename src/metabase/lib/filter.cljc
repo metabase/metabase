@@ -315,5 +315,3 @@
       :options  options
       :column   (some-> col add-column-operators)
       :args     (vec rest-args)})))
-
-#_(mu/defn find-filterable-column)
