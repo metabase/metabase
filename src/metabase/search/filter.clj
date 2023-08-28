@@ -163,17 +163,18 @@
 
 ;; Last edited by filter
 
-(defn- joined-with-table? [query join-type table]
+(defn- joined-with-table?
   "Check if  the query have a join with `table`.
   Note: this does a very shallow check by only checking the join-clause is already the same.
   For edge cases like same table but different alias, or different join keys, it assumes we can still make the join.
 
-  (-> (sql.helpers/select :*)
-  (sql.helpers/from [:a])
-  (sql.helpers/join :b [:= :a.id :b.id])
-  (joined-with-table? :join :b))
+    (-> (sql.helpers/select :*)
+    (sql.helpers/from [:a])
+    (sql.helpers/join :b [:= :a.id :b.id])
+    (joined-with-table? :join :b))
 
-  ;; => true"
+    ;; => true"
+  [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
 (defn- search-model->revision-model
