@@ -64,11 +64,6 @@
               user-attributes    (:login_attributes @api/*current-user*)]
           (get user-attributes role-attribute))))))
 
-(defn- impersonation-enabled?
-  "Is connection impersonation enabled for the given database for any users?"
-  [database]
-  (t2/exists? :model/ConnectionImpersonation :db_id (u/id database)))
-
 (defenterprise hash-key-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
   :feature :advanced-permissions
@@ -86,10 +81,10 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [enabled?           (impersonation-enabled? database)
+      (let [enabled?           (t2/exists? :model/ConnectionImpersonation :db_id (u/id database))
             default-role       (driver.sql/default-database-role driver database)
             impersonation-role (and enabled? (connection-impersonation-role database))]
-        (when (and (impersonation-enabled? database) (not default-role))
+        (when (and enabled? (not default-role))
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
                           {:user-id api/*current-user-id*
                            :database-id (u/the-id database)})))
