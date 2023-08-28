@@ -1,5 +1,7 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
+  (:refer-clojure
+   :exclude
+   [filter and or not = < <= > >= not-empty case])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -21,8 +23,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.filter])))
+   [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))

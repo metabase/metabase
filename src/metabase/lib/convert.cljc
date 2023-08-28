@@ -496,7 +496,7 @@
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
                       {:query query}
-                      e)))))y
+                      e)))))
 
 (mu/defn legacy-ref->pMBQL :- ::lib.schema.ref/ref
   "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to pMBQL. Normalizes the reference if needed,
