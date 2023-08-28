@@ -66,6 +66,10 @@ export const ImpersonationModalView = ({
     }
   };
 
+  // Does the "role" field need to first be filled out on the DB details page?
+  const roleRequired =
+    database.engine === "snowflake" && database.details["role"] == null;
+
   return (
     <ImpersonationModalViewRoot>
       <h2>{t`Map a user attribute to database roles`}</h2>
@@ -77,7 +81,21 @@ export const ImpersonationModalView = ({
         >{t`Learn More`}</ExternalLink>
       </ImpersonationDescription>
 
-      {hasAttributes ? (
+      {roleRequired ? (
+        <>
+          <Alert icon="warning" variant="warning">
+            {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
+            <Link
+              className="link"
+              to={`/admin/databases/${database.id}`}
+            >{t`Edit connection`}</Link>
+          </Alert>
+
+          <FormFooter hasTopBorder>
+            <Button type="button" onClick={onCancel}>{t`Close`}</Button>
+          </FormFooter>
+        </>
+      ) : hasAttributes ? (
         <FormProvider
           initialValues={initialValues}
           validationSchema={ROLE_ATTRIBUTION_MAPPING_SCHEMA}
