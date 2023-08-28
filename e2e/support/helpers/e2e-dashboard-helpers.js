@@ -62,7 +62,7 @@ export function getDashboardCardMenu(index = 0) {
 }
 
 export function showDashboardCardActions(index = 0) {
-  getDashboardCard(index).realHover();
+  getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
