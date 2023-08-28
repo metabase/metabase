@@ -166,7 +166,7 @@
 (defn- joined-with-table?
   "Check if  the query have a join with `table`.
   Note: this does a very shallow check by only checking the join-clause is already the same.
-  For edge cases like same table but different alias, or different join keys, it assumes we can still make the join.
+  Using the same table with a different alias will return false.
 
     (-> (sql.helpers/select :*)
     (sql.helpers/from [:a])
@@ -187,7 +187,7 @@
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query last-edited-by]
     (cond-> query
-      ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+      ;; both last-edited-by and last-edited at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
@@ -199,7 +199,7 @@
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
     (cond-> query
-      ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+      ;; both last-edited-by and last-edited at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
