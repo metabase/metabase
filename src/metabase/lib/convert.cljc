@@ -11,9 +11,12 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
   {})
@@ -145,6 +148,12 @@
         (dissoc :source-table))
     stage))
 
+(defn- legacy-index->pMBQL-uuid [aggregations]
+  (into {}
+        (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                       [idx ag-uuid]))
+        aggregations))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
@@ -155,10 +164,7 @@
                                       ->pMBQL
                                       (lib.util/named-expression-clause k))))
                           not-empty)]
-    (binding [*legacy-index->pMBQL-uuid* (into {}
-                                               (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                              [idx ag-uuid]))
-                                               aggregations)]
+    (binding [*legacy-index->pMBQL-uuid* (legacy-index->pMBQL-uuid aggregations)]
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
                       (m/assoc-some :aggregation aggregations :expressions expressions))
@@ -491,3 +497,25 @@
       (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
                       {:query query}
                       e)))))
+
+(mu/defn legacy-ref->pMBQL :- ::lib.schema.ref/ref
+  "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to pMBQL. Normalizes the reference if needed,
+  and handles JS -> Clj conversion as needed."
+  ([query legacy-ref]
+   (legacy-ref->pMBQL query -1 legacy-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?]
+   (let [legacy-ref                  (mbql.normalize/normalize-fragment nil #?(:clj legacy-ref :cljs (js->clj legacy-ref)))
+         {aggregations :aggregation} (lib.util/query-stage query stage-number)]
+     (binding [*legacy-index->pMBQL-uuid* (legacy-index->pMBQL-uuid aggregations)]
+       (try
+         (->pMBQL legacy-ref)
+         (catch #?(:clj Throwable :cljs :default) e
+           (throw (ex-info (lib.util/format "Error converting legacy ref to pMBQL: %s" (ex-message e))
+                           {:query                    query
+                            :stage-number             stage-number
+                            :legacy-ref               legacy-ref
+                            :legacy-index->pMBQL-uuid *legacy-index->pMBQL-uuid*}
+                           e))))))))

@@ -11,6 +11,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -38,6 +39,7 @@
          lib.column-group/keep-me
          lib.common/keep-me
          lib.database/keep-me
+         lib.equality/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -97,6 +99,8 @@
   external-op]
  [lib.database
   database-id]
+ [lib.equality
+  find-column-for-legacy-ref]
  [lib.expression
   expression
   expressions
@@ -148,6 +152,7 @@
   field-id
   fieldable-columns
   fields
+  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -160,6 +165,7 @@
   filter-operator
   filter-parts
   find-filter-for-legacy-filter
+  find-filterable-column-for-legacy-ref
   and
   or
   not

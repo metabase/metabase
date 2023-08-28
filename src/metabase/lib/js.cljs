@@ -399,8 +399,13 @@
   filter clause `legacy-filter`, if any."
   [a-query stage-number legacy-filter]
   (->> (js->clj legacy-filter :keywordize-keys true)
-       (mbql.normalize/normalize-fragment [:query :filter])
        (lib.core/find-filter-for-legacy-filter a-query stage-number)))
+
+(defn ^:export find-filterable-column-for-legacy-ref
+  "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
+  [a-query stage-number legacy-ref]
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-filterable-column-for-legacy-ref a-query stage-number legacy-ref))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -445,13 +450,17 @@
   (lib.core/remove-field a-query stage-number column))
 
 (defn ^:export find-visible-column-for-legacy-ref
-  "Return the visible column in `a-query` at `stage-number` referenced by `legacy-ref`."
+  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
+  only meant for use with `:field` clauses."
   [a-query stage-number legacy-ref]
-  (let [ref (-> legacy-ref
-                (js->clj :keywordize-keys true)
-                (update 0 keyword)
-                convert/->pMBQL)]
-    (lib.core/find-visible-column-for-ref a-query stage-number ref)))
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-visible-column-for-legacy-ref a-query stage-number legacy-ref))
+
+(defn ^:export find-column-for-legacy-ref
+  "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
+  [a-query stage-number legacy-ref columns]
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-column-for-legacy-ref a-query stage-number legacy-ref columns))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
