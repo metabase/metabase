@@ -95,144 +95,16 @@ Our themed wrapper around [Mantine NumberInput](https://mantine.dev/core/number-
 
 ## Examples
 
-export const Default = args => <NumberInput {...args} />;
+export const DefaultTemplate = args => <NumberInput {...args} />;
 
-export const Template = args => (
+export const VariantTemplate = args => (
   <Stack>
     <NumberInput {...args} variant="default" />
     <NumberInput {...args} variant="unstyled" />
   </Stack>
 );
 
-export const Empty = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    placeholder={sampleArgs.placeholder}
-  />
-);
-
-export const Filled = args => (
-  <Template
-    {...args}
-    defaultValue={sampleArgs.value}
-    label={sampleArgs.label}
-    placeholder={sampleArgs.placeholder}
-  />
-);
-
-export const Asterisk = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    placeholder={sampleArgs.placeholder}
-    withAsterisk
-  />
-);
-
-export const Description = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-  />
-);
-
-export const Disabled = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    disabled
-    withAsterisk
-  />
-);
-
-export const Error = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    error={sampleArgs.error}
-    withAsterisk
-  />
-);
-
-export const Icons = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    icon={<Icon name="int" />}
-    withAsterisk
-  />
-);
-
-export const ReadOnly = args => (
-  <Template
-    {...args}
-    defaultValue={sampleArgs.value}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    icon={<Icon name="int" />}
-    readOnly
-  />
-);
-
-export const MinMax = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
-    icon={<Icon name="int" />}
-    min={sampleArgs.min}
-    max={sampleArgs.max}
-  />
-);
-
-export const Controls = args => (
-  <Template
-    {...args}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={`${sampleArgs.min} to ${sampleArgs.max}`}
-    icon={<Icon name="int" />}
-    min={sampleArgs.min}
-    max={sampleArgs.max}
-    hideControls={false}
-  />
-);
-
-export const Precision = args => (
-  <Template
-    {...args}
-    defaultValue={sampleArgs.value}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    icon={<Icon name="int" />}
-    precision={2}
-    decimalSeparator="."
-  />
-);
-
-export const ParserFormatter = args => (
-  <Template
-    {...args}
-    defaultValue={sampleArgs.value}
-    label={sampleArgs.label}
-    description={sampleArgs.description}
-    placeholder={sampleArgs.placeholder}
-    icon={<Icon name="int" />}
-    parser={value => value.replace(/^\$/, "")}
-    formatter={value => (value != null ? `$${value}` : "$")}
-  />
-);
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -240,196 +112,370 @@ export const ParserFormatter = args => (
 
 ### Size - md
 
-export const EmptyMd = args => <Empty {...args} size="md" />;
+export const EmptyMd = VariantTemplate.bind({});
+EmptyMd.args = {
+  label: sampleArgs.label,
+  placeholder: sampleArgs.placeholder,
+};
 
 <Canvas>
-  <Story name="Empty, md">{EmptyMd}</Story>
+  <Story name="Empty, md" args={EmptyMd.args}>
+    {EmptyMd}
+  </Story>
 </Canvas>
 
 #### Filled
 
-export const FilledMd = args => <Filled {...args} size="md" />;
+export const FilledMd = VariantTemplate.bind({});
+FilledMd.args = {
+  defaultValue: sampleArgs.value,
+  label: sampleArgs.label,
+  placeholder: sampleArgs.placeholder,
+};
 
 <Canvas>
-  <Story name="Filled, md">{FilledMd}</Story>
+  <Story name="Filled, md" args={FilledMd.args}>
+    {FilledMd}
+  </Story>
 </Canvas>
 
 #### Asterisk
 
-export const AsteriskMd = args => <Asterisk {...args} size="md" />;
+export const AsteriskMd = VariantTemplate.bind({});
+AsteriskMd.args = {
+  label: sampleArgs.label,
+  placeholder: sampleArgs.placeholder,
+  withAsterisk: true,
+};
 
 <Canvas>
-  <Story name="Asterisk, md">{AsteriskMd}</Story>
+  <Story name="Asterisk, md" args={AsteriskMd.args}>
+    {AsteriskMd}
+  </Story>
 </Canvas>
 
 #### Description
 
-export const DescriptionMd = args => <Description {...args} size="md" />;
+export const DescriptionMd = VariantTemplate.bind({});
+DescriptionMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+};
 
 <Canvas>
-  <Story name="Description, md">{DescriptionMd}</Story>
+  <Story name="Description, md" args={DescriptionMd.args}>
+    {DescriptionMd}
+  </Story>
 </Canvas>
 
 #### Disabled
 
-export const DisabledMd = args => <Disabled {...args} size="md" />;
+export const DisabledMd = VariantTemplate.bind({});
+DisabledMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  disabled: true,
+  withAsterisk: true,
+};
 
 <Canvas>
-  <Story name="Disabled, md">{Disabled}</Story>
+  <Story name="Disabled, md" args={DisabledMd.args}>
+    {DisabledMd}
+  </Story>
 </Canvas>
 
 #### Error
 
-export const ErrorMd = args => <Error {...args} size="md" />;
+export const ErrorMd = VariantTemplate.bind({});
+ErrorMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  error: sampleArgs.error,
+  withAsterisk: true,
+};
 
 <Canvas>
-  <Story name="Error, md">{ErrorMd}</Story>
+  <Story name="Error, md" args={ErrorMd.args}>
+    {ErrorMd}
+  </Story>
 </Canvas>
 
 #### Icon
 
-export const IconMd = args => <Icons {...args} size="md" />;
+export const IconMd = VariantTemplate.bind({});
+IconMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  icon: <Icon name="int" />,
+  withAsterisk: true,
+};
 
 <Canvas>
-  <Story name="Icon, md">{IconMd}</Story>
+  <Story name="Icon, md" args={IconMd.args}>
+    {IconMd}
+  </Story>
 </Canvas>
 
 #### Read only
 
-export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
+export const ReadOnlyMd = VariantTemplate.bind({});
+ReadOnlyMd.args = {
+  defaultValue: sampleArgs.value,
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  icon: <Icon name="int" />,
+  readOnly: true,
+};
 
 <Canvas>
-  <Story name="Read only, md">{ReadOnlyMd}</Story>
+  <Story name="Read only, md" args={ReadOnlyMd.args}>
+    {ReadOnlyMd}
+  </Story>
 </Canvas>
 
 #### Min / max
 
-export const MinMaxMd = args => <MinMax {...args} size="md" />;
+export const MinMaxMd = args => VariantTemplate.bind({});
+MinMaxMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
+  icon: <Icon name="int" />,
+  min: sampleArgs.min,
+  max: sampleArgs.max,
+};
 
 <Canvas>
-  <Story name="Min / max, md">{MinMaxMd}</Story>
+  <Story name="Min / max, md" args={MinMaxMd.args}>
+    {MinMaxMd}
+  </Story>
 </Canvas>
 
 #### Controls
 
-export const ControlsMd = args => <Controls {...args} size="md" />;
+export const ControlsMd = VariantTemplate.bind({});
+ControlsMd.args = {
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
+  icon: <Icon name="int" />,
+  min: sampleArgs.min,
+  max: sampleArgs.max,
+  hideControls: false,
+};
 
 <Canvas>
-  <Story name="Controls, md">{ControlsMd}</Story>
+  <Story name="Controls, md" args={ControlsMd.args}>
+    {ControlsMd}
+  </Story>
 </Canvas>
 
 #### Precision and decimal separator
 
-export const PrecisionMd = args => <Precision {...args} size="md" />;
+export const PrecisionMd = VariantTemplate.bind({});
+PrecisionMd.args = {
+  defaultValue: sampleArgs.value,
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  icon: <Icon name="int" />,
+  precision: 2,
+  decimalSeparator: ".",
+};
 
 <Canvas>
-  <Story name="Precision and decimal separator, md">{PrecisionMd}</Story>
+  <Story name="Precision and decimal separator, md" args={PrecisionMd.md}>
+    {PrecisionMd}
+  </Story>
 </Canvas>
 
 #### Parser and formatter
 
-export const ParserFormatterMd = args => (
-  <ParserFormatter {...args} size="md" />
-);
+export const ParserFormatterMd = VariantTemplate.bind({});
+VariantTemplate.args = {
+  defaultValue: sampleArgs.value,
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  icon: <Icon name="int" />,
+  parser: value => value.replace(/^\$/, ""),
+  formatter: value => (value != null ? `$${value}` : "$"),
+};
 
 <Canvas>
-  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
+  <Story name="Parser and formatter, md" args={VariantTemplate.args}>
+    {ParserFormatterMd}
+  </Story>
 </Canvas>
 
 ### Size - xs
 
-export const EmptyXs = args => <Empty {...args} size="xs" />;
+export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Empty, xs">{EmptyXs}</Story>
+  <Story name="Empty, xs" args={EmptyXs.args}>
+    {EmptyXs}
+  </Story>
 </Canvas>
 
 #### Filled
 
-export const FilledXs = args => <Filled {...args} size="xs" />;
+export const FilledXs = VariantTemplate.bind({});
+FilledXs.args = {
+  ...FilledMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Filled, xs">{FilledXs}</Story>
+  <Story name="Filled, xs" args={FilledXs.args}>
+    {FilledXs}
+  </Story>
 </Canvas>
 
 #### Asterisk
 
-export const AsteriskXs = args => <Asterisk {...args} size="xs" />;
+export const AsteriskXs = VariantTemplate.bind({});
+AsteriskXs.args = {
+  ...AsteriskMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+  <Story name="Asterisk, xs" args={AsteriskXs.args}>
+    {AsteriskXs}
+  </Story>
 </Canvas>
 
 #### Description
 
-export const DescriptionXs = args => <Description {...args} size="xs" />;
+export const DescriptionXs = VariantTemplate.bind({});
+DescriptionXs.args = {
+  ...DescriptionMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Description, xs">{DescriptionXs}</Story>
+  <Story name="Description, xs" args={DescriptionXs.args}>
+    {DescriptionXs}
+  </Story>
 </Canvas>
 
 #### Disabled
 
-export const DisabledXs = args => <Disabled {...args} size="xs" />;
+export const DisabledXs = VariantTemplate.bind({});
+DisabledXs.args = {
+  ...DisabledMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Disabled, xs">{Disabled}</Story>
+  <Story name="Disabled, xs" args={DisabledXs.args}>
+    {DisabledXs}
+  </Story>
 </Canvas>
 
 #### Error
 
-export const ErrorXs = args => <Error {...args} size="xs" />;
+export const ErrorXs = VariantTemplate.bind({});
+ErrorXs.args = {
+  ...ErrorMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Error, xs">{ErrorXs}</Story>
+  <Story name="Error, xs" args={ErrorXs.args}>
+    {ErrorXs}
+  </Story>
 </Canvas>
 
 #### Icon
 
-export const IconXs = args => <Icons {...args} size="xs" />;
+export const IconXs = VariantTemplate.bind({});
+IconXs.args = {
+  ...IconMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Icon, xs">{IconXs}</Story>
+  <Story name="Icon, xs" args={IconXs.args}>
+    {IconXs}
+  </Story>
 </Canvas>
 
 #### Read only
 
-export const ReadOnlyXs = args => <ReadOnly {...args} size="xs" />;
+export const ReadOnlyXs = VariantTemplate.bind({});
+ReadOnlyXs.args = {
+  ...ReadOnlyMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+  <Story name="Read only, xs" args={ReadOnlyXs.args}>
+    {ReadOnlyXs}
+  </Story>
 </Canvas>
 
 #### Min / max
 
-export const MinMaxXs = args => <MinMax {...args} size="xs" />;
+export const MinMaxXs = args => VariantTemplate.bind({});
+MinMaxXs.args = {
+  ...MinMaxMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Min / max, xs">{MinMaxXs}</Story>
+  <Story name="Min / max, xs" args={MinMaxXs.args}>
+    {MinMaxXs}
+  </Story>
 </Canvas>
 
 #### Controls
 
-export const ControlsXs = args => <Controls {...args} size="xs" />;
+export const ControlsXs = VariantTemplate.bind({});
+ControlsXs.args = {
+  ...ControlsMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Controls, xs">{ControlsXs}</Story>
+  <Story name="Controls, xs" args={ControlsXs.args}>
+    {ControlsXs}
+  </Story>
 </Canvas>
 
 #### Precision and decimal separator
 
-export const PrecisionXs = args => <Precision {...args} size="xs" />;
+export const PrecisionXs = VariantTemplate.bind({});
+PrecisionXs.args = {
+  ...PrecisionMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Precision and decimal separator, xs">{PrecisionXs}</Story>
+  <Story name="Precision and decimal separator, xs" args={PrecisionXs.xs}>
+    {PrecisionXs}
+  </Story>
 </Canvas>
 
 #### Parser and formatter
 
-export const ParserFormatterXs = args => (
-  <ParserFormatter {...args} size="xs" />
-);
+export const ParserFormatterXs = VariantTemplate.bind({});
+ParserFormatterXs.args = {
+  ...ParserFormatterMd.args,
+  size: "xs",
+};
 
 <Canvas>
-  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
+  <Story name="Parser and formatter, xs" args={VariantTemplate.args}>
+    {ParserFormatterXs}
+  </Story>
 </Canvas>
