@@ -136,14 +136,17 @@
   (clojure.core/isa? (:semantic-type column) :type/Name))
 
 (defn ^:export json?
+  "Is this a column with a JSON semantic type?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/SerializedJSON))
 
 (defn ^:export xml?
+  "Is this a column with an XML semantic type?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/XML))
 
 (defn ^:export structured?
+  "Is this a column with a `:type/Structured` semantic type?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Structured))
 

@@ -12,6 +12,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -40,6 +41,7 @@
          lib.common/keep-me
          lib.database/keep-me
          lib.drill-thru/keep-me
+         lib.drill-thru.pivot/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -101,7 +103,8 @@
   database-id]
  [lib.drill-thru
   available-drill-thrus
-  drill-thru
+  drill-thru]
+ [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
  [lib.expression
@@ -262,4 +265,3 @@
   available-temporal-buckets
   temporal-bucket
   with-temporal-bucket])
->>>>>>> master
