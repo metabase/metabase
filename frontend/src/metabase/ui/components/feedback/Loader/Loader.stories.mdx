@@ -37,15 +37,9 @@ Our themed wrapper around [Mantine Loader](https://mantine.dev/core/loader/).
 
 ## Examples
 
-export const Default = args => <Loader {...args} />;
+export const DefaultTemplate = args => <Loader {...args} />;
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Sizes
-
-export const Sizes = args => (
+export const SizeTemplate = args => (
   <Grid w="10rem" columns={2} align="center">
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
@@ -59,6 +53,16 @@ export const Sizes = args => (
     ))}
   </Grid>
 );
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
 
 <Canvas>
   <Story name="Sizes">{Sizes}</Story>
