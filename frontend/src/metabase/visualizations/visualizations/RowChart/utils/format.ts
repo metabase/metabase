@@ -12,6 +12,8 @@ import type {
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import { formatValue } from "metabase/lib/formatting";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { isEmpty } from "metabase/lib/validate";
 
 export const getFormatters = (
   chartColumns: ChartColumns,
@@ -82,5 +84,7 @@ export const getLabelsFormatter = (
 
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
-    String(formatValue(value, { column }));
+    isEmpty(value)
+      ? NULL_DISPLAY_VALUE
+      : String(formatValue(value, { column }));
 };
