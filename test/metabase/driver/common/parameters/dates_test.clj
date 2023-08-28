@@ -399,7 +399,7 @@
 (deftest date-string->range-custom-timezone-test
   (mt/with-clock #t "2016-06-07T12:13:55Z"
     (test.util.misc/with-fix-local-date-time-at-zone! "UTC"
-      (testing "if an timezone-id is specified, the relative datetime should relative to now at the specified timezone"
+      (testing "if a timezone-id is specified, the relative datetime range should be relative to now at the specified timezone"
         (is (= {:end "2016-06-07T19:00:00", :start "2016-06-07T19:00:00"}
                (params.dates/date-string->range "thishour" {:timezone-id "Asia/Ho_Chi_Minh"})))
 

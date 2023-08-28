@@ -19,10 +19,7 @@
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
-  (:import
-   (java.time LocalDate)))
-
+   [metabase.util.malli :as mu]))
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
@@ -131,7 +128,8 @@
 
 (defn- default-created-at-filter-clause
   [model created-at]
-  (let [timezone-id         "UTC"
+  (let [;; we want the start/end date in UTC since all created_at columns are stored and displayed in UTC (not system tz)
+        timezone-id         "UTC"
         {:keys [start end]} (try
                              (params.dates/date-string->range created-at {:inclusive-end? false :timezone-id timezone-id})
                              (catch Exception _e
