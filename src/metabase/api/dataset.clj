@@ -42,7 +42,7 @@
   well."
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
-    (log/info (trs "Source query for this query is Card {0}" source-card-id))
+    (log/info (trs "Source query for this query is Card {0}" (pr-str source-card-id)))
     (api/read-check Card source-card-id)
     source-card-id))
 

@@ -23,8 +23,8 @@
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"
-    (mt/with-temp* [Collection         [{collection-id :id} {:namespace "snippets"}]
-                    NativeQuerySnippet [{snippet-id :id} {:collection_id collection-id}]]
+    (mt/with-temp [Collection         {collection-id :id} {:namespace "snippets"}
+                   NativeQuerySnippet {snippet-id :id} {:collection_id collection-id}]
       (is (= collection-id
              (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))
 
@@ -34,10 +34,10 @@
     (testing (format "Should be allowed to move snippets from %s to %s"
                      (if source "a :snippets Collection" "no Collection")
                      (if dest "a :snippets Collection" "no Collection"))
-      (mt/with-temp* [Collection         [{source-collection-id :id} {:namespace source}]
-                      Collection         [{dest-collection-id :id}   {:namespace dest}]
-                      NativeQuerySnippet [{snippet-id :id} (when source
-                                                             {:collection_id source-collection-id})]]
+      (mt/with-temp [Collection         {source-collection-id :id} {:namespace source}
+                     Collection         {dest-collection-id :id}   {:namespace dest}
+                     NativeQuerySnippet {snippet-id :id} (when source
+                                                           {:collection_id source-collection-id})]
         (t2/update! NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id))))))
@@ -56,9 +56,9 @@
                 :collection_id collection-id})))))
 
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
-      (mt/with-temp* [Collection         [{source-collection-id :id} {:namespace "snippets"}]
-                      NativeQuerySnippet [{snippet-id :id}           {:collection_id source-collection-id}]
-                      Collection         [{dest-collection-id :id}   {:namespace collection-namespace}]]
+      (mt/with-temp [Collection         {source-collection-id :id} {:namespace "snippets"}
+                     NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
+                     Collection         {dest-collection-id :id}   {:namespace collection-namespace}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
@@ -67,8 +67,8 @@
 (deftest identity-hash-test
   (testing "Native query snippet hashes are composed of the name and the collection's hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection         [coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}]
-                      NativeQuerySnippet [snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]]
+      (mt/with-temp [Collection         coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}
+                     NativeQuerySnippet snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]
         (is (= "7ac51ad0"
                (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) now])
                (serdes/identity-hash snippet)))))))

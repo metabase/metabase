@@ -10,8 +10,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.init]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -25,9 +30,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -349,7 +352,7 @@
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} %)))
+  (or (some->> (data results) :cols (mapv #(into {} (dissoc % :position))))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols
@@ -446,76 +449,106 @@
   [& body]
   `(do-with-bigquery-fks! (fn [] ~@body)))
 
-(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:tables table-id])
-      (do
-        (qp.store/fetch-and-store-tables! [table-id])
-        (qp.store/table table-id))))
-
-(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:fields field-id])
-      (do
-        (qp.store/fetch-and-store-fields! [field-id])
-        (qp.store/field field-id))))
-
 (def ^:dynamic ^:private *already-have-everything-store?* false)
 
-(defn do-with-everything-store
-  "Impl for [[with-everything-store]]."
+(defn ^:deprecated do-with-everything-store
+  "Impl for [[with-everything-store]].
+
+  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
   [thunk]
   (if *already-have-everything-store?*
     (thunk)
-    (binding [*already-have-everything-store?* true
-              qp.store/*table*                 everything-store-table
-              qp.store/*field*                 everything-store-field]
-      (qp.store/with-store
-        (qp.store/fetch-and-store-database! (data/id))
+    (binding [*already-have-everything-store?* true]
+      (qp.store/with-metadata-provider (data/id)
         (thunk)))))
 
-(defmacro with-everything-store
+(defmacro ^:deprecated with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
   tedious. This macro swaps out the normal QP Store backend with one that fetches Tables and Fields from the DB
   on-demand, making tests a lot nicer to write.
 
   When fetching the database, this assumes you're using the 'current' database bound to `(data/db)`, so be sure to use
-  `data/with-db` if needed."
-  [& body]
-  `(do-with-everything-store (fn [] ~@body)))
+  `data/with-db` if needed.
 
-(defn store-referenced-database!
-  "Store the Database for a `query` in the QP Store."
-  [{:keys [database]}]
-  (qp.store/fetch-and-store-database! database))
+  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
+  [& body]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  `(do-with-everything-store (^:once fn* [] ~@body)))
 
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
   []
-  (let [store @@#'qp.store/*store*]
-    (-> store
-        (update :database :name)
-        (update :tables (comp set (partial map :name) vals))
-        (update :fields (fn [fields]
-                          (set
-                           (for [[_ {table-id :table_id, field-name :name}] fields]
-                             [(get-in store [:tables table-id :name]) field-name]))))
-        (dissoc :misc))))
+  (let [provider  (qp.store/metadata-provider)
+        table-ids (t2/select-pks-set :model/Table :db_id (data/id))]
+    {:tables (into #{}
+                   (keep (fn [table-id]
+                           (:name (lib.metadata.protocols/cached-metadata provider :metadata/table table-id))))
+                   table-ids)
+     :fields (into #{}
+                   (keep (fn [field-id]
+                           (when-let [field (lib.metadata.protocols/cached-metadata provider :metadata/column field-id)]
+                             (let [table (lib.metadata.protocols/cached-metadata provider :metadata/table (:table-id field))]
+                               [(:name table) (:name field)]))))
+                   (t2/select-pks-set :model/Field :table_id [:in table-ids]))}))
 
+(defn- query-results [query]
+  (let [results (qp/process-query query)]
+    (or (get-in results [:data :results_metadata :columns])
+        (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))))
+
+;;; TODO -- we should mark this deprecated, I just don't want to have to update a million usages.
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
     (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
                                         (data/mbql-query venues {:aggregation [[:count]]}))]
-      ...)"
+      ...)
+
+  Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  (let [results  (qp/process-userland-query query)
-        metadata (or (get-in results [:data :results_metadata :columns])
-                     (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))]
-    {:dataset_query   query
-     :result_metadata metadata}))
+  {:dataset_query   query
+   :result_metadata (query-results query)})
+
+(defn metadata-provider-with-card-with-query-and-actual-result-metadata
+  "Create an MLv2 metadata provide based on the app DB metadata provider that adds a Card with ID `1` with `query` and
+  `:result-metadata` based on actually running that query."
+  ([query]
+   (metadata-provider-with-card-with-query-and-actual-result-metadata
+    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    query))
+
+  ([base-metadata-provider query]
+   (lib/composed-metadata-provider
+    (lib.tu/mock-metadata-provider
+     {:cards [{:id              1
+               :name            "Card 1"
+               :database-id     (data/id)
+               :dataset-query   query
+               ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
+               ;; subsequent usage.
+               :result-metadata (qp.store/with-metadata-provider base-metadata-provider
+                                  (query-results query))}]})
+    base-metadata-provider)))
+
+(defn field-values-from-def
+  "Get values for a specific Field from a dataset definition, convenient for use with things
+  like [[metabase.lib.test-util/remap-metadata-provider]].
+
+    (qp.test-util/field-values-from-def defs/test-data :categories :name)
+    ;; => [\"African\" \"American\" \"Artisan\" ...]"
+  [db-def table-name field-name]
+  (let [db-def    (or (tx/get-dataset-definition db-def)
+                      (throw (ex-info "Invalid DB def" {:db-def db-def})))
+        table-def (or (m/find-first #(= (:table-name %) (name table-name))
+                                    (:table-definitions db-def))
+                      (throw (ex-info (format "DB def does not have a Table named %s" (pr-str (name table-name)))
+                                      {:db-def db-def})))
+        i         (or (u/index-of #(= (:field-name %) (name field-name))
+                                  (:field-definitions table-def))
+                      (throw (ex-info (format "Table def does not have a Field named %d" (pr-str (name field-name)))
+                                      {:table-def table-def})))]
+    (for [row (:rows table-def)]
+      (nth row i))))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------

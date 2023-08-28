@@ -12,15 +12,19 @@
 (defn ^:export isa?
   "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
   Both effective and semantic types are taken into account."
-  [{:keys [effective-type semantic-type] :as _column} type-kw]
-  (or (clojure.core/isa? effective-type type-kw)
+  [{:keys [effective-type base-type semantic-type] :as _column} type-kw]
+  (or (clojure.core/isa? (or effective-type base-type) type-kw)
       (clojure.core/isa? semantic-type type-kw)))
 
 (defn ^:export field-type?
   "Returns if `column` is of category `category`.
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
   [category column]
-  (let [type-definition (lib.types.constants/type-hierarchies category)]
+  (let [type-definition (lib.types.constants/type-hierarchies category)
+        column          (cond-> column
+                          (and (map? column)
+                               (not (:effective-type column)))
+                          (assoc :effective-type (:base-type column)))]
     (cond
       (nil? column) false
 
@@ -56,6 +60,8 @@
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
 
+;; TODO -- this should probably be renamed `temporal?`, because this is also going to be true of times and datetimes,
+;; not just dates.
 (defn ^:export date?
   "Is `column` of a temporal type?"
   [column]

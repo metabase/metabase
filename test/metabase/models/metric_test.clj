@@ -47,11 +47,11 @@
 
 (deftest serialize-metric-test
   (testing "serialize-metric"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [metric         {:table_id   table-id
-                                              :definition {:aggregation [[:count]]
-                                                           :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   metric         {:table_id   table-id
+                                            :definition {:aggregation [[:count]]
+                                                         :filter      [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= (merge metric-defaults
                     {:id          true
                      :table_id    true
@@ -68,10 +68,10 @@
 
 (deftest diff-metrics-test
   (testing "diff-metrics"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [metric         {:table_id   table-id
-                                              :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   metric         {:table_id   table-id
+                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
       (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                             :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
               :description {:before "Lookin' for a blueberry"
@@ -118,9 +118,9 @@
 (deftest identity-hash-test
   (testing "Metric hashes are composed of the metric name and table identity-hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
-                      Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                      Metric   [metric {:name "measurement" :table_id (:id table) :created_at now}]]
+      (mt/with-temp [Database db    {:name "field-db" :engine :h2}
+                     Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     Metric   metric {:name "measurement" :table_id (:id table) :created_at now}]
         (is (= "a2318866"
                (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
                (serdes/identity-hash metric)))))))

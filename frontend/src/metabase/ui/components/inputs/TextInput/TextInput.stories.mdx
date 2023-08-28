@@ -1,0 +1,318 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Icon } from "metabase/core/components/Icon";
+import { Stack } from "metabase/ui";
+import { TextInput } from "./";
+
+export const args = {
+  variant: "default",
+  size: "md",
+  label: "Label",
+  description: "",
+  error: "",
+  placeholder: "Placeholder",
+  disabled: false,
+  withAsterisk: false,
+};
+
+export const sampleArgs = {
+  value: "Metabase",
+  label: "Company or team name",
+  description: "Name used for this instance",
+  placeholder: "Department of awesome",
+  error: "required",
+};
+
+export const argTypes = {
+  variant: {
+    options: ["default", "unstyled"],
+    control: { type: "inline-radio" },
+  },
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+  error: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  withAsterisk: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Inputs/TextInput"
+  component={TextInput}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# TextInput
+
+Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-input/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine TextInput Docs](https://mantine.dev/core/text-input/)
+
+## Examples
+
+export const Default = args => <TextInput {...args} />;
+
+export const Template = args => (
+  <Stack>
+    <TextInput {...args} variant="default" />
+    <TextInput {...args} variant="unstyled" />
+  </Stack>
+);
+
+export const Empty = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+export const Filled = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+export const Asterisk = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    placeholder={sampleArgs.placeholder}
+    withAsterisk
+  />
+);
+
+export const Description = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+  />
+);
+
+export const Disabled = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    disabled
+    withAsterisk
+  />
+);
+
+export const Error = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    error={sampleArgs.error}
+    withAsterisk
+  />
+);
+
+export const Icons = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    icon={<Icon name="dashboard" />}
+    withAsterisk
+  />
+);
+
+export const RightSection = args => (
+  <Template
+    {...args}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    rightSection={<Icon name="chevrondown" />}
+    withAsterisk
+  />
+);
+
+export const ReadOnly = args => (
+  <Template
+    {...args}
+    defaultValue={sampleArgs.value}
+    label={sampleArgs.label}
+    description={sampleArgs.description}
+    placeholder={sampleArgs.placeholder}
+    rightSection={<Icon name="chevrondown" />}
+    readOnly
+  />
+);
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = args => <Empty {...args} size="md" />;
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledMd = args => <Filled {...args} size="md" />;
+
+<Canvas>
+  <Story name="Filled, md">{FilledMd}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskMd = args => <Asterisk {...args} size="md" />;
+
+<Canvas>
+  <Story name="Asterisk, md">{AsteriskMd}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionMd = args => <Description {...args} size="md" />;
+
+<Canvas>
+  <Story name="Description, md">{DescriptionMd}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledMd = args => <Disabled {...args} size="md" />;
+
+<Canvas>
+  <Story name="Disabled, md">{Disabled}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorMd = args => <Error {...args} size="md" />;
+
+<Canvas>
+  <Story name="Error, md">{ErrorMd}</Story>
+</Canvas>
+
+#### Icon
+
+export const IconMd = args => <Icons {...args} size="md" />;
+
+<Canvas>
+  <Story name="Icon, md">{IconMd}</Story>
+</Canvas>
+
+#### Right section
+
+export const RightSectionMd = args => <RightSection {...args} size="md" />;
+
+<Canvas>
+  <Story name="Right section, md">{RightSectionMd}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyMd = args => <ReadOnly {...args} size="md" />;
+
+<Canvas>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
+### Size - xs
+
+export const EmptyXs = args => <Empty {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Empty, xs">{EmptyXs}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledXs = args => <Filled {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Filled, xs">{FilledXs}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskXs = args => <Asterisk {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionXs = args => <Description {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Description, xs">{DescriptionXs}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledXs = args => <Disabled {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Disabled, xs">{Disabled}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorXs = args => <Error {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Error, xs">{ErrorXs}</Story>
+</Canvas>
+
+#### Icon
+
+export const IconXs = args => <Icons {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Icon, xs">{IconXs}</Story>
+</Canvas>
+
+#### Right section
+
+export const RightSectionXs = args => <RightSection {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Right section, xs">{RightSectionXs}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyXs = args => <ReadOnly {...args} size="xs" />;
+
+<Canvas>
+  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+</Canvas>
