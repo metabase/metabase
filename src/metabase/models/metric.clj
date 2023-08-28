@@ -49,10 +49,6 @@
       (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
-(t2/define-before-delete :model/Metric
-  [{:keys [id] :as _metric}]
-  (t2/delete! :model/Revision :model "Metric" :model_id id))
-
 (defmethod mi/perms-objects-set Metric
   [metric read-or-write]
   (let [table (or (:table metric)

@@ -73,9 +73,7 @@
 
 (t2/define-before-insert :model/Revision
   [revision]
-  (assoc revision
-         :timestamp :%now
-         :most_recent true))
+  (assoc revision :timestamp :%now))
 
 (t2/define-before-update :model/Revision
   [_revision]
@@ -91,28 +89,6 @@
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial mi/do-after-select model)))))
-
-(defn- delete-old-revisions!
-  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
-  [model id]
-  (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
-                                                                      :model    (name model)
-                                                                      :model_id id
-                                                                      {:order-by [[:timestamp :desc]
-                                                                                  [:id :desc]]})))]
-    (t2/delete! :model/Revision :id [:in old-revisions])))
-
-(t2/define-after-insert :model/Revision
-  [revision]
-  (u/prog1 revision
-    (let [{:keys [id model model_id]} revision]
-      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
-      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
-      ;; updating directly with the table name
-      (t2/update! (t2/table-name :model/Revision)
-                  {:model model :model_id model_id :most_recent true :id [:not= id]}
-                  {:most_recent false})
-      (delete-old-revisions! model model_id))))
 
 ;;; # Functions
 
@@ -167,6 +143,17 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
+(defn- delete-old-revisions!
+  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
+  [model id]
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
+  (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
+                                                               :model    (name model)
+                                                               :model_id id
+                                                               {:order-by [[:timestamp :desc]
+                                                                           [:id :desc]]}))))]
+    (t2/delete! Revision :id [:in old-revisions])))
+
 (defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
@@ -199,6 +186,7 @@
                  :is_creation  is-creation?
                  :is_reversion false
                  :message      message)
+     (delete-old-revisions! entity id)
      object)))
 
 (defn revert!
