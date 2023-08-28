@@ -5,6 +5,7 @@ import {
   visitDashboard,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -95,7 +96,7 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      visitDashboard(2);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 

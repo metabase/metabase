@@ -19,6 +19,8 @@ import {
   main,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();
@@ -93,17 +95,17 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.intercept(
       "POST",
-      `/api/dashboard/1/dashcard/1/card/1/query`,
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/card/1/query`,
       cy.spy().as("firstTabQuery"),
     );
     cy.intercept(
       "POST",
-      `/api/dashboard/1/dashcard/2/card/2/query`,
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/2/card/2/query`,
       cy.spy().as("secondTabQuery"),
     );
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(1, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: 1 } });
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -119,22 +121,23 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("POST", `/api/dashboard/1/public_link`).then(
-      ({ body: { uuid } }) => {
-        cy.intercept(
-          "GET",
-          `/api/public/dashboard/${uuid}/dashcard/1/card/1?parameters=%5B%5D`,
-          cy.spy().as("publicFirstTabQuery"),
-        );
-        cy.intercept(
-          "GET",
-          `/api/public/dashboard/${uuid}/dashcard/2/card/2?parameters=%5B%5D`,
-          cy.spy().as("publicSecondTabQuery"),
-        );
+    cy.request(
+      "POST",
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
+    ).then(({ body: { uuid } }) => {
+      cy.intercept(
+        "GET",
+        `/api/public/dashboard/${uuid}/dashcard/1/card/1?parameters=%5B%5D`,
+        cy.spy().as("publicFirstTabQuery"),
+      );
+      cy.intercept(
+        "GET",
+        `/api/public/dashboard/${uuid}/dashcard/2/card/2?parameters=%5B%5D`,
+        cy.spy().as("publicSecondTabQuery"),
+      );
 
-        cy.visit(`public/dashboard/${uuid}`);
-      },
-    );
+      cy.visit(`public/dashboard/${uuid}`);
+    });
 
     // Check first tab requests
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
@@ -162,7 +165,7 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
   });
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
     editDashboard();

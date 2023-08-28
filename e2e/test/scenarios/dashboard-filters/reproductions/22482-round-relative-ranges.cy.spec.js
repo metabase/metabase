@@ -8,13 +8,14 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 22482", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
     setFilter("Time", "All Options");
