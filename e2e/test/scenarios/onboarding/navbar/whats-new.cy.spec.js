@@ -13,11 +13,11 @@ describe("nav > what's new notification", () => {
       versions: [
         mockVersion({
           version: "v0.48.0",
-          releaseNotesUrl: "metabase.com/releases/48",
+          announcement_url: "metabase.com/releases/48",
         }),
         mockVersion({
           version: "v0.47.1",
-          releaseNotesUrl: "metabase.com/releases/47",
+          announcement_url: "metabase.com/releases/47",
         }),
       ],
     });

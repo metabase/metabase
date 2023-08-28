@@ -108,7 +108,7 @@ export interface VersionInfoRecord {
   released?: string; // year-month-day
   patch?: boolean;
   highlights?: string[];
-  releaseNotesUrl?: string;
+  announcement_url?: string;
 }
 
 export interface VersionInfo {

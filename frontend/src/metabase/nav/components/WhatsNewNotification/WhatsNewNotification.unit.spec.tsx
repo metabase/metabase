@@ -23,7 +23,7 @@ const setup = ({
     mockVersion({ version: "v0.48.1" }),
     mockVersion({
       version: "v0.48.0",
-      releaseNotesUrl: "https://metabase.com/releases/48",
+      announcement_url: "https://metabase.com/releases/48",
     }),
     mockVersion({ version: "v0.47.0" }),
   ],
@@ -86,7 +86,7 @@ describe("WhatsNewNotification", () => {
         versions: [
           mockVersion({
             version: "v0.46.0",
-            releaseNotesUrl: "https://metabase.com/releases/46",
+            announcement_url: "https://metabase.com/releases/46",
           }),
         ],
       });
@@ -98,7 +98,7 @@ describe("WhatsNewNotification", () => {
       expect(notification()).toBeInTheDocument();
     });
 
-    it("should NOT show the notification in case of downgrades (releaseNotesUrl only in the future releases)", () => {
+    it("should NOT show the notification in case of downgrades (announcement_url only in the future releases)", () => {
       setup({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
       expect(notification()).not.toBeInTheDocument();
     });
@@ -136,11 +136,11 @@ describe("WhatsNewNotification", () => {
         versions: [
           mockVersion({
             version: "v0.48.0",
-            releaseNotesUrl: "https://metabase.com/releases/48",
+            announcement_url: "https://metabase.com/releases/48",
           }),
           mockVersion({
             version: "v0.47.0",
-            releaseNotesUrl: "https://metabase.com/releases/47",
+            announcement_url: "https://metabase.com/releases/47",
           }),
         ],
       });

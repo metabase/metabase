@@ -39,6 +39,6 @@ export const getLatestEligibleReleaseNotes = ({
   return (
     eligibleVersions
       // .sort((a, z) => z.version - a.version)
-      .find(({ releaseNotesUrl }) => releaseNotesUrl)
+      .find(({ announcement_url }) => announcement_url)
   );
 };

@@ -34,7 +34,7 @@ export function WhatsNewNotification() {
       isEmbedded,
     });
 
-    return lastEligibleVersion?.releaseNotesUrl;
+    return lastEligibleVersion?.announcement_url;
   }, [
     currentVersion,
     lastAcknowledgedVersion,

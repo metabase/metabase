@@ -10,7 +10,7 @@ describe("What's new - utils", () => {
             createMockVersionInfoRecord({ version: "v0.48" }),
             createMockVersionInfoRecord({
               version: "v0.43",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.48",
@@ -25,7 +25,7 @@ describe("What's new - utils", () => {
           versions: [
             createMockVersionInfoRecord({
               version: "v0.47",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.48",
@@ -38,7 +38,7 @@ describe("What's new - utils", () => {
           versions: [
             createMockVersionInfoRecord({
               version: "v0.46",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.48",
@@ -53,7 +53,7 @@ describe("What's new - utils", () => {
           versions: [
             createMockVersionInfoRecord({
               version: "v0.48",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.48",
@@ -68,7 +68,7 @@ describe("What's new - utils", () => {
           versions: [
             createMockVersionInfoRecord({
               version: "v0.49",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.48",
@@ -86,11 +86,11 @@ describe("What's new - utils", () => {
             }),
             createMockVersionInfoRecord({
               version: "v0.49.1",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
             createMockVersionInfoRecord({
               version: "v0.49.0",
-              releaseNotesUrl: "url",
+              announcement_url: "url",
             }),
           ],
           currentVersion: "v0.49.2",
