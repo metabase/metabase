@@ -74,7 +74,11 @@ The Text component allows users to display text with themed styles, and replaces
 
 ## Examples
 
-export const Template = args => (
+export const DefaultTemplate = args => (
+  <Text {...args}>{sampleArgs.shortText}</Text>
+);
+
+export const SizeTemplate = args => (
   <Grid align="center" maw="18rem">
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
@@ -89,7 +93,7 @@ export const Template = args => (
   </Grid>
 );
 
-export const Default = args => <Text {...args}>{sampleArgs.shortText}</Text>;
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -97,9 +101,10 @@ export const Default = args => <Text {...args}>{sampleArgs.shortText}</Text>;
 
 ### Sizes
 
-export const Sizes = args => (
-  <Template {...args}>{sampleArgs.shortText}</Template>
-);
+export const Sizes = SizeTemplate.bind({});
+Sizes.args = {
+  children: sampleArgs.shortText,
+};
 
 <Canvas>
   <Story name="Sizes">{Sizes}</Story>
@@ -107,9 +112,10 @@ export const Sizes = args => (
 
 ### Multiline
 
-export const Multiline = args => (
-  <Template {...args}>{sampleArgs.longText}</Template>
-);
+export const Multiline = SizeTemplate.bind({});
+Multiline.args = {
+  children: sampleArgs.longText,
+};
 
 <Canvas>
   <Story name="Multiline">{Multiline}</Story>
@@ -117,7 +123,11 @@ export const Multiline = args => (
 
 ### Truncated
 
-export const Truncated = args => <Multiline {...args} lineClamp={2} />;
+export const Truncated = SizeTemplate.bind({});
+Truncated.args = {
+  children: sampleArgs.longText,
+  lineClamp: 2,
+};
 
 <Canvas>
   <Story name="Truncated">{Truncated}</Story>
