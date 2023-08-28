@@ -55,7 +55,9 @@ TBD
 
 ## Examples
 
-export const Template = args => (
+export const DefaultTemplate = args => <Title {...args}>Header</Title>;
+
+export const SizeTemplate = args => (
   <Stack>
     <Title {...args} order={1}>
       Header 1
@@ -97,7 +99,7 @@ export const TruncatedTemplate = args => (
   </Stack>
 );
 
-export const Default = args => <Title {...args}>Header</Title>;
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -105,7 +107,7 @@ export const Default = args => <Title {...args}>Header</Title>;
 
 ### Sizes
 
-export const Sizes = args => <Template {...args} />;
+export const Sizes = SizeTemplate.bind({});
 
 <Canvas>
   <Story name="Sizes">{Sizes}</Story>
@@ -113,7 +115,10 @@ export const Sizes = args => <Template {...args} />;
 
 ### Underlined
 
-export const Underlined = args => <Template {...args} underline />;
+export const Underlined = SizeTemplate.bind({});
+Underlined.args = {
+  underline: true,
+};
 
 <Canvas>
   <Story name="Underlined">{Underlined}</Story>
@@ -121,7 +126,10 @@ export const Underlined = args => <Template {...args} underline />;
 
 ### Truncated
 
-export const Truncated = args => <TruncatedTemplate {...args} truncate />;
+export const Truncated = TruncatedTemplate.bind({});
+Truncated.args = {
+  truncate: true,
+};
 
 <Canvas>
   <Story name="Truncated">{Truncated}</Story>
@@ -129,9 +137,11 @@ export const Truncated = args => <TruncatedTemplate {...args} truncate />;
 
 ### Truncated and underlined
 
-export const TruncatedAndUnderlined = args => (
-  <TruncatedTemplate {...args} truncate underline />
-);
+export const TruncatedAndUnderlined = TruncatedTemplate.bind({});
+TruncatedAndUnderlined.args = {
+  truncate: true,
+  underline: true,
+};
 
 <Canvas>
   <Story name="Truncated and underlined">{TruncatedAndUnderlined}</Story>

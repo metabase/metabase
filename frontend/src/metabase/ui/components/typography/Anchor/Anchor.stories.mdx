@@ -49,17 +49,13 @@ The Anchor component allows users to display links with themed styles, and repla
 
 ## Examples
 
-export const Default = args => (
-  <Anchor href={sampleArgs.href}>{sampleArgs.text}</Anchor>
+export const DefaultTemplate = args => (
+  <Anchor {...args} href={sampleArgs.href}>
+    {sampleArgs.text}
+  </Anchor>
 );
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Sizes
-
-export const Sizes = args => (
+export const SizeTemplate = args => (
   <Grid align="center" maw="18rem">
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
@@ -75,6 +71,16 @@ export const Sizes = args => (
     ))}
   </Grid>
 );
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
 
 <Canvas>
   <Story name="Sizes">{Sizes}</Story>
