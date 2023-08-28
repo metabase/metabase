@@ -9,8 +9,8 @@ import { CardApi } from "metabase/services";
 
 import Databases from "metabase/entities/databases";
 
-import Database from "metabase-lib/metadata/Database";
-import Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/Question";
 
 import { SpinnerContainer } from "./ModelCacheControl.styled";
 

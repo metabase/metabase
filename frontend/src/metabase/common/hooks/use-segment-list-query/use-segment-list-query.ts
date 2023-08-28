@@ -1,10 +1,10 @@
 import Segments from "metabase/entities/segments";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
-import Segment from "metabase-lib/metadata/Segment";
+import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+import type Segment from "metabase-lib/metadata/Segment";
 
 export const useSegmentListQuery = (
   props: UseEntityListQueryProps = {},

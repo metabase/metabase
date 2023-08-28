@@ -17,7 +17,7 @@ import {
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 

@@ -6,12 +6,12 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import {
+import type {
   DatasetColumn,
   DatetimeUnit,
   StructuredDatasetQuery,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase/visualizations/click-actions/types";
+import type { ClickObject } from "metabase/visualizations/types";
 import { checkNotNull } from "metabase/core/utils/types";
 import type Question from "metabase-lib/Question";
 import ZoomDrill from "./ZoomDrill";

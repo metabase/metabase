@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import {
+import type {
   Card,
   Parameter,
   ParameterValuesConfig,
@@ -9,7 +9,6 @@ import {
 } from "metabase-types/api";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
@@ -50,6 +49,7 @@ export function getTemplateTagParameter(
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+// If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],
   parameters: Parameter[] = [],
@@ -124,9 +124,7 @@ export function remapParameterValuesToTemplateTags(
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];
-      if (hasParameterValue(parameterValue)) {
-        parameterValues[templateTagParameter.name] = parameterValue;
-      }
+      parameterValues[templateTagParameter.name] = parameterValue;
     }
   });
 

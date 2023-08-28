@@ -1,4 +1,5 @@
-import { forwardRef, Ref, TextareaHTMLAttributes } from "react";
+import type { Ref, TextareaHTMLAttributes } from "react";
+import { forwardRef } from "react";
 import { TextAreaRoot } from "./TextArea.styled";
 
 export interface TextAreaProps

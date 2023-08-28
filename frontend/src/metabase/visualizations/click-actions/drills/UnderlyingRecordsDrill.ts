@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
-import type { Drill } from "metabase/visualizations/click-actions/types";
+import type { Drill } from "metabase/visualizations/types";
 import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,
@@ -14,18 +14,18 @@ export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
     return [];
   }
 
-  const { tableName, rowCount } = drill;
+  const { tableName, value } = drill;
 
   const tableTitle =
     tableName && isShortTableName(tableName)
-      ? inflect(tableName, rowCount)
-      : ngettext(msgid`record`, `records`, rowCount);
+      ? inflect(tableName, value)
+      : ngettext(msgid`record`, `records`, value);
 
   const actionTitle = ngettext(
     // extra argument is required to avoid a collision with a singular form translation (metabase#33079)
     msgid`See this ${tableTitle}${""}`,
     `See these ${tableTitle}`,
-    rowCount,
+    value,
   );
 
   return [

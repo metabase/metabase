@@ -32,8 +32,7 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isRegularClickAction } from "metabase/visualizations/click-actions/types";
-import * as Lib from "metabase-lib";
+import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
@@ -237,27 +236,12 @@ class Visualization extends PureComponent {
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
-    const extraData = getExtraDataForClick(clicked);
-    if (extraData && Object.keys(extraData).length > 0) {
-      //debugger;
-    }
-
-    if (mode) {
-      window.__q = question._getMLv2Query();
-      const mlv2Drills = Lib.availableDrillThrus(
-        window.__q,
-        -1,
-        clicked.column,
-        clicked.value,
-        clicked.data,
-        clicked.dimensions,
-      );
-      if (mlv2Drills && mlv2Drills.length > 0) {
-        //console.log(question, clicked?.column, clicked?.value, mlv2Drills);
-      }
-    }
-
-    return mode ? mode.actionsForClick({ ...clicked, extraData }, {}) : [];
+    return mode
+      ? mode.actionsForClick(
+          { ...clicked, extraData: getExtraDataForClick(clicked) },
+          {},
+        )
+      : [];
   }
 
   visualizationIsClickable = clicked => {
@@ -472,7 +456,11 @@ class Visualization extends PureComponent {
 
     return (
       <ErrorBoundary>
-        <VisualizationRoot className={className} style={style}>
+        <VisualizationRoot
+          className={className}
+          style={style}
+          data-testid="visualization-root"
+        >
           {!!hasHeader && (
             <VisualizationHeader>
               <ChartCaption

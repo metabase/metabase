@@ -2,14 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 
-import { UploadSettingsView, UploadSettings } from "./UploadSettings";
+import type { UploadSettings } from "./UploadSettings";
+import { UploadSettingsView } from "./UploadSettings";
 
 const TEST_DATABASES = [
   createMockDatabase({

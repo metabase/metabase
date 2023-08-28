@@ -122,6 +122,8 @@ const ViewFooter = ({
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
+              dashcardId={question.card().dashcardId}
+              dashboardId={question.card().dashboardId}
             />
           ),
           QuestionAlertWidget.shouldRender({

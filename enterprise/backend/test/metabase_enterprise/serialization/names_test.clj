@@ -46,16 +46,16 @@
 (deftest fully-qualified-name->context-test
   (testing "fully-qualified-name->context works as expected"
     (testing " with cards in root and in a collection"
-      (mt/with-temp* [Collection [{collection-id :id :as coll} {:name "A Collection" :location "/"}]
-                      Card       [root-card {:name "Root Card"}]
-                      Card       [collection-card {:name         "Collection Card"
-                                                   :collection_id collection-id}]
-                      Collection [{sub-collection-id :id :as coll2} {:name "Sub Collection"
-                                                                     :location (format "/%d/" collection-id)}]
-                      Collection [coll3 {:name "Deep Collection"
-                                         :location (format "/%d/%d/"
-                                                           collection-id
-                                                           sub-collection-id)}]]
+      (mt/with-temp [Collection {collection-id :id :as coll} {:name "A Collection" :location "/"}
+                     Card       root-card {:name "Root Card"}
+                     Card       collection-card {:name         "Collection Card"
+                                                 :collection_id collection-id}
+                     Collection {sub-collection-id :id :as coll2} {:name "Sub Collection"
+                                                                   :location (format "/%d/" collection-id)}
+                     Collection coll3 {:name "Deep Collection"
+                                       :location (format "/%d/%d/"
+                                                         collection-id
+                                                         sub-collection-id)}]
         (let [card1-name "/collections/root/cards/Root Card"
               card2-name "/collections/root/collections/A Collection/cards/Collection Card"
               coll-name  "/collections/root/collections/A Collection"
@@ -68,15 +68,15 @@
           (is (= coll2-name (names/fully-qualified-name coll2)))
           (is (= coll3-name (names/fully-qualified-name coll3))))))
     (testing " with snippets in a collection"
-      (mt/with-temp* [Collection [{base-collection-id :id} {:name "Base Collection"
-                                                            :namespace "snippets"}]
-                      Collection [{collection-id :id}      {:name "Nested Collection"
-                                                            :location (format "/%s/" base-collection-id)
-                                                            :namespace "snippets"}]
-                      NativeQuerySnippet [snippet {:content "price > 2"
-                                                   :name "Price > 2"
-                                                   :description "Price more than 2"
-                                                   :collection_id collection-id}]]
+      (mt/with-temp [Collection {base-collection-id :id} {:name "Base Collection"
+                                                          :namespace "snippets"}
+                     Collection {collection-id :id}      {:name "Nested Collection"
+                                                          :location (format "/%s/" base-collection-id)
+                                                          :namespace "snippets"}
+                     NativeQuerySnippet snippet {:content "price > 2"
+                                                 :name "Price > 2"
+                                                 :description "Price more than 2"
+                                                 :collection_id collection-id}]
          (let [fully-qualified-name (str "/collections/root/collections/:snippets/Base Collection/collections"
                                          "/:snippets/Nested Collection/snippets/Price %3E 2")]
            (is (= fully-qualified-name
@@ -99,9 +99,9 @@
 
 (deftest name-for-logging-test
   (testing "serialization logging name generation from Toucan 2 records (#29322)"
-    (mt/with-temp* [Collection [{collection-id :id} {:name         "A Collection"}]
-                    Card       [{card-id :id}       {:name         "A Card"
-                                                     :collection_id collection-id}]]
+    (mt/with-temp [Collection {collection-id :id} {:name         "A Collection"}
+                   Card       {card-id :id}       {:name         "A Card"
+                                                   :collection_id collection-id}]
       (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
         'Collection ":model/Collection \"A Collection\" (ID %d)" collection-id
         'Card       ":model/Card \"A Card\" (ID %d)" card-id))))

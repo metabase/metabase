@@ -1,8 +1,12 @@
-import { Location } from "history";
-import { FC } from "react";
-import { Collection, SearchModelType, SearchResult } from "metabase-types/api";
-import { IconName } from "metabase/core/components/Icon";
-import { SearchFilterKeys } from "metabase/search/constants";
+import type { Location } from "history";
+import type { FC } from "react";
+import type {
+  Collection,
+  SearchModelType,
+  SearchResult,
+} from "metabase-types/api";
+import type { IconName } from "metabase/core/components/Icon";
+import type { SearchFilterKeys } from "metabase/search/constants";
 
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;

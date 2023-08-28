@@ -1,4 +1,4 @@
-import type { QueryMode } from "../types";
+import type { QueryMode } from "metabase/visualizations/types";
 import SummarizeColumnDrill from "../drills/SummarizeColumnDrill";
 import SummarizeColumnByTimeDrill from "../drills/SummarizeColumnByTimeDrill";
 import DistributionDrill from "../drills/DistributionDrill";

@@ -10,12 +10,12 @@ import CollapseSection from "metabase/components/CollapseSection";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { Bookmark } from "metabase-types/api";
+import type { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
-import { SelectedItem } from "../../types";
+import type { SelectedItem } from "../../types";
 import { SidebarHeading } from "../../MainNavbar.styled";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";

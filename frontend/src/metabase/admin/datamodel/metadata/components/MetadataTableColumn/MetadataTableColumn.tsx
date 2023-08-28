@@ -1,11 +1,12 @@
-import { ReactNode, useCallback } from "react";
+import type { ReactNode } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Fields from "metabase/entities/fields";
 import Button from "metabase/core/components/Button/Button";
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
 import { ColumnInput, FieldSettingsLink } from "./MetadataTableColumn.styled";

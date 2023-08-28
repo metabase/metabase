@@ -3,11 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
 import { TabRow } from "../TabRow";
-import {
-  TabButton,
-  RenameableTabButtonProps,
-  INPUT_WRAPPER_TEST_ID,
-} from "./TabButton";
+import type { RenameableTabButtonProps } from "./TabButton";
+import { TabButton, INPUT_WRAPPER_TEST_ID } from "./TabButton";
 
 function setup(props?: Partial<RenameableTabButtonProps<string>>) {
   const action = jest.fn();

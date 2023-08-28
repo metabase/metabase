@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import { usePrevious } from "react-use";
@@ -12,14 +12,14 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
-import { FieldDimension } from "metabase-lib/Dimension";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { FieldDimension } from "metabase-lib/Dimension";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 import { isExpression } from "metabase-lib/expressions";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
-import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
+import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
 import {
   Button,

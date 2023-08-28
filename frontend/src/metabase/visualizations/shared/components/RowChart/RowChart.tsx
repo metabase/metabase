@@ -3,18 +3,19 @@ import { useMemo } from "react";
 import type { NumberValue } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import { HoveredData } from "metabase/visualizations/shared/types/events";
-import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
-import { ChartGoal } from "../../types/settings";
-import { ContinuousScaleType, Range } from "../../types/scale";
+import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { RowChartViewProps } from "../RowChartView/RowChartView";
+import RowChartView from "../RowChartView/RowChartView";
+import type { ChartGoal } from "../../types/settings";
+import type { ContinuousScaleType, Range } from "../../types/scale";
 import {
   getMaxYValuesCount,
   getChartMargin,
   getRowChartGoal,
 } from "./utils/layout";
 import { getXTicks } from "./utils/ticks";
-import { RowChartTheme, Series, StackOffset } from "./types";
+import type { RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";
 

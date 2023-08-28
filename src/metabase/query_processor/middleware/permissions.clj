@@ -5,20 +5,20 @@
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.config :as config]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
@@ -58,16 +58,20 @@
 
 (mu/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [card-id :- ::lib.schema.id/card]
-  (let [card (or (t2/select-one [Card :collection_id] :id card-id)
-                 (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                 {:type    qp.error-type/invalid-query
-                                  :card-id card-id})))]
-    (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-    (when-not (mi/can-read? card)
-      (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
-                              (mi/perms-objects-set card :read)
-                              {:card-id *card-id*})))))
+  [database-id :- ::lib.schema.id/database
+   card-id     :- ::lib.schema.id/card]
+  (qp.store/with-metadata-provider database-id
+    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
+                           (update-keys u/->snake_case_en)
+                           (vary-meta assoc :type :model/Card))
+                   (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                   {:type    qp.error-type/invalid-query
+                                    :card-id card-id})))]
+      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
+      (when-not (mi/can-read? card)
+        (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
+                                (mi/perms-objects-set card :read)
+                                {:card-id *card-id*}))))))
 
 (declare check-query-permissions*)
 
@@ -87,7 +91,7 @@
     (when-not (has-data-perms? required-perms)
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
-  (doseq [{query :dataset_query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
+  (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
 (def ^:dynamic *param-values-query*
@@ -96,13 +100,13 @@
 
 (mu/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- :map]
+  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (cond
       *card-id*
       (do
-        (check-card-read-perms *card-id*)
+        (check-card-read-perms database-id *card-id*)
         (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
 
@@ -138,10 +142,10 @@
 
 (mu/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [outer-query :- ms/Map]
+  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
-    (check-card-read-perms *card-id*))
+    (check-card-read-perms database-id *card-id*))
   (when-not (has-data-perms? (required-perms outer-query))
     (check-block-permissions outer-query)))
 

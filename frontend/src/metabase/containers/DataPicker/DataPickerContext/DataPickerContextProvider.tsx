@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import * as React from "react";
-import { DataPickerContext, IDataPickerContext } from "./DataPickerContext";
+import type * as React from "react";
+import type { IDataPickerContext } from "./DataPickerContext";
+import { DataPickerContext } from "./DataPickerContext";
 
 function DataPickerContextProvider({
   children,

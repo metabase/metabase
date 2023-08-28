@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
-import {
+import type {
   Card,
   Collection,
   CollectionItem,

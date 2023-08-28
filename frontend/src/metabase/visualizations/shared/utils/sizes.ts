@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 type VisualizationSize = { width: number; height: number };
 const VISUALIZATION_SIZES: {

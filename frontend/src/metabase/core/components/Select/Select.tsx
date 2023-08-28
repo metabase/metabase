@@ -1,22 +1,20 @@
-import {
-  createRef,
-  Children,
-  Component,
+import type {
   CSSProperties,
   Key,
   ReactElement,
   ReactNode,
   RefObject,
 } from "react";
+import { createRef, Children, Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
 import { createSelector } from "@reduxjs/toolkit";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton, {
-  SelectButtonProps,
-} from "metabase/core/components/SelectButton";
+import type { SelectButtonProps } from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import { color } from "metabase/lib/colors";
 

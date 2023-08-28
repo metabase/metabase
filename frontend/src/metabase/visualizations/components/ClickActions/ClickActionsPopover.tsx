@@ -1,19 +1,21 @@
 import { Component } from "react";
 import { connect } from "react-redux";
-import * as tippy from "tippy.js";
+import type * as tippy from "tippy.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
-import { OnChangeCardAndRun } from "metabase/visualizations/types";
-import { Dispatch } from "metabase-types/store";
-import { Series } from "metabase-types/api";
-import {
+import type { Dispatch } from "metabase-types/store";
+import type { Series } from "metabase-types/api";
+import type {
   RegularClickAction,
   ClickObject,
   PopoverClickAction,
+  OnChangeCardAndRun,
+} from "metabase/visualizations/types";
+import {
   isPopoverClickAction,
   isRegularClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 
 import { ClickActionsView } from "./ClickActionsView";
 import { getGALabelForAction } from "./utils";
@@ -77,7 +79,7 @@ class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
     }
   };
 
-  getPopoverReference = (clicked: ClickObject): HTMLElement | null => {
+  getPopoverReference = (clicked: ClickObject): Element | null => {
     if (clicked.element) {
       if (clicked.element.firstChild instanceof HTMLElement) {
         return clicked.element.firstChild;

@@ -1,12 +1,15 @@
 import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type { ClickActionProps } from "metabase/visualizations/click-actions/types";
-import { DefaultClickAction } from "metabase/visualizations/click-actions/types";
+import type {
+  ClickActionProps,
+  DefaultClickAction,
+} from "metabase/visualizations/types";
+
 import type Question from "metabase-lib/Question";
+import type { ObjectDetailDrillType } from "metabase-lib/queries/drills/object-detail-drill";
 import {
   objectDetailDrill,
-  ObjectDetailDrillType,
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
 } from "metabase-lib/queries/drills/object-detail-drill";

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -9,7 +9,7 @@ import {
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import type { ClickActionProps } from "../types";
+import type { ClickActionProps } from "metabase/visualizations/types";
 import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 
 describe("AutomaticInsightsDrill", () => {

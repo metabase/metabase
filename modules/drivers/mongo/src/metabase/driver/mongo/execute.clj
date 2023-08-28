@@ -96,8 +96,9 @@
                            (get unescape-map k k))))})))
 
 (defn- result-metadata [unescaped-col-names]
-  {:cols (vec (for [col-name unescaped-col-names]
-                {:name col-name}))})
+  {:cols (mapv (fn [col-name]
+                 {:name col-name})
+               unescaped-col-names)})
 
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------

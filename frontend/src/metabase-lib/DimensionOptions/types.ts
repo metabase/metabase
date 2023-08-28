@@ -1,5 +1,5 @@
-import Dimension from "metabase-lib/Dimension";
-import Field from "metabase-lib/metadata/Field";
+import type Dimension from "metabase-lib/Dimension";
+import type Field from "metabase-lib/metadata/Field";
 
 interface DimensionOptionsSectionItem {
   dimension: Dimension;

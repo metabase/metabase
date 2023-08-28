@@ -8,7 +8,7 @@ import {
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockMetadata } from "__support__/metadata";
 import type { DatasetColumn } from "metabase-types/api";
-import type { ClickActionProps } from "metabase/visualizations/click-actions/types";
+import type { ClickActionProps } from "metabase/visualizations/types";
 import { PivotDrill } from "./PivotDrill";
 
 describe("PivotDrill", () => {

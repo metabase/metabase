@@ -8,7 +8,7 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/core/style/input";
-import { InputSize } from "../../style/types";
+import type { InputSize } from "../../style/types";
 
 export interface InputProps {
   fieldSize?: InputSize;

@@ -7,16 +7,17 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -104,7 +105,7 @@
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name          "My Card"
@@ -127,11 +128,12 @@
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
+              :database-id     (meta/id)
               ;; THIS IS A LEGACY STYLE QUERY!
               :dataset-query   {:database (meta/id)
                                 :type     :query
@@ -245,6 +247,7 @@
                               (merge
                                {:lib/type      :metadata/card
                                 :id            (inc idx)
+                                :database-id   (meta/id)
                                 :name          (str "Mock " (name table) " card")
                                 :dataset-query (if native?
                                                  {:database (meta/id)
@@ -263,7 +266,7 @@
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
       {:cards (vals mock-cards)})))
@@ -274,7 +277,7 @@
   source Card."
   [query       :- ::lib.schema/query
    column-name :- ::lib.schema.common/non-blank-string]
-  (let [cols     (lib.metadata.calculation/visible-columns query)
+  (let [cols     (lib/visible-columns query)
         metadata (or (m/find-first #(= (:name %) column-name)
                                    cols)
                      (let [col-names (vec (sort (map :name cols)))]
@@ -319,3 +322,75 @@
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in mock-cards [:venues :result-metadata])}))))
+
+(mu/defn ^:private external-remapped-column :- lib.metadata/ColumnMetadata
+  "Add an 'external' 'Human Readable Values' remap from values of `original` Field to values of `remapped` Field."
+  [metadata-provider :- lib.metadata/MetadataProvider
+   original          :- lib.metadata/ColumnMetadata
+   remapped          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]]
+  (let [remapped   (if (integer? remapped)
+                     (lib.metadata/field metadata-provider remapped)
+                     remapped)
+        remap-info {:lib/type :metadata.column.remapping/external
+                    :id       (* (u/the-id original) 10) ; we just need an ID that will be unique for each Field.
+                    :name     (lib.util/format "%s [external remap]" (:display-name original))
+                    :field-id (u/the-id remapped)}]
+    (assoc original :lib/external-remap remap-info)))
+
+(mu/defn ^:private internal-remapped-column :- lib.metadata/ColumnMetadata
+  "Add an 'internal' 'FieldValues' remap from values of `original` Field to hardcoded `remap` values."
+  [original :- lib.metadata/ColumnMetadata
+   remap    :- [:or
+                [:sequential :any]
+                :map]]
+  (let [original-values (if (sequential? remap)
+                          (range 1 (inc (count remap)))
+                          (keys remap))
+        remapped-values (if (sequential? remap)
+                          remap
+                          (vals remap))
+        remap-info      {:lib/type              :metadata.column.remapping/internal
+                         :id                    (* (u/the-id original) 100) ; we just need an ID that will be unique for each Field.
+                         :name                  (lib.util/format "%s [internal remap]" (:display-name original))
+                         :values                original-values
+                         :human-readable-values remapped-values}]
+    (assoc original :lib/internal-remap remap-info)))
+
+(mu/defn ^:private remapped-column :- lib.metadata/ColumnMetadata
+  "Add a remap to an `original` column metadata. Type of remap added depends of value of `remap`:
+
+    * Field ID: external remap with values of original replaced by values of remapped Field with ID
+    * Field metadata: external remap with values of original replaced by values of remapped Field
+    * Sequence of values: internal remap with integer values of original replaced by value at the corresponding index
+    * Map of original value => remapped value: internal remap with values replaced with corresponding value in map"
+  [metadata-provider :- lib.metadata/MetadataProvider
+   original          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]
+   remap             :- [:or
+                         lib.metadata/ColumnMetadata
+                         ::lib.schema.id/field
+                         [:sequential :any]
+                         :map]]
+  (let [original (if (integer? original)
+                   (lib.metadata/field metadata-provider original)
+                   original)]
+    (if (or (integer? remap)
+            (= (lib.dispatch/dispatch-value remap) :metadata/column))
+      (external-remapped-column metadata-provider original remap)
+      (internal-remapped-column original remap))))
+
+(mu/defn remap-metadata-provider  :- lib.metadata/MetadataProvider
+  "Composed metadata provider that adds an internal or external remap for `original` Field with [[remapped-column]].
+  For QP tests, you may want to use [[metabase.query-processor.test-util/field-values-from-def]] to get values to
+  create an internal remap."
+  [metadata-provider :- lib.metadata/MetadataProvider
+   original          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]
+   remap             :- [:or
+                         lib.metadata/ColumnMetadata
+                         ::lib.schema.id/field
+                         [:sequential :any]
+                         :map]]
+  (let [original' (remapped-column metadata-provider original remap)]
+    (lib/composed-metadata-provider
+     (mock-metadata-provider
+      {:fields [original']})
+     metadata-provider)))

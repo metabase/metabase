@@ -1,4 +1,4 @@
-import type { QueryMode } from "../types";
+import type { QueryMode } from "metabase/visualizations/types";
 import SortDrill from "../drills/SortDrill";
 import { ObjectDetailDrill } from "../drills/ObjectDetailDrill";
 import { QuickFilterDrill } from "../drills/QuickFilterDrill";

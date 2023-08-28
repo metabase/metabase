@@ -274,7 +274,7 @@ describe(
       // initial loading of the dashboard with card
       cy.get("@dashcardQuery.all").should("have.length", 1);
 
-      filterWidget().findByPlaceholderText("sleep").type("1{enter}");
+      filterWidget().findByPlaceholderText("sleep").clear().type("1{enter}");
 
       cy.wait("@dashcardQuery");
 
@@ -469,6 +469,7 @@ const createDashboardWithSlowCard = () => {
     id: "96917420",
     type: "number/=",
     sectionId: "number",
+    default: 0,
   };
 
   const dashboardDetails = {

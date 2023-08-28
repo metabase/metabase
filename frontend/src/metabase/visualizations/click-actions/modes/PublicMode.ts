@@ -1,4 +1,4 @@
-import type { QueryMode } from "../types";
+import type { QueryMode } from "metabase/visualizations/types";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
 
 export const PublicMode: QueryMode = {

@@ -13,11 +13,11 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import BaseQuery from "metabase-lib/queries/Query";
+import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
@@ -28,6 +28,7 @@ import type {
   DatabaseId,
   DatasetColumn,
   DatasetQuery,
+  DatasetData,
   DependentMetadataItem,
   TableId,
   RowValue,
@@ -313,7 +314,11 @@ class QuestionInner {
     return this._card && this._card.displayIsLocked;
   }
 
-  maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
+  maybeResetDisplay(
+    data: DatasetData,
+    sensibleDisplays: string[],
+    previousSensibleDisplays: string[] | undefined,
+  ): Question {
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
@@ -321,35 +326,27 @@ class QuestionInner {
     const shouldUnlock = wasSensible && !isSensible;
     const defaultDisplay = this.setDefaultDisplay().display();
 
+    let question;
     if (isSensible && defaultDisplay === "table") {
       // any sensible display is better than the default table display
-      return this;
+      question = this;
+    } else if (shouldUnlock && this.displayIsLocked()) {
+      question = this.setDisplayIsLocked(false).setDefaultDisplay();
+    } else {
+      question = this.setDefaultDisplay();
     }
 
-    if (shouldUnlock && this.displayIsLocked()) {
-      return this.setDisplayIsLocked(false).setDefaultDisplay();
-    }
-
-    return this.setDefaultDisplay();
+    return question._maybeSwitchToScalar(data);
   }
 
-  // Switches display based on data shape. For 1x1 data, we show a scalar. If
-  // our display was a 1x1 type, but the data isn't 1x1, we show a table.
-  switchTableScalar({ rows = [], cols }): Question {
-    if (this.displayIsLocked()) {
-      return this;
-    }
-
-    const display = this.display();
-    const isScalar = ["scalar", "progress", "gauge"].includes(display);
+  // Switches display to scalar if the data is 1 row x 1 column
+  private _maybeSwitchToScalar({ rows, cols }): Question {
+    const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
     const isOneByOne = rows.length === 1 && cols.length === 1;
-    const newDisplay =
-      !isScalar && isOneByOne // if we have a 1x1 data result then this should always be viewed as a scalar
-        ? "scalar"
-        : isScalar && !isOneByOne // any time we were a scalar and now have more than 1x1 data switch to table view
-        ? "table" // otherwise leave the display unchanged
-        : display;
-    return this.setDisplay(newDisplay);
+    if (!isScalar && isOneByOne && !this.displayIsLocked()) {
+      return this.setDisplay("scalar");
+    }
+    return this;
   }
 
   setDefaultDisplay(): Question {

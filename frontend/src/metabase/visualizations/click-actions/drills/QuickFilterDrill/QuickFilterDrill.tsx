@@ -1,17 +1,19 @@
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
-import { RowValue } from "metabase-types/api";
+import type { RowValue } from "metabase-types/api";
 import type {
   ClickActionButtonType,
   ClickActionProps,
   PopoverClickAction,
   QuestionChangeClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
+import type {
+  QuickFilterDrillOperator,
+  QuickFilterOperatorType,
+} from "metabase-lib/queries/drills/quick-filter-drill";
 import {
   quickFilterDrill,
-  QuickFilterDrillOperator,
   quickFilterDrillQuestion,
-  QuickFilterOperatorType,
 } from "metabase-lib/queries/drills/quick-filter-drill";
 import { getColumnFilterDrillPopover } from "../../components/ColumnFilterDrillPopover";
 import { TextIcon } from "./QuickFilterDrill.styled";
