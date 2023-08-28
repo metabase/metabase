@@ -283,7 +283,6 @@
       (some? last-edited-at)
       (#(build-optional-filter-query :last-edited-at model % last-edited-at))
 
-
       (int? last-edited-by)
       (#(build-optional-filter-query :last-edited-by model % last-edited-by))
 

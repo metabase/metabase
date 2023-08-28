@@ -15211,11 +15211,7 @@ databaseChangeLog:
       preConditions:
           # If preconditions fail (i.e., dbms is not mysql or mariadb) then mark this migration as 'ran'
           - onFail: MARK_RAN
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+          - dbms: mysql,mariadb
       changes:
           - sql:
                 sql: ALTER TABLE `revision` CHANGE `timestamp` `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6);
