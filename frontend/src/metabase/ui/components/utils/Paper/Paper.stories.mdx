@@ -40,7 +40,9 @@ Our themed wrapper around [Mantine Paper](https://mantine.dev/core/paper/).
 ## Examples
 
 export const DefaultTemplate = args => (
-  <Paper {...args}>{sampleArgs.text}</Paper>
+  <Paper {...args}>
+    <Text>{sampleArgs.text}</Text>
+  </Paper>
 );
 
 export const GridTemplate = args => (
