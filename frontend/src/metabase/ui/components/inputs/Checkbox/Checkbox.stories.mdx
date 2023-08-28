@@ -54,7 +54,7 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 export const DefaultTemplate = args => <Checkbox {...args} />;
 
-export const GroupTemplate = args => (
+export const CheckboxGroupTemplate = args => (
   <Checkbox.Group
     defaultValue={["react"]}
     label="An array of good frameworks"
@@ -105,10 +105,10 @@ export const Default = DefaultTemplate.bind({});
 
 ### Checkbox.Group
 
-export const Group = GroupTemplate.bind({});
+export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Checkbox group">{Group}</Story>
+  <Story name="Checkbox group">{CheckboxGroup}</Story>
 </Canvas>
 
 ### Label
