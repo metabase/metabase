@@ -42,18 +42,6 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by 1})))))
 
-    (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:created-at "past3days"}))))
-
-      (is (= #{"dashboard" "table" "dataset"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:models #{"dashboard" "dataset" "table"}
-                      :created-at "past3days"})))))
-
     (testing "verified"
       (is (= #{"dataset" "card"}
              (search.filter/search-context->applicable-models
@@ -64,56 +52,7 @@
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
-                      :verified true})))))
-
-    (testing "last edited by"
-      (is (= #{"dashboard" "dataset" "card" "metric"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:last-edited-by 1}))))
-
-      (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:models         #{"dashboard" "dataset" "table"}
-                      :last-edited-by 1})))))
-
-   (testing "last edited at"
-     (is (= #{"dashboard" "dataset" "action" "metric" "card"}
-            (search.filter/search-context->applicable-models
-             (merge default-search-ctx
-                    {:last-edited-at "past3days"}))))
-
-     (is (= #{"dashboard" "dataset"}
-            (search.filter/search-context->applicable-models
-             (merge default-search-ctx
-                    {:models   #{"dashboard" "dataset" "table"}
-                     :last-edited-at "past3days"})))))))
-
-(deftest joined-with-table?-test
-  (are [expected args]
-       (= expected (apply #'search.filter/joined-with-table? args))
-
-       false
-       [{} :join :a]
-
-       true
-       [{:join [:a [:= :a.b :c.d]]} :join :a]
-
-       false
-       [{:join [:a [:= :a.b :c.d]]} :join :d]
-
-       ;; work with multiple join types
-       false
-       [{:join [:a [:= :a.b :c.d]]} :left-join :d]
-
-       ;; do the same with other join types too
-       true
-       [{:left-join [:a [:= :a.b :c.d]]} :left-join :a]
-
-       false
-       [{:left-join [:a [:= :a.b :c.d]]} :left-join :d]))
-
+                      :verified true})))))))
 
 (def ^:private base-search-query
   {:select [:*]
@@ -142,100 +81,51 @@
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
 
-(deftest date-range-filter-clause-test
-  (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
-    (are [created-at expected-where]
-         (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))
-         ;; absolute datetime
-         "Q1-2023"                                 [:and [:>= [:cast :card.created_at :date] #t "2023-01-01"]
-                                                    [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
-         "2016-04-18~2016-04-23"                   [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                    [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
-         "2016-04-18"                              [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                    [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
-         "2023-05-04~"                             [:> [:cast :card.created_at :date]  #t "2023-05-04"]
-         "~2023-05-04"                             [:< [:cast :card.created_at :date]  #t "2023-05-05"]
-         "2016-04-18T10:30:00~2016-04-23T11:30:00" [:and [:>= :card.created_at #t "2016-04-18T10:30"]
-                                                    [:< :card.created_at #t "2016-04-23T11:31:00"]]
-         "2016-04-23T10:00:00"                     [:and [:>= :card.created_at #t "2016-04-23T10:00"]
-                                                    [:< :card.created_at  #t "2016-04-23T10:01"]]
-         "2016-04-18T10:30:00~"                    [:> :card.created_at #t "2016-04-18T10:30"]
-         "~2016-04-18T10:30:00"                    [:< :card.created_at #t "2016-04-18T10:31"]
-         ;; relative datetime
-         "past3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                    [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
-         "past3days~"                              [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                    [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-         "past3hours~"                             [:and [:>= :card.created_at #t "2023-05-04T07:00"]
-                                                    [:< :card.created_at #t "2023-05-04T11:00"]]
-         "next3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-05"]
-                                                    [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
-         "thisminute"                              [:and [:>= :card.created_at #t "2023-05-04T10:02"]
-                                                    [:< :card.created_at #t "2023-05-04T10:03"]]
-         "lasthour"                                [:and [:>= :card.created_at #t "2023-05-04T09:00"]
-                                                    [:< :card.created_at #t "2023-05-04T10:00"]]
-         "past1months-from-36months"               [:and [:>= [:cast :card.created_at :date] #t "2020-04-01"]
-                                                    [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
-         "today"                                   [:and [:>= [:cast :card.created_at :date] #t "2023-05-04"]
-                                                    [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-         "yesterday"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-03"]
-                                                    [:< [:cast :card.created_at :date] #t "2023-05-04"]])))
-
-;; both created at and last-edited-at use [[search.filter/date-range-filter-clause]]
-;; to generate the filter clause so for the full test cases, check [[date-range-filter-clause-test]]
-;; these 2 tests are for checking the shape of the query
-(deftest ^:parallel created-at-filter-test
+(deftest build-created-at-filter-test
   (testing "created-at filter"
-    (is (= {:select [:*]
-            :from   [:table]
-            :where  [:and
-                     [:= :card.archived false]
-                     [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                     [:< [:cast :card.created_at :date]  #t "2016-04-24"]]}
-           (search.filter/build-filters
-            base-search-query "card"
-            (merge default-search-ctx {:created-at "2016-04-18~2016-04-23"}))))))
-
-(deftest ^:parallel last-edited-at-filter-test
-  (testing "last edited at filter"
-    (is (= {:select [:*]
-            :from   [:table]
-            :join   [:revision [:= :revision.model_id :card.id]]
-            :where  [:and
-                     [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
-           (search.filter/build-filters
-            base-search-query "dataset"
-            (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
-
-   (testing "do not join twice if has both last-edited-at and last-edited-by"
-     (is (= {:select [:*]
-             :from   [:table]
-             :join   [:revision [:= :revision.model_id :card.id]]
-             :where  [:and
-                      [:= :card.archived false]
-                      [:= :revision.most_recent true]
-                      [:= :revision.model "Card"]
-                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                      [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
-                      [:= :revision.user_id 1]]}
-            (search.filter/build-filters
-             base-search-query "dataset"
-             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
-                                        :last-edited-by 1})))))
-
-   (testing "for actiion"
-     (is (= {:select [:*]
-             :from   [:table]
-             :where  [:and [:= :action.archived false]
-                      [:>= [:cast :action.updated_at :date] #t "2016-04-18"]
-                      [:< [:cast :action.updated_at :date] #t "2016-04-24"]]}
-            (search.filter/build-filters
-             base-search-query "action"
-             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"})))))))
+    (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
+      (are [created-at expected-where]
+           (= expected-where
+              (->> (search.filter/build-filters
+                    base-search-query "card"
+                    (merge default-search-ctx {:created-at created-at}))
+                   :where
+                   ;; drop the first 2 clauses [:and [:= :card.archived false]]
+                   (drop 2)))
+           ;; absolute datetime
+           "Q1-2023"                                 [[:>= [:cast :card.created_at :date] #t "2023-01-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
+           "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                      [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
+           "2016-04-18"                              [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                      [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
+           "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
+           "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
+           "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
+                                                      [:< :card.created_at #t "2016-04-23T11:31:00"]]
+           "2016-04-23T10:00:00"                     [[:>= :card.created_at #t "2016-04-23T10:00"]
+                                                      [:< :card.created_at  #t "2016-04-23T10:01"]]
+           "2016-04-18T10:30:00~"                    [[:> :card.created_at #t "2016-04-18T10:30"]]
+           "~2016-04-18T10:30:00"                    [[:< :card.created_at #t "2016-04-18T10:31"]]
+           ;; relative datetime
+           "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
+           "past3days~"                              [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]
+           "past3hours~"                             [[:>= :card.created_at #t "2023-05-04T07:00"]
+                                                      [:< :card.created_at #t "2023-05-04T11:00"]]
+           "next3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-05"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
+           "thisminute"                              [[:>= :card.created_at #t "2023-05-04T10:02"]
+                                                      [:< :card.created_at #t "2023-05-04T10:03"]]
+           "lasthour"                                [[:>= :card.created_at #t "2023-05-04T09:00"]
+                                                      [:< :card.created_at #t "2023-05-04T10:00"]]
+           "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
+           "today"                                   [[:>= [:cast :card.created_at :date] #t "2023-05-04"]
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]
+           "yesterday"                               [[:>= [:cast :card.created_at :date] #t "2023-05-03"]
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-04"]]))))
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
@@ -244,21 +134,6 @@
                     base-search-query "card"
                     (merge default-search-ctx
                            {:created-by 1})))))))
-
-(deftest ^:parallel build-last-edited-by-filter-test
-  (testing "last edited by filter"
-    (is (= {:select [:*]
-            :from   [:table]
-            :where  [:and
-                     [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:= :revision.user_id 1]]
-            :join   [:revision [:= :revision.model_id :card.id]]}
-           (search.filter/build-filters
-            base-search-query "dataset"
-            (merge default-search-ctx
-                   {:last-edited-by 1}))))))
 
 (deftest build-verified-filter-test
   (testing "verified filter"
