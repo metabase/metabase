@@ -18,10 +18,10 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
-import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
+import { SearchFilterSidebar } from "metabase/search/components/SearchFilterSidebar/SearchFilterSidebar";
 import {
   SearchBody,
   SearchControls,
@@ -32,16 +32,16 @@ import {
 } from "./SearchApp.styled";
 
 export default function SearchApp({ location }) {
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
 
   const searchText = useMemo(
     () => getSearchTextFromLocation(location),
     [location],
   );
 
-  const searchFilters = useMemo(() => {
-    return getFiltersFromLocation(location);
-  }, [location]);
+  const [searchFilters, setSearchFilters] = useState(
+    getFiltersFromLocation(location),
+  );
 
   const [selectedSidebarType, setSelectedSidebarType] = useState(null);
 
@@ -57,18 +57,6 @@ export default function SearchApp({ location }) {
     models: selectedSidebarType ?? searchFilters[SearchFilterKeys.Type],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-  };
-
-  const onChangeSelectedType = filter => {
-    setSelectedSidebarType(filter);
-    setPage(0);
-  };
-
-  const getAvailableModels = availableModels => {
-    const models = availableModels || [];
-    return models.filter(
-      filter => !searchFilters?.type || searchFilters.type.includes(filter),
-    );
   };
 
   return (
@@ -97,12 +85,9 @@ export default function SearchApp({ location }) {
                 </Flex>
               </SearchMain>
               <SearchControls>
-                <TypeSearchSidebar
-                  availableModels={getAvailableModels(
-                    metadata.available_models,
-                  )}
-                  selectedType={selectedSidebarType}
-                  onSelectType={onChangeSelectedType}
+                <SearchFilterSidebar
+                  value={searchFilters}
+                  onChangeFilters={setSearchFilters}
                 />
               </SearchControls>
             </SearchBody>
