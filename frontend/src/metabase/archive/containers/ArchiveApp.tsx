@@ -5,11 +5,13 @@ import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 
+import type { EntityWrappedCollectionItem } from "metabase-types/api";
+
 import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
+import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
 import Search from "metabase/entities/search";
@@ -31,7 +33,12 @@ import {
 
 const ROW_HEIGHT = 68;
 
-function ArchiveApp({ list, reload }) {
+interface ArchiveAppRootProps {
+  list: EntityWrappedCollectionItem[];
+  reload: () => void;
+}
+
+function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
   const mainElement = useMemo(() => getMainElement(), []);
   useEffect(() => {
     if (!isSmallScreen()) {
@@ -70,29 +77,25 @@ function ArchiveApp({ list, reload }) {
               scrollElement={mainElement}
               items={list}
               rowHeight={ROW_HEIGHT}
-              renderItem={({ item }) => (
+              renderItem={({ item }: { item: EntityWrappedCollectionItem }) => (
                 <ArchivedItem
-                  type={item.type}
+                  type={item.type || ""}
                   name={item.getName()}
                   icon={item.getIcon().name}
                   color={item.getColor()}
                   isAdmin={isAdmin}
-                  onUnarchive={
-                    item.setArchived
-                      ? async () => {
-                          await item.setArchived(false);
-                          reload();
-                        }
-                      : null
-                  }
-                  onDelete={
-                    item.delete
-                      ? async () => {
-                          await item.delete();
-                          reload();
-                        }
-                      : null
-                  }
+                  onUnarchive={async () => {
+                    if (item.setArchived !== undefined) {
+                      await item.setArchived(false);
+                      reload();
+                    }
+                  }}
+                  onDelete={async () => {
+                    if (item.delete !== undefined) {
+                      await item.delete();
+                      reload();
+                    }
+                  }}
                   selected={getIsSelected(item)}
                   onToggleSelected={() => toggleItem(item)}
                   showSelect={selected.length > 0}
@@ -121,15 +124,21 @@ function ArchiveApp({ list, reload }) {
   );
 }
 
-export default _.compose(
+export const ArchiveApp = _.compose(
   Search.loadList({
     query: { archived: true },
     reload: true,
     wrapped: true,
   }),
-)(ArchiveApp);
+)(ArchiveAppRoot);
 
-const BulkActionControls = ({ selected, reload }) => (
+const BulkActionControls = ({
+  selected,
+  reload,
+}: {
+  selected: any[];
+  reload: () => void;
+}) => (
   <span>
     <Button
       className="ml1"
@@ -158,7 +167,15 @@ const BulkActionControls = ({ selected, reload }) => (
   </span>
 );
 
-const SelectionControls = ({ allSelected, selectAll, clear }) =>
+const SelectionControls = ({
+  allSelected,
+  selectAll,
+  clear,
+}: {
+  allSelected: boolean;
+  selectAll: () => void;
+  clear: () => void;
+}) =>
   allSelected ? (
     <StackedCheckBox checked={true} onChange={clear} />
   ) : (

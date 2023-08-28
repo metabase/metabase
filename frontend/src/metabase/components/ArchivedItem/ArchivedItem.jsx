@@ -71,8 +71,8 @@ ArchivedItem.propTypes = {
   icon: PropTypes.string.isRequired,
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
-  onUnarchive: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
+  onUnarchive: PropTypes.func,
+  onDelete: PropTypes.func,
 
   selected: PropTypes.bool.isRequired,
   onToggleSelected: PropTypes.func.isRequired,

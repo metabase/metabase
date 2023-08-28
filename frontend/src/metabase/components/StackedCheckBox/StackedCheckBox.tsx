@@ -1,5 +1,4 @@
-import { useCallback } from "react";
-import PropTypes from "prop-types";
+import { useCallback, ChangeEvent } from "react";
 
 import {
   DEFAULT_CHECKED_COLOR,
@@ -14,26 +13,29 @@ import {
   Label,
 } from "./StackedCheckBox.styled";
 
-const propTypes = {
-  label: PropTypes.node,
-  checked: PropTypes.bool,
-  disabled: PropTypes.bool,
-  checkedColor: PropTypes.string,
-  uncheckedColor: PropTypes.string,
-  size: PropTypes.number,
-  className: PropTypes.string,
-};
+interface StackedCheckBoxPropTypes {
+  label?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  checkedColor?: string;
+  uncheckedColor?: string;
+  size?: number;
+  className?: string;
+  indeterminate?: boolean;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+}
 
-function StackedCheckBox({
+export function StackedCheckBox({
   label,
-  checked,
+  checked = false,
   disabled = false,
   checkedColor = DEFAULT_CHECKED_COLOR,
   uncheckedColor = DEFAULT_UNCHECKED_COLOR,
   size = DEFAULT_SIZE,
   className,
-  ...props
-}) {
+  indeterminate = false,
+  onChange,
+}: StackedCheckBoxPropTypes) {
   const renderLabel = useCallback(() => {
     if (label == null) {
       return null;
@@ -50,11 +52,11 @@ function StackedCheckBox({
         checkedColor={checkedColor}
         uncheckedColor={uncheckedColor}
         size={size}
-        {...props}
+        indeterminate={indeterminate}
+        onChange={onChange}
       />
       <StackedBackground
         checked={checked}
-        disabled={disabled}
         checkedColor={checkedColor}
         uncheckedColor={uncheckedColor}
         size={size}
@@ -62,8 +64,3 @@ function StackedCheckBox({
     </StackedCheckBoxRoot>
   );
 }
-
-StackedCheckBox.propTypes = propTypes;
-StackedCheckBox.Label = Label;
-
-export default StackedCheckBox;

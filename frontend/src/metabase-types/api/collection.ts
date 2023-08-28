@@ -74,6 +74,13 @@ export interface CollectionItem {
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
+export type EntityWrappedCollectionItem = CollectionItem & {
+  type?: string;
+  getName: () => string;
+  getColor: () => string;
+  delete?: () => void;
+};
+
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
