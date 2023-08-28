@@ -29,7 +29,7 @@ frontend_specs: &frontend_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
-  - "jest.unit.conf.json"
+  - "jest.config.json"
   - "jest.tz.unit.conf.json"
 
 frontend_all: &frontend_all
