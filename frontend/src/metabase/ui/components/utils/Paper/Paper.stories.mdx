@@ -1,5 +1,6 @@
+import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Grid, Paper } from "metabase/ui";
+import { Grid, Paper, Text } from "metabase/ui";
 
 export const args = {
   p: "md",
@@ -34,17 +35,30 @@ Our themed wrapper around [Mantine Paper](https://mantine.dev/core/paper/).
 ## Examples
 
 export const Template = args => (
-  <Grid columns={argTypes.radius.options.length}>
-    {argTypes.p.options.flatMap(padding =>
-      argTypes.radius.options.map(radius => (
+  <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
+    <Grid.Col span={1} />
+    {argTypes.radius.options.map(radius => (
+      <Grid.Col key={radius} span={1} align="center">
+        <Text weight="bold">Radius {radius}</Text>
+      </Grid.Col>
+    ))}
+    {argTypes.p.options.flatMap(padding => (
+      <Fragment key={padding}>
         <Grid.Col span={1}>
-          <Paper {...args} p={padding} radius={radius}>
-            The elm tree planted by Eleanor Bold, the judge’s daughter, fell
-            last night.
-          </Paper>
+          <Text weight="bold">Padding {padding}</Text>
         </Grid.Col>
-      )),
-    )}
+        {argTypes.radius.options.map(radius => (
+          <Grid.Col key={radius} span={1}>
+            <Paper {...args} p={padding} radius={radius}>
+              <Text>
+                The elm tree planted by Eleanor Bold, the judge’s daughter, fell
+                last night.
+              </Text>
+            </Paper>
+          </Grid.Col>
+        ))}
+      </Fragment>
+    ))}
   </Grid>
 );
 
