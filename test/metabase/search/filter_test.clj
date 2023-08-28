@@ -90,28 +90,30 @@
                     {:models   #{"dashboard" "dataset" "table"}
                      :last-edited-at "past3days"})))))))
 
-(deftest maybe-join-test
+(deftest joined-with-table?-test
   (are [expected args]
-       (= expected (apply #'search.filter/maybe-join args))
+       (= expected (apply #'search.filter/joined-with-table? args))
 
-       {:join [:a [:= :a.b :c.d]]}
-       [{} :join :a [:= :a.b :c.d]]
+       false
+       [{} :join :a]
 
-       ;; do not duplicate join
-       {:join [:a [:= :a.b :c.d]]}
-       [{:join [:a [:= :a.b :c.d]]} :join :a [:= :a.b :c.d]]
+       true
+       [{:join [:a [:= :a.b :c.d]]} :join :a]
+
+       false
+       [{:join [:a [:= :a.b :c.d]]} :join :d]
 
        ;; work with multiple join types
-       {:join [:a [:= :a.b :c.d]] :left-join [:d [:= :d.e :e.f]]}
-       [{:join [:a [:= :a.b :c.d]]} :left-join :d [:= :d.e :e.f]]
-
-       ;; concatnate join if can join
-       {:join [:a [:= :a.b :c.d] :d [:= :d.e :e.f]]}
-       [{:join [:a [:= :a.b :c.d]]} :join :d [:= :d.e :e.f]]
+       false
+       [{:join [:a [:= :a.b :c.d]]} :left-join :d]
 
        ;; do the same with other join types too
-       {:left-join [:a [:= :a.b :c.d]]}
-       [{:left-join [:a [:= :a.b :c.d]]} :left-join :a [:= :a.b :c.d]]))
+       true
+       [{:left-join [:a [:= :a.b :c.d]]} :left-join :a]
+
+       false
+       [{:left-join [:a [:= :a.b :c.d]]} :left-join :d]))
+
 
 (def ^:private base-search-query
   {:select [:*]
@@ -219,8 +221,6 @@
                       [:= :revision.model "Card"]
                       [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                       [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
-                      [:= :revision.most_recent true]
-                      [:= :revision.model "Card"]
                       [:= :revision.user_id 1]]}
             (search.filter/build-filters
              base-search-query "dataset"

@@ -163,25 +163,18 @@
 
 ;; Last edited by filter
 
-(defn- maybe-join
-  "Join the query if we haven't joined already.
+(defn- joined-with-table? [query join-type table]
+  "Check if  the query have a join with `table`.
   Note: this does a very shallow check by only checking the join-clause is already the same.
   For edge cases like same table but different alias, or different join keys, it assumes we can still make the join.
 
-    (-> (sql.helpers/select :*)
-        (sql.helpers/from [:a])
-        (sql.helpers/join :b [:= :a.id :b.id])
-        (maybe-join :join [:b [:= :a.id :b.id]]))
+  (-> (sql.helpers/select :*)
+  (sql.helpers/from [:a])
+  (sql.helpers/join :b [:= :a.id :b.id])
+  (joined-with-table? :join :b))
 
-    ;; => {:select [:*], :from [[:a]], :join [[:b [:= :a.id :b.id]]]}"
-  [query join-type table on]
-  (if (some #(= [table on] %) (partition 2 (get query join-type)))
-    query
-    ((case join-type
-       :join       sql.helpers/join
-       :left-join  sql.helpers/left-join
-       :right-join sql.helpers/right-join
-       :cross-join sql.helpers/right-join) query table on)))
+  ;; => true"
+  (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
 (defn- search-model->revision-model
   [model]
@@ -192,25 +185,29 @@
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query last-edited-by]
-    (-> query
-        ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
-        (maybe-join :join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :revision.most_recent true]
-                           [:= :revision.model (search-model->revision-model model)]
-                           [:= :revision.user_id last-edited-by]))))
+    (cond-> query
+      ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+      (not (joined-with-table? query :join :revision))
+      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where [:= :revision.most_recent true]
+                             [:= :revision.model (search-model->revision-model model)]))
+      true
+      (sql.helpers/where [:= :revision.user_id last-edited-by]))))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
-    (-> query
-        ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
-        (maybe-join :join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :revision.most_recent true]
-                           [:= :revision.model (search-model->revision-model model)]
-                           ;; on UI we showed the the last edit info from revision.timestamp
-                           ;; not the model.updated_at column
-                           ;; to be consistent we use revision.timestamp to do the filtering
-                           (date-range-filter-clause :revision.timestamp last-edited-at)))))
+    (cond-> query
+      ;; both last-edited-by and last-edited at join with reivsion, so we should be careful not to join twice
+      (not (joined-with-table? query :join :revision))
+      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where [:= :revision.most_recent true]
+                             [:= :revision.model (search-model->revision-model model)]))
+      true
+      ;; on UI we showed the the last edit info from revision.timestamp
+      ;; not the model.updated_at column
+      ;; to be consistent we use revision.timestamp to do the filtering
+      (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
