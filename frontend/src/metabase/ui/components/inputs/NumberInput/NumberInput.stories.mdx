@@ -104,6 +104,10 @@ export const VariantTemplate = args => (
   </Stack>
 );
 
+export const VariantIconTemplate = args => (
+  <VariantTemplate {...args} icon={<Icon name="int" />} />
+);
+
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
@@ -205,12 +209,11 @@ ErrorMd.args = {
 
 #### Icon
 
-export const IconMd = VariantTemplate.bind({});
+export const IconMd = VariantIconTemplate.bind({});
 IconMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: sampleArgs.placeholder,
-  icon: <Icon name="int" />,
   withAsterisk: true,
 };
 
@@ -222,13 +225,12 @@ IconMd.args = {
 
 #### Read only
 
-export const ReadOnlyMd = VariantTemplate.bind({});
+export const ReadOnlyMd = VariantIconTemplate.bind({});
 ReadOnlyMd.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: sampleArgs.placeholder,
-  icon: <Icon name="int" />,
   readOnly: true,
 };
 
@@ -240,12 +242,11 @@ ReadOnlyMd.args = {
 
 #### Min / max
 
-export const MinMaxMd = args => VariantTemplate.bind({});
+export const MinMaxMd = args => VariantIconTemplate.bind({});
 MinMaxMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  icon: <Icon name="int" />,
   min: sampleArgs.min,
   max: sampleArgs.max,
 };
@@ -258,12 +259,11 @@ MinMaxMd.args = {
 
 #### Controls
 
-export const ControlsMd = VariantTemplate.bind({});
+export const ControlsMd = VariantIconTemplate.bind({});
 ControlsMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  icon: <Icon name="int" />,
   min: sampleArgs.min,
   max: sampleArgs.max,
   hideControls: false,
@@ -277,12 +277,11 @@ ControlsMd.args = {
 
 #### Precision and decimal separator
 
-export const PrecisionMd = VariantTemplate.bind({});
+export const PrecisionMd = VariantIconTemplate.bind({});
 PrecisionMd.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
   description: sampleArgs.description,
-  icon: <Icon name="int" />,
   precision: 2,
   decimalSeparator: ".",
 };
@@ -295,13 +294,12 @@ PrecisionMd.args = {
 
 #### Parser and formatter
 
-export const ParserFormatterMd = VariantTemplate.bind({});
+export const ParserFormatterMd = VariantIconTemplate.bind({});
 VariantTemplate.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: sampleArgs.placeholder,
-  icon: <Icon name="int" />,
   parser: value => value.replace(/^\$/, ""),
   formatter: value => (value != null ? `$${value}` : "$"),
 };
