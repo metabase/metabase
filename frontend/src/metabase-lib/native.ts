@@ -22,7 +22,9 @@ type NativeExtras = {
 /**
  * Returns the extra keys for native queries associated with this query.
  */
-export function nativeExtras(query: Query): NativeExtras | null;
+export function nativeExtras(query: Query): NativeExtras | null {
+  return ML.native_extras(query);
+}
 
 /**
  * Updates the extras required for the db to run this query. The first stage must be a native type. Will ignore extras
@@ -31,4 +33,6 @@ export function nativeExtras(query: Query): NativeExtras | null;
 export function withNativeExtras(
   query: Query,
   nativeExtras: NativeExtras | null,
-): Query;
+): Query {
+  return ML.with_native_extras(query, nativeExtras);
+}
