@@ -1,6 +1,7 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -69,21 +70,17 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [cols                (let [stage (lib.util/query-stage query stage-number)]
-                               (lib.metadata.calculation/visible-columns query stage-number stage))
-         refs                (mapv lib.ref/ref cols)
-         ref->existing-index (into {}
-                                   (map-indexed (fn [index breakout-ref]
-                                                  (when-let [matching-ref (lib.equality/find-closest-matching-ref
-                                                                           query
-                                                                           breakout-ref
-                                                                           refs)]
-                                                    [matching-ref index])))
-                                   (breakouts query stage-number))]
+   (let [cols                      (let [stage (lib.util/query-stage query stage-number)]
+                                     (lib.metadata.calculation/visible-columns query stage-number stage))
+         col-index->breakout-index (into {}
+                                         (map-indexed
+                                          (fn [breakout-index breakout-ref]
+                                            (when-let [col-index (lib.equality/index-of-closest-matching-metadata breakout-ref cols)]
+                                              [col-index breakout-index])))
+                                         (breakouts query stage-number))]
      (when (seq cols)
-       (mapv (fn [col a-ref]
-               (let [pos (ref->existing-index a-ref)]
+       (mapv (fn [[i col]]
+               (let [pos (col-index->breakout-index i)]
                  (cond-> col
                    pos (assoc :breakout-position pos))))
-             cols
-             refs)))))
+             (m/indexed cols))))))

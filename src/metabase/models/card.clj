@@ -122,17 +122,21 @@
 (defn populate-query-fields
   "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
   [{{query-type :type, :as outer-query} :dataset_query, :as card}]
-  (cond->> card
-    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-    (not mi/*deserializing?*)
-    (merge (when-let [{:keys [database-id table-id]} (and query-type
-                                                          (query/query->database-and-table-ids outer-query))]
-             {:database_id database-id
-              :table_id    table-id
-              :query_type  (keyword query-type)}))))
+  (merge
+   card
+   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
+   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
+   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
+   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
+   (when-not mi/*deserializing?*
+     (when-let [{:keys [database-id table-id]} (and query-type
+                                                    (query/query->database-and-table-ids outer-query))]
+       (merge
+        {:query_type (keyword query-type)}
+        (when database-id
+          {:database_id database-id})
+        (when table-id
+          {:table_id table-id}))))))
 
 (defn- populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -208,7 +212,8 @@
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
+  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
+  ;; If this function moves you should update the comment that links to this one
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
                                            (or (and widget-type (not= widget-type :none))
@@ -420,12 +425,17 @@
 
 (t2/define-before-update :model/Card
   [card]
-  (-> (merge (t2/instance :model/Card {:id (:id card)})
-             (t2/changes card))
+  ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
+  ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
+  ;;
+  ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
+  ;; https://github.com/camsaul/toucan2/issues/145 .
+  (-> (into {:id (:id card)} (t2/changes card))
       maybe-normalize-query
       populate-result-metadata
       pre-update
-      populate-query-fields))
+      populate-query-fields
+      (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -488,7 +498,7 @@
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        (partial export-result-metadata card)))
     (catch Exception e
-      (throw (ex-info "Failed to export Card" {:card card} e)))))
+      (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 
 (defmethod serdes/load-xform "Card"
   [card]

@@ -17,7 +17,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
         padding: theme.spacing.md,
 
         "&:hover, &:focus": {
@@ -41,7 +41,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[0],
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
         padding: `0.375rem ${theme.spacing.md}`,
       },
       divider: {

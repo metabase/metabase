@@ -337,7 +337,6 @@ export const setParameterValuesFromQueryParams =
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
-      { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
     );
 
     dispatch(setParameterValues(parameterValues));

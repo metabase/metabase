@@ -706,7 +706,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest revoke-db-schema-permissions-test
-  (mt/with-temp* [Database [database]]
+  (mt/with-temp [Database database {}]
     (testing "revoke-db-schema-permissions! should revoke all non-native permissions on a database"
       (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
                                            (perms/data-perms-path database)))
@@ -847,7 +847,7 @@
     "/db/3/schema/secret_base/table/3/"                 :dk/db-schema-name-and-table
     "/db/3/schema/secret_base/table/3/read/"            :dk/db-schema-name-table-and-read
     "/db/3/schema/secret_base/table/3/query/"           :dk/db-schema-name-table-and-query
-    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented ))
+    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented))
 
 (deftest ^:parallel idempotent-move-test
   (let [;; all v1 paths:
