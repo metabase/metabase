@@ -7,11 +7,6 @@ import {
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import type { Collection } from "metabase-types/api";
-import {
-  getCollectionIcon,
-  getCollectionTooltip,
-} from "metabase/entities/collections";
-import { Icon } from "metabase/core/components/Icon";
 
 import {
   CaptionDescription,
@@ -86,17 +81,14 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
         size={24}
       />
     );
+  } else {
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+        size={24}
+        color={color("brand")}
+        collection={collection}
+        entity="collection"
+      />
+    );
   }
-
-  const typeIcon = getCollectionIcon(collection);
-  const tooltip = getCollectionTooltip(collection);
-
-  return (
-    <Icon
-      size={24}
-      name={typeIcon.name}
-      color={color("brand")}
-      tooltip={tooltip}
-    />
-  );
 };

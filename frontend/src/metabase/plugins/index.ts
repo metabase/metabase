@@ -14,6 +14,7 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
   Dataset,
   Group,
   GroupPermissions,
@@ -152,8 +153,15 @@ export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  COLLECTION_TYPES: {
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
+  },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  getCollectionType: (
+    _: Partial<Collection>,
+  ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
+    AUTHORITY_LEVEL_REGULAR,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
@@ -167,7 +175,14 @@ export type CollectionAuthorityLevelIcon = ComponentType<
   }
 >;
 
-type FormCollectionAuthorityLevelPicker = ComponentType<
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard";
+  }
+>;
+
+type FormCollectionAuthorityLevelPicker = React.ComponentType<
   HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
 >;
 
@@ -176,6 +191,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
+  CollectionInstanceAnalyticsIcon:
+    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
 };
 
 export type RevisionOrModerationEvent = {

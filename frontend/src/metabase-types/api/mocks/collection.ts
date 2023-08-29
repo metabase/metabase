@@ -10,6 +10,7 @@ export const createMockCollection = (
   can_write: true,
   archived: false,
   is_personal: false,
+  authority_level: null,
   ...opts,
 });
 
