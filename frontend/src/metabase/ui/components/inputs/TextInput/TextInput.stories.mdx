@@ -10,6 +10,7 @@ export const args = {
   error: undefined,
   placeholder: "Placeholder",
   disabled: false,
+  readOnly: false,
   withAsterisk: false,
 };
 
@@ -43,6 +44,9 @@ export const argTypes = {
     control: { type: "text" },
   },
   disabled: {
+    control: { type: "boolean" },
+  },
+  readOnly: {
     control: { type: "boolean" },
   },
   withAsterisk: {
