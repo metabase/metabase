@@ -10,6 +10,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -42,9 +43,10 @@
                              :creator_id       nil
                              :auto_run_queries true})))))
 
+
 (def analytics-root-dir-resource
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics"))
+  (io/resource "instance_analytics.zip"))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -122,9 +124,13 @@
              (ee.internal-user/ensure-internal-user-exists!)
              (adjust-audit-db-to-source! audit-db)
              (log/info "Loading Analytics Content...")
-             (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+
+             (log/info "Unzipping analytics to plugins...")
+             (u.files/unzip-file analytics-root-dir-resource "plugins")
+             (log/info "Unzipping done.")
+             (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-             (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
+             (let [report (log/with-no-logs (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
                                                                                 {}
                                                                                 :token-check? false))]
                (if (not-empty (:errors report))
