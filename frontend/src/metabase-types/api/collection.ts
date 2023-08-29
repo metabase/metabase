@@ -11,10 +11,20 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
+export type CollectionType = "instance-analytics" | null;
+
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
   name: string;
-  icon: string;
+  icon: IconName;
+  color?: string;
+  tooltips?: Record<string, string>;
+};
+
+export type CollectionInstanceAnaltyicsConfig = {
+  type: CollectionType;
+  name: string;
+  icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;
 };
