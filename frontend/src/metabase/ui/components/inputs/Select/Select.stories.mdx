@@ -6,20 +6,22 @@ export const args = {
   placeholder: "No semantic type",
 };
 
-export const sampleData = {
-  list: [
-    { value: 1, label: "Entity key" },
-    { value: 2, label: "Foreign key" },
-    { value: 3, label: "Category" },
-    { value: 4, label: "Description" },
-  ],
-  groups: [
-    { value: 1, label: "Entity key", group: "Overall row" },
-    { value: 2, label: "Foreign key", group: "Overall row" },
-    { value: 3, label: "Category", group: "Common" },
-    { value: 4, label: "Description", group: "Common" },
-  ],
-};
+export const dataWithGroups = [
+  { value: 1, label: "Entity key", group: "Overall row" },
+  { value: 2, label: "Foreign key", group: "Overall row", disabled: true },
+  { value: 3, label: "Category", group: "Common" },
+  { value: 4, label: "Description", group: "Common" },
+];
+
+export const dataWithIcons = dataWithGroups.map(item => ({
+  ...item,
+  group: undefined,
+}));
+
+export const dataWithLabels = dataWithIcons.map(item => ({
+  ...item,
+  icon: undefined,
+}));
 
 export const argTypes = {
   size: {
@@ -49,18 +51,12 @@ Our themed wrapper around [Mantine Select](https://mantine.dev/core/select/).
 
 ## Examples
 
-export const Default = args => <Select {...args} data={sampleData.list} />;
+export const DefaultTemplate = args => (
+  <Select {...args} data={dataWithLabels} />
+);
+
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Grouped items
-
-export const GroupedItems = args => (
-  <Select {...args} data={sampleData.groups} initiallyOpened />
-);
-
-<Canvas>
-  <Story name="Grouped items">{GroupedItems}</Story>
 </Canvas>
