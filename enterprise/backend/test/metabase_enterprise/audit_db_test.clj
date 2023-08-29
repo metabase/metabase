@@ -42,9 +42,8 @@
 (deftest audit-db-content-is-installed-when-found
   (mt/test-drivers #{:postgres}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics_skip")]
-        (is (str/ends-with? (str audit-db/analytics-root-dir-resource)
-                            "instance_analytics_skip"))
+      (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics.zip")]
+        (is (str/ends-with? (str audit-db/analytics-root-dir-resource) ".zip"))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
