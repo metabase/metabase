@@ -36,9 +36,5 @@ export const getLatestEligibleReleaseNotes = ({
     );
   });
 
-  return (
-    eligibleVersions
-      // .sort((a, z) => z.version - a.version)
-      .find(({ announcement_url }) => announcement_url)
-  );
+  return eligibleVersions.find(({ announcement_url }) => announcement_url);
 };
