@@ -151,18 +151,18 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2018").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7 (year, month, day)").click({ force: true });
-    cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should(
-      "contain",
-      "2018/1/7 (year, month, day)",
-    );
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("January 31, 2018")
+      .click({ force: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("17:24 (24-hour clock)").click();
+    popover().findByText("2018/1/31").click({ force: true });
+    cy.wait("@saveFormatting");
+
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("17:24 (24-hour clock)")
+      .click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
@@ -176,8 +176,10 @@ describe("scenarios > admin > settings", () => {
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("5:24 PM (12-hour clock)")
+      .click();
+
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
 
