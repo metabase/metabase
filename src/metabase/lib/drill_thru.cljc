@@ -33,23 +33,25 @@
   Note that if `:value nil` in the `context`, that implies the value is *missing*, ie. that this was a column click.
   For a value of `NULL` from the database, use the sentinel `:null`. Most of this file only cares whether the value was
   provided or not, but some things (eg. quick filters) treat `NULL` values differently."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   context      :- ::lib.schema.drill-thru/context]
-  #?(:cljs (js/console.log query context))
-  (keep #(% query stage-number context)
-        ;; TODO: Missing drills: automatic insights, format.
-        [lib.drill-thru.distribution/distribution-drill
-         lib.drill-thru.column-filter/column-filter-drill
-         lib.drill-thru.foreign-key/foreign-key-drill
-         lib.drill-thru.object-details/object-detail-drill
-         lib.drill-thru.pivot/pivot-drill
-         lib.drill-thru.quick-filter/quick-filter-drill
-         lib.drill-thru.sort/sort-drill
-         lib.drill-thru.summarize-column/summarize-column-drill
-         lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
-         lib.drill-thru.underlying-records/underlying-records-drill
-         #_lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill]))
+  ([query context]
+   (available-drill-thrus query -1 context))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    context      :- ::lib.schema.drill-thru/context]
+   (keep #(% query stage-number context)
+         ;; TODO: Missing drills: automatic insights, format.
+         [lib.drill-thru.distribution/distribution-drill
+          lib.drill-thru.column-filter/column-filter-drill
+          lib.drill-thru.foreign-key/foreign-key-drill
+          lib.drill-thru.object-details/object-detail-drill
+          lib.drill-thru.pivot/pivot-drill
+          lib.drill-thru.quick-filter/quick-filter-drill
+          lib.drill-thru.sort/sort-drill
+          lib.drill-thru.summarize-column/summarize-column-drill
+          lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
+          lib.drill-thru.underlying-records/underlying-records-drill
+          #_lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
@@ -58,7 +60,10 @@
   one of those returned by a call to [[available-drill-thrus]] with the same `query` and `stage-number`.
 
   Returns the updated query."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   drill        :- ::lib.schema.drill-thru/drill-thru]
-  (lib.drill-thru.common/drill-thru-method query stage-number drill))
+  ([query drill]
+   (drill-thru query -1 drill))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    drill        :- ::lib.schema.drill-thru/drill-thru]
+   (lib.drill-thru.common/drill-thru-method query stage-number drill)))

@@ -18,11 +18,13 @@
 
   Applies the `drill-thru` to the query and stage. Keyed on the `:type` of the drill-thru.
   Returns the updated query."
+  {:arglists '([query stage-number drill-thru & args])}
   drill-thru-dispatch
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmulti drill-thru-info-method
   "Helper for getting the display-info of each specific type of drill-thru."
+  {:arglists '([query stage-number drill-thru])}
   drill-thru-dispatch
   :hierarchy lib.hierarchy/hierarchy)
 

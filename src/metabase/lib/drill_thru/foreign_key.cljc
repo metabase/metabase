@@ -28,5 +28,5 @@
      :filter    (lib.options/ensure-uuid [:= {} (lib.ref/ref column) value])}))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/fk-filter
-  [query stage-number drill-thru & _]
+  [query stage-number drill-thru & _args]
   (lib.filter/filter query stage-number (:filter drill-thru)))

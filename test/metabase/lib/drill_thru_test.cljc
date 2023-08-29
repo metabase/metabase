@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 

@@ -35,6 +35,13 @@
                             :desc [:asc]
                             [:asc :desc])}))))
 
+(mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/sort
+  [query                        :- ::lib.schema/query
+   stage-number                 :- :int
+   {:keys [column], :as _drill} :- ::lib.schema.drill-thru/drill-thru.sort
+   & _args]
+  (lib.order-by/order-by query stage-number column :asc))
+
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/sort
   [_query _stage-number {directions :sort-directions}]
   {:type       :drill-thru/sort
