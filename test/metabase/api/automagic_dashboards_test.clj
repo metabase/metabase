@@ -312,13 +312,17 @@
   `(do-with-testing-model ~query-info
                           (fn [~bindings] ~@body)))
 
+(def Tab-Id-Schema
+  "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
+  (s/pred neg-int? 'ui-temp-id?))
+
 
 (deftest create-linked-dashboard-test
   (testing "If there are no linked-tables, then no dashboard"
     (is (nil? (#'api.magic/create-linked-dashboard {:model             nil
-                                                  :linked-tables     ()
-                                                  :model-index       nil
-                                                  :model-index-value nil})))
+                                                    :linked-tables     ()
+                                                    :model-index       nil
+                                                    :model-index-value nil})))
     (mt/dataset sample-dataset
       (testing "x-ray an mbql model"
         (with-indexed-model [{:keys [model model-index model-index-value]}
@@ -333,27 +337,29 @@
                                                      :linked-field-id %reviews.product_id}
                                                     {:linked-table-id $$orders
                                                      :linked-field-id %orders.product_id}])})]
-            (is (=? [{:id #hawk/schema s/Symbol :name "A look at Reviews" :position 0}
-                     {:id #hawk/schema s/Symbol :name "A look at Orders" :position 1}]
+            (is (=? [{:id #hawk/schema Tab-Id-Schema
+                      :name "A look at Reviews" :position 0}
+                     {:id #hawk/schema Tab-Id-Schema
+                      :name "A look at Orders" :position 1}]
                     (:ordered_tabs dash)))
             (testing "The first card for each tab is a linked model card to the source model"
               (is (=? (repeat
-                        (count (:ordered_tabs dash))
-                        {:visualization_settings
-                         {:virtual_card {:display "link", :archived false}
-                          :link         {:entity {:id      (:id model)
-                                                  :name    (:name model)
-                                                  :model   "dataset"
-                                                  :display "table"}}}})
+                       (count (:ordered_tabs dash))
+                       {:visualization_settings
+                        {:virtual_card {:display "link", :archived false}
+                         :link         {:entity {:id      (:id model)
+                                                 :name    (:name model)
+                                                 :model   "dataset"
+                                                 :display "table"}}}})
                       (->> (:ordered_cards dash)
                            (group-by :dashboard_tab_id)
                            vals
                            (map first)))))
             (testing "The generated dashboard has a meaningful name and description"
               (is (true?
-                    (and
-                      (str/includes? (:name dash) (:name model))
-                      (str/includes? (:name dash) (:name model-index-value)))))
+                   (and
+                    (str/includes? (:name dash) (:name model))
+                    (str/includes? (:name dash) (:name model-index-value)))))
               (is (true? (str/includes? (:description dash) (:name model-index-value))))))))
 
       (letfn [(l [x] (u/lower-case-en x))
@@ -387,6 +393,7 @@
                              (by-id "id") :id)
                          id-field-id)
                       "Metadata not updated with the mapping to the database column")
+
               (let [dash (#'api.magic/create-linked-dashboard
                           {:model             model
                            :model-index       model-index
@@ -395,6 +402,8 @@
                                                          :linked-field-id %reviews.product_id}
                                                         {:linked-table-id $$orders
                                                          :linked-field-id %orders.product_id}])})]
-                (is (=? [{:id #hawk/schema s/Symbol :name "A look at Reviews" :position 0}
-                         {:id #hawk/schema s/Symbol :name "A look at Orders" :position 1}]
+                (is (=? [{:id #hawk/schema Tab-Id-Schema
+                          :name "A look at Reviews" :position 0}
+                         {:id #hawk/schema Tab-Id-Schema
+                          :name "A look at Orders" :position 1}]
                         (:ordered_tabs dash)))))))))))

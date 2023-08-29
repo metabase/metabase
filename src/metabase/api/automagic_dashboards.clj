@@ -205,7 +205,8 @@
                                       :query-filter [:= q model_pk]})))
                                 linked-tables)
           tabs-and-cards   (map-indexed (fn [idx {tab-name :name tab-cards :ordered_cards}]
-                                          (let [tab-id (gensym)]
+                                          ;; id starts at 0. want our temporary ids to start at -1, -2, ...
+                                          (let [tab-id (dec (- idx))]
                                             {:tab {:id       tab-id
                                                    :name     tab-name
                                                    :position idx}
