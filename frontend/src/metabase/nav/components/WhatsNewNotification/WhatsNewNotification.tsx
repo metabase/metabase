@@ -44,7 +44,7 @@ export function WhatsNewNotification() {
     return null;
   }
   return (
-    <Paper m="lg" p="md" shadow="md" withBorder>
+    <Paper my="lg" mx="auto" p="md" shadow="md" withBorder w={244}>
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
@@ -53,9 +53,10 @@ export function WhatsNewNotification() {
           </IconButtonWrapper>
         </Flex>
 
-        <Text weight="bold">{t`Metabase has been updated`}</Text>
+        <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor
+          size="sm"
           weight="bold"
           component="a"
           href={url}
