@@ -1387,3 +1387,234 @@ export const createOrdersUserIdDatasetColumn = (
     },
     base_type: "type/Integer",
   });
+
+export const createOrdersProductIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description:
+      "The product ID. This is an internal identifier for the product, NOT the SKU.",
+    semantic_type: "type/FK",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "PRODUCT_ID",
+    source: "fields",
+    field_ref: ["field", ORDERS.PRODUCT_ID, null],
+    effective_type: "type/Integer",
+    id: ORDERS.PRODUCT_ID,
+    visibility_type: "normal",
+    display_name: "Product ID",
+    fingerprint: {
+      global: {
+        "distinct-count": 200,
+        "nil%": 0,
+      },
+    },
+    base_type: "type/Integer",
+  });
+
+export const createOrdersSubtotalDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description:
+      "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "SUBTOTAL",
+    source: "fields",
+    field_ref: ["field", ORDERS.SUBTOTAL, null],
+    effective_type: "type/Float",
+    id: ORDERS.SUBTOTAL,
+    visibility_type: "normal",
+    display_name: "Subtotal",
+    fingerprint: {
+      global: {
+        "distinct-count": 340,
+        "nil%": 0,
+      },
+      type: {
+        "type/Number": {
+          min: 15.691943673970439,
+          q1: 49.74894519060184,
+          q3: 105.42965746993103,
+          max: 148.22900526552291,
+          sd: 32.53705013056317,
+          avg: 77.01295465356547,
+        },
+      },
+    },
+    base_type: "type/Float",
+  });
+
+export const createOrdersTaxDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description:
+      "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "TAX",
+    source: "fields",
+    field_ref: ["field", ORDERS.TAX, null],
+    effective_type: "type/Float",
+    id: ORDERS.TAX,
+    visibility_type: "normal",
+    display_name: "Tax",
+    fingerprint: {
+      global: {
+        "distinct-count": 797,
+        "nil%": 0,
+      },
+      type: {
+        "type/Number": {
+          min: 0,
+          q1: 2.273340386603857,
+          q3: 5.337275338216307,
+          max: 11.12,
+          sd: 2.3206651358900316,
+          avg: 3.8722100000000004,
+        },
+      },
+    },
+    base_type: "type/Float",
+  });
+
+export const createOrdersTotalDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description: "The total billed amount.",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "TOTAL",
+    source: "fields",
+    field_ref: ["field", ORDERS.TOTAL, null],
+    effective_type: "type/Float",
+    id: ORDERS.TOTAL,
+    visibility_type: "normal",
+    display_name: "Total",
+    fingerprint: {
+      global: {
+        "distinct-count": 4426,
+        "nil%": 0,
+      },
+      type: {
+        "type/Number": {
+          min: 8.93914247937167,
+          q1: 51.34535490743823,
+          q3: 110.29428389265787,
+          max: 159.34900526552292,
+          sd: 34.26469575709948,
+          avg: 80.35871658771228,
+        },
+      },
+    },
+    base_type: "type/Float",
+  });
+
+export const createOrdersDiscountDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description: "Discount amount.",
+    semantic_type: "type/Discount",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "DISCOUNT",
+    source: "fields",
+    field_ref: ["field", ORDERS.DISCOUNT, null],
+    effective_type: "type/Float",
+    id: ORDERS.DISCOUNT,
+    visibility_type: "normal",
+    display_name: "Discount",
+    fingerprint: {
+      global: {
+        "distinct-count": 701,
+        "nil%": 0.898,
+      },
+      type: {
+        "type/Number": {
+          min: 0.17088996672584322,
+          q1: 2.9786226681458743,
+          q3: 7.338187788658235,
+          max: 61.69684269960571,
+          sd: 3.053663125001991,
+          avg: 5.161255547580326,
+        },
+      },
+    },
+    base_type: "type/Float",
+  });
+
+export const createOrdersCreatedAtDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description: "The date and time an order was submitted.",
+    semantic_type: "type/CreationTimestamp",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    unit: "default",
+    name: "CREATED_AT",
+    source: "fields",
+    field_ref: [
+      "field",
+      ORDERS.CREATED_AT,
+      {
+        "temporal-unit": "default",
+      },
+    ],
+    effective_type: "type/DateTime",
+    id: ORDERS.CREATED_AT,
+    visibility_type: "normal",
+    display_name: "Created At",
+    fingerprint: {
+      global: {
+        "distinct-count": 9998,
+        "nil%": 0,
+      },
+      type: {
+        "type/DateTime": {
+          earliest: "2016-04-30T18:56:13.352Z",
+          latest: "2020-04-19T14:07:15.657Z",
+        },
+      },
+    },
+    base_type: "type/DateTime",
+  });
+
+export const createOrdersQuantityDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    description: "Number of products bought.",
+    semantic_type: "type/Quantity",
+    table_id: ORDERS_ID,
+    coercion_strategy: null,
+    name: "QUANTITY",
+    source: "fields",
+    field_ref: ["field", ORDERS.QUANTITY, null],
+    effective_type: "type/Integer",
+    id: ORDERS.QUANTITY,
+    visibility_type: "normal",
+    display_name: "Quantity",
+    fingerprint: {
+      global: {
+        "distinct-count": 62,
+        "nil%": 0,
+      },
+      type: {
+        "type/Number": {
+          min: 0,
+          q1: 1.755882607764982,
+          q3: 4.882654507928044,
+          max: 100,
+          sd: 4.214258386403798,
+          avg: 3.7015,
+        },
+      },
+    },
+    base_type: "type/Integer",
+  });

@@ -11,6 +11,8 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import { PopoverRoot } from "./ColumnFormattingAction.styled";
 
+export const POPOVER_TEST_ID = "column-formatting-settings";
+
 export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
   if (
     !clicked ||
@@ -52,6 +54,7 @@ export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
           {...extraProps}
           key={columnSettingsWidget.id}
           hidden={false}
+          dataTestId={POPOVER_TEST_ID}
         />
       </PopoverRoot>
     );
