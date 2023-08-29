@@ -30,6 +30,7 @@
             Revision
             Table
             User]]
+   [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
@@ -261,6 +262,61 @@
               (is (= nil
                      (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection)))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/dashboard/                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-dashboards-test
+  (mt/with-temp
+    [:model/Dashboard {rasta-dash     :id} {:creator_id    (mt/user->id :rasta)}
+     :model/Dashboard {crowberto-dash :id} {:creator_id    (mt/user->id :crowberto)
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+     :model/Dashboard {archived-dash  :id} {:archived      true
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                            :creator_id    (mt/user->id :crowberto)}]
+
+    (testing "should includes creator info and last edited info"
+      (revision/push-revision!
+       :entity      :model/Dashboard
+       :id          crowberto-dash
+       :user-id     (mt/user->id :crowberto)
+       :is_creation true
+       :object      {:id crowberto-dash})
+      (is (=? (merge (t2/select-one :model/Dashboard crowberto-dash)
+                     {:creator        {:id          (mt/user->id :crowberto)
+                                       :email       "crowberto@metabase.com"
+                                       :first_name  "Crowberto"
+                                       :last_name   "Corv"
+                                       :common_name "Crowberto Corv"}}
+                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                       :first_name "Crowberto"
+                                       :last_name  "Corv"
+                                       :email      "crowberto@metabase.com"
+                                       :timestamp  true}})
+              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
+                  first
+                  (update-in [:last-edit-info :timestamp] boolean)))))
+
+    (testing "f=all shouldn't return archived dashboards"
+      (is (=? #{rasta-dash crowberto-dash}
+              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+
+      (testing "and should respect read perms"
+        (is (=? #{rasta-dash}
+                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))))
+
+    (testing "f=archvied return archived dashboards"
+      (is (=? #{archived-dash}
+              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
+
+      (testing "and should return read perms"
+        (is (=? #{}
+                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
+
+    (testing "f=mine return dashboards created by caller but do not include archived"
+      (is (=? #{crowberto-dash}
+              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
