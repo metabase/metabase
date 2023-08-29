@@ -1241,10 +1241,9 @@
                      (get-privileges))))
             (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
               (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA foo TO privilege_rows_test_example_role;")
-              (is (= [{:is_current_user true,
-                       :role "privilege_rows_test_example_role",
+              (is (= [{:role   nil
                        :schema "foo",
-                       :table "baz",
+                       :table  "baz",
                        :select true,
                        :update true,
                        :insert false,

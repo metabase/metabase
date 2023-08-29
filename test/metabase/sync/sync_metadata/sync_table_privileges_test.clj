@@ -24,10 +24,9 @@
           (sync-table-privileges/sync-table-privileges! (mt/db))
           (let [table-id (t2/select-one-pk :model/Table :name "baz" :schema "foo")]
             (is (=? [{:table_id        table-id
-                      :role            string? ; this should be the current user, but it doesn't matter until we need table_privileges to work with connection impersonation
-                      :is_current_user true
+                      :role            nil
                       :select          true
                       :delete          true
                       :insert          true
                       :update          true}]
-                    (t2/select :model/TablePrivileges :table_id table-id :is_current_user true)))))))))
+                    (t2/select :model/TablePrivileges :table_id table-id :role nil)))))))))
