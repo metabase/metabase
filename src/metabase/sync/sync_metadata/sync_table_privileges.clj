@@ -1,7 +1,5 @@
 (ns metabase.sync.sync-metadata.sync-table-privileges
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
