@@ -16,6 +16,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
