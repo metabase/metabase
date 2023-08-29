@@ -1,10 +1,8 @@
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
-  getCollectionIcon,
-  getCollectionTooltip,
-} from "metabase/entities/collections";
+  PLUGIN_MODERATION,
+  PLUGIN_COLLECTION_COMPONENTS,
+} from "metabase/plugins";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
 
 import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
@@ -22,15 +20,11 @@ export const CollectionIcon = ({
     return <PLUGIN_MODERATION.QuestionModerationIcon question={question} />;
   }
 
-  const icon = getCollectionIcon(collection);
-  const tooltip = getCollectionTooltip(
-    collection,
-    question.isDataset() ? "model" : "question",
+  return (
+    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+      color={color("brand")}
+      collection={collection}
+      entity={question.isDataset() ? "model" : "question"}
+    />
   );
-
-  if (!icon) {
-    return null;
-  }
-
-  return <Icon name={icon.name} color={color("brand")} tooltip={tooltip} />;
 };
