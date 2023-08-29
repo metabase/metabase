@@ -17,7 +17,7 @@
            (#'metabase.core/ensure-audit-db-installed!))))))
 
 (deftest audit-db-is-installed-then-left-alone
-  (mt/test-drivers #{:postgres :h2}
+  (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
       (t2/delete! Database :is_audit true)
       (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-db-installed!)))
@@ -28,7 +28,7 @@
       (is (= :metabase-enterprise.audit-db/no-op (audit-db/ensure-db-installed!))))))
 
 (deftest audit-db-content-is-not-installed-when-not-found
-  (mt/test-drivers #{:postgres :h2}
+  (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
       (with-redefs [audit-db/analytics-root-dir-resource nil]
         (is (= nil audit-db/analytics-root-dir-resource))
@@ -39,7 +39,7 @@
             "No cards created for Audit DB.")))))
 
 (deftest audit-db-content-is-installed-when-found
-  (mt/test-drivers #{:postgres :h2}
+  (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
       (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics")]
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
