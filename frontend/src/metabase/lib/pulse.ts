@@ -9,7 +9,10 @@ import type {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  isParameterValueEmpty,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -155,7 +158,7 @@ function cleanPulseParameters(parameters: PulseParameter[]) {
         value: normalizedValue,
       };
     })
-    .filter(parameter => parameter.value != null);
+    .filter(parameter => !isParameterValueEmpty(parameter.value));
 }
 
 type ChannelSpecs = {

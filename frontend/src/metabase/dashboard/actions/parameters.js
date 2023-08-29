@@ -14,7 +14,10 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
-import { isParameterValueEmpty } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  isParameterValueEmpty,
+  PULSE_PARAM_EMPTY,
+} from "metabase-lib/parameters/utils/parameter-values";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -193,7 +196,7 @@ export const setParameterValue = createThunkAction(
 
     return {
       id: parameterId,
-      value: isParameterValueEmpty(value) ? null : value,
+      value: isParameterValueEmpty(value) ? PULSE_PARAM_EMPTY : value,
       isDraft: isSettingDraftParameterValues,
     };
   },

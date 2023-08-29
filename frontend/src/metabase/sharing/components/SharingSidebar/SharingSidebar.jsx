@@ -33,6 +33,10 @@ import {
 } from "metabase/pulse/actions";
 import { UserApi } from "metabase/services";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import {
+  PULSE_PARAM_EMPTY,
+  PULSE_PARAM_USE_DEFAULT,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -240,8 +244,8 @@ class SharingSidebarInner extends Component {
         ...param,
         value:
           PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
-            ? parameterValues[param.id]
-            : param.default,
+            ? parameterValues[param.id] ?? PULSE_PARAM_EMPTY
+            : PULSE_PARAM_USE_DEFAULT,
       })),
     };
     this.setPulse(newPulse);
