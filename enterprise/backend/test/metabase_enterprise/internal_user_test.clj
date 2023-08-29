@@ -1,7 +1,7 @@
 (ns metabase-enterprise.internal-user-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase.config :as config]
    [metabase.models :refer [User]]
