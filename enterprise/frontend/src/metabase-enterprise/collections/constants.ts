@@ -1,22 +1,16 @@
 import { t } from "ttag";
-import type { CollectionAuthorityLevel } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type {
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase-types/api";
 
-type AuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: string;
-  tooltips?: Record<string, string>;
-};
-
-export const REGULAR_COLLECTION: AuthorityLevelConfig = {
+export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   type: null,
   name: t`Regular`,
   icon: "folder",
 };
 
-export const OFFICIAL_COLLECTION: AuthorityLevelConfig = {
+export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
   name: t`Official`,
   icon: "badge",
@@ -27,7 +21,24 @@ export const OFFICIAL_COLLECTION: AuthorityLevelConfig = {
   },
 };
 
-export const AUTHORITY_LEVELS: Record<string, AuthorityLevelConfig> = {
+export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
+  {
+    type: "instance-analytics",
+    name: t`Instace Analytics`,
+    icon: "beaker",
+  };
+
+export const AUTHORITY_LEVELS: Record<string, CollectionAuthorityLevelConfig> =
+  {
+    [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
+    [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
+  };
+
+export const COLLECTION_TYPES: Record<
+  string,
+  CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig
+> = {
   [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
   [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
+  [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
 };
