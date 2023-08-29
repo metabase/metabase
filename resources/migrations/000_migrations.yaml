@@ -16156,6 +16156,10 @@ databaseChangeLog:
       id: v48.00-013
       author: calherries
       comment: Added 0.48.0 - Create table_privileges.table_id index
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
       changes:
         - createIndex:
             indexName: idx_table_privileges_table_id
