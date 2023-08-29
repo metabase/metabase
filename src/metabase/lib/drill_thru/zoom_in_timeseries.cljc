@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
@@ -91,5 +90,5 @@
   (let [breakout     (matching-breakout-ref query stage-number column)
         new-breakout (lib.temporal-bucket/with-temporal-bucket breakout next-unit)]
     (as-> query query
-      (lib.filter/filter query stage-number (lib/= column value))
+      (lib.filter/filter query stage-number (lib.filter/= column value))
       (lib.remove-replace/replace-clause query stage-number breakout new-breakout))))
