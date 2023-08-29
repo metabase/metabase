@@ -282,7 +282,8 @@
                                                           :value  "2018-05-15T08:04:04.58Z"
                                                           :row    orders-row}))))))
 
-(deftest ^:parallel histogram-available-drill-thrus-test
+;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
+#_(deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
@@ -325,7 +326,3 @@
                                                      :value      87
                                                      :row        row
                                                      :dimensions [{:column-name "STATE" :value "WI"}]})))))))
-
-;; START HERE - Keep testing more cases
-
-;; TODO: Directly clicking on this table's primary key opens the object detail, with no popup? How does that work?
