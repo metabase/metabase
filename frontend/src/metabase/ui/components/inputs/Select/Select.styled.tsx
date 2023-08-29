@@ -6,22 +6,21 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       withinPortal: true,
       itemComponent: SelectItem,
-      clearButtonProps: {
-        color: "text.2",
-      },
     },
     styles: theme => ({
       rightSection: {
         svg: {
+          color: theme.colors.text[2],
           width: "1rem",
           height: "1rem",
+
           "&[data-chevron]": {
             path: {
-              d: 'path("M1.47 4.47a.75.75 0 0 1 1.06 0L8 9.94l5.47-5.47a.75.75 0 1 1 1.06 1.06l-6 6a.75.75 0 0 1-1.06 0l-6-6a.75.75 0 0 1 0-1.06z")',
+              d: 'path("M 1.38 4.19 a 0.7 0.7 90 0 1 0.99 0 L 7.5 9.32 l 5.13 -5.13 a 0.7 0.7 90 1 1 0.99 0.99 l -5.63 5.63 a 0.7 0.7 90 0 1 -0.99 0 l -5.63 -5.63 a 0.7 0.7 90 0 1 0 -0.99 z")',
             },
           },
           "&:not([data-chevron])": {
-            d: 'path("M4.53 3.47a.75.75 0 0 0-1.06 1.06L6.94 8l-3.47 3.47a.75.75 0 1 0 1.06 1.06L8 9.06l3.47 3.47a.75.75 0 1 0 1.06-1.06L9.06 8l3.47-3.47a.75.75 0 0 0-1.06-1.06L8 6.94 4.53 3.47z")',
+            d: 'path("M 4.25 3.25 a 0.7 0.7 90 0 0 -0.99 0.99 L 6.51 7.5 l -3.25 3.25 a 0.7 0.7 90 1 0 0.99 0.99 L 7.5 8.49 l 3.25 3.25 a 0.7 0.7 90 1 0 0.99 -0.99 L 8.49 7.5 l 3.25 -3.25 a 0.7 0.7 90 0 0 -0.99 -0.99 L 7.5 6.51 L 4.25 3.25 z")',
           },
         },
       },
