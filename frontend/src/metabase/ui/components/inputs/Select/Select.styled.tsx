@@ -8,6 +8,9 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       itemComponent: SelectItem,
     },
     styles: theme => ({
+      wrapper: {
+        marginTop: theme.spacing.xs,
+      },
       rightSection: {
         svg: {
           color: theme.colors.text[2],
