@@ -1,6 +1,6 @@
 description: Metabase group membership
 archived: false
-collection_position: 5
+collection_position: 7
 table_id:
 - Internal Metabase Database
 - public
