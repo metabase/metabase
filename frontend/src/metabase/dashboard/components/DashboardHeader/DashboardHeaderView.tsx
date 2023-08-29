@@ -22,8 +22,8 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
-} from "../DashboardHeaderView.styled";
-import { DashboardTabs } from "../DashboardTabs/DashboardTabs";
+} from "../../components/DashboardHeaderView.styled";
+import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
 interface DashboardHeaderViewProps {
   editingTitle: string;
