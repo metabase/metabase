@@ -2,7 +2,7 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api/settings";
-import { createMockVersionInfoRecord } from "metabase-types/api/mocks";
+import { createMockVersionInfoRecord as mockVersion } from "metabase-types/api/mocks";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
@@ -10,47 +10,56 @@ const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
   return { latest, older };
 };
 
+const DEFAULTS: Parameters<typeof getLatestEligibleReleaseNotes>[0] = {
+  isEmbedded: false,
+  lastAcknowledgedVersion: null,
+  currentVersion: "v0.48.0",
+  versionInfo: buildVersionInfo([
+    mockVersion({ version: "v0.48.2" }),
+    mockVersion({ version: "v0.48.1" }),
+    mockVersion({
+      version: "v0.48.0",
+      announcement_url: "https://metabase.com/releases/48",
+    }),
+    mockVersion({ version: "v0.47.0" }),
+  ]),
+};
+
 describe("getLatestEligibleReleaseNotes", () => {
   it("doesn't filter old versions if lastAck is null", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({ version: "v0.48" }),
-          createMockVersionInfoRecord({
-            version: "v0.43",
+          mockVersion({ version: "v0.48.0" }),
+          mockVersion({
+            version: "v0.43.0",
             announcement_url: "url",
           }),
         ]),
-        currentVersion: "v0.48",
         lastAcknowledgedVersion: null,
       }),
-    ).toHaveProperty("version", "v0.43");
+    ).toHaveProperty("version", "v0.43.0");
   });
 
-  it("filters out ack versions", () => {
+  it("filters out acknowledged versions", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({
-            version: "v0.47",
+          mockVersion({
+            version: "v0.48.0",
+          }),
+          mockVersion({
+            version: "v0.47.0",
+            announcement_url: "url",
+          }),
+          mockVersion({
+            version: "v0.46.1",
             announcement_url: "url",
           }),
         ]),
-        currentVersion: "v0.48",
-        lastAcknowledgedVersion: "v0.47",
-      }),
-    ).toBe(undefined);
-
-    expect(
-      getLatestEligibleReleaseNotes({
-        versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({
-            version: "v0.46",
-            announcement_url: "url",
-          }),
-        ]),
-        currentVersion: "v0.48",
-        lastAcknowledgedVersion: "v0.47",
+        lastAcknowledgedVersion: "v0.47.0",
       }),
     ).toBe(undefined);
   });
@@ -58,23 +67,23 @@ describe("getLatestEligibleReleaseNotes", () => {
   it("returns up to the current version", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({
-            version: "v0.48",
+          mockVersion({
+            version: "v0.48.0",
             announcement_url: "url",
           }),
         ]),
-        currentVersion: "v0.48",
-        lastAcknowledgedVersion: "v0.47",
+        currentVersion: "v0.48.0",
       }),
-    ).not.toBe(undefined);
+    ).toHaveProperty("version", "v0.48.0");
   });
 
   it("filters out future versions", () => {
     expect(
       getLatestEligibleReleaseNotes({
         versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({
+          mockVersion({
             version: "v0.49",
             announcement_url: "url",
           }),
@@ -89,14 +98,14 @@ describe("getLatestEligibleReleaseNotes", () => {
     expect(
       getLatestEligibleReleaseNotes({
         versionInfo: buildVersionInfo([
-          createMockVersionInfoRecord({
+          mockVersion({
             version: "v0.49.2",
           }),
-          createMockVersionInfoRecord({
+          mockVersion({
             version: "v0.49.1",
             announcement_url: "url",
           }),
-          createMockVersionInfoRecord({
+          mockVersion({
             version: "v0.49.0",
             announcement_url: "url",
           }),
