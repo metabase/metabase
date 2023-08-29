@@ -15175,6 +15175,7 @@ databaseChangeLog:
                   CREATE INDEX IF NOT EXISTS idx_application_permissions_revision_user_id ON application_permissions_revision (user_id);
                   CREATE INDEX IF NOT EXISTS idx_collection_permission_graph_revision_user_id ON collection_permission_graph_revision (user_id);
                   CREATE INDEX IF NOT EXISTS idx_core_session_user_id ON core_session (user_id);
+                  CREATE INDEX IF NOT EXISTS idx_dashboard_tab_dashboard_id ON dashboard_tab (dashboard_id);
                   CREATE INDEX IF NOT EXISTS idx_dimension_human_readable_field_id ON dimension (human_readable_field_id);
                   CREATE INDEX IF NOT EXISTS idx_metabase_database_creator_id ON metabase_database (creator_id);
                   CREATE INDEX IF NOT EXISTS idx_model_index_creator_id ON model_index (creator_id);
