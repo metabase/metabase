@@ -20,7 +20,7 @@
     ;; when table_privileges are implemented for all the actions drivers
     (when (contains? (methods driver/current-user-table-privileges) driver)
       (let [rows               (driver/current-user-table-privileges driver database)
-            schema+table->id   (t2/select-fn->pk (fn [t] {:schema (:schema t), :table (:name t)}) 'Table :db_id (:id database))
+            schema+table->id   (t2/select-fn->pk (fn [t] {:schema (:schema t), :table (:name t)}) :model/Table :db_id (:id database))
             rows-with-table-id (keep (fn [row]
                                        (when-let [table-id (get schema+table->id (select-keys row [:schema :table]))]
                                          (-> row
