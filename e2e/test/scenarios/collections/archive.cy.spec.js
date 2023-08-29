@@ -16,6 +16,7 @@ const getQuestionDetails = collectionId => ({
 describe("scenarios > collections > archive", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
   });
 
   it("should hide read-only archived items (metabase#24018)", () => {
@@ -23,7 +24,6 @@ describe("scenarios > collections > archive", () => {
     const CURATEABLE_NAME = "curate-able dashboard";
 
     // setup archive with read-only collection items
-    cy.signInAsAdmin();
     createAndArchiveDashboard({
       name: READ_ONLY_NAME,
       collection_id: null,
@@ -56,7 +56,6 @@ describe("scenarios > collections > archive", () => {
   });
 
   it("should load initially hidden archived items on scroll (metabase#24213)", () => {
-    cy.signInAsAdmin();
     const stubbedItems = Array.from({ length: 50 }, (v, i) => ({
       name: "Item " + i,
       id: i + 1,
@@ -80,7 +79,6 @@ describe("scenarios > collections > archive", () => {
   });
 
   it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
-    cy.signInAsAdmin();
     getCollectionIdFromSlug("first_collection", collectionId => {
       const questionDetails = getQuestionDetails(collectionId);
 
