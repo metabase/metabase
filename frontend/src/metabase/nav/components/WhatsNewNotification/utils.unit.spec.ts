@@ -10,6 +10,7 @@ const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
   return { latest, older };
 };
 
+// these args make should make the notification to appear
 const DEFAULTS: Parameters<typeof getLatestEligibleReleaseNotes>[0] = {
   isEmbedded: false,
   lastAcknowledgedVersion: null,
@@ -26,6 +27,23 @@ const DEFAULTS: Parameters<typeof getLatestEligibleReleaseNotes>[0] = {
 };
 
 describe("getLatestEligibleReleaseNotes", () => {
+  it("returns the latest eligible version when all conditions are satisfied", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+      }),
+    ).toHaveProperty("version", "v0.48.0");
+  });
+
+  it("should return nothing when embedded, even if other conditions are satisfied", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        isEmbedded: true,
+      }),
+    ).toBe(undefined);
+  });
+
   it("doesn't filter old versions if lastAck is null", () => {
     expect(
       getLatestEligibleReleaseNotes({
@@ -79,7 +97,7 @@ describe("getLatestEligibleReleaseNotes", () => {
     ).toHaveProperty("version", "v0.48.0");
   });
 
-  it("filters out future versions", () => {
+  it("filters out future versions - lastAcknowledgedVersion not null", () => {
     expect(
       getLatestEligibleReleaseNotes({
         versionInfo: buildVersionInfo([
@@ -93,6 +111,24 @@ describe("getLatestEligibleReleaseNotes", () => {
         ]),
         currentVersion: "v0.48.0",
         lastAcknowledgedVersion: "v0.47.0",
+      }),
+    ).toBe(undefined);
+  });
+
+  it("filters out future versions - lastAcknowledgedVersion  null", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        versionInfo: buildVersionInfo([
+          mockVersion({
+            version: "v0.49.0",
+            announcement_url: "url",
+          }),
+          mockVersion({
+            version: "v0.48.0",
+          }),
+        ]),
+        currentVersion: "v0.48.0",
+        lastAcknowledgedVersion: null,
       }),
     ).toBe(undefined);
   });
@@ -117,5 +153,23 @@ describe("getLatestEligibleReleaseNotes", () => {
         lastAcknowledgedVersion: "v0.47",
       }),
     ).toHaveProperty("version", "v0.49.1");
+  });
+
+  it("should return undefined when the current version is not defined", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        currentVersion: undefined,
+      }),
+    ).toBe(undefined);
+  });
+
+  it("should return undefined if the current version is not in version-info, for example for RCs", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        currentVersion: "v0.48.0-RC",
+      }),
+    ).toBe(undefined);
   });
 });
