@@ -12,6 +12,7 @@
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -94,6 +95,14 @@
      (if (mariadb? metadata)
        min-supported-mariadb-version
        min-supported-mysql-version)))
+
+(defn get-db-version [driver conn-spec]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   conn-spec
+   nil
+   (fn [^java.sql.Connection conn]
+     (db-version (.getMetaData conn)))))
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
@@ -668,3 +677,69 @@
           (qp.writeback/execute-write-sql! db-id sql))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/current-user-table-privileges :mysql
+  [driver database]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        version   (mysql/get-db-version driver conn-spec)]
+    (jdbc/query
+     conn-spec
+     (if (>= version 8)
+       (str/join
+        "\n"
+        ["WITH RECURSIVE user_roles AS ("
+         "    SELECT FROM_USER, FROM_HOST"
+         "    FROM mysql.role_edges"
+         "    WHERE TO_USER = SUBSTRING_INDEX(CURRENT_USER(), '@', 1) AND TO_HOST = SUBSTRING_INDEX(CURRENT_USER(), '@', -1)"
+         "    UNION"
+         "    SELECT re.FROM_USER, re.FROM_HOST"
+         "    FROM user_roles ur"
+         "    JOIN mysql.role_edges re ON ur.FROM_USER = re.TO_USER AND ur.FROM_HOST = re.TO_HOST"
+         ")"
+         ", combined_privileges AS ("
+         "    SELECT "
+         "      TABLE_SCHEMA, "
+         "      TABLE_NAME,"
+         "      PRIVILEGE_TYPE"
+         "    FROM information_schema.TABLE_PRIVILEGES"
+         "    WHERE GRANTEE IN (SELECT CONCAT('''', FROM_USER, '''@''', FROM_HOST, '''') FROM user_roles)"
+         "    UNION ALL"
+         "    SELECT TABLE_SCHEMA, TABLE_NAME, PRIVILEGE_TYPE"
+         "    FROM information_schema.TABLE_PRIVILEGES"
+         "    WHERE GRANTEE = CONCAT('''', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '''@''', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '''')"
+         ")"
+         "SELECT "
+         "    null as `role`,"
+         "    TABLE_SCHEMA as `schema`, "
+         "    TABLE_NAME as `table`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'SELECT', 1, 0)) > 0, TRUE, FALSE) AS `select`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'UPDATE', 1, 0)) > 0, TRUE, FALSE) AS `update`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'INSERT', 1, 0)) > 0, TRUE, FALSE) AS `insert`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'DELETE', 1, 0)) > 0, TRUE, FALSE) AS `delete`"
+         "FROM "
+         "    combined_privileges"
+         "WHERE "
+         "    TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+         "GROUP BY "
+         "    TABLE_SCHEMA, TABLE_NAME"
+         "HAVING "
+         "    `select` OR `update` OR `insert` OR `delete`;"])
+       (str/join
+        "\n"
+        ["SELECT "
+         "    NULL as `role`,"
+         "    TABLE_SCHEMA as `schema`,"
+         "    TABLE_NAME as `table`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'SELECT', 1, 0)) > 0, TRUE, FALSE) AS `select`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'UPDATE', 1, 0)) > 0, TRUE, FALSE) AS `update`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'INSERT', 1, 0)) > 0, TRUE, FALSE) AS `insert`,"
+         "    IF(SUM(IF(PRIVILEGE_TYPE = 'DELETE', 1, 0)) > 0, TRUE, FALSE) AS `delete`"
+         "FROM"
+         "    information_schema.TABLE_PRIVILEGES"
+         "WHERE"
+         "    GRANTEE = CONCAT('''', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '''@''', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '''')"
+         "AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+         "GROUP BY"
+         "    TABLE_SCHEMA, TABLE_NAME"
+         "HAVING"
+         "    `select` OR `update` OR `insert` OR `delete`;"])))))
