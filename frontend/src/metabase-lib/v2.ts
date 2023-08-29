@@ -14,6 +14,7 @@ export * from "./filter";
 export * from "./join";
 export * from "./limit";
 export * from "./metadata";
+export * from "./native";
 export * from "./segments";
 export * from "./metrics";
 export * from "./order_by";

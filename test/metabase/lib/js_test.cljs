@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel query=-test
@@ -60,8 +61,7 @@
           basic-query  #js {"type"  "query"
                             "query" #js {"joins" #js [join]}}
           classy-query #js {"type"  "query"
-                            "query" #js {"joins" #js [join-class]}}
-          ]
+                            "query" #js {"joins" #js [join-class]}}]
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
@@ -74,3 +74,14 @@
               {:lib/type :option/join.strategy, :strategy :right-join}
               {:lib/type :option/join.strategy, :strategy :inner-join}]
              (vec strategies))))))
+
+(deftest ^:parallel required-native-extras-test
+  (let [db                (update meta/database :features conj :native-requires-specified-collection)
+        metadata-provider (lib.tu/mock-metadata-provider {:database db})
+        extras            (lib.js/required-native-extras (:id db) metadata-provider)]
+    ;; apparently #js ["collection"] is not equal to #js ["collection"]
+    (is (= js/Array
+           (type extras))
+        "should be a JS array")
+    (is (= ["collection"]
+           (js->clj extras)))))
