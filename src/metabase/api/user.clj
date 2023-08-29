@@ -160,19 +160,30 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
-(defn- group-ids-for-user
-  "Given a `user-id` return a list of group-ids of which the user is a member."
+(defn- group-ids-for-manager
+  "Given a `user-id` return a list of group-ids of which the user is a group manager."
   [user-id]
   (map :group_id
        (t2/query
         {:select-distinct [:permissions_group_membership.group_id]
          :from  [:permissions_group_membership]
          :where [:and [:= :permissions_group_membership.user_id user-id]
+                 [:= :permissions_group_membership.is_group_manager true]
                  [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]})))
+
+(defn- check-manager-of-group
+  "Check that the `*current-user*` is a manager of the group with id `group-id`, or throw a 403."
+  [group-id]
+  {:pre [(integer? group-id)]}
+  (api/check-403
+   (or
+    api/*is-superuser?*
+    ((set (group-ids-for-manager api/*current-user-id*)) group-id))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
-  "Fetch a list of `Users`. By default returns every active user but only active users.
+  "Fetch a list of `Users` for admins or group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is managing for group-managers.
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
@@ -192,23 +203,20 @@
      group_id            (s/maybe su/IntGreaterThanZero)
      include_deactivated (s/maybe su/BooleanString)}
   (validation/check-group-manager)
-  (when (or status include_deactivated)
-    (validation/check-group-manager))
+  (when group_id
+    (check-manager-of-group group_id))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)
-        manager-group-ids   (set (group-ids-for-user api/*current-user-id*))
+        manager-group-ids   (set (group-ids-for-manager api/*current-user-id*))
         group-id-clause     (cond
                               ;; superuser can see anything, so group_id clause is ok
-                              (and api/*is-superuser?* (some? group_id))                 [group_id]
-                              ;; group manager can only see users from groups they are a member of
-                              ;; so only show the group-id if the manager is part of that group
-                              (and api/*is-group-manager?* (manager-group-ids group_id)) [group_id]
+                              (and api/*is-superuser?* group_id) [group_id]
                               ;; otherwise, if the user is a group manager, only show them users in the groups they manage
-                              api/*is-group-manager?*                                    (vec manager-group-ids))
+                              api/*is-group-manager?*            (vec manager-group-ids))
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons User (user-visible-columns)))
                     (cond-> clauses
-                      (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
                       true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
