@@ -11,6 +11,9 @@
 (set! *warn-on-reflection* true)
 
 (deftest sync-table-privileges!-test
+  ;; TODO: The following expression should be replaced by
+  ;; (mt/test-drivers (mt/normal-drivers-with-feature :actions) ...)
+  ;; when table_privileges are implemented for all the actions drivers
   (mt/test-drivers #{:postgres}
     (testing "`TablePrivileges` should store the correct data for current_user and role privileges for postgres"
       (mt/with-model-cleanup [:model/Field :model/Table :model/Database :model/TablePrivileges]

@@ -16,6 +16,8 @@
    This is a cache of the data returned from `driver/table-privileges`, but it's stored in the database for performance."
   [database :- (mi/InstanceOf :model/Database)]
   (let [driver (driver.u/database->driver database)]
+    ;; The following expression should be replaced by (when (driver/supports? :actions driver) ...)
+    ;; when table_privileges are implemented for all the actions drivers
     (when (contains? (methods driver/current-user-table-privileges) driver)
       (let [rows               (driver/current-user-table-privileges driver database)
             schema+table->id   (t2/select-fn->pk (fn [t] {:schema (:schema t), :table (:name t)}) 'Table :db_id (:id database))
