@@ -411,9 +411,9 @@
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
-(defn- construct-pulse-email [subject recipient message]
+(defn- construct-pulse-email [subject recipients message]
   {:subject      subject
-   :recipients   [recipient]
+   :recipients   recipients
    :message-type :attachments
    :message      message})
 
@@ -427,10 +427,9 @@
                                                          (nil? (:id recipient)))) recipients)
         timezone            (->> parts (some :card) defaulted-timezone)
         dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
-        email-to-users      (for [user (map :email user-recipients)]
-                              (construct-pulse-email (subject pulse) user (messages/render-pulse-email timezone pulse dashboard parts nil)))
+        email-to-users      (construct-pulse-email (subject pulse) (map :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
+                              (construct-pulse-email (subject pulse) [non-user] (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
     (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:pulse :slack]
@@ -459,10 +458,9 @@
                                                          (nil? (:id recipient)))) (:recipients channel))
         first-part          (some :card parts)
         timezone            (defaulted-timezone first-part)
-        email-to-users      (for [user (map :email user-recipients)]
-                              (construct-pulse-email email-subject user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))
+        email-to-users      (construct-pulse-email email-subject (map :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email email-subject non-user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))]
+                              (construct-pulse-email email-subject [non-user] (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) non-user)))]
        (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:alert :slack]

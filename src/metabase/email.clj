@@ -132,7 +132,7 @@
                   {:from    (if-let [from-name (email-from-name)]
                               (str from-name " <" (email-from-address) ">")
                               (email-from-address))
-                   :to      recipients
+                   :bcc     recipients
                    :subject subject
                    :body    (case message-type
                               :attachments message
