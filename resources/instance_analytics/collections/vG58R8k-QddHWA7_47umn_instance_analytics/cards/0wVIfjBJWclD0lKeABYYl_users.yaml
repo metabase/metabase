@@ -1,6 +1,6 @@
-description: All Metabase users include active and deactivated users.
+description: All Metabase users including active and deactivated users.
 archived: false
-collection_position: 4
+collection_position: 6
 table_id:
 - Internal Metabase Database
 - public
@@ -50,7 +50,7 @@ result_metadata:
   display_name: Email
   fingerprint:
     global:
-      distinct-count: 171
+      distinct-count: 2
       nil%: 0
     type:
       type/Text:
@@ -58,7 +58,7 @@ result_metadata:
         percent-url: 0
         percent-email: 1
         percent-state: 0
-        average-length: 19.444444444444443
+        average-length: 19.5
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -82,7 +82,7 @@ result_metadata:
   display_name: First Name
   fingerprint:
     global:
-      distinct-count: 146
+      distinct-count: 2
       nil%: 0
     type:
       type/Text:
@@ -90,7 +90,7 @@ result_metadata:
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 5.385964912280702
+        average-length: 4.5
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -114,15 +114,15 @@ result_metadata:
   display_name: Last Name
   fingerprint:
     global:
-      distinct-count: 156
-      nil%: 0.005847953216374269
+      distinct-count: 2
+      nil%: 0
     type:
       type/Text:
         percent-json: 0
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 6.918128654970761
+        average-length: 6
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -146,7 +146,7 @@ result_metadata:
   display_name: Full Name
   fingerprint:
     global:
-      distinct-count: 167
+      distinct-count: 5
       nil%: 0
     type:
       type/Text:
@@ -154,7 +154,7 @@ result_metadata:
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 13.304093567251462
+        average-length: 9.8
   base_type: type/Text
 - description: null
   semantic_type: type/JoinTimestamp
@@ -179,12 +179,12 @@ result_metadata:
   display_name: Date Joined
   fingerprint:
     global:
-      distinct-count: 171
+      distinct-count: 2
       nil%: 0
     type:
       type/DateTime:
-        earliest: '2015-10-24T05:35:13.572Z'
-        latest: '2023-06-06T14:32:10.450322Z'
+        earliest: '2023-06-08T14:02:23.48704Z'
+        latest: '2023-06-08T14:42:49.058862Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: null
@@ -209,12 +209,12 @@ result_metadata:
   display_name: Last Login
   fingerprint:
     global:
-      distinct-count: 162
-      nil%: 0.05847953216374269
+      distinct-count: 2
+      nil%: 0.5
     type:
       type/DateTime:
-        earliest: '2015-10-26T23:45:47.75Z'
-        latest: '2023-06-08T14:08:03.174875Z'
+        earliest: '2023-06-09T13:37:55.93202Z'
+        latest: '2023-06-09T13:37:55.93202Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -239,12 +239,12 @@ result_metadata:
   display_name: Updated At
   fingerprint:
     global:
-      distinct-count: 171
+      distinct-count: 2
       nil%: 0
     type:
       type/DateTime:
-        earliest: '2015-10-24T05:35:13.572Z'
-        latest: '2023-06-08T14:29:14.08249Z'
+        earliest: '2023-06-08T14:42:59.563714Z'
+        latest: '2023-06-09T17:27:11.418799Z'
   base_type: type/DateTime
 - description: null
   semantic_type: type/Category
@@ -268,7 +268,7 @@ result_metadata:
   display_name: Is Admin
   fingerprint:
     global:
-      distinct-count: 2
+      distinct-count: 1
       nil%: 0
   base_type: type/Boolean
 - description: null
@@ -318,15 +318,15 @@ result_metadata:
   display_name: Sso Source
   fingerprint:
     global:
-      distinct-count: 2
-      nil%: 0.5204678362573099
+      distinct-count: 1
+      nil%: 1
     type:
       type/Text:
         percent-json: 0
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 2.8771929824561404
+        average-length: 0
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -350,15 +350,15 @@ result_metadata:
   display_name: Locale
   fingerprint:
     global:
-      distinct-count: 2
-      nil%: 0.9707602339181287
+      distinct-count: 1
+      nil%: 1
     type:
       type/Text:
         percent-json: 0
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 0.05847953216374269
+        average-length: 0
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false
