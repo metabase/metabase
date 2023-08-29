@@ -44,6 +44,24 @@ describe("getLatestEligibleReleaseNotes", () => {
     ).toBe(undefined);
   });
 
+  it("should ignore versions without the annoucement_url", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        currentVersion: "v0.48.2",
+        versionInfo: buildVersionInfo([
+          mockVersion({ version: "v0.48.2" }),
+          mockVersion({ version: "v0.48.1" }),
+          mockVersion({
+            version: "v0.48.0",
+            announcement_url: "https://metabase.com/releases/48",
+          }),
+          mockVersion({ version: "v0.47.0" }),
+        ]),
+      }),
+    ).toHaveProperty("version", "v0.48.0");
+  });
+
   it("doesn't filter old versions if lastAck is null", () => {
     expect(
       getLatestEligibleReleaseNotes({

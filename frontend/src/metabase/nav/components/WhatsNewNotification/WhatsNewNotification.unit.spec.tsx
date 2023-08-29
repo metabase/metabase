@@ -65,62 +65,6 @@ describe("WhatsNewNotification", () => {
       setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.47.0" });
       expect(notification()).toBeInTheDocument();
     });
-
-    it("should NOT show the notification if the current version is not in version-info, for example for RCs", () => {
-      setup({
-        currentVersion: "v0.48.0-RC",
-        lastAcknowledged: "v0.47.0",
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification if the current version has been acknowledged", () => {
-      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for releases older than the acknowledged one", () => {
-      setup({
-        currentVersion: "v0.48.0",
-        lastAcknowledged: "v0.47.0",
-        versions: [
-          mockVersion({
-            version: "v0.46.0",
-            announcement_url: "https://metabase.com/releases/46",
-          }),
-        ],
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should show the notification if the last acknowledged version is more than 1 major old", () => {
-      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.46.0" });
-      expect(notification()).toBeInTheDocument();
-    });
-
-    it("should NOT show the notification in case of downgrades (announcement_url only in the future releases)", () => {
-      setup({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for a minor upgrade that doesn't have a release url", () => {
-      setup({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for a release greater than the current", () => {
-      setup({ currentVersion: "v0.46.0", lastAcknowledged: "v0.45.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification if metabase is embedded", () => {
-      setup({
-        isEmbedded: true,
-        currentVersion: "v0.48.0",
-        lastAcknowledged: null,
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
   });
 
   describe("link behaviour", () => {
