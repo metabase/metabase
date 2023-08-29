@@ -322,7 +322,7 @@
              (some? value)
              (= (:lib/source column) :source/aggregations)
              (-> (lib.aggregation/aggregations query stage-number) count pos?))
-    (let [pivot-types (case (mapv #(breakout-type query stage-number %)
+    (let [pivots      (case (mapv #(breakout-type query stage-number %)
                                   (lib.breakout/breakouts query stage-number))
                         ([:date]
                          [:date :category])     #{:category :location}
@@ -331,11 +331,11 @@
                          [:category]
                          [:category :category]) #{:category :location :time}
                         #{})
-          by-category (when (pivot-types :category)
+          by-category (when (pivots :category)
                         (pivot-by-category-drill query stage-number context))
-          by-location (when (pivot-types :location)
+          by-location (when (pivots :location)
                         (pivot-by-location-drill query stage-number context))
-          by-time     (when (pivot-types :time)
+          by-time     (when (pivots :time)
                         (pivot-by-time-drill     query stage-number context))
           pivots      (merge (when (seq by-category) {:category by-category})
                              (when (seq by-location) {:location by-location})

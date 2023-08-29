@@ -3,14 +3,9 @@
     #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
     [clojure.test :refer [deftest is testing]]
     [metabase.lib.core :as lib]
-    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-    [metabase.lib.options :as lib.options]
     [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(defn- by-name [cols nam]
-  (first (filter #(= (:name %) nam) cols)))
 
 (deftest ^:parallel table-view-available-drill-thrus-test
   (testing "table view"
@@ -255,7 +250,10 @@
                                                        :value  "2018-05-15T08:04:04.58Z"
                                                        :row    row}))))))))
 
+
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
+#_(defn- by-name [cols nam]
+  (first (filter #(= (:name %) nam) cols)))
 #_(deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
