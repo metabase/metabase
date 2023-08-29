@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockVersion,
@@ -8,9 +9,11 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { WhatsNewNotification } from "./WhatsNewNotification";
+
+const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
 
 const notification = () => screen.queryByText("See what's new");
 
@@ -71,6 +74,19 @@ describe("WhatsNewNotification", () => {
     it("should have target blank", () => {
       setup({});
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
+
+    it("should call the backend when clicking dismiss", async () => {
+      fetchMock.put(LAST_ACK_SETTINGS_URL, {});
+      setup({});
+
+      screen.getByRole("button").click();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.called(LAST_ACK_SETTINGS_URL, { method: "PUT" }),
+        ).toBeTruthy();
+      });
     });
 
     it("should link the most recent release if two versions have the release notes", () => {
