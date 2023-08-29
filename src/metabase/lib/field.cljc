@@ -170,30 +170,32 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-;;; TODO -- effective type should be affected by `temporal-unit`, right?
-(defmethod lib.metadata.calculation/metadata-method :field
+(defn extend-column-metadata-from-ref
+  "Extend column metadata `metadata` with information specific to `field-ref` in `query` at stage `stage-number`.
+  `metadata` should be the metadata of a resolved field or a visible column matching `field-ref`."
   [query
    stage-number
+   metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+  (let [metadata (merge
+                  {:lib/type        :metadata/column
+                   :lib/source-uuid source-uuid}
+                  metadata
+                  {:display-name (or (:display-name opts)
+                                     (lib.metadata.calculation/display-name query stage-number field-ref))})]
+    (cond-> metadata
+      effective-type (assoc :effective-type effective-type)
+      base-type      (assoc :base-type base-type)
+      temporal-unit  (assoc ::temporal-unit temporal-unit)
+      binning        (assoc ::binning binning)
+      source-field   (assoc :fk-field-id source-field)
+      join-alias     (lib.join/with-join-alias join-alias))))
+
+;;; TODO -- effective type should be affected by `temporal-unit`, right?
+(defmethod lib.metadata.calculation/metadata-method :field
+  [query stage-number field-ref]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
-        metadata       (merge
-                        {:lib/type        :metadata/column
-                         :lib/source-uuid source-uuid}
-                        field-metadata
-                        {:display-name (or (:display-name opts)
-                                           (lib.metadata.calculation/display-name query stage-number field-ref))}
-                        (when effective-type
-                          {:effective-type effective-type})
-                        (when base-type
-                          {:base-type base-type})
-                        (when temporal-unit
-                          {::temporal-unit temporal-unit})
-                        (when binning
-                          {::binning binning})
-                        (when source-field
-                          {:fk-field-id source-field}))
-        metadata       (cond-> metadata
-                         join-alias (lib.join/with-join-alias join-alias))]
+        metadata       (extend-column-metadata-from-ref query stage-number field-metadata field-ref)]
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
