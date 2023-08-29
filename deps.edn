@@ -272,7 +272,7 @@
 
   ;; alias for CI-specific options.
   :ci
-  {:jvm-opts ["-Xmx2g"
+  {:jvm-opts ["-Xmx16g"
               ;; normally CircleCI sets `CI` as an env var, so this is mostly to replicate that locally. Hawk will not
               ;; print the progress bar in output when this is set. Progress bars aren't very CI friendly
               "-Dci=TRUE"]}
@@ -480,7 +480,7 @@
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"
               ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
-              "-Xmx4g"]}
+              "-Xmx16g"]}
 
 ;;; building Uberjar, build and release scripts
 
