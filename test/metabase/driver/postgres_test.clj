@@ -1230,27 +1230,27 @@
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
           (try
-            (jdbc/execute! conn-spec (str "CREATE SCHEMA foo;"
-                                          "CREATE TABLE foo.bar (id INTEGER);"
-                                          "CREATE TABLE foo.baz (id INTEGER);"
+            (jdbc/execute! conn-spec (str "CREATE SCHEMA \"dotted.schema\";"
+                                          "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
+                                          "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
                                           "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                          "GRANT SELECT ON foo.baz TO privilege_rows_test_example_role;"
-                                          "GRANT UPDATE ON foo.baz TO privilege_rows_test_example_role;"))
+                                          "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                          "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"))
             (testing "check that without USAGE privileges on the schema, nothing is returned"
               (is (= []
                      (get-privileges))))
             (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA foo TO privilege_rows_test_example_role;")
+              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
               (is (= [{:role   nil
-                       :schema "foo",
-                       :table  "baz",
+                       :schema "dotted.schema",
+                       :table  "dotted.table",
                        :select true,
                        :update true,
                        :insert false,
                        :delete false}]
                      (get-privileges))))
             (finally
-              (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE foo.baz FROM privilege_rows_test_example_role;"
-                            "REVOKE ALL PRIVILEGES ON SCHEMA foo FROM privilege_rows_test_example_role;"
+              (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE \"dotted.schema\".\"dotted.table\" FROM privilege_rows_test_example_role;"
+                            "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
