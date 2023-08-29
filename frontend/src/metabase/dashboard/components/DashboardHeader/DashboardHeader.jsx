@@ -42,8 +42,8 @@ import { getSetting } from "metabase/selectors/settings";
 import Link from "metabase/core/components/Link/Link";
 import Collections from "metabase/entities/collections/collections";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { DashboardHeaderComponent } from "../components/DashboardHeader";
-import { SIDEBAR_NAME } from "../constants";
+import { SIDEBAR_NAME } from "../../constants";
+import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
@@ -73,7 +73,7 @@ const mapDispatchToProps = {
   addActionToDashboard,
 };
 
-class DashboardHeader extends Component {
+class DashboardHeaderContainer extends Component {
   constructor(props) {
     super(props);
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
@@ -568,10 +568,10 @@ class DashboardHeader extends Component {
   }
 }
 
-export default _.compose(
+export const DashboardHeader = _.compose(
   Bookmark.loadList(),
   Collections.load({
     id: (state, props) => props.dashboard.collection_id || "root",
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(DashboardHeader);
+)(DashboardHeaderContainer);
