@@ -7,15 +7,11 @@ import type { Location } from "history";
 import { color } from "metabase/lib/colors";
 import type { Collection, Dashboard } from "metabase-types/api";
 
-import { Icon } from "metabase/core/components/Icon";
 import EditBar from "metabase/components/EditBar";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import {
-  getCollectionIcon,
-  getCollectionTooltip,
-} from "metabase/entities/collections";
+
 import {
   EditWarning,
   HeaderRow,
@@ -128,13 +124,11 @@ export function DashboardHeaderComponent({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
-              {isInstanceAnalyticsCollection(collection) && (
-                <Icon
-                  {...getCollectionIcon(collection)}
-                  color={color("brand")}
-                  tooltip={getCollectionTooltip(collection, "dashboard")}
-                />
-              )}
+              <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                color={color("brand")}
+                collection={collection}
+                entity="dashboard"
+              />
             </HeaderCaptionContainer>
             <HeaderBadges>
               {isLastEditInfoVisible && (

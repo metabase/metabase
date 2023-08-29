@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
@@ -6,7 +5,6 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   isRootCollection,
   isPersonalCollection,
-  isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -35,42 +33,16 @@ export function getCollectionIcon(
     return { name: "person" };
   }
 
-  if (isInstanceAnalyticsCollection(collection)) {
-    return { name: "beaker" };
-  }
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
 
-  const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
-
-  return authorityLevel
+  return type
     ? {
-        name: authorityLevel.icon as unknown as IconName,
-        color: authorityLevel.color ? color(authorityLevel.color) : undefined,
-        tooltip: authorityLevel.tooltips?.[tooltip],
+        name: type.icon as unknown as IconName,
+        color: type.color ? color(type.color) : undefined,
+        tooltip: type.tooltips?.[tooltip],
       }
     : { name: "folder" };
 }
-
-const collectionIconTooltipNameMap = {
-  collection: t`collection`,
-  question: t`question`,
-  model: t`model`,
-  dashboard: t`dashboard`,
-};
-
-export const getCollectionTooltip = (
-  collection: Partial<Collection>,
-  entity: "collection" | "question" | "model" | "dashboard" = "collection",
-) => {
-  const entityText = collectionIconTooltipNameMap[entity];
-
-  switch (collection.type) {
-    case "instance-analytics":
-      return t`This is a read-only Instance Analytics ${entityText}.`;
-    default:
-      return undefined;
-  }
-};
 
 export function getCollectionType(
   collectionId: Collection["id"] | undefined,
