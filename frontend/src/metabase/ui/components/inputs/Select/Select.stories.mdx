@@ -165,3 +165,29 @@ ErrorMd.args = {
 <Canvas>
   <Story name="Error, md">{ErrorMd}</Story>
 </Canvas>
+
+#### Icons
+
+export const IconsMd = VariantTemplate.bind({});
+IconsMd.args = {
+  data: dataWithIcons,
+  description: sampleArgs.description,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Icons, md">{IconsMd}</Story>
+</Canvas>
+
+#### Groups
+
+export const GroupsMd = VariantTemplate.bind({});
+GroupsMd.args = {
+  data: dataWithGroups,
+  description: sampleArgs.description,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Groups, md">{GroupsMd}</Story>
+</Canvas>
