@@ -1,4 +1,4 @@
-import type { EChartsConfig, EChartsMixin, VisualizationProps } from "../types";
+import type { EChartsConfig, EChartsMixin, IsomorphicVizProps } from "../types";
 
 export function useEChartsConfig({
   chartType,
@@ -6,7 +6,7 @@ export function useEChartsConfig({
   mixins,
 }: {
   chartType: any;
-  props: VisualizationProps;
+  props: IsomorphicVizProps;
   mixins: EChartsMixin[];
 }) {
   const emptyConfig: EChartsConfig = {

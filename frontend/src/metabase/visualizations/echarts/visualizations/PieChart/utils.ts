@@ -2,24 +2,28 @@ import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import type { VisualizationProps } from "metabase/visualizations/types";
-import {
-  DEFAULT_SLICE_THRESHOLD,
-  OTHER_SLICE_MIN_PERCENTAGE,
-} from "metabase/visualizations/visualizations/PieChart/constants";
+import type { IsomorphicVizProps } from "metabase/visualizations/types";
+// import {
+//   DEFAULT_SLICE_THRESHOLD,
+//   OTHER_SLICE_MIN_PERCENTAGE,
+// } from "metabase/visualizations/visualizations/PieChart/constants";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
-export function getDimensionIndex(props: VisualizationProps) {
+// TODO import these from constants after fixing webpack shenanegians
+const DEFAULT_SLICE_THRESHOLD = 0.025;
+const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
+
+export function getDimensionIndex(props: IsomorphicVizProps) {
   return props.settings["pie._dimensionIndex"];
 }
 
-export function getMetricIndex(props: VisualizationProps) {
+export function getMetricIndex(props: IsomorphicVizProps) {
   return props.settings["pie._metricIndex"];
 }
 
 // TODO fix type errors
-export function getSlices({ props }: { props: VisualizationProps }) {
+export function getSlices({ props }: { props: IsomorphicVizProps }) {
   const {
     settings,
     data: { rows },
@@ -97,7 +101,7 @@ export function formatDimension({
   props,
 }: {
   value: any;
-  props: VisualizationProps;
+  props: IsomorphicVizProps;
 }) {
   const dimensionIndex = getDimensionIndex(props);
 
@@ -113,7 +117,7 @@ export function formatMetric({
   props,
 }: {
   value: any;
-  props: VisualizationProps;
+  props: IsomorphicVizProps;
 }) {
   const metricIndex = getMetricIndex(props);
 

@@ -3,7 +3,7 @@ import RowChart from "metabase/static-viz/components/RowChart";
 import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
 import Gauge from "metabase/static-viz/components/Gauge";
 import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
-import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
+import { PieChart } from "metabase/static-viz/components/PieChart/PieChart";
 import { CATEGORICAL_DONUT_CHART_TYPE } from "metabase/static-viz/components/CategoricalDonutChart/constants";
 import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
 import { WATERFALL_CHART_TYPE } from "metabase/static-viz/components/WaterfallChart/constants";
@@ -21,8 +21,9 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
   const chartProps = { ...options, getColor };
 
   switch (type) {
+    // TODO rename this
     case CATEGORICAL_DONUT_CHART_TYPE:
-      return <CategoricalDonutChart {...chartProps} />;
+      return <PieChart {...chartProps} />;
     case WATERFALL_CHART_TYPE:
       return <WaterfallChart {...chartProps} />;
     case GAUGE_CHART_TYPE:

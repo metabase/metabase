@@ -21,9 +21,14 @@ export type EChartsConfig = {
   zrEventHandlers: ZREventHandler[];
 };
 
+export type IsomorphicVizProps = Partial<VisualizationProps> & {
+  settings: VisualizationProps["settings"];
+  data: VisualizationProps["data"];
+};
+
 export type EChartsMixin = (params: {
   chartType: any; // TODO better type
-  props: VisualizationProps;
+  props: IsomorphicVizProps;
   option: EChartsOption;
 }) => {
   option: EChartsOption;

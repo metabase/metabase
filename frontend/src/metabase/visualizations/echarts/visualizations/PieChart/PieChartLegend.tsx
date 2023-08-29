@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type { IsomorphicVizProps } from "metabase/visualizations/types";
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
 
 import {
@@ -11,7 +11,7 @@ import { formatDimension, getSlices } from "./utils";
 import type { OnChartDimensionChange } from "./utils";
 
 export function PieChartLegend(
-  props: VisualizationProps & {
+  props: IsomorphicVizProps & {
     onChartDimensionChange: OnChartDimensionChange;
     children: ReactNode;
   },
@@ -35,6 +35,7 @@ export function PieChartLegend(
   const legendColors = slices.map(s => s.color);
 
   return (
+    // TODO provide defaults for undefined props for static viz
     <ChartWithLegend
       className={props.className}
       legendTitles={legendTitles}

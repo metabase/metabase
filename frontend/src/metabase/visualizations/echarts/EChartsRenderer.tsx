@@ -16,6 +16,10 @@ export function EChartsRenderer({
   width,
   height,
 }: EChartsRendererProps) {
+  console.log("option", option);
+  console.log("width", width);
+  console.log("height", height);
+
   const chartElemRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
 
