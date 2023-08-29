@@ -7,10 +7,9 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { Anchor, Flex, Stack, Text } from "metabase/ui";
+import { Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
-import { NotificationContainer } from "./WhatsNewNotification.styled";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
@@ -45,7 +44,7 @@ export function WhatsNewNotification() {
     return null;
   }
   return (
-    <NotificationContainer>
+    <Paper m="lg" p="md" shadow="md" withBorder>
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
@@ -66,6 +65,6 @@ export function WhatsNewNotification() {
           {t`See what's new`}
         </Anchor>
       </Stack>
-    </NotificationContainer>
+    </Paper>
   );
 }
