@@ -97,7 +97,7 @@ Not to use:
 
 ## Examples
 
-export const Default = args => (
+export const DefaultTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -115,13 +115,7 @@ export const Default = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Right section
-
-export const RightSection = args => (
+export const RightSectionTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -141,13 +135,7 @@ export const RightSection = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="Right section">{RightSection}</Story>
-</Canvas>
-
-### Icons
-
-export const Icons = args => (
+export const IconsTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -165,13 +153,7 @@ export const Icons = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="Icons">{Icons}</Story>
-</Canvas>
-
-### Labels and dividers
-
-export const LabelsAndDividers = args => (
+export const LabelsAndDividersTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -196,6 +178,32 @@ export const LabelsAndDividers = args => (
     </Menu>
   </Flex>
 );
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Right section
+
+export const RightSection = RightSectionTemplate.bind({});
+
+<Canvas>
+  <Story name="Right section">{RightSection}</Story>
+</Canvas>
+
+### Icons
+
+export const Icons = IconsTemplate.bind({});
+
+<Canvas>
+  <Story name="Icons">{Icons}</Story>
+</Canvas>
+
+### Labels and dividers
+
+export const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
 
 <Canvas>
   <Story name="Labels and dividers">{LabelsAndDividers}</Story>

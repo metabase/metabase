@@ -47,24 +47,9 @@ Radio buttons allow users to select a single option from a list of mutually excl
 
 ## Examples
 
-export const Template = args => (
-  <Stack>
-    <Radio {...args} label="Default radio" />
-    <Radio {...args} label="Checked radio" checked />
-    <Radio {...args} label="Disabled radio" disabled />
-    <Radio {...args} label="Disabled checked radio" disabled checked />
-  </Stack>
-);
+export const DefaultTemplate = args => <Radio {...args} />;
 
-export const Default = args => <Radio {...args} />;
-
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### Radio.Group
-
-export const RadioGroup = args => (
+export const RadioGroupTemplate = args => (
   <Radio.Group
     defaultValue={"react"}
     label="An array of good frameworks"
@@ -79,13 +64,32 @@ export const RadioGroup = args => (
   </Radio.Group>
 );
 
+export const StateTemplate = args => (
+  <Stack>
+    <Radio {...args} label="Default radio" />
+    <Radio {...args} label="Checked radio" defaultChecked />
+    <Radio {...args} label="Disabled radio" disabled />
+    <Radio {...args} label="Disabled checked radio" disabled defaultChecked />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Radio.Group
+
+export const RadioGroup = RadioGroupTemplate.bind({});
+
 <Canvas>
   <Story name="Radio group">{RadioGroup}</Story>
 </Canvas>
 
 ### Label
 
-export const Label = args => <Template {...args} />;
+export const Label = StateTemplate.bind({});
 
 <Canvas>
   <Story name="Label">{Label}</Story>
@@ -93,30 +97,42 @@ export const Label = args => <Template {...args} />;
 
 #### Left label position
 
-export const LabelLeft = args => <Template {...args} labelPosition="left" />;
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
 
 <Canvas>
-  <Story name="Label, left position">{LabelLeft}</Story>
+  <Story name="Label, left position" args={LabelLeft.args}>
+    {LabelLeft}
+  </Story>
 </Canvas>
 
 ### Description
 
-export const Description = args => (
-  <Template {...args} description="Description" />
-);
+export const Description = StateTemplate.bind({});
+Description.args = {
+  description: "Description",
+};
 
 <Canvas>
-  <Story name="Description">{Description}</Story>
+  <Story name="Description" args={Description.args}>
+    {Description}
+  </Story>
 </Canvas>
 
-export const DescriptionLeft = args => (
-  <Template {...args} description="Description" labelPosition="left" />
-);
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  description: "Description",
+  labelPosition: "left",
+};
 
 #### Left label position
 
 <Canvas>
-  <Story name="Description, left position">{DescriptionLeft}</Story>
+  <Story name="Description, left position" args={DescriptionLeft.args}>
+    {DescriptionLeft}
+  </Story>
 </Canvas>
 
 ## Related components
