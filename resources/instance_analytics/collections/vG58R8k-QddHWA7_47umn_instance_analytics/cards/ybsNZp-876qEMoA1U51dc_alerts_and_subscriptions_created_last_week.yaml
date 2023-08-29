@@ -1,0 +1,66 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_alerts_subscriptions
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Alerts and subscriptions created last week
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table: 5ojUtU9iE-DCggHdFPIll
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - created_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    joins:
+    - fields: all
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_alerts_subscriptions
+          - creator_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - join-alias: Question 34
+      alias: Question 34
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: ybsNZp-876qEMoA1U51dc
+  label: alerts_and_subscriptions_created_last_week
+display: smartscalar
+entity_id: ybsNZp-876qEMoA1U51dc
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - created_at
+  - group_name
+  graph.metrics:
+  - count
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-14T19:55:26.986705Z'
+public_uuid: null
