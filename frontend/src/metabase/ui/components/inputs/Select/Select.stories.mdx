@@ -51,6 +51,7 @@ export const args = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
+  dropdownPosition: "flip",
 };
 
 export const sampleArgs = {
@@ -87,6 +88,10 @@ export const argTypes = {
   },
   withAsterisk: {
     control: { type: "boolean" },
+  },
+  dropdownPosition: {
+    options: ["bottom", "top", "flip"],
+    control: { type: "inline-radio" },
   },
 };
 
