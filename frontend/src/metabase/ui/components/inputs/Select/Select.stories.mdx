@@ -1,10 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Select } from "metabase/ui";
-
-export const args = {
-  size: "md",
-  placeholder: "No semantic type",
-};
+import { Select, Stack } from "metabase/ui";
 
 export const dataWithGroups = [
   { value: 1, label: "Entity key", group: "Overall row" },
@@ -23,13 +18,32 @@ export const dataWithLabels = dataWithIcons.map(item => ({
   icon: undefined,
 }));
 
+export const args = {
+  data: dataWithLabels,
+  size: "md",
+  label: "Type",
+  placeholder: "No semantic type",
+  withAsterisk: false,
+};
+
+export const sampleArgs = {
+  value: 3,
+  description: "Determines how Metabase displays the field",
+};
+
 export const argTypes = {
+  data: {
+    control: { type: "json" },
+  },
   size: {
     options: ["xs", "md"],
     control: { type: "inline-radio" },
   },
   placeholder: {
     control: { type: "text" },
+  },
+  withAsterisk: {
+    control: { type: "boolean" },
   },
 };
 
@@ -51,12 +65,49 @@ Our themed wrapper around [Mantine Select](https://mantine.dev/core/select/).
 
 ## Examples
 
-export const DefaultTemplate = args => (
-  <Select {...args} data={dataWithLabels} initiallyOpened />
+export const DefaultTemplate = args => <Select {...args} />;
+
+export const VariantTemplate = args => (
+  <Stack>
+    <Select {...args} />
+    <Select {...args} variant="unstyled" />
+  </Stack>
 );
 
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = VariantTemplate.bind({});
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskMd = VariantTemplate.bind({});
+AsteriskMd.args = {
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Asterisk, md">{AsteriskMd}</Story>
+</Canvas>
+
+#### Clearable
+
+export const ClearableMd = VariantTemplate.bind({});
+ClearableMd.args = {
+  value: sampleArgs.value,
+  clearable: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Clearable, md">{ClearableMd}</Story>
 </Canvas>
