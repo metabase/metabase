@@ -1,7 +1,7 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Select, Stack } from "metabase/ui";
 
-export const dataWithGroups = [
+export const dataWithGroupsLarge = [
   { value: 10, label: "Entity key", group: "Overall row" },
   { value: 11, label: "Entity name", group: "Overall row" },
   { value: 12, label: "Foreign key", group: "Overall row" },
@@ -17,6 +17,8 @@ export const dataWithGroups = [
   { value: 22, label: "State", group: "Location" },
   { value: 23, label: "Zip code", group: "Location" },
 ];
+
+export const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
 
 export const dataWithIcons = dataWithGroups.map(item => ({
   ...item,
@@ -180,6 +182,20 @@ ErrorMd.args = {
   <Story name="Error, md">{ErrorMd}</Story>
 </Canvas>
 
+#### Read only
+
+export const ReadOnlyMd = VariantTemplate.bind({});
+ReadOnlyMd.args = {
+  defaultValue: sampleArgs.value,
+  description: sampleArgs.description,
+  readOnly: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
 #### Icons
 
 export const IconsMd = VariantTemplate.bind({});
@@ -206,25 +222,24 @@ GroupsMd.args = {
   <Story name="Groups, md">{GroupsMd}</Story>
 </Canvas>
 
-#### Read only
+#### Large sets
 
-export const ReadOnlyMd = VariantTemplate.bind({});
-ReadOnlyMd.args = {
-  defaultValue: sampleArgs.value,
+export const LargeSetsMd = VariantTemplate.bind({});
+LargeSetsMd.args = {
+  data: dataWithGroupsLarge,
   description: sampleArgs.description,
-  readOnly: true,
   withAsterisk: true,
 };
 
 <Canvas>
-  <Story name="Read only, md">{ReadOnlyMd}</Story>
+  <Story name="Large sets, md">{LargeSetsMd}</Story>
 </Canvas>
 
 #### Searchable
 
 export const SearchableMd = VariantTemplate.bind({});
 SearchableMd.args = {
-  data: dataWithGroups,
+  data: dataWithGroupsLarge,
   description: sampleArgs.description,
   searchable: true,
   withAsterisk: true,
