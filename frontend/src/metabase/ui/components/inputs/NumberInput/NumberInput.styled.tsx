@@ -25,6 +25,11 @@ export const getNumberInputOverrides =
         wrapper: {
           marginTop: theme.spacing.xs,
         },
+        input: {
+          "&:read-only:not(:disabled)": {
+            borderColor: theme.colors.text[0],
+          },
+        },
         control: {
           color: theme.colors.text[2],
           width: getSize({ size, sizes: CONTROL_SIZES }),

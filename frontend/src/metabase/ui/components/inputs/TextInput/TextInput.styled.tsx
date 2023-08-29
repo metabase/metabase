@@ -10,6 +10,11 @@ export const getTextInputOverrides =
         wrapper: {
           marginTop: theme.spacing.xs,
         },
+        input: {
+          "&:read-only:not(:disabled)": {
+            borderColor: theme.colors.text[0],
+          },
+        },
       }),
     },
   });

@@ -73,9 +73,6 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
-          "&:read-only:not(:disabled):not([data-invalid])": {
-            borderColor: theme.colors.text[0],
-          },
           "&[data-with-icon]": {
             paddingLeft: rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH),
           },
