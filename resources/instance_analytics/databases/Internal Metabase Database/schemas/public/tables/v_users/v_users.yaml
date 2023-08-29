@@ -1,5 +1,5 @@
 description: null
-entity_type: null
+entity_type: entity/UserTable
 schema: public
 show_in_getting_started: false
 name: v_users
