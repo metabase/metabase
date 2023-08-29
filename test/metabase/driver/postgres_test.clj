@@ -1225,8 +1225,8 @@
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
-                               (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:postgres (assoc (:details (mt/db))
-                                                                                                                  :user "privilege_rows_test_example_role")]]
+                               (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
           (try
@@ -1236,10 +1236,10 @@
                                           "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
                                           "GRANT SELECT ON foo.baz TO privilege_rows_test_example_role;"
                                           "GRANT UPDATE ON foo.baz TO privilege_rows_test_example_role;"))
-            (testing "check that without USAGE privileges, nothing is returned"
+            (testing "check that without USAGE privileges on the schema, nothing is returned"
               (is (= []
                      (get-privileges))))
-            (testing "with USAGE privileges, select is returned"
+            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
               (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA foo TO privilege_rows_test_example_role;")
               (is (= [{:is_current_user true,
                        :role "privilege_rows_test_example_role",
