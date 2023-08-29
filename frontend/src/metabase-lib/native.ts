@@ -12,7 +12,7 @@ export function requiredNativeExtras(
   databaseId: DatabaseId,
   metadata: MetadataProvider,
 ): string[] {
-  return ML.required_native_extras(databaseID, metadata);
+  return ML.required_native_extras(databaseId, metadata);
 }
 
 type NativeExtras = {
