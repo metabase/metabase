@@ -5,6 +5,7 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -20,7 +21,10 @@ export function isPersonalCollection(collection: Partial<Collection>): boolean {
 export function isInstanceAnalyticsCollection(
   collection: Partial<Collection>,
 ): boolean {
-  return collection.type === "instance-analytics";
+  return (
+    PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
+    "instance-analytics"
+  );
 }
 
 // Replace the name for the current user's collection
