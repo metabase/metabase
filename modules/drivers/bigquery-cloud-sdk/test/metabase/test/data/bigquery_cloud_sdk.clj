@@ -143,7 +143,7 @@
                                         (ffirst rows))
         client                        (bigquery)
         ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native (test-db-details) respond query-response (atom false))))
+    (#'bigquery/post-process-native respond query-response (atom false))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

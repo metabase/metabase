@@ -22,7 +22,6 @@
 
 (defn- table [table-id]
   (when table-id
-    (qp.store/fetch-and-store-tables! #{table-id})
     (qp.store/table table-id)))
 
 (def ^:dynamic *bad-field-reference-fn*

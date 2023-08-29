@@ -35,7 +35,7 @@
    x))
 
 (defn- add-alias-info [query]
-  (mt/with-everything-store
+  (mt/with-metadata-provider (mt/id)
     (driver/with-driver (or driver/*driver* :h2)
       (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
@@ -258,7 +258,7 @@
                   :limit        1})))))
 
 (deftest ^:parallel multiple-expressions-test
-  (mt/with-everything-store
+  (mt/with-metadata-provider (mt/id)
     (is (query= (mt/$ids venues
                   {$price                                     0
                    [:expression "big_price"]                  1
@@ -686,7 +686,7 @@
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
     (mt/with-driver :h2
       (mt/dataset sample-dataset
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (is (= {:field-name              "CREATED_AT"
                   :join-is-this-level?     "Q2"
                   :alias-from-join         "Products__CREATED_AT"

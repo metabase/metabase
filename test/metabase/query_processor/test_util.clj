@@ -449,32 +449,6 @@
   [& body]
   `(do-with-bigquery-fks! (fn [] ~@body)))
 
-(def ^:dynamic ^:private *already-have-everything-store?* false)
-
-(defn ^:deprecated do-with-everything-store
-  "Impl for [[with-everything-store]].
-
-  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
-  [thunk]
-  (if *already-have-everything-store?*
-    (thunk)
-    (binding [*already-have-everything-store?* true]
-      (qp.store/with-metadata-provider (data/id)
-        (thunk)))))
-
-(defmacro ^:deprecated with-everything-store
-  "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
-  tedious. This macro swaps out the normal QP Store backend with one that fetches Tables and Fields from the DB
-  on-demand, making tests a lot nicer to write.
-
-  When fetching the database, this assumes you're using the 'current' database bound to `(data/db)`, so be sure to use
-  `data/with-db` if needed.
-
-  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
-  [& body]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  `(do-with-everything-store (^:once fn* [] ~@body)))
-
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
   []

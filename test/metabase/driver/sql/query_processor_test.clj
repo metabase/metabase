@@ -189,7 +189,7 @@
 
 (deftest ^:parallel handle-source-query-params-test
   (driver/with-driver :h2
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
         (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) AS \"source\" WHERE (\"source\".\"name\" <> ?) OR (\"source\".\"name\" IS NULL)"
                 :params ["Cam" "Lucky Pigeon"]}
@@ -202,7 +202,7 @@
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (driver/with-driver :h2
         (is (= [[(sql.qp/sql-source-query "SELECT * FROM VENUES;" [])
                  (hx/identifier :table-alias "card")]
@@ -629,7 +629,7 @@
 (deftest ^:parallel join-inside-source-query-test
   (testing "Make sure a JOIN inside a source query gets compiled as expected"
     (mt/dataset sample-dataset
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
                  :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
                            :from      [ORDERS]
@@ -651,7 +651,7 @@
 (deftest ^:parallel join-against-source-query-test
   (testing "Make sure a JOIN referencing fields from the source query use correct aliases/etc"
     (mt/dataset sample-dataset
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                  :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
                               :from      [ORDERS]
@@ -1055,7 +1055,7 @@
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
     (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-driver %) :sql)
                              (tx.env/test-drivers))
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (doseq [day [:sunday
                      :monday
                      :tuesday

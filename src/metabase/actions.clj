@@ -6,6 +6,7 @@
    [malli.error :as me]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -159,7 +160,7 @@
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
-                                                   (qp.store/database)))]
+                                                   (lib.metadata/database (qp.store/metadata-provider))))]
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)

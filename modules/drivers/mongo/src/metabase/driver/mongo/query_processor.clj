@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -135,7 +136,7 @@
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
-  (driver/dbms-version :mongo (qp.store/database)))
+  (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider))))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -405,7 +406,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
                                    "UTC"))
         t           (condp = (class t)
                      java.time.LocalDate      t
@@ -439,7 +440,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
+              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time
@@ -622,7 +623,7 @@
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :now [[_]]
-  (if (driver/database-supports? :mongo :now (qp.store/database))
+  (if (driver/database-supports? :mongo :now (lib.metadata/database (qp.store/metadata-provider)))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))

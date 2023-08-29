@@ -13,7 +13,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -66,13 +65,7 @@
 
 (defn- field->name
   ([field] (field->name field true))
-  ;; store parent Field(s) if needed, since `mongo.qp/field->name` attempts to look them up using the QP store
   ([field pr?]
-   (letfn [(store-parent-field! [{parent-id :parent_id}]
-             (when parent-id
-               (qp.store/fetch-and-store-fields! #{parent-id})
-               (store-parent-field! (qp.store/field parent-id))))]
-     (store-parent-field! field))
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
      pr? pr-str)))

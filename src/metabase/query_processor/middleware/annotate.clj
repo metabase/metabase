@@ -7,6 +7,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -321,7 +322,7 @@
       (lib/query
        (qp.store/metadata-provider)
        (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                             (:id (qp.store/database))
+                             (:id (lib.metadata/database (qp.store/metadata-provider)))
                              (mbql.normalize/normalize-fragment [:query] inner-query))))
       (catch Throwable e
         (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))

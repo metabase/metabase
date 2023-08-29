@@ -517,7 +517,7 @@
                 table    (t2/select-one Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
             (let [field    (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
-              (mt/with-everything-store
+              (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,
                                                               :num-bins 100,

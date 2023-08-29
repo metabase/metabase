@@ -12,6 +12,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
@@ -51,7 +52,7 @@
   project ID associated with the service account credentials."
   []
   (when (qp.store/initialized?)
-    (when-let [{:keys [details] :as database} (qp.store/database)]
+    (when-let [{:keys [details] :as database} (lib.metadata/database (qp.store/metadata-provider))]
       (let [project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
@@ -306,7 +307,7 @@
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
           (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
             (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
-                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
               (with-temporal-type (hx/call bigquery-type expr (hx/literal report-zone)) target-type)
               (with-temporal-type (hx/call bigquery-type expr) target-type))))
 
@@ -343,7 +344,7 @@
               :time      :time_trunc
               :datetime  :datetime_trunc
               :timestamp :timestamp_trunc)]
-      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit)) (hx/literal report-zone)))
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit))))))))
 
@@ -396,7 +397,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database))]
+      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider)))]
         (with-temporal-type (hx/call :extract unit (->AtTimeZone expr report-zone)) nil)
         (with-temporal-type (hx/call :extract unit expr) nil)))
 
@@ -802,7 +803,7 @@
               :date      :current_date
               :datetime  :current_datetime
               :timestamp :current_timestamp),
-          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
       (hformat/to-sql
         (if report-zone
           (hx/call f (hx/literal report-zone))

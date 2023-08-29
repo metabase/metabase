@@ -22,6 +22,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -331,7 +332,7 @@
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
   ;; it won't be, *but* they should already be qualified by database name anyway
   (when (qp.store/initialized?)
-    (db-name (qp.store/database))))
+    (db-name (lib.metadata/database (qp.store/metadata-provider)))))
 
 ;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
 ;; query

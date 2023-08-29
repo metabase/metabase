@@ -23,7 +23,7 @@
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (sql.params.substitute/substitute parsed param->value))))
 
 (deftest ^:parallel substitute-test
@@ -323,7 +323,7 @@
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
                          (binding [hx/*honey-sql-version* 2]
-                           (qp.test-util/with-everything-store
+                           (mt/with-metadata-provider (mt/id)
                              (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params)))))]
     {:query query, :params (vec params)}))
 
@@ -479,7 +479,7 @@
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (binding [hx/*honey-sql-version* 2]
-      (qp.test-util/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
           (assoc query :native inner'))))))
 

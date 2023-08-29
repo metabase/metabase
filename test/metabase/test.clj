@@ -16,6 +16,7 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -64,6 +65,7 @@
   mb.hawk.parallel/keep-me
   metabase.test.redefs/keep-me
   mw.session/keep-me
+  qp.store/keep-me
   qp.test-util/keep-me
   qp/keep-me
   sql-jdbc.tu/keep-me
@@ -153,6 +155,9 @@
   preprocess
   process-query]
 
+ [qp.store
+  with-metadata-provider]
+
  [qp.test-util
   card-with-source-metadata-for-query
   col
@@ -170,7 +175,6 @@
   store-contents
   with-bigquery-fks!
   with-database-timezone-id
-  with-everything-store
   with-report-timezone-id
   with-results-timezone-id]
 

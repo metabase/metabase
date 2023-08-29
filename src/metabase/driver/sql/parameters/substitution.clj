@@ -13,20 +13,18 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals
     :as qp.wrap-value-literals]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s])
   (:import
    (clojure.lang IPersistentVector Keyword)
@@ -225,15 +223,13 @@
      :prepared-statement-args args}))
 
 (mu/defn ^:private field->clause :- mbql.s/field
-  [_driver {table-id :table_id, field-id :id, :as field} param-type]
+  [_driver field param-type]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  (qp.store/fetch-and-store-fields! #{field-id})
-  (qp.store/fetch-and-store-tables! #{table-id})
   [:field
    (u/the-id field)
    {:base-type                (:base_type field)
@@ -243,7 +239,7 @@
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
 
-(s/defn ^:private field->identifier :- su/NonBlankString
+(mu/defn ^:private field->identifier :- ::lib.schema.common/non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."

@@ -65,7 +65,7 @@
 
 (deftest absolute-datetime-test
   (mt/test-driver :mongo
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Make sure absolute-datetime are compiled correctly"
         (doseq [[expected date]
                 [["2014-01-01"        (t/local-date "2014-01-01")]
@@ -106,7 +106,7 @@
 
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
-                    query (mt/with-everything-store
+                    query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
                                             {:aggregation [[:count]]
@@ -211,7 +211,7 @@
   (mt/test-driver :mongo
     (testing "Should generate correct queries against nested columns"
       (mt/dataset geographical-tips
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (is (= {:projections ["count"]
                   :query       [{"$match" {"source.username" "tupac"}}
                                 {"$group" {"_id" nil, "count" {"$sum" 1}}}
@@ -380,7 +380,7 @@
 
 (deftest temporal-arithmetic-test
   (mt/test-driver :mongo
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
         (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
           (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
@@ -420,7 +420,7 @@
 (deftest datetime-math-tests
   (mt/test-driver :mongo
     (mt/dataset qp.datetime-test/times-mixed
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         ;; date arithmetic doesn't supports until mongo 5+
         (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
           (testing "date arithmetic with date columns"

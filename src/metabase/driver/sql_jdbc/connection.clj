@@ -7,6 +7,7 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
@@ -17,7 +18,7 @@
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
-      #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -222,7 +223,7 @@
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
                             db-or-id-or-spec) ; passed in
                           (qp.store/with-metadata-provider database-id
-                            (qp.store/database)))
+                            (lib.metadata/database (qp.store/metadata-provider))))
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond

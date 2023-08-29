@@ -18,7 +18,7 @@
 
 (deftest ^:parallel field-filter->replacement-snippet-info-test
   (testing "Ensure native snippet expansion uses proper names for fields (#15460)"
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (is (= {:replacement-snippet     "(\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
               :prepared-statement-args ["Doohickey"]}
              (#'sql.params.substitution/field-filter->replacement-snippet-info
@@ -28,7 +28,7 @@
                        :value ["Doohickey"]}})))))
   (testing "Compound filters should be wrapped in parens"
     (mt/dataset sample-dataset
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= {:replacement-snippet     "((\"PUBLIC\".\"PEOPLE\".\"STATE\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"STATE\" IS NULL))"
                 :prepared-statement-args ["OR"]}
                (#'sql.params.substitution/field-filter->replacement-snippet-info

@@ -10,12 +10,9 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models :refer [Database]]
-   [metabase.models.table
-    :as table
-    :refer [Table]
-    :rename
-    {Table MetabaseTable}]
+   [metabase.models.table :as table]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -297,11 +294,11 @@
 (defn- execute-bigquery-on-db
   ^TableResult [database sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
-    (database->client database)
-    sql
-    parameters
-    cancel-chan
-    cancel-requested?))
+   (database->client database)
+   sql
+   parameters
+   cancel-chan
+   cancel-requested?))
 
 (defn- fetch-page [^TableResult response cancel-requested?]
   (when response
@@ -320,7 +317,7 @@
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [_database respond ^TableResult resp cancel-requested?]
+  [respond ^TableResult resp cancel-requested?]
   (let [^Schema schema
         (.getSchema resp)
 
@@ -343,8 +340,7 @@
   ;; `execute`
   (let [cancel-requested? (atom false)
         thunk             (fn []
-                            (post-process-native database
-                                                 respond
+                            (post-process-native respond
                                                  (execute-bigquery-on-db
                                                   database
                                                   sql
@@ -367,7 +363,7 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_ {{sql :query, :keys [params]} :native, :as outer-query} context respond]
-  (let [database (qp.store/database)]
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
@@ -417,7 +413,7 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (t2/query-one {:update (t2/table-name MetabaseTable)
+      (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}
                      :where  [:and
                               [:= :db_id db-id]
