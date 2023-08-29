@@ -1,6 +1,6 @@
 (ns metabase.lib.drill-thru.sort-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [are deftest is]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
    [metabase.lib.test-metadata :as meta]
@@ -21,8 +21,14 @@
     ;; fails: invalid output: missing display name
     ;; disabled for now because display info seems to be broken
     #_(is (= :neat
-           (lib/display-info query drill)))
+             (lib/display-info query drill)))
     ;; fails: no drill-thru-method
+    (are [actual] (=? {:stages [{:lib/type :mbql.stage/mbql
+                                 :order-by [[:asc {} [:field {} (meta/id :orders :id)]]]}]}
+                      actual)
+      (lib/drill-thru query drill)
+      (lib/drill-thru query -1 drill)
+      (lib/drill-thru query -1 drill :asc))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
-                       :order-by [[:asc {} [:field {} (meta/id :orders :id)]]]}]}
-            (lib/drill-thru query drill)))))
+                       :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}
+            (lib/drill-thru query -1 drill :desc)))))

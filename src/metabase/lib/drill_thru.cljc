@@ -65,5 +65,6 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    drill        :- ::lib.schema.drill-thru/drill-thru]
-   (lib.drill-thru.common/drill-thru-method query stage-number drill)))
+    drill        :- ::lib.schema.drill-thru/drill-thru
+    & args]
+   (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))

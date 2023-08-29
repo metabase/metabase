@@ -10,11 +10,13 @@
       :lib/type
       (= :mbql.stage/mbql)))
 
-(defn- drill-thru-dispatch [_query _stage-number drill-thru]
+(defn- drill-thru-dispatch [_query _stage-number drill-thru & _args]
   (:type drill-thru))
 
 (defmulti drill-thru-method
-  "`(drill-thru-method query stage-number drill-thru)`
+  "e.g.
+
+    (drill-thru-method query stage-number drill-thru)`
 
   Applies the `drill-thru` to the query and stage. Keyed on the `:type` of the drill-thru.
   Returns the updated query."
