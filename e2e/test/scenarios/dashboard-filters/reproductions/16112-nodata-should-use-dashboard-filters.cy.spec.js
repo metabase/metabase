@@ -97,7 +97,7 @@ describe("issues 15119 and 16112", () => {
     cy.button("Add filter").click();
 
     cy.get(".DashCard").should("contain", "adam");
-    cy.location("search").should("eq", "?reviewer=adam");
+    cy.location("search").should("eq", "?reviewer=adam&rating=");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();

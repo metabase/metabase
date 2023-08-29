@@ -382,9 +382,14 @@
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
-    (let [opts (options->legacy-MBQL opts)]
-      (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
-        opts (conj opts)))
+    (try
+      (let [opts (options->legacy-MBQL opts)]
+        (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
+          opts (conj opts)))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (lib.util/format "Error converting aggregation reference to pMBQL: %s" (ex-message e))
+                        {:ref ag}
+                        e))))
     ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
     ag))
 
@@ -470,14 +475,19 @@
       (update-vals ->legacy-MBQL)))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
-  (let [base        (disqualify query)
-        parameters  (:parameters base)
-        inner-query (chain-stages base)
-        query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
-                      :native
-                      :query)]
-    (merge (-> base
-               (dissoc :stages :parameters)
-               (update-vals ->legacy-MBQL))
-           (cond-> {:type query-type query-type inner-query}
-             (seq parameters) (assoc :parameters parameters)))))
+  (try
+    (let [base        (disqualify query)
+          parameters  (:parameters base)
+          inner-query (chain-stages base)
+          query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
+                        :native
+                        :query)]
+      (merge (-> base
+                 (dissoc :stages :parameters)
+                 (update-vals ->legacy-MBQL))
+             (cond-> {:type query-type query-type inner-query}
+               (seq parameters) (assoc :parameters parameters))))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
+                      {:query query}
+                      e)))))

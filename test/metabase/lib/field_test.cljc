@@ -1,8 +1,9 @@
 (ns metabase.lib.field-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,11 +12,16 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each (fn [thunk]
+                      (binding [lib.card/*force-broken-card-refs* false]
+                        (thunk))))
 
 (deftest ^:parallel field-from-results-metadata-test
   (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card
@@ -52,7 +58,7 @@
                      :id        (grandparent-parent-child-id :child)
                      :base-type :type/Text}]
     (lib.tu/mock-metadata-provider
-     {:database meta/metadata
+     {:database meta/database
       :tables   [(meta/table-metadata :venues)]
       :fields   (mapv (fn [field-metadata]
                         (merge {:visibility-type :normal
@@ -133,81 +139,34 @@
 
 (deftest ^:parallel legacy-query-joined-field-display-name-test
   (testing "Should calculate correct display names for joined fields when source query is a legacy MBQL query (#31368)"
-    (let [card-query      {:database (meta/id)
-                           :type     :query
-                           :query    {:source-table (meta/id :orders)
-                                      :joins        [{:fields       :all
-                                                      :source-table (meta/id :products)
-                                                      :alias        "Products"
-                                                      :condition    [:=
-                                                                     [:field (meta/id :orders :product-id) nil]
-                                                                     [:field (meta/id :products :id) {:join-alias "Products"}]]}]}}
-          card-def        {:id            1
-                           :name          "Card 1"
-                           :dataset-query card-query}
-          ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
-          ;; sure we're not including it twice.
-          result-metadata (for [col (lib/returned-columns
-                                     (lib/query meta/metadata-provider card-query))]
-                            (cond-> col
-                              (:source-alias col)
-                              (update :display-name (fn [display-name]
-                                                      (str (:source-alias col) " → " display-name)))))]
-      (doseq [[message card-def] {"Card with no result metadata"
-                                  card-def
-
-                                  "Card with result metadata"
-                                  (assoc card-def :result-metadata result-metadata)}]
-        (testing (str \newline message)
-          (let [metadata-provider (lib/composed-metadata-provider
-                                   (lib.tu/mock-metadata-provider
-                                    {:cards [card-def]})
-                                   meta/metadata-provider)
-                legacy-query      {:database (meta/id)
-                                   :type     :query
-                                   :query    {:source-card 1}}
-                query             (lib/query metadata-provider legacy-query)
-                breakoutable-cols (lib/breakoutable-columns query)
-                breakout-col      (m/find-first (fn [col]
-                                                  (= (:id col) (meta/id :products :category)))
-                                                breakoutable-cols)]
-            (testing (str "\nbreakoutable-cols =\n" (u/pprint-to-str breakoutable-cols))
-              (is (some? breakout-col)))
-            (when breakout-col
-              (is (=? {:long-display-name "Products → Category"}
-                      (lib/display-info query breakout-col)))
-              (let [query' (lib/breakout query breakout-col)]
-                (is (=? {:stages
-                         [{:lib/type    :mbql.stage/mbql
-                           :source-card 1
-                           :breakout    [[:field
-                                          {:join-alias (symbol "nil #_\"key is not present.\"")}
-                                          "CATEGORY"]]}]}
-                        query'))
-                (is (=? [{:name              "CATEGORY"
-                          :display-name      (if (:result-metadata card-def)
-                                               "Products → Category"
-                                               "Category")
-                          :long-display-name "Products → Category"
-                          :effective-type    :type/Text}]
-                        (map #(lib/display-info query' %)
-                             (lib/breakouts query'))))))
-            (when (:result-metadata card-def)
-              (testing "\nwith broken breakout from broken drill-thru (#31482)"
-                ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is
-                ;; generating these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even
-                ;; tho this is technically wrong.
-                (let [query' (lib/breakout query [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])]
-                  (is (=? [{:name              "CATEGORY"
-                            :display-name      "Category"
-                            :long-display-name "Products → Category"
-                            :effective-type    :type/Text}]
-                          (map (partial lib/display-info query')
-                               (lib/breakouts query'))))
-                  (is (=? {:display-name      "Products → Category"
-                           :breakout-position 0}
-                          (m/find-first #(= (:id %) (meta/id :products :category))
-                                        (lib/breakoutable-columns query')))))))))))))
+    (doseq [has-result-metadata? [false true]]
+      (testing (str "\nHas result metadata? " (pr-str has-result-metadata?))
+        (let [query             (lib.tu.mocks-31368/query-with-legacy-source-card has-result-metadata?)
+              breakoutable-cols (lib/breakoutable-columns query)
+              breakout-col      (m/find-first (fn [col]
+                                                (= (:id col) (meta/id :products :category)))
+                                              breakoutable-cols)]
+          (testing (str "\nbreakoutable-cols =\n" (u/pprint-to-str breakoutable-cols))
+            (is (some? breakout-col)))
+          (when breakout-col
+            (is (=? {:long-display-name "Products → Category"}
+                    (lib/display-info query breakout-col)))
+            (let [query' (lib/breakout query breakout-col)]
+              (is (=? {:stages
+                       [{:lib/type    :mbql.stage/mbql
+                         :source-card 1
+                         :breakout    [[:field
+                                        {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                        "Products__CATEGORY"]]}]}
+                      query'))
+              (is (=? [{:name              "CATEGORY"
+                        :display-name      (if has-result-metadata?
+                                             "Products → Category"
+                                             "Category")
+                        :long-display-name "Products → Category"
+                        :effective-type    :type/Text}]
+                      (map #(lib/display-info query' %)
+                           (lib/breakouts query')))))))))))
 
 (deftest ^:parallel field-with-temporal-bucket-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
@@ -526,6 +485,7 @@
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [card-1            {:name          "My Card"
                              :id            1
+                             :database-id   (meta/id)
                              :dataset-query {:database (meta/id)
                                              :type     :query
                                              :query    {:source-table (meta/id :checkins)
@@ -652,6 +612,7 @@
                                  :name "My Table"}]
                      :cards    [{:id              3
                                  :name            "Card 3"
+                                 :database-id     (meta/id)
                                  :dataset-query   {:lib/type :mbql/query
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
@@ -1251,3 +1212,34 @@
                     (lib/add-field    -1 (second columns))
                     (lib.util/query-stage -1)
                     :fields)))))))
+
+(deftest ^:parallel find-visible-column-for-ref-test
+  (testing "precise references"
+    (doseq [query-var [#'lib.tu/query-with-expression
+                       #'lib.tu/query-with-join-with-explicit-fields
+                       #'lib.tu/query-with-source-card]
+            :let [query @query-var]
+            col (lib/visible-columns query)
+            :let [col-ref (lib/ref col)]]
+      (testing (str "ref " col-ref " of " (symbol query-var))
+        (is (= (dissoc col :lib/source-uuid)
+               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid))))))
+  (testing "reference by ID instead of name"
+    (let [query lib.tu/query-with-source-card
+          col-ref [:field
+                   {:lib/uuid "ae24a9b0-cbb5-40b6-bace-c8a5ac6a7e42"
+                    :base-type :type/Integer
+                    :effective-type :type/Integer}
+                   (meta/id :checkins :user-id)]]
+      (is (=? {:lib/type :metadata/column
+               :base-type :type/Integer
+               :semantic-type :type/FK
+               :name "USER_ID"
+               :lib/card-id 1
+               :lib/source :source/card
+               :lib/source-column-alias "USER_ID"
+               :effective-type :type/Integer
+               :id (meta/id :checkins :user-id)
+               :lib/desired-column-alias "USER_ID"
+               :display-name "User ID"}
+              (lib/find-visible-column-for-ref query col-ref))))))

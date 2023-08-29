@@ -1,41 +1,63 @@
+import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Text } from "./";
+import { Box, Grid, Text } from "metabase/ui";
 
+export const args = {
+  size: "md",
+  align: "unset",
+  weight: "normal",
+  italic: false,
+  underline: false,
+  strikethrough: false,
+  truncate: false,
+  lineClamp: undefined,
+};
 
-<Meta title="Typography/Text" component={Text}
-      args={{
-        children: "Having small touches of colour makes it more colourful than having the whole thing in colour",
-        underline: false,
-        italic: false,
-        strikethrough: false,
-        weight: "normal",
-        lineClamp: -1,
-        align: "unset",
-      }}
-      argTypes={
-        {
-          children: {
-            control: {
-              type: "text"
-            }
-          },
-          size: {
-            options: ["xs", "sm", "md", "lg", "xl"],
-            control: { type: 'inline-radio' }
-          },
-          weight: {
-            options: ["normal", "bold"],
-            control: { type: 'inline-radio' }
-          },
-          align: {
-            options: ["unset", "left", "right", "center"],
-            control: { type: 'select' }
-          }
-        }
-      }
+export const sampleArgs = {
+  shortText: "Weniger",
+  longText:
+    "Having small touches of colour makes it more colourful than having the whole thing in colour",
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "sm", "md", "lg"],
+    control: { type: "inline-radio" },
+  },
+  align: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+  weight: {
+    options: ["normal", "bold"],
+    control: { type: "inline-radio" },
+  },
+  italic: {
+    control: { type: "boolean" },
+  },
+  underline: {
+    control: { type: "boolean" },
+  },
+  underline: {
+    control: { type: "boolean" },
+  },
+  strikethrough: {
+    control: { type: "boolean" },
+  },
+  truncate: {
+    control: { type: "boolean" },
+  },
+  lineClamp: {
+    control: { type: "number" },
+  },
+};
+
+<Meta
+  title="Typography/Text"
+  component={Text}
+  args={args}
+  argTypes={argTypes}
 />
-
-export const Template = (args) => <Text {...args} />;
 
 # Text
 
@@ -43,28 +65,72 @@ Our themed wrapper around [Mantine Text](https://mantine.dev/core/text/).
 
 ## When to use Text
 
-The Text component allows users to display text with themed styles, and replaces the usage of `<div>text</div>` or  `<span>text</span>`. This component also handles sizing, line clamps, text decoration, and font weight. For links, use the `Anchor` component, and for code, use the `Code` component.
+The Text component allows users to display text with themed styles, and replaces the usage of `<div>text</div>` or `<span>text</span>`. This component also handles sizing, line clamps, text decoration, and font weight. For links, use the `Anchor` component, and for code, use the `Code` component.
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Foundation-%2F-text?type=design&node-id=5-70&mode=design&t=9Sh3xAM7HsIZIN1z-11)
+- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Typography-%2F-Text?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
 - [Mantine Text Docs](https://mantine.dev/core/text/)
 
-## Caveats
+## Examples
 
-N/A
+export const DefaultTemplate = args => (
+  <Text {...args}>{sampleArgs.shortText}</Text>
+);
 
-## Usage guidelines
+export const SizeTemplate = args => (
+  <Grid align="center" maw="18rem">
+    {argTypes.size.options.map(size => (
+      <Fragment key={size}>
+        <Grid.Col span={2}>
+          <Text weight="bold">{size}</Text>
+        </Grid.Col>
+        <Grid.Col span={10}>
+          <Text {...args} size={size} />
+        </Grid.Col>
+      </Fragment>
+    ))}
+  </Grid>
+);
 
-N/A
-
-## General
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default"
-  >
-    {Template.bind({})}
-  </Story>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
+Sizes.args = {
+  children: sampleArgs.shortText,
+};
+
+<Canvas>
+  <Story name="Sizes">{Sizes}</Story>
+</Canvas>
+
+### Multiline
+
+export const Multiline = SizeTemplate.bind({});
+Multiline.args = {
+  children: sampleArgs.longText,
+};
+
+<Canvas>
+  <Story name="Multiline">{Multiline}</Story>
+</Canvas>
+
+### Truncated
+
+export const Truncated = SizeTemplate.bind({});
+Truncated.args = {
+  children: sampleArgs.longText,
+  lineClamp: 2,
+};
+
+<Canvas>
+  <Story name="Truncated">{Truncated}</Story>
 </Canvas>
 
 ## Related components

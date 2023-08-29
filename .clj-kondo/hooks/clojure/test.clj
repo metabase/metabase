@@ -17,7 +17,6 @@
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
      metabase.query-processor-test/with-bigquery-fks!
-     metabase.server.middleware.session/with-current-user
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
@@ -46,7 +45,6 @@
      metabase.test/with-all-users-permission
      metabase.test/with-bigquery-fks!
      metabase.test/with-column-remappings
-     metabase.test/with-current-user
      metabase.test/with-discarded-collections-perms-changes
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
