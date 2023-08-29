@@ -85,7 +85,17 @@ Not to use:
 
 ## Examples
 
-export const ButtonRowTemplate = args => (
+export const DefaultTemplate = args => <Button {...args}>Button</Button>;
+
+export const ButtonGroupTemplate = args => (
+  <Button.Group>
+    <Button {...args}>One</Button>
+    <Button {...args}>Two</Button>
+    <Button {...args}>Three</Button>
+  </Button.Group>
+);
+
+export const GridRow = args => (
   <Group noWrap>
     <Button {...args}>Save</Button>
     <Button {...args} leftIcon={<Icon name="add" />}>
@@ -98,23 +108,23 @@ export const ButtonRowTemplate = args => (
   </Group>
 );
 
-export const ButtonRowGroupTemplate = args => (
+export const GridRowGroup = args => (
   <Fragment>
-    <ButtonRowTemplate {...args} />
-    <ButtonRowTemplate {...args} radius="xl" />
+    <GridRow {...args} />
+    <GridRow {...args} radius="xl" />
   </Fragment>
 );
 
-export const ButtonGridTemplate = args => (
+export const GridTemplate = args => (
   <Stack>
-    <ButtonRowGroupTemplate {...args} variant="filled" />
-    <ButtonRowGroupTemplate {...args} variant="outline" />
-    <ButtonRowGroupTemplate {...args} variant="default" />
-    <ButtonRowTemplate {...args} variant="subtle" />
+    <GridRowGroup {...args} variant="filled" />
+    <GridRowGroup {...args} variant="outline" />
+    <GridRowGroup {...args} variant="default" />
+    <GridRow {...args} variant="subtle" />
   </Stack>
 );
 
-export const LoadingButtonRowTemplate = args => (
+export const LoadingGridRow = args => (
   <Group noWrap>
     <Button {...args} loaderPosition="left">
       Save
@@ -126,23 +136,23 @@ export const LoadingButtonRowTemplate = args => (
   </Group>
 );
 
-export const LoadingButtonRowGroupTemplate = args => (
+export const LoadingGridRowGroup = args => (
   <Fragment>
-    <LoadingButtonRowTemplate {...args} />
-    <LoadingButtonRowTemplate {...args} radius="xl" />
+    <LoadingGridRow {...args} />
+    <LoadingGridRow {...args} radius="xl" />
   </Fragment>
 );
 
-export const LoadingButtonGridTemplate = args => (
+export const LoadingGridTemplate = args => (
   <Stack>
-    <LoadingButtonRowGroupTemplate {...args} variant="filled" />
-    <LoadingButtonRowGroupTemplate {...args} variant="outline" />
-    <LoadingButtonRowGroupTemplate {...args} variant="default" />
-    <LoadingButtonRowTemplate {...args} variant="subtle" />
+    <LoadingGridRowGroup {...args} variant="filled" />
+    <LoadingGridRowGroup {...args} variant="outline" />
+    <LoadingGridRowGroup {...args} variant="default" />
+    <LoadingGridRow {...args} variant="subtle" />
   </Stack>
 );
 
-export const Default = args => <Button {...args}>Button</Button>;
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -150,13 +160,7 @@ export const Default = args => <Button {...args}>Button</Button>;
 
 ### Button.Group
 
-export const ButtonGroup = args => (
-  <Button.Group>
-    <Button {...args}>One</Button>
-    <Button {...args}>Two</Button>
-    <Button {...args}>Three</Button>
-  </Button.Group>
-);
+export const ButtonGroup = ButtonGroupTemplate.bind({});
 
 <Canvas>
   <Story name="Button group">{ButtonGroup}</Story>
@@ -164,7 +168,7 @@ export const ButtonGroup = args => (
 
 ### Default size
 
-export const DefaultGrid = args => <ButtonGridTemplate {...args} />;
+export const DefaultGrid = GridTemplate.bind({});
 
 <Canvas>
   <Story name="Default size">{DefaultGrid}</Story>
@@ -172,116 +176,164 @@ export const DefaultGrid = args => <ButtonGridTemplate {...args} />;
 
 #### Disabled state
 
-export const DefaultDisabledGrid = args => (
-  <ButtonGridTemplate {...args} disabled />
-);
+export const DefaultDisabledGrid = GridTemplate.bind({});
+DefaultDisabledGrid.args = {
+  disabled: true,
+};
 
 <Canvas>
-  <Story name="Default size, disabled">{DefaultDisabledGrid}</Story>
+  <Story name="Default size, disabled" args={DefaultDisabledGrid.args}>
+    {DefaultDisabledGrid}
+  </Story>
 </Canvas>
 
 #### Loading state
 
-export const DefaultLoadingGrid = args => (
-  <ButtonGridTemplate {...args} loading />
-);
+export const DefaultLoadingGrid = LoadingGridTemplate.bind({});
+DefaultLoadingGrid.args = {
+  loading: true,
+};
 
 <Canvas>
-  <Story name="Default size, loading">{DefaultLoadingGrid}</Story>
+  <Story name="Default size, loading" args={DefaultLoadingGrid.args}>
+    {DefaultLoadingGrid}
+  </Story>
 </Canvas>
 
 ### Default size & full width
 
-export const DefaultFullWidthGrid = args => (
-  <ButtonGridTemplate {...args} fullWidth />
-);
+export const DefaultFullWidthGrid = GridTemplate.bind({});
+DefaultFullWidthGrid.args = {
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Default size, full width">{DefaultFullWidthGrid}</Story>
+  <Story name="Default size, full width" args={DefaultFullWidthGrid.args}>
+    {DefaultFullWidthGrid}
+  </Story>
 </Canvas>
 
 #### Disabled state
 
-export const DefaultDisabledFullWidthGrid = args => (
-  <ButtonGridTemplate {...args} disabled fullWidth />
-);
+export const DefaultDisabledFullWidthGrid = GridTemplate.bind({});
+DefaultDisabledFullWidthGrid.args = {
+  disabled: true,
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Default size, full width, disabled">
+  <Story
+    name="Default size, full width, disabled"
+    args={DefaultDisabledFullWidthGrid.args}
+  >
     {DefaultDisabledFullWidthGrid}
   </Story>
 </Canvas>
 
 #### Loading state
 
-export const DefaultLoadingFullWidthGrid = args => (
-  <LoadingButtonGridTemplate {...args} loading fullWidth />
-);
+export const DefaultLoadingFullWidthGrid = LoadingGridTemplate.bind({});
+DefaultLoadingFullWidthGrid.args = {
+  loading: true,
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Default size, full width, loading">
+  <Story
+    name="Default size, full width, loading"
+    args={DefaultLoadingFullWidthGrid.args}
+  >
     {DefaultLoadingFullWidthGrid}
   </Story>
 </Canvas>
 
 ### Compact size
 
-export const CompactGrid = args => <ButtonGridTemplate {...args} compact />;
+export const CompactGrid = GridTemplate.bind({});
+CompactGrid.args = {
+  compact: true,
+};
 
 <Canvas>
-  <Story name="Compact size">{CompactGrid}</Story>
+  <Story name="Compact size" args={CompactGrid.args}>
+    {CompactGrid}
+  </Story>
 </Canvas>
 
 #### Disabled state
 
-export const CompactDisabledGrid = args => (
-  <ButtonGridTemplate {...args} compact disabled />
-);
+export const CompactDisabledGrid = GridTemplate.bind({});
+CompactDisabledGrid.args = {
+  compact: true,
+  disabled: true,
+};
 
 <Canvas>
-  <Story name="Compact size, disabled">{CompactDisabledGrid}</Story>
+  <Story name="Compact size, disabled" args={CompactDisabledGrid.args}>
+    {CompactDisabledGrid}
+  </Story>
 </Canvas>
 
 #### Loading state
 
-export const CompactLoadingGrid = args => (
-  <LoadingButtonGridTemplate {...args} compact loading />
-);
+export const CompactLoadingGrid = LoadingGridTemplate.bind({});
+CompactLoadingGrid.args = {
+  compact: true,
+  loading: true,
+};
 
 <Canvas>
-  <Story name="Compact size, loading">{CompactLoadingGrid}</Story>
+  <Story name="Compact size, loading" args={CompactLoadingGrid.args}>
+    {CompactLoadingGrid}
+  </Story>
 </Canvas>
 
 ### Compact size & full width
 
-export const CompactFullWidthGrid = args => (
-  <ButtonGridTemplate {...args} compact fullWidth />
-);
+export const CompactFullWidthGrid = GridTemplate.bind({});
+CompactFullWidthGrid.args = {
+  compact: true,
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Compact size, full width">{CompactFullWidthGrid}</Story>
+  <Story name="Compact size, full width" args={CompactFullWidthGrid.args}>
+    {CompactFullWidthGrid}
+  </Story>
 </Canvas>
 
 #### Disabled state
 
-export const CompactDisabledFullWidthGrid = args => (
-  <ButtonGridTemplate {...args} compact disabled fullWidth />
-);
+export const CompactDisabledFullWidthGrid = GridTemplate.bind({});
+CompactDisabledFullWidthGrid.args = {
+  compact: true,
+  disabled: true,
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Compact size, full width, disabled">
+  <Story
+    name="Compact size, full width, disabled"
+    args={CompactDisabledFullWidthGrid.args}
+  >
     {CompactDisabledFullWidthGrid}
   </Story>
 </Canvas>
 
 #### Loading state
 
-export const CompactLoadingFullWidthGrid = args => (
-  <LoadingButtonGridTemplate {...args} compact loading fullWidth />
-);
+export const CompactLoadingFullWidthGrid = LoadingGridTemplate.bind({});
+CompactLoadingFullWidthGrid.args = {
+  compact: true,
+  loading: true,
+  fullWidth: true,
+};
 
 <Canvas>
-  <Story name="Compact size, full width, loading">
+  <Story
+    name="Compact size, full width, loading"
+    args={CompactLoadingFullWidthGrid.args}
+  >
     {CompactLoadingFullWidthGrid}
   </Story>
 </Canvas>
