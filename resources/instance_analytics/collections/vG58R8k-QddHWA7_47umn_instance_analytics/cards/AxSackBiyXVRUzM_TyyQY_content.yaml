@@ -1,6 +1,6 @@
 description: All Metabase content including questions, models, dashboards, events, and collections
 archived: false
-collection_position: 3
+collection_position: 5
 table_id:
 - Internal Metabase Database
 - public
