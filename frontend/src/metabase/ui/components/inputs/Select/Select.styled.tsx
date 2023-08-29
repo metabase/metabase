@@ -7,7 +7,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       withinPortal: true,
       itemComponent: SelectItem,
-      maxDropdownHeight: 584,
+      maxDropdownHeight: 512,
     },
     styles: theme => ({
       wrapper: {
