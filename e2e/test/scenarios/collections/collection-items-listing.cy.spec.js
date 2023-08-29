@@ -26,10 +26,12 @@ describe("scenarios > collection items listing", () => {
 
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;
+    const INSTANCE_ANALYTICS = 1;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
-    const TOTAL_ITEMS = SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS;
+    const TOTAL_ITEMS =
+      SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS + INSTANCE_ANALYTICS;
 
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
