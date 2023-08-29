@@ -22,6 +22,7 @@ on:
 jobs:
 
   be-linter-cloverage:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
