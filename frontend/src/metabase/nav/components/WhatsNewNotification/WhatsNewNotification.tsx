@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
-import { isNotFalsy } from "metabase/core/utils/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
@@ -23,25 +22,15 @@ export function WhatsNewNotification() {
   );
 
   const url: string | undefined = useMemo(() => {
-    const versionsList = [versionInfo?.latest]
-      .concat(versionInfo?.older)
-      .filter(isNotFalsy);
-
     const lastEligibleVersion = getLatestEligibleReleaseNotes({
-      versions: versionsList,
+      versionInfo,
       currentVersion: currentVersion.tag,
       lastAcknowledgedVersion: lastAcknowledgedVersion,
       isEmbedded,
     });
 
     return lastEligibleVersion?.announcement_url;
-  }, [
-    currentVersion,
-    lastAcknowledgedVersion,
-    versionInfo?.latest,
-    versionInfo?.older,
-    isEmbedded,
-  ]);
+  }, [versionInfo, currentVersion.tag, lastAcknowledgedVersion, isEmbedded]);
 
   const dimiss = useCallback(() => {
     dispatch(

@@ -1,18 +1,27 @@
+import type {
+  VersionInfo,
+  VersionInfoRecord,
+} from "metabase-types/api/settings";
 import { createMockVersionInfoRecord } from "metabase-types/api/mocks";
 import { getLatestEligibleReleaseNotes } from "./utils";
+
+const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
+  const [latest, ...older] = versions;
+  return { latest, older };
+};
 
 describe("What's new - utils", () => {
   describe("getLatestEligibleReleaseNotes", () => {
     it("doesn't filter old versions if lastAck is null", () => {
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({ version: "v0.48" }),
             createMockVersionInfoRecord({
               version: "v0.43",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.48",
           lastAcknowledgedVersion: null,
         }),
@@ -22,12 +31,12 @@ describe("What's new - utils", () => {
     it("filters out ack versions", () => {
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({
               version: "v0.47",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.48",
           lastAcknowledgedVersion: "v0.47",
         }),
@@ -35,12 +44,12 @@ describe("What's new - utils", () => {
 
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({
               version: "v0.46",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.48",
           lastAcknowledgedVersion: "v0.47",
         }),
@@ -50,12 +59,12 @@ describe("What's new - utils", () => {
     it("returns up to the current version", () => {
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({
               version: "v0.48",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.48",
           lastAcknowledgedVersion: "v0.47",
         }),
@@ -65,12 +74,12 @@ describe("What's new - utils", () => {
     it("filters out future versions", () => {
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({
               version: "v0.49",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.48",
           lastAcknowledgedVersion: "v0.47",
         }),
@@ -80,7 +89,7 @@ describe("What's new - utils", () => {
     it("returns last version if more than one are eligible", () => {
       expect(
         getLatestEligibleReleaseNotes({
-          versions: [
+          versionInfo: buildVersionInfo([
             createMockVersionInfoRecord({
               version: "v0.49.2",
             }),
@@ -92,7 +101,7 @@ describe("What's new - utils", () => {
               version: "v0.49.0",
               announcement_url: "url",
             }),
-          ],
+          ]),
           currentVersion: "v0.49.2",
           lastAcknowledgedVersion: "v0.47",
         }),
