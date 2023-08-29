@@ -1,6 +1,6 @@
 description: Data from alerts and subscriptions including recipients
 archived: false
-collection_position: 2
+collection_position: 4
 table_id:
 - Internal Metabase Database
 - public

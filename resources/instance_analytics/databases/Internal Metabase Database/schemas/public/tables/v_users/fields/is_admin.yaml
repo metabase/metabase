@@ -1,13 +1,13 @@
 description: null
 database_type: bool
-semantic_type: null
+semantic_type: type/Category
 table_id:
 - Internal Metabase Database
 - public
 - v_users
 coercion_strategy: null
 name: is_admin
-fingerprint_version: 0
+fingerprint_version: 5
 has_field_values: list
 settings: null
 caveats: null
@@ -18,7 +18,7 @@ effective_type: type/Boolean
 active: true
 nfc_path: null
 parent_id: null
-last_analyzed: null
+last_analyzed: '2023-06-12T19:56:22.444018Z'
 serdes/meta:
 - model: Database
   id: Internal Metabase Database
@@ -36,7 +36,10 @@ preview_display: true
 display_name: Is Admin
 database_position: 8
 database_required: false
-fingerprint: null
+fingerprint:
+  global:
+    distinct-count: 1
+    nil%: 0.0
 created_at: '2023-06-08T14:05:41.008036Z'
 base_type: type/Boolean
 points_of_interest: null
