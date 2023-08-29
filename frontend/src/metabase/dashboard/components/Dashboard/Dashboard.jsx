@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { getMainElement } from "metabase/lib/dom";
 
-import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
