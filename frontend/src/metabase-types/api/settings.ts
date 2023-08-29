@@ -108,6 +108,7 @@ export interface VersionInfoRecord {
   released?: string; // year-month-day
   patch?: boolean;
   highlights?: string[];
+  announcement_url?: string;
 }
 
 export interface VersionInfo {
@@ -268,6 +269,7 @@ export interface Settings {
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
+  "last-acknowledged-version": string | null;
 }
 
 export type SettingKey = keyof Settings;
