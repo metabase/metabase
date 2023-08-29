@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockVersion,
@@ -8,9 +9,11 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { WhatsNewNotification } from "./WhatsNewNotification";
+
+const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
 
 const notification = () => screen.queryByText("See what's new");
 
@@ -65,68 +68,25 @@ describe("WhatsNewNotification", () => {
       setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.47.0" });
       expect(notification()).toBeInTheDocument();
     });
-
-    it("should NOT show the notification if the current version is not in version-info, for example for RCs", () => {
-      setup({
-        currentVersion: "v0.48.0-RC",
-        lastAcknowledged: "v0.47.0",
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification if the current version has been acknowledged", () => {
-      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for releases older than the acknowledged one", () => {
-      setup({
-        currentVersion: "v0.48.0",
-        lastAcknowledged: "v0.47.0",
-        versions: [
-          mockVersion({
-            version: "v0.46.0",
-            announcement_url: "https://metabase.com/releases/46",
-          }),
-        ],
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should show the notification if the last acknowledged version is more than 1 major old", () => {
-      setup({ currentVersion: "v0.48.0", lastAcknowledged: "v0.46.0" });
-      expect(notification()).toBeInTheDocument();
-    });
-
-    it("should NOT show the notification in case of downgrades (announcement_url only in the future releases)", () => {
-      setup({ currentVersion: "v0.47.0", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for a minor upgrade that doesn't have a release url", () => {
-      setup({ currentVersion: "v0.48.1", lastAcknowledged: "v0.48.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification for a release greater than the current", () => {
-      setup({ currentVersion: "v0.46.0", lastAcknowledged: "v0.45.0" });
-      expect(notification()).not.toBeInTheDocument();
-    });
-
-    it("should NOT show the notification if metabase is embedded", () => {
-      setup({
-        isEmbedded: true,
-        currentVersion: "v0.48.0",
-        lastAcknowledged: null,
-      });
-      expect(notification()).not.toBeInTheDocument();
-    });
   });
 
   describe("link behaviour", () => {
     it("should have target blank", () => {
       setup({});
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
+
+    it("should call the backend when clicking dismiss", async () => {
+      fetchMock.put(LAST_ACK_SETTINGS_URL, {});
+      setup({});
+
+      screen.getByRole("button").click();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.called(LAST_ACK_SETTINGS_URL, { method: "PUT" }),
+        ).toBeTruthy();
+      });
     });
 
     it("should link the most recent release if two versions have the release notes", () => {

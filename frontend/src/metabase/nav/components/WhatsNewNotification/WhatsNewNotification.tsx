@@ -1,17 +1,16 @@
-import { t } from "ttag";
 import { useCallback, useMemo } from "react";
-import styled from "@emotion/styled";
+import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
-import { isNotFalsy } from "metabase/core/utils/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Stack, Text, Anchor, Box } from "metabase/ui";
-import { getLatestEligibleReleaseNotes } from "./utils";
+import { Anchor, Flex, Stack, Text } from "metabase/ui";
 import Sparkles from "./sparkles.svg?component";
+import { getLatestEligibleReleaseNotes } from "./utils";
+import { NotificationContainer } from "./WhatsNewNotification.styled";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
@@ -23,25 +22,15 @@ export function WhatsNewNotification() {
   );
 
   const url: string | undefined = useMemo(() => {
-    const versionsList = [versionInfo?.latest]
-      .concat(versionInfo?.older)
-      .filter(isNotFalsy);
-
     const lastEligibleVersion = getLatestEligibleReleaseNotes({
-      versions: versionsList,
+      versionInfo,
       currentVersion: currentVersion.tag,
       lastAcknowledgedVersion: lastAcknowledgedVersion,
       isEmbedded,
     });
 
     return lastEligibleVersion?.announcement_url;
-  }, [
-    currentVersion,
-    lastAcknowledgedVersion,
-    versionInfo?.latest,
-    versionInfo?.older,
-    isEmbedded,
-  ]);
+  }, [versionInfo, currentVersion.tag, lastAcknowledgedVersion, isEmbedded]);
 
   const dimiss = useCallback(() => {
     dispatch(
@@ -80,13 +69,3 @@ export function WhatsNewNotification() {
     </NotificationContainer>
   );
 }
-
-const NotificationContainer = styled(Box)(({ theme }) => ({
-  margin: theme.spacing.lg,
-  padding: theme.spacing.md,
-  boxShadow: theme.shadows.md,
-  borderWidth: 1,
-  borderColor: theme.colors.border[0],
-  borderStyle: "solid",
-  borderRadius: theme.radius.md,
-}));

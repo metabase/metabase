@@ -1,17 +1,19 @@
 import type { VersionInfoRecord } from "metabase-types/api";
 import MetabaseUtils from "metabase/lib/utils";
+import type { VersionInfo } from "metabase-types/api/settings";
+import { isNotFalsy } from "metabase/core/utils/types";
 /**
  * Helper function that:
  * - gets versions > lastAcknowledgedVersion (if not null) & <= currentVersion
  * - gets the last (more recent) one that has a release notes url and returns it if present
  */
 export const getLatestEligibleReleaseNotes = ({
-  versions,
+  versionInfo,
   currentVersion,
   lastAcknowledgedVersion,
   isEmbedded = false,
 }: {
-  versions: VersionInfoRecord[];
+  versionInfo: VersionInfo | null;
   currentVersion?: string;
   lastAcknowledgedVersion: string | null;
   isEmbedded?: boolean;
@@ -19,6 +21,10 @@ export const getLatestEligibleReleaseNotes = ({
   if (isEmbedded || currentVersion === undefined) {
     return undefined;
   }
+
+  const versions = [versionInfo?.latest]
+    .concat(versionInfo?.older)
+    .filter(isNotFalsy);
 
   const versionInVersionInfo = versions.find(v => v.version === currentVersion);
   if (!versionInVersionInfo) {
@@ -36,9 +42,5 @@ export const getLatestEligibleReleaseNotes = ({
     );
   });
 
-  return (
-    eligibleVersions
-      // .sort((a, z) => z.version - a.version)
-      .find(({ announcement_url }) => announcement_url)
-  );
+  return eligibleVersions.find(({ announcement_url }) => announcement_url);
 };
