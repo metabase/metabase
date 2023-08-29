@@ -256,12 +256,12 @@
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}
                    {:email                  "trashbird@metabase.com"
-                     :first_name             "Trash"
-                     :last_name              "Bird"
-                     :is_active              false
-                     :group_ids              #{(u/the-id (perms-group/all-users))}
-                     :personal_collection_id true
-                     :common_name            "Trash Bird"}]
+                    :first_name             "Trash"
+                    :last_name              "Bird"
+                    :is_active              false
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
@@ -305,9 +305,9 @@
                   (map #(dissoc % :is_qbnewb :last_login)))))))
 
   (testing "GET /api/user?include_deactivated=false should return only active users"
-    (is (=  (set ["crowberto@metabase.com"
-                  "lucky@metabase.com"
-                  "rasta@metabase.com"])
+    (is (= #{"crowberto@metabase.com"
+             "lucky@metabase.com"
+             "rasta@metabase.com"}
            (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
                 (filter mt/test-user?)
                 (map :email)
