@@ -84,12 +84,15 @@ describe("getLatestEligibleReleaseNotes", () => {
       getLatestEligibleReleaseNotes({
         versionInfo: buildVersionInfo([
           mockVersion({
-            version: "v0.49",
+            version: "v0.49.0",
             announcement_url: "url",
           }),
+          mockVersion({
+            version: "v0.48.0",
+          }),
         ]),
-        currentVersion: "v0.48",
-        lastAcknowledgedVersion: "v0.47",
+        currentVersion: "v0.48.0",
+        lastAcknowledgedVersion: "v0.47.0",
       }),
     ).toBe(undefined);
   });
