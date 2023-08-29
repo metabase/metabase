@@ -22,7 +22,7 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -34,6 +34,7 @@ import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 
+import { DashboardTabs } from "../components/DashboardTabs";
 import {
   ItemContent,
   ItemDescription,
@@ -51,6 +52,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
   isHeaderVisible: getIsHeaderVisible(state),
+  tabs: getTabs(state),
 });
 
 const mapDispatchToProps = {
@@ -149,6 +151,11 @@ class AutomaticDashboardAppInner extends Component {
                   </ActionButton>
                 )}
               </div>
+              {this.props.tabs.length > 1 && (
+                <div>
+                  <DashboardTabs location={this.props.location} />
+                </div>
+              )}
             </div>
           )}
 
