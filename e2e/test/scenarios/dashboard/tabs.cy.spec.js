@@ -95,7 +95,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.intercept(
       "POST",
-      `/api/dashboard/${ORDERS_DASHBOARD_ID}/card/1/query`,
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/1/card/1/query`,
       cy.spy().as("firstTabQuery"),
     );
     cy.intercept(

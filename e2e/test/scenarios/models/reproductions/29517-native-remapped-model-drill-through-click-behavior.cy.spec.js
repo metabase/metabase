@@ -99,11 +99,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
       visitDashboard(id);
     });
 
-    cy.intercept(
-      "GET",
-      `/api/dashboard/${ORDERS_DASHBOARD_ID}").as("loadTargetDashboard`,
-    );
-    cy.get("circle").eq(25).click({ force: true });
+    cy
+      .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
+      .as("loadTargetDashboard"),
+      cy.get("circle").eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);

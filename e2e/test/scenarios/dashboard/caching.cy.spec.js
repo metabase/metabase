@@ -19,7 +19,7 @@ describeEE("scenarios > dashboard > caching", () => {
   });
 
   it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", `dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
       "updateDashboard",
     );
     visitDashboard(ORDERS_DASHBOARD_ID);
