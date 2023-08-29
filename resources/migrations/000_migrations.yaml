@@ -16167,6 +16167,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
+      rollback: # not needed, it will be removed with the table
 
   - changeSet:
       id: v48.00-014
@@ -16179,6 +16180,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: role
+      rollback: # not needed, it will be removed with the table
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
