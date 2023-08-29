@@ -30,7 +30,7 @@ jobs:
 
   be-linter-cloverage:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: github.ref_name == 'master' && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
