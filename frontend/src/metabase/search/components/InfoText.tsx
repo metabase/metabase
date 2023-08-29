@@ -82,8 +82,8 @@ function getCollectionInfoText(collection: Partial<Collection>) {
   ) {
     return t`Collection`;
   }
-  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
-  return `${level.name} ${t`Collection`}`;
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+  return `${type.name} ${t`Collection`}`;
 }
 
 function TablePath({ result }: { result: WrappedResult }) {
