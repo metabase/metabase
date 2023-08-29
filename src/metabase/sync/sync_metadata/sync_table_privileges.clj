@@ -27,10 +27,8 @@
                                              (assoc :table_id table-id)
                                              (dissoc :schema :table))))
                                      rows)]
-        (t2/with-transaction [conn]
-          (jdbc/execute! {:connection conn}
-                         (sql/format {:delete-from [:table_privileges :tp]
-                                      :where       [:in :tp.table_id {:select [:t.id]
-                                                                      :from   [[:metabase_table :t]]
-                                                                      :where  [:= :t.db_id (:id database)]}]}))
+        (t2/with-transaction [_conn]
+          (t2/delete! :model/TablePrivileges :table_id [:in {:select [:t.id]
+                                                             :from   [[:metabase_table :t]]
+                                                             :where  [:= :t.db_id (:id database)]}])
           {:total-table-privileges (t2/insert! :model/TablePrivileges rows-with-table-id)})))))
