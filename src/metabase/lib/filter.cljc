@@ -16,7 +16,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -180,7 +179,8 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ^:private ColumnWithOperators
+(def ColumnWithOperators
+  "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    lib.metadata/ColumnMetadata
    [:map
@@ -191,7 +191,8 @@
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(defn- add-column-operators
+(defn add-column-operators
+  "Extend the column metadata with the available operators if any."
   [column]
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
