@@ -831,7 +831,7 @@
          "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'INSERT') as insert,"
          "  pg_catalog.has_table_privilege(current_user, t.schemaname || '.' || t.tablename, 'DELETE') as delete"
          "from pg_catalog.pg_tables t"
-         "where t.schemaname not in ('pg_toast', 'pg_catalog', 'information_schema')"
+         "where t.schemaname !~ '^pg_'"
          "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
          ")"
          "select t.*"
