@@ -124,8 +124,8 @@ class AutomaticDashboardAppInner extends Component {
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
-            <div className="bg-white border-bottom py2">
-              <div className="wrapper flex align-center">
+            <div className="bg-white border-bottom">
+              <div className="wrapper flex align-center py2">
                 <XrayIcon name="bolt" size={24} />
                 <div>
                   <h2 className="text-wrap mr2">
@@ -152,7 +152,7 @@ class AutomaticDashboardAppInner extends Component {
                 )}
               </div>
               {this.props.tabs.length > 1 && (
-                <div>
+                <div className="wrapper flex align-center">
                   <DashboardTabs location={this.props.location} />
                 </div>
               )}
