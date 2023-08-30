@@ -730,8 +730,7 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                                    {:level :off}
-    :missing-docstring                             {:level :off}
+   {:missing-docstring                             {:level :off}
     :private-call                                  {:level :off}
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
 
