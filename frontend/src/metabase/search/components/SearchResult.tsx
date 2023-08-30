@@ -170,13 +170,7 @@ export function SearchResult({
           )}
         </ResultLinkContent>
         {showXRayButton && (
-          <Button
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-              e.stopPropagation()
-            }
-            variant="outline"
-            p="sm"
-          >
+          <Button onClick={e => e.stopPropagation()} variant="outline" p="sm">
             <Link
               to={`/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`}
             >
