@@ -40,6 +40,13 @@
     (filter (partial enforce-impersonation? group-id->perms-set)
             impersonations)))
 
+(defenterprise impersonation-enabled-for-db?
+  "Is impersonation enabled for the given database, for any groups?"
+  :feature :advanced-permissions
+  [db-or-id]
+  (when db-or-id
+    (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id))))
+
 (defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
@@ -81,7 +88,7 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [enabled?           (t2/exists? :model/ConnectionImpersonation :db_id (u/id database))
+      (let [enabled?           (impersonation-enabled-for-db? database)
             default-role       (driver.sql/default-database-role driver database)
             impersonation-role (and enabled? (connection-impersonation-role database))]
         (when (and enabled? (not default-role))
