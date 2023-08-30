@@ -176,7 +176,10 @@ describe("impersonation modal", () => {
     await setup({
       hasImpersonation: false,
       userAttributes: [],
-      databaseDetails: { engine: "snowflake" },
+      databaseDetails: {
+        engine: "snowflake",
+        features: ["connection-impersonation-requires-role"],
+      },
     });
 
     expect(
