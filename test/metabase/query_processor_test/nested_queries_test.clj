@@ -628,13 +628,9 @@
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection"
-      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        meta/metadata-provider
-                                        {:cards [{:id            1
-                                                  :database-id   (meta/id)
-                                                  :collection-id 1000
-                                                  :name          "Card 1"
-                                                  :dataset-query {}}]})
+      (qp.store/with-metadata-provider (-> meta/metadata-provider
+                                           (lib.tu/metadata-provider-with-cards-for-queries [{}])
+                                           (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
         (is (= #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}
                (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
 
@@ -923,13 +919,10 @@
           (testing (format "with Card with result metadata %s cols => %s"
                            description
                            (pr-str (mapv :display_name result-metadata)))
-            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                              provider
-                                              {:cards [{:id              1
-                                                        :database-id     (mt/id)
-                                                        :name            "Card 1"
-                                                        :dataset-query   (mt/mbql-query orders)
-                                                        :result-metadata result-metadata}]})
+            (qp.store/with-metadata-provider (-> provider
+                                                 (lib.tu/metadata-provider-with-cards-for-queries [(mt/mbql-query orders)])
+                                                 (lib.tu/merged-mock-metadata-provider
+                                                  {:cards [{:id 1, :result-metadata result-metadata}]}))
               ;; now try using this Card as a saved question,  should work
               (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                                 [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
@@ -1158,13 +1151,10 @@
                                {:source-query (:query query)})
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
-                    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                                      (mt/application-database-metadata-provider (mt/id))
-                                                      {:cards [{:id              1
-                                                                :database-id     (mt/id)
-                                                                :name            "Card 1"
-                                                                :dataset-query   query
-                                                                :result-metadata metadata}]})
+                    (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                                                         (lib.tu/metadata-provider-with-cards-for-queries [query])
+                                                         (lib.tu/merged-mock-metadata-provider
+                                                          {:cards [{:id 1, :result-metadata metadata}]}))
                       (test-query
                        (mt/mbql-query nil
                          {:source-table "card__1"}))))]

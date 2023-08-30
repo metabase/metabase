@@ -16,6 +16,7 @@
     [:lib/type {:optional true} [:= lib-type]]]])
 
 (def MockMetadata
+  "Schema for the mock metadata passed in to [[mock-metadata-provider]]."
   [:map
    {:closed true}
    [:database {:optional true} [:maybe (with-optional-lib-type lib.metadata/DatabaseMetadata :metadata/database)]]

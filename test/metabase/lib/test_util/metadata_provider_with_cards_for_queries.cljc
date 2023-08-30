@@ -16,9 +16,11 @@
    parent-metadata-provider
    {:cards (into []
                  (map-indexed
-                  (fn [i query]
+                  (fn [i {database-id :database, :as query}]
                     {:id            (inc i)
                      :name          (lib.util/format "Card %d" (inc i))
-                     :database-id   (u/the-id (lib.metadata/database parent-metadata-provider))
+                     :database-id   (or (when (pos-int? database-id)
+                                          database-id)
+                                        (u/the-id (lib.metadata/database parent-metadata-provider)))
                      :dataset-query query}))
                  queries)}))

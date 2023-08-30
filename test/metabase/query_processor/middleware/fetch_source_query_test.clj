@@ -155,13 +155,14 @@
                {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-   [(mt/mbql-query venues {:limit 100})
-    {:database lib.schema.id/saved-questions-virtual-database-id
-     :type     :query
-     :query    {:source-table "card__1"
-                :limit        50}}]))
+  (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+       [(mt/mbql-query venues {:limit 100})
+        {:database lib.schema.id/saved-questions-virtual-database-id
+         :type     :query
+         :query    {:source-table "card__1"
+                    :limit        50}}])
+      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :dataset true}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"
@@ -212,13 +213,9 @@
     :field_ref    [:field (meta/id :categories :name) nil]}])
 
 (def ^:private joins-metadata-provider
-  (lib.tu/mock-metadata-provider
-   meta/metadata-provider
-   {:cards [{:id              1
-             :name            "Card 1"
-             :database-id     1
-             :dataset-query   (lib.tu.macros/mbql-query categories {:limit 100})
-             :result-metadata joins-metadata}]}))
+  (-> meta/metadata-provider
+      (lib.tu/metadata-provider-with-cards-for-queries [(lib.tu.macros/mbql-query categories {:limit 100})])
+      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :result-metadata joins-metadata}]})))
 
 (deftest ^:parallel joins-test
   (qp.store/with-metadata-provider joins-metadata-provider

@@ -13,12 +13,9 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
@@ -30,7 +27,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-  #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -96,9 +93,15 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (t2/select-one [Field :id :table_id :semantic_type :base_type :effective_type
-                   :coercion_strategy :name :display_name :fingerprint]
-     :id (data/id table-kw field-kw))
+   (if (qp.store/initialized?)
+     (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+         (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         qp.store/->legacy-metadata
+         (dissoc :lib/type))
+     (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
+                     :coercion_strategy :name :display_name :fingerprint]
+                    :id (data/id table-kw field-kw)))
    {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
@@ -187,8 +190,10 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (#'qp.add-implicit-joins/join-alias (t2/select-one-fn :name Table :id (data/id dest-table-kw))
-                                                                 (:name source-col))))))
+               :source_alias (let [table-name (if (qp.store/initialized?)
+                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
+                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
 
 (declare cols)
 
@@ -488,7 +493,7 @@
     queries))
 
   ([parent-metadata-provider :- lib.metadata/MetadataProvider
-    queries                :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
 (mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
@@ -501,11 +506,13 @@
     queries))
 
   ([parent-metadata-provider :- lib.metadata/MetadataProvider
-    queries                :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} :map]]
    (transduce
-    (map-indexed (fn [i query]
+    (map-indexed (fn [i {database-id :database, :as query}]
                    {:id            (inc i)
-                    :database-id   (u/the-id (lib.metadata/database parent-metadata-provider))
+                    :database-id   (or (when (pos-int? database-id)
+                                         database-id)
+                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
                     :name          (format "Card %d" (inc i))
                     :dataset-query query}))
     (completing

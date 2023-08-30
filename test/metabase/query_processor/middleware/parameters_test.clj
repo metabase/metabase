@@ -4,7 +4,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
