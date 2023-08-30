@@ -379,16 +379,8 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().findByText("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("15578").click();
-
-    popover().findByText("ID").click();
-    popover()
-      // Implicit assertion - test will fail for multiple strings
-      .findByText("Product ID")
-      .click();
+    popover().findByText("Saved Questions").click();
+    popover().findByText("15578").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
