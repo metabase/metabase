@@ -2731,10 +2731,11 @@
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "Should require a non-empty query"
-        (doseq [query [nil
-                       ""
-                       #_"   "
-                       #_"\n"]]
+        (doseq [query ["   " "\n"]]
+          (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
+            (is (=? {:errors {:query "value must be a non-blank string."}}
+                    (mt/user-http-request :rasta :get 400 url)))))
+        (doseq [query [nil ""]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
                    (mt/user-http-request :rasta :get 404 url)))))))

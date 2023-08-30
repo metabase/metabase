@@ -22,7 +22,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [ring.util.codec :as codec])
   (:import
    (metabase.async.streaming_response StreamingResponse)
@@ -326,16 +325,6 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
-#_(s/def ::http-client-args
-    (s/cat
-     :credentials      (s/? (some-fn map? string?))
-     :method           #{:get :put :post :delete}
-     :expected-status  (s/? integer?)
-     :url              string?
-     :request-options  (s/? (every-pred map? :request-options))
-     :http-body        (s/? (some-fn map? sequential?))
-     :query-parameters (s/* (s/cat :k keyword? :v any?))))
-
 (def ^:private http-client-args
   [:catn
    [:credentials      [:? [:or string? map?]]]
@@ -349,6 +338,12 @@
 (def ^:private http-client-args-parser
   (mc/parser http-client-args))
 
+(defn- url-escape
+  [url]
+  (-> url
+      (str/replace #" " "%20")
+      (str/replace #"\n" "%0A")))
+
 (defn- parse-http-client-args
   "Parse the list of required and optional `args` into the various separated params that `-client` requires"
   [args]
@@ -358,8 +353,10 @@
         (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
                         explain-data))))
     (cond-> parsed
+      ;; escape spaces in url
+      (:url parsed)              (update :url url-escape)
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
-      (:request-options parsed) (update :request-options :request-options)
+      (:request-options parsed)  (update :request-options :request-options)
       ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]
                                                              (update-vals (group-by :k query-params)

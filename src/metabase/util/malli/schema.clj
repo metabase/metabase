@@ -1,6 +1,7 @@
 (ns metabase.util.malli.schema
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -55,7 +56,7 @@
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
-    [:string {:min 1}]
+    [:fn (fn [s] (and (string? s) (not (str/blank? s))))]
     (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
