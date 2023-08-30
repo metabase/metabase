@@ -15,6 +15,7 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -110,7 +111,19 @@
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
   [a-query stage-number]
-  (to-array (lib.core/orderable-columns a-query stage-number)))
+  (to-array (lib.order-by/orderable-columns a-query stage-number)))
+
+(defn- display-info-js
+  "Converts the [[metabase.lib.metadata.calculation/display-info]] maps into a JS-friendly form - `camelCase` keys,
+  namespaced keyword values as `\"foo/bar\"` strings, etc.
+  Recurses into nested sequences and maps."
+  [x]
+  (cond
+    (map? x)        (-> x
+                        (update-keys u/->camelCaseEn)
+                        (update-vals display-info-js))
+    (sequential? x) (map display-info-js x)
+    :else           x))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
@@ -120,8 +133,7 @@
   (-> a-query
       (lib.stage/ensure-previous-stages-have-metadata stage-number)
       (lib.core/display-info stage-number x)
-      (update-keys u/->camelCaseEn)
-      (update :table update-keys u/->camelCaseEn)
+      display-info-js
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export field-id
@@ -657,9 +669,12 @@
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
-  "Returns whether the extra keys required by the database."
+  "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
+  needed for MongoDB queries."
   [database-id metadata]
-  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+  (to-array
+   (map u/qualified-name
+        (lib.core/required-native-extras (metadataProvider database-id metadata)))))
 
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
@@ -670,8 +685,8 @@
    (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
 
 (defn ^:export with-native-extras
-  "Updates the extras required for the db to run this query.
-   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  "Updates the extras required for the db to run this query. The first stage must be a native type. Will ignore extras
+  not in `required-native-extras`."
   [a-query native-extras]
   (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
 
@@ -730,3 +745,51 @@
    Fields that do not support the provided option will be ignored."
   [a-query stage-number join-condition bucketing-option]
   (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
+
+(defn- js-cells-by
+  "Given a `col-fn`, returns a function that will extract a JS object like
+  `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like `{:column-name \"ID\", :value 12}`.
+
+  The spelling of the column key differs between multiple JS objects of this same general shape
+  (`col` on data rows, `column` on dimensions), etc., hence the abstraction."
+  [col-fn]
+  (fn [^js cell]
+    {:column-name (.-name (col-fn cell))
+     :value       (.-value cell)}))
+
+(def ^:private row-cell       (js-cells-by #(.-col ^js %)))
+(def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
+
+(defn ^:export available-drill-thrus
+  "Return an array (possibly empty) of drill-thrus given:
+  - Required column
+  - Nullable value
+  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
+  [a-query stage-number column value row dimensions]
+  (->> (merge {:column (js.metadata/parse-column column)
+               :value  (cond
+                         (undefined? value) nil   ; Missing a value, ie. a column click
+                         (nil? value)       :null ; Provided value is null, ie. database NULL
+                         :else              value)}
+              (when row                    {:row        (mapv row-cell       row)})
+              (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
+       (lib.core/available-drill-thrus a-query stage-number)
+       to-array))
+
+(defn ^:export drill-thru
+  "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
+
+  Each type of drill-thru has a different effect on the query."
+  [a-query stage-number a-drill-thru]
+  (lib.core/drill-thru a-query stage-number a-drill-thru))
+
+(defn ^:export pivot-types
+  "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
+  [a-drill-thru]
+  (to-array (lib.core/pivot-types a-drill-thru)))
+
+(defn ^:export pivot-columns-for-type
+  "Returns an array of pivotable columns of the specified type."
+  [a-drill-thru pivot-type]
+  (lib.core/pivot-columns-for-type a-drill-thru pivot-type))

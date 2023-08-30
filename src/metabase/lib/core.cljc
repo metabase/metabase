@@ -11,6 +11,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
@@ -39,6 +40,7 @@
          lib.column-group/keep-me
          lib.common/keep-me
          lib.database/keep-me
+         lib.drill-thru/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -98,6 +100,11 @@
   external-op]
  [lib.database
   database-id]
+ [lib.drill-thru
+  available-drill-thrus
+  drill-thru
+  pivot-columns-for-type
+  pivot-types]
  [lib.expression
   expression
   expressions

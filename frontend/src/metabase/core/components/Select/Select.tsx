@@ -96,7 +96,7 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
-class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   SelectProps<TValue, TOption>
 > {
   _popover?: any;
@@ -327,8 +327,13 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+/**
+ * @deprecated: use Select from "metabase/ui"
+ */
+const Select = Uncontrollable()(BaseSelect);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Uncontrollable()(Select);
+export default Select;
 
 export interface OptionSectionProps {
   name?: string;

@@ -10,6 +10,7 @@
    [metabase.lib.schema.expression :as lib.schema.expresssion]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -133,7 +134,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :joins])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -514,3 +515,10 @@
     options        :- [:maybe VisibleColumnsOptions]]
    (let [options (merge (default-visible-columns-options) options)]
      (visible-columns-method query stage-number x options))))
+
+(mu/defn primary-keys :- [:sequential lib.metadata/ColumnMetadata]
+  "Returns a list of primary keys for the source table of this query."
+  [query        :- ::lib.schema/query]
+  (if-let [table-id (lib.util/source-table-id query)]
+    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
+    []))
