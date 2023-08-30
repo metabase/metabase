@@ -215,7 +215,7 @@
       (t2.with-temp/with-temp [Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
-          (try
+          (mt/with-model-cleanup [:model/Dashboard]
             (is (= (merge
                     dashboard-defaults
                     {:name           test-dashboard-name
@@ -232,36 +232,32 @@
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :cache_ttl     1234
                                                                            :collection_id (u/the-id collection)})
-                       dashboard-response)))
-            (finally
-              (t2/delete! Dashboard :name test-dashboard-name))))))))
+                       dashboard-response)))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
     (testing "Make sure we can create a Dashboard with a Collection position"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (let [dashboard-name (mt/random-name)]
-            (try
+          (mt/with-model-cleanup [:model/Dashboard]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (let [dashboard-name (mt/random-name)]
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
               (is (=? {:collection_id true, :collection_position 1000}
                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                              (update :collection_id (partial = (u/the-id collection))))))
-              (finally
-                (t2/delete! Dashboard :name dashboard-name)))))
+                              (update :collection_id (partial = (u/the-id collection))))))))
 
-        (testing "..but not if we don't have permissions for the Collection"
-          (t2.with-temp/with-temp [Collection collection]
-            (let [dashboard-name (mt/random-name)]
-              (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
-                                                                  :collection_id       (u/the-id collection)
-                                                                  :collection_position 1000})
-              (is (= nil
-                     (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                             (update :collection_id (partial = (u/the-id collection)))))))))))))
+          (testing "..but not if we don't have permissions for the Collection"
+            (t2.with-temp/with-temp [Collection collection]
+              (let [dashboard-name (mt/random-name)]
+                (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
+                                                                    :collection_id       (u/the-id collection)
+                                                                    :collection_position 1000})
+                (is (= nil
+                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                               (update :collection_id (partial = (u/the-id collection))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GET /api/dashboard/                                              |
@@ -853,15 +849,15 @@
     (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
-          (api.card-test/with-ordered-items collection [Card  a
-                                                        Pulse b
-                                                        Card  d]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-            (is (= {"a" 1
-                    "b" 2
-                    "d" 3}
-                   (api.card-test/get-name->collection-position :rasta collection)))
-            (try
+          (mt/with-model-cleanup [:model/Dashboard]
+            (api.card-test/with-ordered-items collection [Card  a
+                                                          Pulse b
+                                                          Card  d]
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (is (= {"a" 1
+                      "b" 2
+                      "d" 3}
+                     (api.card-test/get-name->collection-position :rasta collection)))
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                "c"
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 3})
@@ -869,9 +865,7 @@
                       "b" 2
                       "c" 3
                       "d" 4}
-                     (api.card-test/get-name->collection-position :rasta collection)))
-              (finally
-                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                     (api.card-test/get-name->collection-position :rasta collection))))))))))
 
 (deftest insert-dashboard-no-position-test
   (testing "POST /api/dashboard"
@@ -886,17 +880,14 @@
                     "b" 2
                     "d" 3}
                    (api.card-test/get-name->collection-position :rasta collection)))
-            (try
+            (mt/with-model-cleanup [:model/Dashboard]
               (mt/user-http-request :rasta :post 200 "dashboard" {:name          "c"
                                                                   :collection_id (u/the-id collection)})
               (is (= {"a" 1
                       "b" 2
                       "c" nil
                       "d" 3}
-                     (api.card-test/get-name->collection-position :rasta collection)))
-              (finally
-                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
-
+                     (api.card-test/get-name->collection-position :rasta collection))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           DELETE /api/dashboard/:id                                            |
@@ -915,13 +906,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest copy-dashboard-test
-  (testing "POST /api/dashboard/:id/copy"
-    (testing "A plain copy with nothing special"
-      (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
-                                                    :description "A description"
-                                                    :creator_id  (mt/user->id :rasta)}]
-        (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
-          (try
+  (mt/with-model-cleanup [:model/Dashboard]
+    (testing "POST /api/dashboard/:id/copy"
+      (testing "A plain copy with nothing special"
+        (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
+                                                      :description "A description"
+                                                      :creator_id  (mt/user->id :rasta)}]
+
+          (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (= (merge
                     dashboard-defaults
                     {:name          "Test Dashboard"
@@ -932,9 +924,7 @@
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not=  (:entity_id dashboard) (:entity_id response))
-                "The copy should have a new entity ID generated")
-            (finally
-              (t2/delete! Dashboard :id (u/the-id response)))))))
+                "The copy should have a new entity ID generated")))))
 
     (testing "Ensure name / description / user set when copying"
       (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
@@ -942,21 +932,19 @@
         (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" (:id dashboard))
                                              {:name        "Test Dashboard - Duplicate"
                                               :description "A new description"})]
-          (try
-            (is (= (merge
-                    dashboard-defaults
-                    {:name          "Test Dashboard - Duplicate"
-                     :description   "A new description"
-                     :creator_id    (mt/user->id :crowberto)
-                     :collection_id false
-                     :collection    false})
-                   (dashboard-response response)))
-            (is (some? (:entity_id response)))
-            (is (not= (:entity_id dashboard) (:entity_id response))
-                "The copy should have a new entity ID generated")
-            (finally
-              (t2/delete! Dashboard :id (u/the-id response))))))))
+          (is (= (merge
+                  dashboard-defaults
+                  {:name          "Test Dashboard - Duplicate"
+                   :description   "A new description"
+                   :creator_id    (mt/user->id :crowberto)
+                   :collection_id false
+                   :collection    false})
+                 (dashboard-response response)))
+          (is (some? (:entity_id response)))
+          (is (not= (:entity_id dashboard) (:entity_id response))
+              "The copy should have a new entity ID generated"))))))
 
+(deftest deep-copy-dashboard-test
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp [Collection source-coll {:name "Source collection"}
@@ -1014,175 +1002,175 @@
                      DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
                                             :card_id (u/the-id avg-card)
                                             :position 0}]
-        (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
-          (let [resp (mt/user-http-request :crowberto :post 200
-                                           (format "dashboard/%d/copy" (:id dashboard))
-                                           {:name        "New dashboard"
-                                            :description "A new description"
-                                            :is_deep_copy true
-                                            :collection_id (u/the-id dest-coll)})]
-            (is (= (:collection_id resp) (u/the-id dest-coll))
-                "Dashboard should go into the destination collection")
-            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
-              (testing "Copies all of the questions on the dashboard"
-                (is (= 2 (count copied-cards))))
-              (testing "Copies all of the dashboard cards"
-                (is (= (count copied-db-cards) (count source-db-cards)))
-                (testing "Including text cards"
-                  (is (some (comp nil? :card_id) copied-db-cards))
-                  (is (some (comp :text :visualization_settings) copied-db-cards))))
-              (testing "Should copy cards"
-                (is (= #{"Total orders per month" "Average orders per month"}
-                       (into #{} (map :name) copied-cards))
-                    "Should preserve the titles of the original cards"))
-              (testing "Should not deep-copy models"
-                (is (every? (comp false? :dataset) copied-cards)
-                    "Copied a model"))))))
-      (testing "When there are cards the user lacks write perms for"
-        (mt/with-temp [Collection source-coll {:name "Source collection"}
-                       Collection no-read-coll {:name "Crowberto lacks write coll"}
-                       Collection dest-coll   {:name "Destination collection"}
-                       Dashboard  dashboard {:name          "Dashboard to be Copied"
-                                             :description   "A description"
-                                             :collection_id (u/the-id source-coll)
-                                             :creator_id    (mt/user->id :rasta)}
-                       Card       total-card  {:name "Total orders per month"
-                                               :collection_id (u/the-id no-read-coll)
-                                               :display :line
-                                               :visualization_settings
-                                               {:graph.dimensions ["CREATED_AT"]
-                                                :graph.metrics ["sum"]}
-                                               :dataset_query
-                                               (mt/$ids
-                                                {:database (mt/id)
-                                                 :type     :query
-                                                 :query    {:source-table $$orders
-                                                            :aggregation  [[:sum $orders.total]]
-                                                            :breakout     [!month.orders.created_at]}})}
-                       Card      avg-card  {:name "Average orders per month"
+       (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
+         (let [resp (mt/user-http-request :crowberto :post 200
+                                          (format "dashboard/%d/copy" (:id dashboard))
+                                          {:name        "New dashboard"
+                                           :description "A new description"
+                                           :is_deep_copy true
+                                           :collection_id (u/the-id dest-coll)})]
+           (is (= (:collection_id resp) (u/the-id dest-coll))
+               "Dashboard should go into the destination collection")
+           (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
+           (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                 copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
+                 source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+             (testing "Copies all of the questions on the dashboard"
+               (is (= 2 (count copied-cards))))
+             (testing "Copies all of the dashboard cards"
+               (is (= (count copied-db-cards) (count source-db-cards)))
+               (testing "Including text cards"
+                 (is (some (comp nil? :card_id) copied-db-cards))
+                 (is (some (comp :text :visualization_settings) copied-db-cards))))
+             (testing "Should copy cards"
+               (is (= #{"Total orders per month" "Average orders per month"}
+                      (into #{} (map :name) copied-cards))
+                   "Should preserve the titles of the original cards"))
+             (testing "Should not deep-copy models"
+               (is (every? (comp false? :dataset) copied-cards)
+                   "Copied a model"))))))
+     (testing "When there are cards the user lacks write perms for"
+       (mt/with-temp [Collection source-coll {:name "Source collection"}
+                      Collection no-read-coll {:name "Crowberto lacks write coll"}
+                      Collection dest-coll   {:name "Destination collection"}
+                      Dashboard  dashboard {:name          "Dashboard to be Copied"
+                                            :description   "A description"
                                             :collection_id (u/the-id source-coll)
-                                            :display :line
-                                            :visualization_settings
-                                            {:graph.dimensions ["CREATED_AT"]
-                                             :graph.metrics ["sum"]}
-                                            :dataset_query
-                                            (mt/$ids
-                                             {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table $$orders
-                                                         :aggregation  [[:avg $orders.total]]
-                                                         :breakout     [!month.orders.created_at]}})}
-                       Card          card {:name "A card"
+                                            :creator_id    (mt/user->id :rasta)}
+                      Card       total-card  {:name "Total orders per month"
+                                              :collection_id (u/the-id no-read-coll)
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query    {:source-table $$orders
+                                                           :aggregation  [[:sum $orders.total]]
+                                                           :breakout     [!month.orders.created_at]}})}
+                      Card      avg-card  {:name "Average orders per month"
                                            :collection_id (u/the-id source-coll)
+                                           :display :line
+                                           :visualization_settings
+                                           {:graph.dimensions ["CREATED_AT"]
+                                            :graph.metrics ["sum"]}
                                            :dataset_query
                                            (mt/$ids
                                             {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table $$orders
-                                                     :limit 4}})}
-                       DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id total-card)
-                                               :size_x 6, :size_y 6}
-                       DashboardCard _        {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id card)
-                                               :size_x 6, :size_y 6}
-                       DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                              :card_id (u/the-id avg-card)
-                                              :position 0}]
-          (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
-            (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
-            (let [resp (mt/user-http-request :rasta :post 200
+                                             :type     :query
+                                             :query    {:source-table $$orders
+                                                        :aggregation  [[:avg $orders.total]]
+                                                        :breakout     [!month.orders.created_at]}})}
+                      Card          card {:name "A card"
+                                          :collection_id (u/the-id source-coll)
+                                          :dataset_query
+                                          (mt/$ids
+                                           {:database (mt/id)
+                                            :type :query
+                                            :query {:source-table $$orders
+                                                    :limit 4}})}
+                      DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
+                                              :card_id    (u/the-id total-card)
+                                              :size_x 6, :size_y 6}
+                      DashboardCard _        {:dashboard_id (u/the-id dashboard)
+                                              :card_id    (u/the-id card)
+                                              :size_x 6, :size_y 6}
+                      DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                             :card_id (u/the-id avg-card)
+                                             :position 0}]
+         (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
+           (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
+           (let [resp (mt/user-http-request :rasta :post 200
+                                            (format "dashboard/%d/copy" (:id dashboard))
+                                            {:name        "New dashboard"
+                                             :description "A new description"
+                                             :is_deep_copy true
+                                             :collection_id (u/the-id dest-coll)})]
+             (is (= (:collection_id resp) (u/the-id dest-coll))
+                 "Dashboard should go into the destination collection")
+             (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                   copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+               (testing "Copies only one of the questions on the dashboard"
+                 (is (= 1 (count copied-cards))))
+               (testing "Copies one of the dashboard cards"
+                 (is (= 1 (count copied-db-cards))))
+               (testing "Should copy cards"
+                 (is (= #{"A card"}
+                        (into #{} (map :name) copied-cards))
+                     "Should preserve the titles of the original cards"))
+               (testing "Should not create dashboardcardseries because the base card lacks permissions"
+                 (is (empty? (t2/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+               (testing "Response includes uncopied cards"
+                 ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
+                 ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
+                 ;; you lack permissions for are also not copied, but you can see the whole card.
+                 (is (= 2 (->> resp :uncopied count)))))))))
+     (testing "When source and destination are the same"
+       (mt/with-temp [Collection source-coll {:name "Source collection"}
+                      Dashboard  dashboard {:name          "Dashboard to be Copied"
+                                            :description   "A description"
+                                            :collection_id (u/the-id source-coll)
+                                            :creator_id    (mt/user->id :rasta)}
+                      Card       total-card  {:name "Total orders per month"
+                                              :collection_id (u/the-id source-coll)
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query    {:source-table $$orders
+                                                           :aggregation  [[:sum $orders.total]]
+                                                           :breakout     [!month.orders.created_at]}})}
+                      Card      avg-card  {:name "Average orders per month"
+                                           :collection_id (u/the-id source-coll)
+                                           :display :line
+                                           :visualization_settings
+                                           {:graph.dimensions ["CREATED_AT"]
+                                            :graph.metrics ["sum"]}
+                                           :dataset_query
+                                           (mt/$ids
+                                            {:database (mt/id)
+                                             :type     :query
+                                             :query    {:source-table $$orders
+                                                        :aggregation  [[:avg $orders.total]]
+                                                        :breakout     [!month.orders.created_at]}})}
+                      Card          card {:name "A card"
+                                          :collection_id (u/the-id source-coll)
+                                          :dataset_query
+                                          (mt/$ids
+                                           {:database (mt/id)
+                                            :type :query
+                                            :query {:source-table $$orders
+                                                    :limit 4}})}
+                      DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
+                                              :card_id    (u/the-id total-card)
+                                              :size_x 6, :size_y 6}
+                      DashboardCard _        {:dashboard_id (u/the-id dashboard)
+                                              :card_id    (u/the-id card)
+                                              :size_x 6, :size_y 6}
+                      DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                             :card_id (u/the-id avg-card)
+                                             :position 0}]
+         (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
+           (let [_resp (mt/user-http-request :rasta :post 200
                                              (format "dashboard/%d/copy" (:id dashboard))
                                              {:name        "New dashboard"
                                               :description "A new description"
                                               :is_deep_copy true
-                                              :collection_id (u/the-id dest-coll)})]
-              (is (= (:collection_id resp) (u/the-id dest-coll))
-                  "Dashboard should go into the destination collection")
-              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
-                (testing "Copies only one of the questions on the dashboard"
-                  (is (= 1 (count copied-cards))))
-                (testing "Copies one of the dashboard cards"
-                  (is (= 1 (count copied-db-cards))))
-                (testing "Should copy cards"
-                  (is (= #{"A card"}
-                         (into #{} (map :name) copied-cards))
-                      "Should preserve the titles of the original cards"))
-                (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (t2/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
-                (testing "Response includes uncopied cards"
-                  ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
-                  ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
-                  ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count)))))))))
-      (testing "When source and destination are the same"
-        (mt/with-temp [Collection source-coll {:name "Source collection"}
-                       Dashboard  dashboard {:name          "Dashboard to be Copied"
-                                             :description   "A description"
-                                             :collection_id (u/the-id source-coll)
-                                             :creator_id    (mt/user->id :rasta)}
-                       Card       total-card  {:name "Total orders per month"
-                                               :collection_id (u/the-id source-coll)
-                                               :display :line
-                                               :visualization_settings
-                                               {:graph.dimensions ["CREATED_AT"]
-                                                :graph.metrics ["sum"]}
-                                               :dataset_query
-                                               (mt/$ids
-                                                {:database (mt/id)
-                                                 :type     :query
-                                                 :query    {:source-table $$orders
-                                                            :aggregation  [[:sum $orders.total]]
-                                                            :breakout     [!month.orders.created_at]}})}
-                       Card      avg-card  {:name "Average orders per month"
-                                            :collection_id (u/the-id source-coll)
-                                            :display :line
-                                            :visualization_settings
-                                            {:graph.dimensions ["CREATED_AT"]
-                                             :graph.metrics ["sum"]}
-                                            :dataset_query
-                                            (mt/$ids
-                                             {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table $$orders
-                                                         :aggregation  [[:avg $orders.total]]
-                                                         :breakout     [!month.orders.created_at]}})}
-                       Card          card {:name "A card"
-                                           :collection_id (u/the-id source-coll)
-                                           :dataset_query
-                                           (mt/$ids
-                                            {:database (mt/id)
-                                             :type :query
-                                             :query {:source-table $$orders
-                                                     :limit 4}})}
-                       DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id total-card)
-                                               :size_x 6, :size_y 6}
-                       DashboardCard _        {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id card)
-                                               :size_x 6, :size_y 6}
-                       DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                              :card_id (u/the-id avg-card)
-                                              :position 0}]
-          (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
-            (let [_resp (mt/user-http-request :rasta :post 200
-                                              (format "dashboard/%d/copy" (:id dashboard))
-                                              {:name        "New dashboard"
-                                               :description "A new description"
-                                               :is_deep_copy true
-                                               :collection_id (u/the-id source-coll)})
-                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
-              ;; original 3 plust 3 duplicates
-              (is (= 6 (count cards-in-coll)) "Not all cards were copied")
-              (is (= (into #{} (comp (map :name)
-                                     (mapcat (fn [n] [n (str n " - Duplicate")])))
-                           [total-card avg-card card])
-                     (set (map :name cards-in-coll)))
-                  "Cards should have \"- Duplicate\" appended"))))))))
+                                              :collection_id (u/the-id source-coll)})
+                 cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
+             ;; original 3 plust 3 duplicates
+             (is (= 6 (count cards-in-coll)) "Not all cards were copied")
+             (is (= (into #{} (comp (map :name)
+                                    (mapcat (fn [n] [n (str n " - Duplicate")])))
+                          [total-card avg-card card])
+                    (set (map :name cards-in-coll)))
+                 "Cards should have \"- Duplicate\" appended"))))))))
 
 (defn- ordered-cards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
