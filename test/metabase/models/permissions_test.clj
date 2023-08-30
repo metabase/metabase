@@ -620,6 +620,17 @@
                                :query :segmented}}
              (test-data-graph group))))))
 
+(deftest audit-db-update-test
+  (testing "Throws exception when we attempt to change the audit db permission manually."
+    (mt/with-temp* [PermissionsGroup [group]
+                    Database         [database]
+                    Table            [table    {:db_id (u/the-id database)}]]
+      (with-redefs [perms/default-audit-db-id (constantly (u/the-id database))]
+        (is (thrown-with-msg?
+             Exception
+             #"Unable to update audit database, that requires updating through monitoring permissions."
+             (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})))))))
+
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (t2.with-temp/with-temp [Database {db-id :id}]
@@ -706,7 +717,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest revoke-db-schema-permissions-test
-  (mt/with-temp [Database database {}]
+  (mt/with-temp* [Database [database]]
     (testing "revoke-db-schema-permissions! should revoke all non-native permissions on a database"
       (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
                                            (perms/data-perms-path database)))
@@ -720,17 +731,21 @@
 
 (deftest revoke-permissions-helper-function-test
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
-    (is (thrown? Exception
-                 (perms/revoke-collection-permissions!
-                  (perms-group/all-users)
-                  (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+    (is (thrown-with-msg?
+         Exception
+         #"You cannot edit permissions for a Personal Collection or its descendants."
+         (perms/revoke-collection-permissions!
+          (perms-group/all-users)
+          (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
       (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
                                                                  (collection/user->personal-collection
                                                                   (mt/user->id :lucky)))}]
-        (is (thrown? Exception
-                     (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
+        (is (thrown-with-msg?
+             Exception
+             #"You cannot edit permissions for a Personal Collection or its descendants."
+             (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
@@ -847,7 +862,7 @@
     "/db/3/schema/secret_base/table/3/"                 :dk/db-schema-name-and-table
     "/db/3/schema/secret_base/table/3/read/"            :dk/db-schema-name-table-and-read
     "/db/3/schema/secret_base/table/3/query/"           :dk/db-schema-name-table-and-query
-    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented))
+    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented ))
 
 (deftest ^:parallel idempotent-move-test
   (let [;; all v1 paths:
@@ -910,20 +925,20 @@
     (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
            (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
 
-(defn- check-fn [fn-var & [iterations]]
+(defn- check-fn! [fn-var & [iterations]]
   (let [iterations (or iterations 5000)]
     (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
       result
       {:pass? true :iterations iterations})))
 
 (deftest ^:parallel quickcheck-perm-path-classification-test
-  (is (:pass? (check-fn #'perms/classify-path))))
+  (is (:pass? (check-fn! #'perms/classify-path))))
 
 (deftest ^:parallel quickcheck-data-path-classification-test
-  (is (:pass? (check-fn #'perms/classify-data-path))))
+  (is (:pass? (check-fn! #'perms/classify-data-path))))
 
 (deftest ^:parallel quickcheck-->v2-path-test
-  (is (:pass? (check-fn #'perms/->v2-path))))
+  (is (:pass? (check-fn! #'perms/->v2-path))))
 
 (deftest ^:parallel generate-graph-test
   (are [db-ids group-id->paths expected] (= expected
