@@ -334,7 +334,7 @@
      (for [^FieldValueList row (fetch-page resp cancel-requested?)]
        (map parse-field-value row parsers)))))
 
-(defn- process-native* [respond database sql parameters cancel-chan]
+(defn- ^:dynamic *process-native* [respond database sql parameters cancel-chan]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
@@ -369,7 +369,7 @@
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
                   (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (process-native* respond database sql params (qp.context/canceled-chan context))))))
+        (*process-native* respond database sql params (qp.context/canceled-chan context))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

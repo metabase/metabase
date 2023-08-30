@@ -729,3 +729,8 @@
    (let [stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)]
      (lib.equality/closest-matching-metadata field-ref columns))))
+
+(defn json-field?
+  "Return true if field is a JSON field, false if not."
+  [field]
+  (some? (:nfc-path field)))

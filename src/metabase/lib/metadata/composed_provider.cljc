@@ -5,6 +5,10 @@
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as metadata.protocols]))
 
+(defn- cached-providers [providers]
+  (filter #(satisfies? metadata.protocols/CachedMetadataProvider %)
+          providers))
+
 (defn composed-metadata-provider
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
   turn from left to right until one returns a truthy result."
@@ -19,6 +23,20 @@
     (segment  [_this segment-id] (some #(metadata.protocols/segment % segment-id) metadata-providers))
     (tables   [_this]            (m/distinct-by :id (mapcat metadata.protocols/tables               metadata-providers)))
     (fields   [_this table-id]   (m/distinct-by :id (mapcat #(metadata.protocols/fields % table-id) metadata-providers)))
+
+    metadata.protocols/CachedMetadataProvider
+    (cached-database [_this]
+      (some metadata.protocols/cached-database
+            (cached-providers metadata-providers)))
+    (cached-metadata [_this metadata-type id]
+      (some #(metadata.protocols/cached-metadata % metadata-type id)
+            (cached-providers metadata-providers)))
+    (store-database! [_this database-metadata]
+      (when-first [provider (cached-providers metadata-providers)]
+        (metadata.protocols/store-database! provider database-metadata)))
+    (store-metadata! [_this metadata-type id metadata]
+      (when-first [provider (cached-providers metadata-providers)]
+        (metadata.protocols/store-metadata! provider metadata-type id metadata)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]

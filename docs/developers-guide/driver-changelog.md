@@ -10,6 +10,38 @@ title: Driver interface changelog
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
 
+- The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
+
+  * `qp.store/database`
+  * `qp.store/table`
+  * `qp.store/field`
+
+  Update usages of the to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
+
+  ```clj
+  (qp.store/database)       => (lib.metadata/database (qp.store/metadata-provider))
+  (qp.store/table table-id) => (lib.metadata/table (qp.store/metadata-provider) table-id)
+  (qp.store/field field-id) => (lib.metadata/field (qp.store/metadata-provider) field-id)
+  ```
+
+  Note that the new methods return keys as `kebab-case` rather than `snake_case`.
+
+- SQL drivers that implement `metabase.driver.sql.query-processor/->honeysql` for
+  `metabase.models.table/Table`/`:model/Table` should be updated to implement it for `:metadata/table` instead. As
+  with the changes above, the main difference is that the new metadata maps use `kebab-case` keys rather than
+  `snake_case` keys.
+
+* `metabase.driver.sql.query-processor/cast-field-if-needed` now expects a `kebab-case`d field as returned by
+  `lib.metadata/field`.
+
+- `metabase.query-processor.store/fetch-and-store-database!`,
+  `metabase.query-processor.store/fetch-and-store-tables!`, and
+  `metabase.query-processor.store/fetch-and-store-fields!` have been removed. Things are now fetched automatically as
+  needed and these calls are no longer necessary.
+
+- `metabase.models.field/json-field?` has been removed, use `metabase.lib.field/json-field?` instead. Note that the
+  new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

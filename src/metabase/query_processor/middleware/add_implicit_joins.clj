@@ -138,7 +138,8 @@
                                                                                (:source-field opts))]
                                                                     (pr-str (:display-name field)))))
                                                      {:resolving  &match
-                                                      :candidates fk-field-id->join-alias})))]
+                                                      :candidates fk-field-id->join-alias
+                                                      :form       form})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])
                 &match))
       (sequential? (:fields form)) (update :fields distinct-fields))))

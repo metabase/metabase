@@ -9,10 +9,16 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Database Field Table]]
+   [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -140,12 +146,12 @@
                                 :breakout    [$price]
                                 :order-by    [[:asc [:aggregation 0]]]}))))))
 
-(deftest join-alias-test
+(deftest ^:parallel join-alias-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-bigquery-fks!
+      (mt/with-mock-fks-for-drivers-without-fk-constraints
         (let [results (mt/run-mbql-query venues
                         {:aggregation [:count]
                          :breakout    [$category_id->categories.name]})]
@@ -193,16 +199,20 @@
             "Similar to the above test, but covers a positive offset")))))
 
 ;; if I run a BigQuery query, does it get a remark added to it?
-(defn- query->native! [query]
-  (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ _ sql _ _]
-                                             (reset! native-query sql)
-                                             (throw (Exception. "Done.")))]
-      (u/ignore-exceptions
-        (qp/process-query query))
+(defn- query->native [query]
+  (let [native-query   (atom nil)
+        done-exception (Exception. "Done.")]
+    (binding [bigquery/*process-native* (fn [_respond _database sql _parameters _cancel-chan]
+                                          (reset! native-query sql)
+                                          (throw done-exception))]
+      (try
+        (qp/process-query query)
+        (catch Throwable e
+          (when-not (identical? e done-exception)
+            (throw e))))
       @native-query)))
 
-(deftest remark-test
+(deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
              (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
@@ -215,7 +225,7 @@
                   " `v3_test_data.venues`.`price` AS `price` "
                   "FROM `v3_test_data.venues` "
                   "LIMIT 1"))
-           (query->native!
+           (query->native
             {:database (mt/id)
              :type     :query
              :query    {:source-table (mt/id :venues)
@@ -224,33 +234,41 @@
                         :query-hash  (byte-array [1 2 3 4])}}))
         "if I run a BigQuery query, does it get a remark added to it?")))
 
-;; if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?
-(deftest remove-remark-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (is (= (with-test-db-name
-             (str "SELECT `v3_test_data.venues`.`id` AS `id`,"
-                  " `v3_test_data.venues`.`name` AS `name` "
-                  "FROM `v3_test_data.venues` "
-                  "LIMIT 1"))
-           (t2.with-temp/with-temp [Database db    {:engine  :bigquery-cloud-sdk
-                                                    :details (assoc (:details (mt/db))
-                                                                    :include-user-id-and-hash false)}
-                                    Table    table {:name   "venues"
-                                                    :db_id  (u/the-id db)
-                                                    :schema (get-in db [:details :dataset-filters-patterns])}
-                                    Field    _     {:table_id (u/the-id table)
-                                                    :name "id"
-                                                    :base_type "type/Integer"}
-                                    Field    _     {:table_id (u/the-id table)
-                                                    :name "name"
-                                                    :base_type "type/Text"}]
-             (query->native!
-              {:database (u/the-id db)
-               :type     :query
-               :query    {:source-table (u/the-id table)
-                          :limit        1}
-               :info     {:executed-by 1000
-                          :query-hash  (byte-array [1 2 3 4])}}))))))
+(deftest ^:parallel remove-remark-test
+  (testing "if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?"
+    (mt/test-driver :bigquery-cloud-sdk
+      (qp.store/with-metadata-provider (let [db (merge meta/database
+                                                       {:id      1
+                                                        :engine  :bigquery-cloud-sdk
+                                                        :details (merge (:details (mt/db))
+                                                                        {:include-user-id-and-hash false})})]
+                                         (lib.tu/mock-metadata-provider
+                                          {:database db
+                                           :tables   [(merge (meta/table-metadata :venues)
+                                                             {:name   "venues"
+                                                              :id     1
+                                                              :db-id  1
+                                                              :schema (get-in db [:details :dataset-filters-patterns])})]
+                                           :fields   [(merge (meta/field-metadata :venues :id)
+                                                             {:table-id  1
+                                                              :name      "id"
+                                                              :base-type :type/Integer})
+                                                      (merge (meta/field-metadata :venues :name)
+                                                             {:table-id  1
+                                                              :name      "name"
+                                                              :base_type :type/Text})]}))
+        (is (= (with-test-db-name
+                 (str "SELECT `v3_test_data.venues`.`id` AS `id`,"
+                      " `v3_test_data.venues`.`name` AS `name` "
+                      "FROM `v3_test_data.venues` "
+                      "LIMIT 1"))
+               (query->native
+                {:database 1
+                 :type     :query
+                 :query    {:source-table 1
+                            :limit        1}
+                 :info     {:executed-by 1000
+                            :query-hash  (byte-array [1 2 3 4])}})))))))
 
 (deftest ^:parallel unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -296,90 +314,124 @@
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
-    (doseq [[expr expected-type] {[:field "x" {:base-type :type/DateTime}]                              :datetime
-                                  [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil}]
-      (testing (format "\n(temporal-type %s)" (binding [*print-meta* true] (pr-str expr)))
-        (is (= expected-type
-               (#'bigquery.qp/temporal-type expr)))))))
+    (are [expr expected-type] (= expected-type
+                                 (#'bigquery.qp/temporal-type expr))
+      [:field "x" {:base-type :type/DateTime}]                              :datetime
+      [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
+      (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest reconcile-temporal-types-test
-  (qp.store/with-metadata-provider (mt/id)
-    (t2.with-temp/with-temp [Field date-field      {:name "date", :base_type :type/Date, :database_type "date"}
-                             Field datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}
-                             Field timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]
-      (binding [*print-meta* true]
-        (let [fields                     {:date      date-field
-                                          :datetime  datetime-field
-                                          :timestamp timestamp-field}
-              build-honeysql-clause-head (fn [{:keys [honeysql]} field-arg args]
-                                           (if (fn? honeysql)
-                                             (honeysql field-arg args)
-                                             (into [honeysql field-arg] args)))]
-          (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
-                          {:args 2, :mbql :!=, :honeysql (fn [identifier args]
-                                                           [:or (into [:not= identifier] args)
-                                                            [:= identifier nil]])}
-                          {:args 2, :mbql :>, :honeysql :>}
-                          {:args 2, :mbql :>=, :honeysql :>=}
-                          {:args 2, :mbql :<, :honeysql :<}
-                          {:args 2, :mbql :<=, :honeysql :<=}
-                          {:args 3, :mbql :between, :honeysql :between}]]
-            (testing (format "\n%s filter clause" (:mbql clause))
-              (doseq [[temporal-type field] fields
-                      field                 [[:field (:id field) {::add/source-table "ABC"}]
-                                             [:field (:id field) {:temporal-unit     :default
-                                                                  ::add/source-table "ABC"}]
-                                             [:field (:name field) {:base-type         (:base_type field)
-                                                                    ::add/source-table "ABC"}]
-                                             [:field (:name field) {:base-type         (:base_type field)
-                                                                    :temporal-unit     :default
-                                                                    ::add/source-table "ABC"}]]]
-                (testing (format "\nField = %s %s"
-                                 temporal-type
-                                 (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
-                  (doseq [{filter-value :value, :as value} reconcile-test-values
-                          filter-value                     (cons filter-value
-                                                                 (when (instance? java.time.temporal.Temporal filter-value)
-                                                                   [[:absolute-datetime filter-value :default]]))]
-                    (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
-                      (let [filter-clause       (into [(:mbql clause) field]
-                                                      (repeat (dec (:args clause)) filter-value))
-                            field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
-                            expected-identifier (cond-> (assoc (hx/identifier :field "ABC" (name temporal-type))
-                                                               ::bigquery.qp/do-not-qualify? true)
-                                                  (not field-literal?) (hx/with-database-type-info (name temporal-type)))
-                            expected-value      (get-in value [:as temporal-type] (:value value))
-                            expected-clause     (build-honeysql-clause-head clause
-                                                                            expected-identifier
-                                                                            (repeat (dec (:args clause)) expected-value))]
-                        (testing (format "\nreconcile %s -> %s"
-                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
-                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))
-                          (testing (format "\ninferred field type = %s, inferred value type = %s"
-                                           (#'bigquery.qp/temporal-type field)
-                                           (#'bigquery.qp/temporal-type filter-value))
-                            (is (= expected-clause
-                                   (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))))))))))
+(def ^:private mock-temporal-fields-metadata-provider
+  (let [date-field      (merge (meta/field-metadata :checkins :date)
+                               {:id             1
+                                :name           "date"
+                                :base-type      :type/Date
+                                :effective-type :type/Date
+                                :database-type  "date"})
+        datetime-field  (merge (meta/field-metadata :checkins :date)
+                               {:id             2
+                                :name           "datetime"
+                                :base-type      :type/DateTime
+                                :effective-type :type/DateTime
+                                :database-type  "datetime"})
+        timestamp-field (merge (meta/field-metadata :checkins :date)
+                               {:id             3
+                                :name           "timestamp"
+                                :base-type      :type/DateTimeWithLocalTZ
+                                :effective-type :type/DateTimeWithLocalTZ
+                                :database-type  "timestamp"})]
+    (lib/composed-metadata-provider
+     (lib.tu/mock-metadata-provider
+      {:fields [date-field
+                datetime-field
+                timestamp-field]})
+     meta/metadata-provider)))
 
-          (testing "\ndate extraction filters"
-            (doseq [[temporal-type field] fields
-                    :let                  [identifier          (assoc (hx/identifier :field "ABC" (name temporal-type))
-                                                                      ::bigquery.qp/do-not-qualify? true)
-                                           expected-identifier (case temporal-type
-                                                                 :date      (hx/with-database-type-info identifier "date")
-                                                                 :datetime  (hx/call :timestamp identifier)
-                                                                 :timestamp (hx/with-database-type-info identifier "timestamp"))]]
-              (testing (format "\ntemporal-type = %s" temporal-type)
-                (is (= [:= (hx/call :extract :dayofweek expected-identifier) 1]
-                       (sql.qp/->honeysql :bigquery-cloud-sdk [:= [:field (:id field) {:temporal-unit     :day-of-week
-                                                                                       ::add/source-table "ABC"}] 1])))))))))))
+(def ^:private mock-temporal-fields
+  {:date      (lib.metadata/field mock-temporal-fields-metadata-provider 1)
+   :datetime  (lib.metadata/field mock-temporal-fields-metadata-provider 2)
+   :timestamp (lib.metadata/field mock-temporal-fields-metadata-provider 3)})
 
-(deftest reconcile-unix-timestamps-test
+(defn- build-honeysql-clause-head [{:keys [honeysql]} field-arg args]
+  (if (fn? honeysql)
+    (honeysql field-arg args)
+    (into [honeysql field-arg] args)))
+
+(deftest ^:parallel reconcile-temporal-types-test
+  (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
+    (binding [*print-meta* true]
+      (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
+                      {:args 2, :mbql :!=, :honeysql (fn [identifier args]
+                                                       [:or (into [:not= identifier] args)
+                                                        [:= identifier nil]])}
+                      {:args 2, :mbql :>, :honeysql :>}
+                      {:args 2, :mbql :>=, :honeysql :>=}
+                      {:args 2, :mbql :<, :honeysql :<}
+                      {:args 2, :mbql :<=, :honeysql :<=}
+                      {:args 3, :mbql :between, :honeysql :between}]]
+        (testing (format "\n%s filter clause" (:mbql clause))
+          (doseq [[temporal-type field] mock-temporal-fields
+                  field                 [[:field (:id field) {::add/source-table "ABC"}]
+                                         [:field (:id field) {:temporal-unit     :default
+                                                              ::add/source-table "ABC"}]
+                                         [:field (:name field) {:base-type         (:base-type field)
+                                                                ::add/source-table "ABC"}]
+                                         [:field (:name field) {:base-type         (:base-type field)
+                                                                :temporal-unit     :default
+                                                                ::add/source-table "ABC"}]]]
+            (testing (format "\nField = %s %s"
+                             temporal-type
+                             (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
+              (doseq [{filter-value :value, :as value} reconcile-test-values
+                      filter-value                     (cons filter-value
+                                                             (when (instance? java.time.temporal.Temporal filter-value)
+                                                               [[:absolute-datetime filter-value :default]]))]
+                (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
+                  (let [filter-clause       (into [(:mbql clause) field]
+                                                  (repeat (dec (:args clause)) filter-value))
+                        field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
+                        expected-identifier (cond-> (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                           ::bigquery.qp/do-not-qualify? true)
+                                              (not field-literal?) (hx/with-database-type-info (name temporal-type)))
+                        expected-value      (get-in value [:as temporal-type] (:value value))
+                        expected-clause     (build-honeysql-clause-head clause
+                                                                        expected-identifier
+                                                                        (repeat (dec (:args clause)) expected-value))]
+                    (testing (format "\nreconcile %s -> %s"
+                                     (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
+                                     (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))
+                      (testing (format "\ninferred field type = %s, inferred value type = %s"
+                                       (#'bigquery.qp/temporal-type field)
+                                       (#'bigquery.qp/temporal-type filter-value))
+                        (is (= expected-clause
+                               (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))))))))))))
+
+(deftest ^:parallel reconcile-temporal-types-date-extraction-filters-test
+  (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
+    (binding [*print-meta* true]
+      (testing "\ndate extraction filters"
+        (doseq [[temporal-type field] mock-temporal-fields
+                :let                  [identifier          (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                                  ::bigquery.qp/do-not-qualify? true)
+                                       expected-identifier (case temporal-type
+                                                             :date      (hx/with-database-type-info identifier "date")
+                                                             :datetime  (hx/call :timestamp identifier)
+                                                             :timestamp (hx/with-database-type-info identifier "timestamp"))]]
+          (testing (format "\ntemporal-type = %s" temporal-type)
+            (is (= [:= (hx/call :extract :dayofweek expected-identifier) 1]
+                   (sql.qp/->honeysql :bigquery-cloud-sdk [:= [:field (:id field) {:temporal-unit     :day-of-week
+                                                                                   ::add/source-table "ABC"}] 1])))))))))
+
+(deftest ^:parallel reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset sample-dataset
-        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                 :effective_type    :type/Instant}
+        (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                           (lib/composed-metadata-provider
+                                            (lib.tu/mock-metadata-provider
+                                             {:fields [(merge (lib.metadata/field app-db-provider (mt/id :reviews :rating))
+                                                              {:coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                               :effective-type    :type/Instant})]})
+                                            app-db-provider))
           (let [query         (mt/mbql-query reviews
                                 {:filter   [:=
                                             [:field %rating {::add/source-table $$reviews}]
@@ -388,11 +440,10 @@
                                              [:field %id {:add/source-table $$reviews}]]]
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
-            (qp.store/with-metadata-provider (mt/id)
-              (is (= [(str (format "timestamp_millis(%s.reviews.rating)" sample-dataset-name)
-                           " = "
-                           "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
-                     (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))
+            (is (= [(str (format "timestamp_millis(%s.reviews.rating)" sample-dataset-name)
+                         " = "
+                         "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
+                   (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
             (is (= :completed
                    (:status (qp/process-query query))))))))))
 
@@ -575,9 +626,8 @@
           (finally
             (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v3_test_data.%s`") table-name)))))))
 
-(deftest filter-by-datetime-timestamp-test
+(deftest ^:parallel filter-by-datetime-timestamp-test
   (mt/test-driver :bigquery-cloud-sdk
-    ;; there are more tests in the `bigquery.query-processor-test` namespace
     (testing "Make sure we can filter against different types of BigQuery temporal columns (#11222)"
       (do-with-datetime-timestamp-table
        (fn [table-name]
@@ -595,7 +645,7 @@
                             {:source-table (mt/id table-name)
                              :filter       filter-clause})))))))))))))
 
-(deftest datetime-parameterized-sql-test
+(deftest ^:parallel datetime-parameterized-sql-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure Field filters against temporal fields generates correctly-typed SQL (#11578)"
       (mt/dataset attempted-murders
@@ -709,59 +759,69 @@
     (catch Throwable _
       false)))
 
-(deftest filter-by-relative-date-ranges-test
+(deftest ^:parallel filter-by-relative-date-ranges-test
   (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
-      (qp.store/with-metadata-provider (mt/id)
-        (doseq [[field-type [unit expected-sql]]
-                {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
-                                                       " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
-                 :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
-                                                       " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
-                 :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
-                                                       " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
-                 ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
-                 :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
-                                                       " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
-          (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
-                                            :base_type     field-type
-                                            :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
-            (testing (format "%s field" field-type)
-              (is (= [expected-sql]
-                     (hsql/format {:where (sql.qp/->honeysql
-                                           :bigquery-cloud-sdk
-                                           [:=
-                                            [:field (:id f) {:temporal-unit     unit
-                                                             ::add/source-table "ABC"}]
-                                            [:relative-datetime -1 unit]])}))))))))))
+      (doseq [[field-type [unit expected-sql]]
+              {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
+                                                     " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
+               :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
+                                                     " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
+               :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
+                                                     " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
+               ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
+               :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
+                                                     " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
+        (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                          (lib.tu/mock-metadata-provider
+                                           {:fields [(merge (meta/field-metadata :checkins :date)
+                                                            {:id             1
+                                                             :name           (u/lower-case-en (name field-type))
+                                                             :base-type      field-type
+                                                             :effective-type field-type
+                                                             :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
+                                          meta/metadata-provider)
+          (testing (format "%s field" field-type)
+            (is (= [expected-sql]
+                   (hsql/format {:where (sql.qp/->honeysql
+                                         :bigquery-cloud-sdk
+                                         [:=
+                                          [:field 1 {:temporal-unit     unit
+                                                     ::add/source-table "ABC"}]
+                                          [:relative-datetime -1 unit]])})))))))))
 
 (deftest filter-by-relative-date-ranges-test-2
   (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes uses the reporting timezone when set"
       (doseq [timezone ["UTC" "US/Pacific"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
-          (qp.store/with-metadata-provider (mt/id)
-            (doseq [[field-type [unit expected-sql]]
-                    {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
-                                                           " = time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
-                     :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
-                                                           " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
-                     :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
-                                                           " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
-                     ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
-                     :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
-                                                           " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-              (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
-                                                :base_type     field-type
-                                                :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
-                (testing (format "%s field" field-type)
-                  (is (= [expected-sql]
-                         (hsql/format {:where (sql.qp/->honeysql
-                                               :bigquery-cloud-sdk
-                                               [:=
-                                                [:field (:id f) {:temporal-unit     unit
-                                                                 ::add/source-table "ABC"}]
-                                                [:relative-datetime -1 unit]])}))))))))))))
+          (doseq [[field-type [unit expected-sql]]
+                  {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
+                                                         " = time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
+                   :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
+                                                         " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
+                   :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
+                                                         " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
+                   ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
+                   :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
+                                                         " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
+            (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                              (lib.tu/mock-metadata-provider
+                                               {:fields [(merge (meta/field-metadata :checkins :date)
+                                                                {:id             1
+                                                                 :name           (u/lower-case-en (name field-type))
+                                                                 :base-type      field-type
+                                                                 :effective-type field-type
+                                                                 :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
+                                              meta/metadata-provider)
+              (testing (format "%s field" field-type)
+                (is (= [expected-sql]
+                       (hsql/format {:where (sql.qp/->honeysql
+                                             :bigquery-cloud-sdk
+                                             [:=
+                                              [:field 1 {:temporal-unit     unit
+                                                         ::add/source-table "ABC"}]
+                                              [:relative-datetime -1 unit]])})))))))))))
 
 ;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
 ;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
@@ -864,14 +924,21 @@
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
 
-(deftest remove-diacriticals-from-field-aliases-test
+(deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
-      (mt/with-bigquery-fks!
-        (let [query (mt/mbql-query checkins
-                      {:fields [$id $venue_id->venues.name]
-                       :limit  1})]
-          (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
+      (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+                                         (lib/composed-metadata-provider
+                                          (lib.tu/mock-metadata-provider
+                                           {:tables [(merge (lib.metadata/table app-db-provider (mt/id :venues))
+                                                            {:name "Organização"})]})
+                                          app-db-provider))
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
+          (is qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
+              "Sanity check for with-mock-fks-for-drivers-without-fk-constraints macro")
+          (let [query (mt/mbql-query checkins
+                        {:fields [$id $venue-id->venues.name]
+                         :limit  1})]
             (is (sql= (with-test-db-name
                         '{:select    [v3_test_data.checkins.id        AS id
                                       Organizacao__via__venue_id.name AS Organizacao__via__venue_id__name]

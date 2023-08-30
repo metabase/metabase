@@ -34,14 +34,17 @@
   (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
 
 (defn- nfc-root [[_ field-id]]
-  (when-let [field (and (int? field-id) (qp.store/field field-id))]
-    (when-let [nfc-root (first (:nfc_path field))]
-      {:table_id (:table_id field)
+  (when-let [field (and (int? field-id)
+                        (lib.metadata/field (qp.store/metadata-provider) field-id))]
+    (when-let [nfc-root (first (:nfc-path field))]
+      {:table_id (:table-id field)
        :name nfc-root})))
 
 (defn- field-id-props [[_ field-id]]
-  (when-let [field (and (int? field-id) (qp.store/field field-id))]
-    (select-keys field [:table_id :name])))
+  (when-let [field (and (int? field-id)
+                        (lib.metadata/field (qp.store/metadata-provider) field-id))]
+    {:table_id (:table-id field)
+     :name     (:name field)}))
 
 (defn- remove-unused-fields [inner-query source]
   (let [used-fields (-> #{}

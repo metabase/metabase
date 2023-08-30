@@ -95,7 +95,9 @@
   "Add extra field information like coercion_strategy, semantic_type, and effective_type."
   [field]
   (mt/derecordize
-   (merge (mt/with-metadata-provider (mt/id) (qp.store/field (u/the-id field)))
+   (merge (mt/with-metadata-provider (mt/id)
+            #_{:clj-kondo/ignore [:deprecated-var]}
+            (qp.store/field (u/the-id field)))
           field)))
 
 (defn parse-tag

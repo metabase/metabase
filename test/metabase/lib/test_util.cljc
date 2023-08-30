@@ -53,6 +53,7 @@
 
 (def ^:private MockMetadata
   [:map
+   {:closed true}
    [:database {:optional true} [:maybe (with-optional-lib-type lib.metadata/DatabaseMetadata :metadata/database)]]
    [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
    [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
@@ -382,15 +383,35 @@
   "Composed metadata provider that adds an internal or external remap for `original` Field with [[remapped-column]].
   For QP tests, you may want to use [[metabase.query-processor.test-util/field-values-from-def]] to get values to
   create an internal remap."
-  [metadata-provider :- lib.metadata/MetadataProvider
-   original          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]
-   remap             :- [:or
-                         lib.metadata/ColumnMetadata
-                         ::lib.schema.id/field
-                         [:sequential :any]
-                         :map]]
-  (let [original' (remapped-column metadata-provider original remap)]
-    (lib/composed-metadata-provider
-     (mock-metadata-provider
-      {:fields [original']})
-     metadata-provider)))
+  ([metadata-provider :- lib.metadata/MetadataProvider
+    original          :- [:or lib.metadata/ColumnMetadata ::lib.schema.id/field]
+    remap             :- [:or
+                          lib.metadata/ColumnMetadata
+                          ::lib.schema.id/field
+                          [:sequential :any]
+                          :map]]
+   (let [original' (remapped-column metadata-provider original remap)]
+     (lib/composed-metadata-provider
+      (mock-metadata-provider
+       {:fields [original']})
+      metadata-provider)))
+
+  ([metadata-provider original remap & more]
+   (apply remap-metadata-provider (remap-metadata-provider metadata-provider original remap) more)))
+
+(mu/defn metadata-provider-with-cards-for-queries :- lib.metadata/MetadataProvider
+  "Create a metadata provider that adds a Card for each query in `queries`. Cards do not include result
+  metadata. Cards have IDs starting at `1` and increasing sequentially."
+  [base-metadata-provider :- lib.metadata/MetadataProvider
+   queries                :- [:sequential {:min 1} :map]]
+  (lib/composed-metadata-provider
+   (mock-metadata-provider
+    {:cards (into []
+                  (map-indexed
+                   (fn [i query]
+                     {:id            (inc i)
+                      :name          (lib.util/format "Card %d" (inc i))
+                      :database-id   (u/the-id (lib.metadata/database base-metadata-provider))
+                      :dataset-query query}))
+                  queries)})
+   base-metadata-provider))

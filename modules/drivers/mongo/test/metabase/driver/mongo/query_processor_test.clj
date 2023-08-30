@@ -1,19 +1,21 @@
 (ns metabase.driver.mongo.query-processor-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.models :refer [Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test.date-time-zone-functions-test
+    :as qp.datetime-test]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
-(deftest query->collection-name-test
+(deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
     (testing "should be able to extract :collection from :source-query")
     (is (= "checkins"
@@ -32,7 +34,7 @@
                                                          {:native []}
                                                          :joins [{:source-query "wow"}]}}))))))
 
-(deftest order-postprocessing-test
+(deftest ^:parallel order-postprocessing-test
   (is (= [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
           {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}
            "expression_2" {"$multiply" [2 "$expression_2~share"]}}]
@@ -43,7 +45,7 @@
            [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
             {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
 
-(deftest relative-datetime-test
+(deftest ^:parallel relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
@@ -63,7 +65,7 @@
                                  {:aggregation [[:count]]
                                   :filter      [:time-interval $datetime :last :month]})))))))))
 
-(deftest absolute-datetime-test
+(deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Make sure absolute-datetime are compiled correctly"
@@ -83,7 +85,7 @@
 (defn- date-arithmetic-supported? []
   (driver/database-supports? :mongo :date-arithmetics (mt/db)))
 
-(deftest no-initial-projection-test
+(deftest ^:parallel no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"
       (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
@@ -153,7 +155,7 @@
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
 
-(deftest field-filter-relative-time-native-test
+(deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
     (testing "Field filters with relative temporal constraints should work with native queries (#15945)"
       (mt/with-clock #t "2014-10-03T18:08:00Z"
@@ -180,7 +182,7 @@
           (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest grouping-with-timezone-test
+(deftest ^:synchronized grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
@@ -207,7 +209,7 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))))))
 
-(deftest nested-columns-test
+(deftest ^:parallel nested-columns-test
   (mt/test-driver :mongo
     (testing "Should generate correct queries against nested columns"
       (mt/dataset geographical-tips
@@ -250,7 +252,7 @@
               ;; see docstring on mongo.qp/remove-parent-fields for full details
               (is (empty? (set/intersection projections #{"source" "url" "venue"}))))))))))
 
-(deftest multiple-distinct-count-test
+(deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
     (testing "Should generate correct queries for multiple `:distinct` count aggregations (#13097)"
       (is (= {:projections ["count" "count_2"]
@@ -270,7 +272,7 @@
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
 
-(deftest expressions-test
+(deftest ^:parallel expressions-test
   (mt/test-driver :mongo
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
       (is (= {"bob" "$latitude", "cobb" "$name"}
@@ -344,7 +346,7 @@
                                :aggregation [["count"]],
                                :breakout [["expression" "asdf"]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (mt/test-driver :mongo
     (testing "Make sure time-intervals work the way they're supposed to."
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
@@ -378,7 +380,9 @@
                      {:filter   [:time-interval $date -4 :month]
                       :breakout [!day.date]}))))))))))
 
-(deftest temporal-arithmetic-test
+;;; TODO: I don't think MongoDB syncs its version, or at least we're not USING the synced version info. If we used it
+;;; then we could use a mock Database here and parallelize this test.
+(deftest ^:synchronized temporal-arithmetic-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
@@ -417,7 +421,7 @@
                                                            [:field "date-field"]]
                                                           [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
 
-(deftest datetime-math-tests
+(deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
     (mt/dataset qp.datetime-test/times-mixed
       (mt/with-metadata-provider (mt/id)
@@ -445,7 +449,7 @@
                 (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                   (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))))))))
 
-(deftest expr-test
+(deftest ^:parallel expr-test
   (mt/test-driver
     :mongo
     (testing "Should use $expr for simple comparisons and ops for others"

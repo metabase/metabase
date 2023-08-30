@@ -181,7 +181,7 @@
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
-  [_ database]
+  [_driver database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (let [build-info (mg/command conn {:buildInfo 1})
           version-array (get build-info "versionArray")

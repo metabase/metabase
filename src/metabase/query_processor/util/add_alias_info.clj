@@ -49,6 +49,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -167,10 +168,10 @@
   {:arglists '([field-clause])}
   [[_ id-or-name]]
   (when (integer? id-or-name)
-    (qp.store/field id-or-name)))
+    (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
 (defn- field-table-id [field-clause]
-  (:table_id (field-instance field-clause)))
+  (:table-id (field-instance field-clause)))
 
 (defn- field-source-table-alias
   "Determine the appropriate `::source-table` alias for a `field-clause`."
@@ -277,7 +278,11 @@
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
-  (or (some->> field-clause field-instance (field-reference driver/*driver*))
+  (or (some->> field-clause
+               field-instance
+               #_{:clj-kondo/ignore [:deprecated-var]}
+               qp.store/->legacy-metadata
+               (field-reference driver/*driver*))
       (when (string? id-or-name)
         id-or-name)))
 

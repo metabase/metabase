@@ -13,7 +13,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
@@ -136,7 +135,8 @@
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
-  (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider))))
+  (qp.store/cached ::version
+    (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider)))))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -149,16 +149,19 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defn- field-name-components [field]
+(defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
   (concat
-   (when-let [parent-id (:parent_id field)]
-     (field-name-components (qp.store/field parent-id)))
-   [(:name field)]))
+   (when parent-id
+     (field-name-components (lib.metadata/field (qp.store/metadata-provider) parent-id)))
+   [field-name]))
 
-(defn field->name
+(mu/defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ([field] (field->name field \.))
-  ([field separator]
+  ([field]
+   (field->name field \.))
+
+  ([field     :- lib.metadata/ColumnMetadata
+    separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
 (defmethod add/field-reference :mongo
@@ -172,7 +175,7 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-(defmethod ->lvalue Field
+(defmethod ->lvalue :metadata/column
   [field]
   (field->name field))
 
@@ -188,8 +191,8 @@
   [[_ expression-name]]
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
-(defmethod ->rvalue Field
-  [{coercion :coercion_strategy, ::keys [source-alias join-field] :as field}]
+(defmethod ->rvalue :metadata/column
+  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (cond->> (or source-alias (field->name field))
                              join-field (str join-field \.)))]
     (cond
@@ -238,7 +241,7 @@
   [[_ id-or-name _props :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (qp.store/field id-or-name)))
+        (->lvalue (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
     (name id-or-name)))
 
 (defn- add-start-of-week-offset [expr offset]
@@ -361,7 +364,7 @@
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (->rvalue (assoc (qp.store/field id-or-name)
+                (->rvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
@@ -863,7 +866,7 @@
   clause in :source-query clauses."
   [join-or-query]
   (or (-> join-or-query :collection)
-      (some-> join-or-query :source-table qp.store/table :name)
+      (some->> join-or-query :source-table (lib.metadata/table (qp.store/metadata-provider)) :name)
       (some-> join-or-query :source-query recur)))
 
 (defn- localize-join-alias
@@ -1236,8 +1239,8 @@
   (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
                                    (if (and (= agg-type :field)
                                             (integer? field-id))
-                                     (let [field (qp.store/field field-id)]
-                                       (if-let [parent-id (:parent_id field)]
+                                     (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                                       (if parent-id
                                          (update acc parent-id conj (u/the-id field))
                                          acc))
                                      acc))
@@ -1393,7 +1396,7 @@
   (let [query (update query :query preprocess)]
     (binding [*query* query]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
-                                (:name (qp.store/table source-table-id))
+                                (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))

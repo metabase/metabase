@@ -165,7 +165,7 @@
    params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
-             (or (qp.store/field field-id)
+             (or #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/field field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (field-filter-value tag params)}))

@@ -65,7 +65,7 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone! [datetime-str ^String timezone-id]
+(defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
     (mt/with-report-timezone-id timezone-id
       (is (= (qp.timezone/results-timezone-id)
@@ -74,11 +74,11 @@
       (second (#'qp.wrap-value-literals/add-type-info datetime-str
                                                       {:unit :day})))))
 
-(deftest parse-datetime-literal-strings-test
+(deftest ^:parallel parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone! "2018-10-01" timezone))
+           (parse-with-timezone "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test

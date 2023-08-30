@@ -630,10 +630,8 @@
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
-   metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
-   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
+   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
@@ -768,9 +766,9 @@
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys     {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals     {:message "Use clojure.core/update-vals"}
-     metabase.test/with-temp* {:message "Don't use application database inside MLv2 code"}}
+    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals    {:message "Use clojure.core/update-vals"}
+     metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
     {toucan.db        {:message "Don't use application database inside MLv2 code"}

@@ -626,11 +626,11 @@
                    (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
                      (qp/process-query query))))))))))
 
-(deftest join-with-space-in-alias-test
+(deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks!
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}
                                      :alias        "Q 1"
@@ -874,13 +874,13 @@
                      (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
 
-(deftest join-against-implicit-join-test
+(deftest ^:parallel join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
                            ;; mongodb doesn't support foreign keys required by this test
                            :mongo)
-      (mt/with-bigquery-fks!
-        (mt/dataset sample-dataset
+      (mt/dataset sample-dataset
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
                                         :breakout     [$product_id->products.category]

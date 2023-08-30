@@ -25,9 +25,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -125,7 +123,7 @@
   [field-display-name {:keys [fk-field-id], join-alias :alias}]
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
-                    (str/replace (:display_name (qp.store/field fk-field-id))
+                    (str/replace (:display-name (lib.metadata/field (qp.store/metadata-provider) fk-field-id))
                                  #"(?i)\sid$"
                                  "")
                     join-alias)]
@@ -250,11 +248,14 @@
                   :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
-      (merge (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
+      (merge (let [{:keys [parent-id], :as field} (-> (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                                                      (dissoc :database-type))]
+               #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
-                 field
+                 (qp.store/->legacy-metadata field)
                  (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
-                   (update field :name #(str (:name parent) \. %))))))
+                   (-> (update field :name #(str (:name parent) \. %))
+                       qp.store/->legacy-metadata)))))
 
       (:binning opts)
       (assoc :binning_info (-> (:binning opts)
@@ -414,7 +415,10 @@
   (merge
     {} ;; ensure the type is not FieldInstance
     (when-let [field-id (:id source-metadata-col)]
-      (dissoc (qp.store/field field-id) :database_type))
+      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
+          (dissoc :database-type)
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          qp.store/->legacy-metadata))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -491,7 +495,9 @@
    [:maybe [:sequential Col]]
    [:fn
     {:error/message ":cols with unique names"}
-    #(su/empty-or-distinct? (map :name %))]])
+    (fn [cols]
+      (or (empty? cols)
+          (apply distinct? (map :name cols))))]])
 
 (mu/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [:sequential Col]]

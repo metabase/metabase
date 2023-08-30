@@ -39,6 +39,11 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
+(def ^:dynamic *TESTS-ONLY-allow-replacing-metadata-provider*
+  "This is only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
+  provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time."
+  false)
+
 ;; TODO -- rename this to something like `store-bound?` because the store is not really initialized until the Database
 ;; ID is set.
 (defn initialized?
@@ -85,6 +90,7 @@
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
       (t2/select-one-fn :dataset_query Card :id card-id))"
+  {:style/indent 1}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
@@ -145,8 +151,10 @@
   "Implementation for [[with-metadata-provider]]."
   [database-id-or-metadata-provider thunk]
   (cond
-    (not (initialized?))
-    (binding [*store* (atom {})]
+    (or (not (initialized?))
+        *TESTS-ONLY-allow-replacing-metadata-provider*)
+    (binding [*store*                                        (atom {})
+              *TESTS-ONLY-allow-replacing-metadata-provider* false]
       (do-with-metadata-provider database-id-or-metadata-provider thunk))
 
     ;; existing provider
@@ -169,12 +177,6 @@
   {:style/indent [:defn]}
   [database-id-or-metadata-provider & body]
   `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
-
-(def ^:private IDs
-  [:maybe
-   [:or
-    [:set ::lib.schema.common/positive-int]
-    [:sequential ::lib.schema.common/positive-int]]])
 
 (defn- missing-bulk-metadata-error [metadata-type id]
   (ex-info (tru "Failed to fetch {0} {1}" (pr-str metadata-type) (pr-str id))
@@ -222,22 +224,6 @@
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;
-
-(mu/defn fetch-and-store-tables! :- :nil
-  "For warming the cache. Fetch Table(s) from the application database, and store them in the QP Store for the duration
-  of the current query execution. If Table(s) have already been fetched, this function will no-op."
-  {:deprecated "0.48.0"}
-  [table-ids :- IDs]
-  (bulk-metadata :metadata/table table-ids)
-  nil)
-
-(mu/defn fetch-and-store-fields! :- :nil
-  "For warming the cache. Fetch Field(s) from the application database, and store them in the QP Store for the duration
-  of the current query execution. If Field(s) have already been fetched, this function will no-op."
-  {:deprecated "0.48.0"}
-  [field-ids :- IDs]
-  (bulk-metadata :metadata/column field-ids)
-  nil)
 
 (def ^:private ^{:deprecated "0.48.0"} LegacyDatabaseMetadata
   [:map

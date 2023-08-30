@@ -132,7 +132,7 @@
                                                   :name      "aaaaa"
                                                   :base-type :type/DateTime}]})
                                       meta/metadata-provider)
-      (is (lib.types.isa/date? (lib.metadata/field (qp.store/metadata-provider) 1)))
+      (is (lib.types.isa/temporal? (lib.metadata/field (qp.store/metadata-provider) 1)))
       (is (query= (:query
                    (lib.tu.macros/mbql-query venues
                      {:fields [$id $name

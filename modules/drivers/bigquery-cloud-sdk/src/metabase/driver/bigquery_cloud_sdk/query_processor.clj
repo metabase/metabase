@@ -14,7 +14,6 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -189,8 +188,8 @@
     "TIME"      :time
     nil))
 
-(defmethod temporal-type Field
-  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
+(defmethod temporal-type :metadata/column
+  [{:keys [base-type effective-type database-type]}]
   (or (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
 
@@ -224,7 +223,7 @@
     nil
 
     (integer? id-or-name)
-    (temporal-type (qp.store/field id-or-name))
+    (temporal-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
 
     base-type
     (base-type->temporal-type base-type)))
@@ -791,7 +790,8 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (some-> (get-in outer-query [:query :source-table]) qp.store/table :name)
+           :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
+                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))
 
