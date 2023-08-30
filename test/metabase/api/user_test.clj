@@ -91,14 +91,31 @@
         (t2.with-temp/with-temp
             [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
              :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+             :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
              :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
              :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
              :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}]
-          (testing "manager can get users from only their group"
+             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+          (testing "manager can get users from their group"
             (is (= #{"lucky@metabase.com"
                      "rasta@metabase.com"}
                    (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set))))
+          (testing "manager but non-admin gets list of users from the groups they manage when no group_id is requested"
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"
+                     "crowberto@metabase.com"}
+                   (->> ((mt/user-http-request :lucky :get 200 "user") :data)
                         (filter mt/test-user?)
                         (map :email)
                         set))))
