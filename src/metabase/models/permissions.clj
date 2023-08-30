@@ -1079,6 +1079,33 @@
     (when (and has-native-perms? (not (group-has-native-perms? group-or-id database-or-id)))
       (grant-native-readwrite-permissions! group-or-id database-or-id))))
 
+; Audit Permissions helper fns
+
+(defenterprise default-audit-db-id
+  "OSS implementation of `audit-db/default-audit-db-id`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
+(defenterprise default-audit-collection-entity-id
+  "OSS implementation of `audit-db/default-audit-collection-entity-id`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
+(defn check-audit-db-permissions
+  "Check that the changes coming in does not attempt to change audit database permission. Admins should
+  change these permissions in application monitoring permissions."
+  [changes]
+  (let [changes-ids (->> changes
+                         vals
+                         (map keys)
+                         (apply concat))]
+    (when (some #{(default-audit-db-id)} changes-ids)
+      (throw (ex-info (tru
+                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
+                      {:status-code 400})))))
+
+; Audit permissions helper fns end
+
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
@@ -1445,6 +1472,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
+       (check-audit-db-permissions new)
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
