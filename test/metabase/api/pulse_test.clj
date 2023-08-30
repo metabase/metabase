@@ -978,8 +978,8 @@
                                                                                      :schedule_day  nil
                                                                                      :recipients    [(mt/fetch-user :rasta)]}]
                                                                     :skip_if_empty false})))
-        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
-                                    :body    {"Daily Sad Toucans" true}})
+        (is (= (mt/email-to :rasta true {:subject "Daily Sad Toucans"
+                                         :body    {"Daily Sad Toucans" true}})
                (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
