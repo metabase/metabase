@@ -33,10 +33,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- rasta-pulse-email [& [email]]
-  (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
-                              :body  [{"Pulse Name" true}
-                                      pulse.test-util/png-attachment
-                                      pulse.test-util/png-attachment]}
+  (mt/email-to :rasta true (merge {:subject "Pulse: Pulse Name"
+                                   :body  [{"Pulse Name" true}
+                                           pulse.test-util/png-attachment
+                                           pulse.test-util/png-attachment]}
                              email)))
 
 (defn- rasta-alert-email
@@ -381,11 +381,11 @@
       {:email
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
-                                (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                                       :bcc     #{(:email (mt/fetch-user user-kwd))}
-                                                       :body    [{"Pulse Name" true}
-                                                                 pulse.test-util/png-attachment
-                                                                 pulse.test-util/png-attachment]}))
+                                (mt/email-to user-kwd true {:subject "Pulse: Pulse Name"
+                                                            :bcc     #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                            :body    [{"Pulse Name" true}
+                                                                      pulse.test-util/png-attachment
+                                                                      pulse.test-util/png-attachment]}))
                               [:rasta :crowberto]))
                 (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
@@ -699,8 +699,8 @@
                                             :pulse_channel_id pc-id}]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
-         (is (= (mt/email-to :rasta {:subject "Pulse Name"
-                                     :body    {"<h1>dashboard description</h1>" true}})
+         (is (= (mt/email-to :rasta true {:subject "Pulse Name"
+                                          :body    {"<h1>dashboard description</h1>" true}})
                 (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
 (deftest nonuser-email-test
