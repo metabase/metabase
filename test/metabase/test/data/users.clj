@@ -13,7 +13,6 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.password :as u.password]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -179,8 +178,8 @@
 (def user-http-request
   ^{:doc
     "A version of our test client that issues the request with credentials for a given User. User may be either a
-    redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
-    password, this function temporarily overrides the password for that User.)
+    redefined test User name, e.g. `:rasta`, or any User or User ID.
+    The request will be executed with a temporary session id.
 
     Note: this makes a mock API call, not than an actual HTTP calls, use [[user-real-request]] for that."
     :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
