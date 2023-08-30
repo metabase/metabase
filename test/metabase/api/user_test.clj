@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -87,18 +88,39 @@
 
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
-      (premium-features-test/with-premium-features #{:advanced-permissions}
-        (t2.with-temp/with-temp
-            [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
-             :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
-             :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
-             :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
-          (testing "manager can get users from their group"
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (t2.with-temp/with-temp
+          [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
+           :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+           :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+        (testing "admin can get users from any group"
+          (is (= #{"lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set)))
+          (is (= #{"lucky@metabase.com"
+                   "crowberto@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set))))
+        (testing "member but non-manager cannot get users"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
+        (testing "manager of a different group cannot get users from groups they're not a member of"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+        (if config/ee-available?
+          ;; Group management is an EE feature
+          (testing "manager can get users from their groups"
             (is (= #{"lucky@metabase.com"
                      "rasta@metabase.com"}
                    (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
@@ -110,34 +132,23 @@
                    (->> ((mt/user-http-request :rasta :get 200 "user") :data)
                         (filter mt/test-user?)
                         (map :email)
-                        set))))
-          (testing "manager but non-admin gets list of users from the groups they manage when no group_id is requested"
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"
-                     "crowberto@metabase.com"}
-                   (->> ((mt/user-http-request :lucky :get 200 "user") :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set))))
-          (testing "admin can get users from any group"
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"}
-                   (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
-                        (filter mt/test-user?)
-                        (map :email)
                         set)))
-            (is (= #{"lucky@metabase.com"
-                     "crowberto@metabase.com"}
-                   (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set))))
-          (testing "member but non-manager cannot get users"
+            (testing "see users from all groups the user manages"
+              (is (= #{"lucky@metabase.com"
+                       "rasta@metabase.com"
+                       "crowberto@metabase.com"}
+                     (->> ((mt/user-http-request :lucky :get 200 "user") :data)
+                          (filter mt/test-user?)
+                          (map :email)
+                          set)))))
+          ;; In OSS, non-admins have no way to see users, because group management is an EE feature
+          (testing "in OSS, non-admins have no way to get users"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
-          (testing "manager of a different group cannot get users from groups they're not a member of"
+                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id1)))
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))))))
+                   (mt/user-http-request :rasta :get 403 "user")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "user")))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
