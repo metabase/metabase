@@ -290,9 +290,10 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
-    (testing "Pagination gets the total users _in query_"
-      (is (= (t2/count User)
-             ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
+    (testing "Pagination gets the total users _in query_, not including the Internal User"
+      (let [f (if (t2/exists? User config/internal-mb-user-id) dec identity)] ;; is there a smarter way to do this?
+        (is (= (f (t2/count User))
+               ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total)))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
@@ -315,12 +316,12 @@
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}
                    {:email                  "trashbird@metabase.com"
-                     :first_name             "Trash"
-                     :last_name              "Bird"
-                     :is_active              false
-                     :group_ids              #{(u/the-id (perms-group/all-users))}
-                     :personal_collection_id true
-                     :common_name            "Trash Bird"}]
+                    :first_name             "Trash"
+                    :last_name              "Bird"
+                    :is_active              false
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
@@ -364,12 +365,13 @@
                   (map #(dissoc % :is_qbnewb :last_login)))))))
 
   (testing "GET /api/user?include_deactivated=false should return only active users"
-    (is (= (->> [{:email "crowberto@metabase.com"}
-                 {:email "lucky@metabase.com"}
-                 {:email "rasta@metabase.com"}])
+    (is (= #{"crowberto@metabase.com"
+             "lucky@metabase.com"
+             "rasta@metabase.com"}
            (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
                 (filter mt/test-user?)
-                (map #(select-keys % [:email])))))))
+                (map :email)
+                set)))))
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
