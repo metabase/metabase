@@ -162,8 +162,13 @@
         (binding [*retrying-authentication*  true]
           (apply client-fn the-client username args))))))
 
-(defn- user-request
-  [the-client user & args]
+(defn user-http-request
+  "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
+  predefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
+  password, this function temporarily overrides the password for that User.)"
+  {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                request-options? http-body-map? & {:as query-params}])}
+  [user & args]
   (if (keyword? user)
     (do
      (fetch-user user)
