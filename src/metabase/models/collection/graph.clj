@@ -131,7 +131,7 @@
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
-(defenterprise update-audit-collection-permissions
+(defenterprise update-audit-collection-permissions!
   "OSS implementation of `audit-db/update-audit-collection-permissions`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-app.permissions [_ _] ::noop)
