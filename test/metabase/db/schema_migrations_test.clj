@@ -1120,7 +1120,7 @@
   (mt/test-driver :postgres
     (testing "all FKs should be indexed"
      (is (= [] (t2/query
-                ["SELECT
+                "SELECT
                      conrelid::regclass AS table_name,
                      a.attname AS column_name
                  FROM
@@ -1136,4 +1136,4 @@
                      )
                  ORDER BY
                      table_name,
-                     column_name;"]))))))
+                     column_name;"))))))
