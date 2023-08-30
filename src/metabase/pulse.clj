@@ -529,7 +529,8 @@
       (email/send-message-or-throw! {:subject      subject
                                      :recipients   recipients
                                      :message-type message-type
-                                     :message      message})
+                                     :message      message
+                                     :bcc?         true})
       (catch ExceptionInfo e
         (when (not= :smtp-host-not-set (:cause (ex-data e)))
           (throw e))))))
