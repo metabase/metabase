@@ -110,8 +110,8 @@
    {:subject               s/Str
     :recipients            [(s/pred u/email?)]
     :message-type          (s/enum :text :html :attachments)
-    :message               (s/cond-pre s/Str [su/Map])
-    (s/optional-key :bcc?) (s/maybe s/Bool)} ; TODO - what should this be a sequence of?
+    :message               (s/cond-pre s/Str [su/Map]) ; TODO - what should this be a sequence of?
+    (s/optional-key :bcc?) (s/maybe s/Bool)}
    (fn [{:keys [message-type message]}]
      (if (= message-type :attachments)
        (and (sequential? message) (every? map? message))

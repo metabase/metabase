@@ -30,6 +30,9 @@
   "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
+  (doseq [recipient (:to email)]
+    (swap! inbox assoc recipient (-> (get @inbox recipient [])
+                                     (conj email))))
   (doseq [recipient (:bcc email)]
     (swap! inbox assoc recipient (-> (get @inbox recipient [])
                                      (conj email)))))
