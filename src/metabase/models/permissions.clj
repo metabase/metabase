@@ -1101,7 +1101,7 @@
                          (apply concat))]
     (when (some #{(default-audit-db-id)} changes-ids)
       (throw (ex-info (tru
-                       (str "Unable to update audit database, that requires updating through monitoring permissions."))
+                       (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
 
 ; Audit permissions helper fns end
