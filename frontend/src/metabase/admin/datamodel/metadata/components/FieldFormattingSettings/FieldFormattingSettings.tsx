@@ -49,7 +49,6 @@ const FieldFormattingSettings = ({
         column={field}
         denylist={denyList}
         inheritedSettings={inheritedSettings}
-        forcefullyShowHiddenSettings
         onChange={handleChangeSettings}
       />
     </MetadataSection>
