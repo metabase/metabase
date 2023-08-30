@@ -518,24 +518,29 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  hasJoins() {
-    return this.joins().length > 0;
+  hasJoins(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.joins(query, stageIndex).length > 0;
   }
 
-  hasExpressions() {
-    return Object.keys(this.expressions()).length > 0;
+  hasExpressions(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.expressions(query, stageIndex).length > 0;
   }
 
-  hasFilters() {
-    return this.filters().length > 0;
+  hasFilters(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.filters(query, stageIndex).length > 0;
   }
 
-  hasAggregations() {
-    return this.aggregations().length > 0;
+  hasAggregations(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.aggregations(query, stageIndex).length > 0;
   }
 
-  hasBreakouts() {
-    return this.breakouts().length > 0;
+  hasBreakouts(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.breakouts(query, stageIndex).length > 0;
   }
 
   hasSorts() {
@@ -543,13 +548,14 @@ class StructuredQueryInner extends AtomicQuery {
     return ML.orderBys(query).length > 0;
   }
 
-  hasLimit(stageIndex = this.queries().length - 1) {
+  hasLimit(stageIndex = -1) {
     const query = this.getMLv2Query();
     return ML.hasLimit(query, stageIndex);
   }
 
-  hasFields() {
-    return this.fields().length > 0;
+  hasFields(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    return ML.fields(query, stageIndex).length > 0;
   }
 
   // ALIASES: allows
@@ -709,7 +715,7 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns true if the aggregation can be removed
    */
   canRemoveAggregation() {
-    return this.aggregations().length > 1;
+    return this.hasAggregations();
   }
 
   /**
@@ -842,15 +848,19 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the breakout at the provided index removed.
    */
-  removeBreakout(index: number) {
-    return this._updateQuery(Q.removeBreakout, arguments);
+  removeBreakout(index: number, stageIndex = -1) {
+    const query = this.getMLv2Query();
+    const nextQuery = ML.removeBreakoutAtIndex(query, stageIndex, index);
+    return this.updateWithMLv2(nextQuery);
   }
 
   /**
    * @returns {StructuredQuery} new query with all breakouts removed.
    */
-  clearBreakouts() {
-    return this._updateQuery(Q.clearBreakouts, arguments);
+  clearBreakouts(stageIndex = -1) {
+    const query = this.getMLv2Query();
+    const nextQuery = ML.clearBreakouts(query, stageIndex);
+    return this.updateWithMLv2(nextQuery);
   }
 
   // FILTERS
@@ -1053,7 +1063,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2's currentLimit function
    */
-  limit(stageIndex = this.queries().length - 1): Limit {
+  limit(stageIndex = -1): Limit {
     const query = this.getMLv2Query();
     return ML.currentLimit(query, stageIndex);
   }
@@ -1061,7 +1071,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2's limit function
    */
-  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
+  updateLimit(limit: Limit, stageIndex = -1) {
     const query = this.getMLv2Query();
     const nextQuery = ML.limit(query, stageIndex, limit);
     return this.updateWithMLv2(nextQuery);

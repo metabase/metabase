@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "./util";
+import { add, update, remove } from "./util";
 
 // returns canonical list of Breakouts, with nulls removed
 export function getBreakouts(breakouts) {
@@ -22,10 +22,4 @@ export function updateBreakout(breakout, index, updatedBreakout) {
   return getBreakoutClause(
     update(getBreakouts(breakout), index, updatedBreakout),
   );
-}
-export function removeBreakout(breakout, index) {
-  return getBreakoutClause(remove(getBreakouts(breakout), index));
-}
-export function clearBreakouts(breakout) {
-  return getBreakoutClause(clear());
 }

@@ -90,7 +90,9 @@
   breakout
   breakoutable-columns
   breakouts
-  breakouts-metadata]
+  breakouts-metadata
+  clear-breakouts
+  remove-breakout-at-index]
  [lib.column-group
   columns-group-columns
   group-columns]

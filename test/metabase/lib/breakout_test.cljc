@@ -1,8 +1,9 @@
 (ns metabase.lib.breakout-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -513,3 +514,42 @@
              :breakout-position 0}
             (m/find-first #(= (:id %) (meta/id :products :category))
                           (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))
+
+(def ^:private query-with-two-breakouts
+  (-> lib.tu/venues-query
+      (lib/breakout (meta/field-metadata :venues :id))
+      (lib/breakout (meta/field-metadata :venues :name))))
+
+(deftest ^:parallel breakout-at-index
+  (are [index expected] (=? expected
+                            (lib.breakout/breakout-at-index query-with-two-breakouts index))
+    0  [:field {} (meta/id :venues :id)]
+    1  [:field {} (meta/id :venues :name)]
+    -1 [:field {} (meta/id :venues :name)]
+    -2 [:field {} (meta/id :venues :id)]
+    2  nil
+    -3 nil))
+
+(deftest ^:parallel remove-breakout-at-index-test
+  (are [index expected] (=? expected
+                            (lib/breakouts (lib/remove-breakout-at-index query-with-two-breakouts index)))
+    0  [[:field {} (meta/id :venues :name)]]
+    1  [[:field {} (meta/id :venues :id)]]
+    -1 [[:field {} (meta/id :venues :id)]]
+    -2 [[:field {} (meta/id :venues :name)]]
+    2  [[:field {} (meta/id :venues :id)]
+        [:field {} (meta/id :venues :name)]]
+    -3 [[:field {} (meta/id :venues :id)]
+        [:field {} (meta/id :venues :name)]]))
+
+(deftest ^:parallel clear-breakouts-test
+  (is (= nil
+         (lib/breakouts (lib/clear-breakouts query-with-two-breakouts))))
+  (let [query (lib/append-stage query-with-two-breakouts)]
+    (is (= nil
+           (-> (lib/clear-breakouts query 0)
+               (lib/breakouts 0))))
+    (is (=? [[:field {} (meta/id :venues :id)]
+             [:field {} (meta/id :venues :name)]]
+            (-> (lib/clear-breakouts query 1)
+                (lib/breakouts 0))))))

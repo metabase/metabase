@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -84,3 +86,42 @@
                  (cond-> col
                    pos (assoc :breakout-position pos))))
              (m/indexed cols))))))
+
+(mu/defn breakout-at-index :- [:maybe ::lib.schema.expression/expression]
+  "Return the breakout at `breakout-index` if there is one, otherwise return `nil`. Handles negative breakout
+  indecies."
+  ([query breakout-index]
+   (breakout-at-index query -1 breakout-index))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    breakout-index :- :int]
+   (when-let [query-breakouts (breakouts query stage-number)]
+     (let [breakout-index (if (neg? breakout-index)
+                            (+ (count query-breakouts) breakout-index)
+                            breakout-index)]
+       (when (< -1  breakout-index (count query-breakouts))
+         (nth query-breakouts breakout-index))))))
+
+(mu/defn remove-breakout-at-index :- ::lib.schema/query
+  "If there is a breakout at `breakout-index`, return `query` with it removed; otherwise return `query` as-is. Handles
+  negative breakout indecies."
+  ([query breakout-index]
+   (remove-breakout-at-index query -1 breakout-index))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    breakout-index :- :int]
+   (if-let [a-breakout (breakout-at-index query stage-number breakout-index)]
+     (lib.remove-replace/remove-clause query stage-number a-breakout)
+     query)))
+
+(mu/defn clear-breakouts :- ::lib.schema/query
+  "Remove all breakouts from `query` at `stage-number`."
+  ([query]
+   (clear-breakouts query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   ;; TODO -- is this sufficient, or do we need to use `reduce` + `lib.remove-replace/remove-clause` here?
+   (lib.util/update-query-stage query stage-number dissoc :breakout)))

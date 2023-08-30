@@ -34,3 +34,21 @@ export function replaceBreakouts(
 
   return breakout(nextQuery, stageIndex, column);
 }
+
+/**
+ * If there is a breakout at index, return query with it removed; otherwise return query as-is.
+ */
+export function removeBreakoutAtIndex(
+  query: Query,
+  stageIndex: number,
+  breakoutIndex: number,
+): Query {
+  return ML.remove_breakout_at_index(query, stageIndex, breakoutIndex);
+}
+
+/**
+ * Remove all breakouts from a stage of a query.
+ */
+export function clearBreakouts(query: Query, stageIndex: number): Query {
+  return ML.clear_breakouts(query, stageIndex);
+}

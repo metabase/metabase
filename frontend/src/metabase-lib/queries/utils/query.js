@@ -31,10 +31,6 @@ export const addBreakout = (query, breakout) =>
   setBreakoutClause(query, B.addBreakout(query.breakout, breakout));
 export const updateBreakout = (query, index, breakout) =>
   setBreakoutClause(query, B.updateBreakout(query.breakout, index, breakout));
-export const removeBreakout = (query, index) =>
-  setBreakoutClause(query, B.removeBreakout(query.breakout, index));
-export const clearBreakouts = query =>
-  setBreakoutClause(query, B.clearBreakouts(query.breakout));
 
 // FILTER
 

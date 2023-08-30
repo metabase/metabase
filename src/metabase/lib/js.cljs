@@ -733,3 +733,15 @@
    Fields that do not support the provided option will be ignored."
   [a-query stage-number join-condition bucketing-option]
   (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
+
+(defn ^:export remove-breakout-at-index
+  "Return the breakout at `breakout-index` if there is one, otherwise return `nil`. Handles negative breakout
+  indecies."
+  [a-query stage-number breakout-index]
+  (lib.core/remove-breakout-at-index a-query stage-number breakout-index))
+
+(defn ^:export clear-breakouts
+  "If there is a breakout at `breakout-index`, return `query` with it removed; otherwise return `query` as-is. Handles
+  negative breakout indecies."
+  [a-query stage-number]
+  (lib.core/clear-breakouts a-query stage-number))
