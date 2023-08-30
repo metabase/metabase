@@ -6,7 +6,7 @@ import { DefaultMode } from "./DefaultMode";
 export const TimeseriesMode: QueryClickActionsMode = {
   name: "timeseries",
   clickActions: [
-    ...(DefaultMode.clickActions || []),
+    ...DefaultMode.clickActions,
     getPivotDrill({ withTime: false }),
   ],
   ModeFooter: TimeseriesModeFooter,

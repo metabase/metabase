@@ -165,10 +165,7 @@ export interface ModeFooterComponentProps {
 export interface QueryClickActionsMode {
   name: string;
 
-  // drills that change query get resolved from MLv2 in Visualization. Here we list only additional actions we need
-  // drills: DrillMLv2[];
-
-  clickActions?: Drill[];
+  clickActions: Drill[];
   fallback?: Drill;
   ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element;
 }

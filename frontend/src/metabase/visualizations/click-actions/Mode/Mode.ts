@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import { DRILL_TYPE_TO_HANDLER_MAP } from "metabase/visualizations/click-actions/Mode/constants";
 import type { DrillThru } from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type {
@@ -7,6 +6,7 @@ import type {
   ClickObject,
   QueryClickActionsMode,
 } from "../../types";
+import { DRILL_TYPE_TO_HANDLER_MAP } from "./constants";
 
 export class Mode {
   _question: Question;
@@ -70,7 +70,7 @@ export class Mode {
           applyDrill: applyDrillAndGetNewQuestion,
         });
       })
-      .filter(Boolean) as ClickAction[]; // TODO: remove this after all handler types have been added
+      .filter(Boolean) as ClickAction[]; // TODO [31004]: remove this after all drills have been added
 
     const additionalClickActions =
       mode.clickActions?.flatMap(drill => drill(props)) || [];
