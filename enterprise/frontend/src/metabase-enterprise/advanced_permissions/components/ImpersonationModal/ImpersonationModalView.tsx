@@ -87,7 +87,7 @@ export const ImpersonationModalView = ({
           <Alert icon="warning" variant="warning">
             {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
             <Link
-              className="link"
+              variant="brand"
               to={`/admin/databases/${database.id}`}
             >{t`Edit connection`}</Link>
           </Alert>
@@ -127,7 +127,7 @@ export const ImpersonationModalView = ({
           <Alert icon="warning" variant="warning">
             {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
             <Link
-              className="link"
+              variant="brand"
               to="/admin/people"
             >{t`Edit user settings`}</Link>
           </Alert>
