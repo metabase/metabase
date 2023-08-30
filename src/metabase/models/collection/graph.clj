@@ -132,7 +132,7 @@
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
 (defenterprise update-audit-collection-permissions!
-  "OSS implementation of `audit-db/update-audit-collection-permissions`, which is an enterprise feature, so does nothing in the OSS
+  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-app.permissions [_ _] ::noop)
 
@@ -158,7 +158,7 @@
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
-           (update-audit-collection-permissions group-id changes)
+           (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
                                       (assoc old-graph :namespace collection-namespace) changes))))))
