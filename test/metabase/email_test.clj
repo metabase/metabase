@@ -109,9 +109,10 @@
                        (for [{:keys [body] :as email} emails-for-recipient
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
-                         (-> email
-                             (update :to set)
-                             (assoc :body matches)))))
+                         (cond-> email
+                             (:to email)  (update :to set)
+                             (:bcc email) (update :bcc set)
+                             true         (assoc :body matches)))))
          (m/filter-vals seq))))
 
 (defn regex-email-bodies
@@ -196,13 +197,17 @@
 
 (defn email-to
   "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  [user-kwd & [email-map]]
-  (let [{:keys [email]} (test.users/fetch-user user-kwd)]
-    {email [(merge {:from (if-let [from-name (email/email-from-name)]
-                            (str from-name " <" (email/email-from-address) ">")
-                            (email/email-from-address))
-                    :to #{email}}
-                   email-map)]}))
+  ([user-kwd email-map]
+   (email-to user-kwd nil email-map))
+
+  ([user-kwd bcc? & [email-map]]
+   (let [{:keys [email]} (test.users/fetch-user user-kwd)
+         to-type         (if bcc? :bcc :to)]
+     {email [(merge {:from   (if-let [from-name (email/email-from-name)]
+                               (str from-name " <" (email/email-from-address) ">")
+                               (email/email-from-address))
+                     to-type #{email}}
+                    email-map)]})))
 
 (defn temp-csv
   [file-basename content]

@@ -41,8 +41,8 @@
 
 (defn- rasta-alert-email
   [subject email-body]
-  (mt/email-to :rasta {:subject subject
-                       :body email-body}))
+  (mt/email-to :rasta true {:subject subject
+                            :body email-body}))
 
 (defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
