@@ -6,8 +6,12 @@ import {
   getAnchorOverrides,
   getButtonOverrides,
   getCheckboxOverrides,
+  getInputOverrides,
   getMenuOverrides,
+  getNumberInputOverrides,
   getRadioOverrides,
+  getPaperOverrides,
+  getTextInputOverrides,
   getTextOverrides,
   getTitleOverrides,
 } from "./components";
@@ -36,9 +40,10 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       color("bg-medium"),
       color("bg-dark"),
     ]),
+    error: getThemeColors([color("error")]),
   },
   primaryColor: "brand",
-  primaryShade: 2,
+  primaryShade: 1,
   shadows: {
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
@@ -62,6 +67,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     lg: rem(17),
     xl: rem(21),
   },
+  lineHeight: "1rem",
   headings: {
     sizes: {
       h1: {
@@ -95,8 +101,12 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getAnchorOverrides(),
     ...getButtonOverrides(),
     ...getCheckboxOverrides(),
+    ...getInputOverrides(),
     ...getMenuOverrides(),
+    ...getNumberInputOverrides(),
     ...getRadioOverrides(),
+    ...getTextInputOverrides(),
+    ...getPaperOverrides(),
     ...getTextOverrides(),
     ...getTitleOverrides(),
   },

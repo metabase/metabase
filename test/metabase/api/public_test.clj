@@ -177,6 +177,12 @@
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
+(defn card-query-url
+  "Generate a query URL for an public Card"
+  [card response-format-route-suffix]
+  {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format-route-suffix)]}
+  (str "public/card/" (:public_uuid card) "/query" response-format-route-suffix))
+
 (deftest check-that-we--cannot--execute-a-publiccard-if-the-setting-is-disabled
   (mt/with-temporary-setting-values [enable-public-sharing false]
     (with-temp-public-card [{uuid :public_uuid}]
@@ -274,7 +280,57 @@
                                                                       :target ["variable" ["template-tag" "foo"]]
                                                                       :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
 
-
+(deftest execute-public-card-with-default-parameters-test
+  (testing "GET /api/public/card/:uuid/query with parameters with default values"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (t2.with-temp/with-temp
+        [Card card (merge {:enable_embedding true
+                           :dataset_query
+                           {:database (mt/id)
+                            :type     :native
+                            :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
+                                                              ((db/quote-fn) "Count"))
+                                       :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                                                   :display-name "Venue ID",
+                                                                   :id           "_VENUE_ID_",
+                                                                   :name         "venue_id",
+                                                                   :required     false,
+                                                                   :default      1
+                                                                   :type         :dimension,
+                                                                   :widget-type  :id}}}}}
+                          (shared-obj))]
+        (is (schema= {:status     (s/eq "completed")
+                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
+                                                       :name  "venue_id"
+                                                       :slug  "venue_id"
+                                                       :type  "number"
+                                                       :value 2}])
+                                   s/Keyword   s/Any}
+                      s/Keyword   s/Any}
+                     (client/client :get 202 (card-query-url card "")
+                                    :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                               :name  "venue_id"
+                                                               :slug  "venue_id"
+                                                               :type  "number"
+                                                               :value 2}]))))
+        (testing "the default should apply if no param value is provided"
+          (is (= [[1]]
+                 (mt/rows (client/client :get 202 (card-query-url card "")
+                                         :parameters (json/encode [])))))
+          (testing "check this is the same result as when the default value is provided"
+            (is (= [[1]]
+                   (mt/rows (client/client :get 202 (card-query-url card "")
+                                           :parameters (json/encode [{:id "_VENUE_ID_",
+                                                                      :target ["dimension" ["template-tag" "venue_id"]],
+                                                                      :type "id",
+                                                                      :value 1}])))))))
+        (testing "the field filter should not apply if the parameter has a nil value"
+          (is (= [[100]]
+                 (mt/rows (client/client :get 202 (card-query-url card "")
+                                         :parameters (json/encode [{:id "_VENUE_ID_",
+                                                                    :target ["dimension" ["template-tag" "venue_id"]],
+                                                                    :type "id",
+                                                                    :value nil}]))))))))))
 
 ;; Cards with required params
 (defn- do-with-required-param-card [f]
@@ -520,6 +576,40 @@
                                                                  :target [:dimension (mt/id :venues :id)]
                                                                  :value  [10]
                                                                  :id     "_VENUE_ID_"}])))))))))
+
+(deftest execute-public-dashcard-with-default-parameters-test
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id with parameters with default values"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash]
+        (t2.with-temp/with-temp
+          [Card card (merge {:enable_embedding true
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
+                                                                ((db/quote-fn) "Count"))
+                                         :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
+                                                                     :display-name "Venue ID"
+                                                                     :id           "_VENUE_ID_"
+                                                                     :name         "venue_id"
+                                                                     :required     false
+                                                                     :default      1
+                                                                     :type         :dimension
+                                                                     :widget-type  :id}}}}}
+                            (shared-obj))]
+          (let [dashcard (add-card-to-dashboard! card dash {:parameter_mappings [{:parameter_id "_VENUE_ID_"
+                                                                                  :card_id      (u/the-id card)
+                                                                                  :target       ["dimension" ["template-tag" "venue_id"]]}]})]
+            (testing "the default should apply if no param value is provided"
+              (is (= [[1]]
+                     (mt/rows (client/client :get 202 (dashcard-url dash card dashcard))))))
+            (testing "the field filter should not apply if the provided param value is nil"
+              (is (= [[100]]
+                     (mt/rows (client/client :get 202 (dashcard-url dash card dashcard)
+                                             :parameters (json/encode [{:name   "Venue ID"
+                                                                        :target ["dimension" ["template-tag" "venue_id"]]
+                                                                        :value  nil
+                                                                        :id     "_VENUE_ID_"}]))))))))))))
 
 (deftest execute-public-dashcard-as-user-without-perms-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"

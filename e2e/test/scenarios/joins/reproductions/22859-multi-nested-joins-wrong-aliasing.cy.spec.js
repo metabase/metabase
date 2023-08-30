@@ -94,6 +94,7 @@ function saveQuestion(name) {
   cy.findByDisplayValue("Orders").clear().type(name).blur();
 
   cy.button("Save").click();
+  cy.wait(100);
   cy.button("Not now").click();
 }
 
