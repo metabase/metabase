@@ -6,6 +6,8 @@ import {
   showDashboardCardActions,
   visitDashboard,
   addOrUpdateDashboardCard,
+  sidebar,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -32,22 +34,17 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId => {
       visitDashboard(dashboardId);
 
-      cy.icon("pencil").click();
+      cy.findByTestId("dashboard-header").icon("pencil").click();
       showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel").within(() => {
-        cy.icon("click").click();
-      });
+      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
 
       // configure a URL click through on the  "MY_NUMBER" column
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("On-click behavior for each column")
+      sidebar()
+        .findByText("On-click behavior for each column")
         .parent()
         .parent()
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         .within(() => cy.findByText("MY_NUMBER").click());
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Go to a custom destination").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("URL").click();
 
       // set the url and text template
@@ -61,14 +58,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.findByText("Done").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
+      cy.findByTestId("edit-bar").findByText("Save").click();
 
       setParamValue("My Param", "param-value");
-
       // click value and confirm url updates
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("column value: 111").click();
+
+      getDashboardCard().findByText("column value: 111").click();
       cy.location("pathname").should("eq", "/foo/111/param-value");
     });
   });
