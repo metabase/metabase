@@ -1118,7 +1118,7 @@
 
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "all FKs should have be indexex"
+    (testing "all FKs should be indexed"
      (is (= [] (t2/query
                 ["SELECT
                      conrelid::regclass AS table_name,
