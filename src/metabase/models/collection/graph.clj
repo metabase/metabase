@@ -10,6 +10,7 @@
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
@@ -104,7 +105,6 @@
          non-personal-collection-ids
          (collection-permission-graph collection-namespace)))))
 
-
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (s/defn ^:private update-collection-permissions!
@@ -131,6 +131,11 @@
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
+(defenterprise update-audit-collection-permissions!
+  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-app.permissions [_ _] ::noop)
+
 (s/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -153,6 +158,7 @@
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
+           (update-audit-collection-permissions! group-id changes)
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
                                       (assoc old-graph :namespace collection-namespace) changes))))))
