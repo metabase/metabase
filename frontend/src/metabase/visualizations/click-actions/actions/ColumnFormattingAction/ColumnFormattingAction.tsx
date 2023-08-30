@@ -23,9 +23,14 @@ export const ColumnFormattingAction: Drill = ({ question, clicked }) => {
 
   const { column } = clicked;
 
-  const FormatPopover = ({ series, onChange }: ClickActionPopoverProps) => {
+  const FormatPopover = ({
+    series,
+    onUpdateVisualizationSettings,
+  }: ClickActionPopoverProps) => {
     const handleChangeSettings = (settings: VisualizationSettings) => {
-      onChange(updateSettings(series[0].card.visualization_settings, settings));
+      onUpdateVisualizationSettings(
+        updateSettings(series[0].card.visualization_settings, settings),
+      );
     };
 
     const widgets = getSettingsWidgetsForSeries(

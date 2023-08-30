@@ -135,7 +135,7 @@ class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
             this.close();
           }}
           series={series}
-          onChange={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />
       );
     }

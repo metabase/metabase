@@ -16,9 +16,9 @@ export interface DatasetColumn {
   display_name: string;
   description: string | null;
   source: string;
-  coercion_strategy: string | null;
-  visibility_type: FieldVisibilityType;
-  table_id: TableId;
+  coercion_strategy?: string | null;
+  visibility_type?: FieldVisibilityType;
+  table_id?: TableId;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
@@ -33,7 +33,7 @@ export interface DatasetColumn {
     bin_width?: number;
   };
   settings?: Record<string, any>;
-  fingerprint: FieldFingerprint | null;
+  fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
