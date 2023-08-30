@@ -38,8 +38,7 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision :refer [Revision]]
-   [metabase.models.user :refer [User]]
+   [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
@@ -401,6 +400,41 @@
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
+
+(deftest get-cards-with-last-edit-info-test
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
+                 :model/Card {card-2-id :id} {:name "Card 2"}]
+    (with-cards-in-readable-collection [card-1-id card-2-id]
+      (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
+        (revision/push-revision!
+         :entity      :model/Card
+         :id          card-1-id
+         :user-id     user-id
+         :is_creation true
+         :object      {:id card-1-id}))
+
+      (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
+        (revision/push-revision!
+         :entity      :model/Card
+         :id          card-2-id
+         :user-id     user-id
+         :is_creation true
+         :object      {:id card-2-id}))
+      (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
+        (is (=? {:name           "Card 1"
+                 :last-edit-info {:id         (mt/user->id :rasta)
+                                  :email      "rasta@metabase.com"
+                                  :first_name "Rasta"
+                                  :last_name  "Toucan"
+                                  :timestamp  some?}}
+                (get results card-1-id)))
+        (is (=? {:name           "Card 2"
+                 :last-edit-info {:id         (mt/user->id :crowberto)
+                                  :email      "crowberto@metabase.com"
+                                  :first_name "Crowberto"
+                                  :last_name  "Corv"
+                                  :timestamp  some?}}
+                (get results card-2-id)))))))
 
 (deftest get-series-for-card-permission-test
   (t2.with-temp/with-temp
@@ -1044,11 +1078,11 @@
                    :result_metadata        (mt/obj->json->obj (:result_metadata card))})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
-          (mt/with-temp [User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
-                         Revision _ {:model    "Card"
-                                     :model_id (:id card)
-                                     :user_id  user-id
-                                     :object   (revision/serialize-instance card (:id card) card)}]
+          (mt/with-temp [:model/User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
+                         :model/Revision _             {:model    "Card"
+                                                        :model_id (:id card)
+                                                        :user_id  user-id
+                                                        :object   (revision/serialize-instance card (:id card) card)}]
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps
