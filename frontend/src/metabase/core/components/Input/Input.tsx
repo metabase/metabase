@@ -37,7 +37,7 @@ export interface InputProps extends InputAttributes {
   onResetClick?: () => void;
 }
 
-const Input = forwardRef(function Input(
+const BaseInput = forwardRef(function Input(
   {
     className,
     style,
@@ -127,9 +127,14 @@ const Input = forwardRef(function Input(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Input, {
+/**
+ * @deprecated: use TextInput from "metabase/ui"
+ */
+const Input = Object.assign(BaseInput, {
   Root: InputRoot,
   Field: InputField,
   Subtitle: InputSubtitle,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Input;

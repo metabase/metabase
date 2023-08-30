@@ -17,6 +17,8 @@ import type {
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
+  DrillThru,
+  DrillThruDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
   JoinStrategy,

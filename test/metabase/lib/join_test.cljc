@@ -1178,3 +1178,8 @@
                                       :alias      "Question 2 - Category"}]
                              :limit 2}]}
                   (lib.tu.mocks-31769/query))))))))
+
+(deftest ^:parallel suggested-name-include-joins-test
+  (testing "Include the names of joined tables in suggested query names (#24703)"
+    (is (= "Venues + Categories"
+           (lib/suggested-name lib.tu/query-with-join)))))

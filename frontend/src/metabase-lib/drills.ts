@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DataRow, Dimension, Query } from "./types";
+import type { DataRow, Dimension, DrillThru, Query } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
 // null means a value of SQL NULL; undefined means no value, ie. a column header was clicked.
