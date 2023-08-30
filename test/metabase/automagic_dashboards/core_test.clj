@@ -1218,3 +1218,114 @@
                   (for [dimension [integer-dim number-dim quantity-dim]]
                     (update-vals dimension #(assoc % :matches [field]))))
                 bindings))))))
+
+(deftest candidate-bindings-3f-4d-test
+  (testing "Candidate bindings with multiple fields and bindings"
+    (let [nurnies       {:base_type     :type/Integer
+                         :name          "Number of Nurnies"
+                         :semantic_type :type/Quantity}
+          greebles      {:base_type     :type/Integer
+                         :name          "Number of Greebles"
+                         :semantic_type :type/Quantity}
+          froobs        {:base_type :type/Float
+                         :name      "A double number field"}
+          context       {:tables
+                         [{:entity_type :entity/GenericTable
+                           :fields      [nurnies
+                                         greebles
+                                         froobs]}]}
+          integer-dim   {"GenericInteger" {:field_type [:entity/GenericTable :type/Integer], :score 60}}
+          number-dim    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+          quantity-dim  {"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+          unmatched-dim {"Range Free Quantity" {:field_type [:type/Quantity], :score 100}}
+          dimensions    [integer-dim
+                         number-dim
+                         quantity-dim
+                         unmatched-dim]
+          bindings      (#'magic/candidate-bindings context dimensions)]
+      bindings
+      (testing "3 results are returned - one for each matched field group"
+        (is (= 3 (count bindings))))
+      (testing "The return data shape is a vector for each field, each of which is a vector of
+                each matching dimension, each of which as associated a `:matches` into the
+                value of the dimension map."
+        (is (=? (for [field [nurnies greebles froobs]]
+                  (if (= field froobs)
+                    [(update-vals number-dim #(assoc % :matches [field]))]
+                    (for [dimension [integer-dim number-dim quantity-dim]]
+                      (update-vals dimension #(assoc % :matches [field])))))
+                bindings))))))
+
+(deftest bind-dimensions-merge-logic-test
+  (testing "An example based test of the merge logic in bind dimensions."
+    (let [equal-bindings           [{"Quantity" {:score   100
+                                                 :matches [{:name "Number of Nurnies"}]}}
+                                    {"Quantity" {:score   100
+                                                 :matches [{:name "Number of Greebles"}]}}]
+          a-lt-b-bindings          [{"Quantity" {:matches [{:name "Number of Nurnies"}]}}
+                                    {"Quantity" {:score   100
+                                                 :matches [{:name "Number of Greebles"}]}}]
+          b-lt-a-bindings          [{"Quantity" {:score   100
+                                                 :matches [{:name "Number of Nurnies"}]}}
+                                    {"Quantity" {:score   1,
+                                                 :matches [{:name "Number of Greebles"}]}}]
+          bind-dimensions-merge-fn #(apply merge-with (fn [a b]
+                                                        (case (compare (:score a) (:score b))
+                                                          1 a
+                                                          0 (update a :matches concat (:matches b))
+                                                          -1 b))
+                                           {}
+                                           %)]
+      (is (= {"Quantity" {:score 100 :matches [{:name "Number of Nurnies"} {:name "Number of Greebles"}]}}
+             (bind-dimensions-merge-fn equal-bindings)))
+      (is (= {"Quantity" {:score 100, :matches [{:name "Number of Greebles"}]}}
+             (bind-dimensions-merge-fn a-lt-b-bindings)))
+      (is (= {"Quantity" {:score 100, :matches [{:name "Number of Nurnies"}]}}
+             (bind-dimensions-merge-fn b-lt-a-bindings))))))
+
+(deftest bind-dimensions-3f-4d-test
+  (testing "Perform end-to-end dimension binding with multiple dimensions and fields."
+    (let [nurnies       {:base_type     :type/Integer
+                         :name          "Number of Nurnies"
+                         :semantic_type :type/Quantity}
+          greebles      {:base_type     :type/Integer
+                         :name          "Number of Greebles"
+                         :semantic_type :type/Quantity}
+          froobs        {:base_type :type/Float
+                         :name      "A double number field"}
+          context       {:tables
+                         [{:entity_type :entity/GenericTable
+                           :fields      [nurnies
+                                         greebles
+                                         froobs]}]}
+          integer-dim   {"GenericInteger" {:field_type [:entity/GenericTable :type/Integer], :score 60}}
+          number-dim    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+          quantity-dim  {"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+          unmatched-dim {"Range Free Quantity" {:field_type [:type/Quantity], :score 100}}
+          dimensions    [integer-dim
+                         number-dim
+                         quantity-dim
+                         unmatched-dim]
+          bindings      (#'magic/bind-dimensions context dimensions)]
+      (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity],
+                          :score 100,
+                          :matches    [{:base_type     :type/Integer,
+                                        :name          "Number of Nurnies",
+                                        :semantic_type :type/Quantity,
+                                        :link          nil,
+                                        :field_type    [:entity/GenericTable :type/Quantity],
+                                        :score         100}
+                                       {:base_type     :type/Integer,
+                                        :name          "Number of Greebles",
+                                        :semantic_type :type/Quantity,
+                                        :link          nil,
+                                        :field_type    [:entity/GenericTable :type/Quantity],
+                                        :score         100}]},
+              "GenericNumber" {:field_type [:entity/GenericTable :type/Number],
+                               :score      80,
+                               :matches    [{:base_type  :type/Float,
+                                             :name       "A double number field",
+                                             :link       nil,
+                                             :field_type [:entity/GenericTable :type/Number],
+                                             :score      80}]}}
+             bindings)))))
