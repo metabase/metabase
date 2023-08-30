@@ -181,13 +181,13 @@
     redefined test User name, e.g. `:rasta`, or any User or User ID.
     The request will be executed with a temporary session id.
 
-    Note: this makes a mock API call, not than an actual HTTP calls, use [[user-real-request]] for that."
+    Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
     :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
 (def user-real-request
-  ^{:doc "Like `user-http-request` but instead of calling the app handler, this calls an actually http request."
+  ^{:doc "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
     :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
