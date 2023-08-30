@@ -68,7 +68,8 @@ export const ImpersonationModalView = ({
 
   // Does the "role" field need to first be filled out on the DB details page?
   const roleRequired =
-    database.engine === "snowflake" && database.details["role"] == null;
+    database.features.includes("connection-impersonation-requires-role") &&
+    database.details["role"] == null;
 
   return (
     <ImpersonationModalViewRoot>
