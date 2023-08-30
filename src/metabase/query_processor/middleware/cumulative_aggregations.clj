@@ -7,15 +7,14 @@
 
 ;;;; Pre-processing
 
-(defn- diff-indecies
+(defn- diff-indices
   "Given two sequential collections, return indecies that are different between the two."
   [coll-1 coll-2]
-  (->> (map not= coll-1 coll-2)
-       (map-indexed (fn [i transformed?]
-                      (when transformed?
-                        i)))
-       (filter identity)
-       set))
+  (into #{}
+        (keep-indexed (fn [i transformed?]
+                        (when transformed?
+                          i)))
+        (map not= coll-1 coll-2)))
 
 (mu/defn ^:private replace-cumulative-ags :- mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
@@ -35,11 +34,11 @@
     (let [query'            (replace-cumulative-ags query)
           ;; figure out which indexes are being changed in the results. Since breakouts always get included in
           ;; results first we need to offset the indexes to change by the number of breakouts
-          replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
-                                                        (-> query' :query :aggregation))]
-                                   (+ (count breakouts) i)))]
+          replaced-indices (set (for [i (diff-indices (-> query  :query :aggregation)
+                                                      (-> query' :query :aggregation))]
+                                  (+ (count breakouts) i)))]
       (cond-> query'
-        (seq replaced-indecies) (assoc ::replaced-indecies replaced-indecies)))))
+        (seq replaced-indices) (assoc ::replaced-indecies replaced-indices)))))
 
 
 ;;;; Post-processing
