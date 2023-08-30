@@ -1097,3 +1097,72 @@
                          (mt/user-http-request
                           :crowberto :get 200
                           (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
+
+;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
+
+
+(deftest field-candidates-with-tablespec-specialization
+  (testing "Test for when both a tablespec and fieldspec are provided in the dimension definition"
+    (let [matching-field           {:name          "QUANTITY BUT NAME DOES NOT MATTER"
+                                    :semantic_type :type/Quantity}
+          non-matching-field       {:name          "QUANTITY IS MY NAME, BUT I AM A GENERIC NUMBER"
+                                    :semantic_type :type/GenericNumber}
+          context                  {:tables
+                                    [{:entity_type :entity/GenericTable
+                                      :fields      [matching-field
+                                                    non-matching-field]}]}
+          gt-quantity-dimension    {:field_type [:entity/GenericTable :type/Quantity], :score 100}
+          generic-number-dimension {:field_type [:type/GenericNumber], :score 100}
+          quantity-dimension       {:field_type [:type/Quantity], :score 100}]
+      (testing "A match occurs when the dimension field_type tablespec and fieldspec
+                match the table entity_type and field semantic_type."
+        (is (=? [matching-field]
+                (#'magic/field-candidates
+                  context
+                  gt-quantity-dimension))))
+      (testing "When the table entity_type does not match the dimension, nothing is returned."
+        (is (empty? (#'magic/field-candidates
+                      (assoc-in context [:tables 0 :entity_type] :entity/Whatever)
+                      gt-quantity-dimension))))
+      (testing "When the dimension spec does not contain a table spec and no :source is provided
+                in the context nothing is returned."
+        (is (empty? (#'magic/field-candidates
+                      context
+                      generic-number-dimension))))
+      (testing "Even if the field and dimension semantic types match, a match will not occur without a table spec."
+        (is (empty? (#'magic/field-candidates
+                      context
+                      quantity-dimension)))))))
+
+(deftest field-candidates-with-no-tablespec-specialization
+  (testing "Tests for when only a fieldspec is provided in the dimension definition.
+            The expectation is a `source` will be provided with populated fields."
+    (let [quantity-field           {:name          "QUANTITY BUT NAME DOES NOT MATTER"
+                                    :semantic_type :type/Quantity}
+          generic-number-field     {:name          "QUANTITY IS MY NAME, BUT I AM A GENERIC NUMBER"
+                                    :semantic_type :type/GenericNumber}
+          another-field            {:name          "X"
+                                    :semantic_type :type/GenericNumber}
+          context                  {:source
+                                    {:fields [quantity-field
+                                              generic-number-field]}}
+          quantity-dimension       {:field_type [:type/Quantity], :score 100}
+          gt-quantity-dimension    {:field_type [:entity/GenericTable :type/Quantity], :score 100}
+          generic-number-dimension {:field_type [:type/GenericNumber], :score 100}]
+      (testing "A match occurs when the dimension field_type tablespec and fieldspec
+                match the table entity_type and field semantic_type."
+        (is (=? [quantity-field]
+                (#'magic/field-candidates
+                  context
+                  quantity-dimension))))
+      (testing "When a table spec is provided in the dimension and the source contains no tables there is no match."
+        (is (empty? (#'magic/field-candidates
+                      context
+                      gt-quantity-dimension))))
+      (testing "Multiple fields of the same type will match"
+        (is (=? [generic-number-field
+                 another-field]
+                (#'magic/field-candidates
+                  (update-in context [:source :fields] conj another-field)
+                  generic-number-dimension)))))))
+
