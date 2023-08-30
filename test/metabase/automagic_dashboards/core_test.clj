@@ -1166,3 +1166,55 @@
                   (update-in context [:source :fields] conj another-field)
                   generic-number-dimension)))))))
 
+(deftest candidate-bindings-1f-3b-test
+  (testing "Candidate bindings with one field and multiple bindings"
+    (let [field                {:base_type     :type/Integer
+                                :name          "QUANTITY"
+                                :semantic_type :type/Quantity}
+          context              {:tables
+                                [{:entity_type :entity/GenericTable
+                                  :fields      [field]}]}
+          generic-number-dim   {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+          generic-quantity-dim {"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+          unmatched-dim        {"Quantity no table" {:field_type [:type/Quantity], :score 100}}
+          dimensions           [generic-number-dim
+                                generic-quantity-dim
+                                unmatched-dim]
+          bindings             (#'magic/candidate-bindings context dimensions)]
+      (testing "The single field binds to the two relevant dimensions"
+        (is (=? [[generic-number-dim
+                  generic-quantity-dim]]
+                bindings)))
+      (testing "The single field binds only to those two dimensions and not the unmatched dim"
+        (is (= 2 (count (first bindings))))))))
+
+(deftest candidate-bindings-2f-4d-test
+  (testing "Candidate bindings with multiple fields and bindings"
+    (let [nurnies       {:base_type     :type/Integer
+                         :name          "Number of Nurnies"
+                         :semantic_type :type/Quantity}
+          greebles      {:base_type     :type/Integer
+                         :name          "Number of Greebles"
+                         :semantic_type :type/Quantity}
+          context       {:tables
+                         [{:entity_type :entity/GenericTable
+                           :fields      [nurnies
+                                         greebles]}]}
+          integer-dim   {"GenericInteger" {:field_type [:entity/GenericTable :type/Integer], :score 60}}
+          number-dim    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+          quantity-dim  {"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+          unmatched-dim {"Range Free Quantity" {:field_type [:type/Quantity], :score 100}}
+          dimensions    [integer-dim
+                         number-dim
+                         quantity-dim
+                         unmatched-dim]
+          bindings      (#'magic/candidate-bindings context dimensions)]
+      (testing "2 results are returned - one for each matched field group"
+        (is (= 2 (count bindings))))
+      (testing "The return data shape is a vector for each field, each of which is a vector of
+                each matching dimension, each of which as associated a `:matches` into the
+                value of the dimension map."
+        (is (=? (for [field [nurnies greebles]]
+                  (for [dimension [integer-dim number-dim quantity-dim]]
+                    (update-vals dimension #(assoc % :matches [field]))))
+                bindings))))))
