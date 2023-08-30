@@ -427,10 +427,10 @@
                                                          (nil? (:id recipient)))) recipients)
         timezone            (->> parts (some :card) defaulted-timezone)
         dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
-        email-to-users      (construct-pulse-email (subject pulse) (map :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil))
+        email-to-users      (construct-pulse-email (subject pulse) (mapv :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
                               (construct-pulse-email (subject pulse) [non-user] (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
-    (concat email-to-users email-to-nonusers)))
+    (conj email-to-nonusers email-to-users)))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -458,10 +458,10 @@
                                                          (nil? (:id recipient)))) (:recipients channel))
         first-part          (some :card parts)
         timezone            (defaulted-timezone first-part)
-        email-to-users      (construct-pulse-email email-subject (map :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil))
+        email-to-users      (construct-pulse-email email-subject (mapv :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
                               (construct-pulse-email email-subject [non-user] (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) non-user)))]
-       (concat email-to-users email-to-nonusers)))
+       (conj email-to-nonusers email-to-users)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
