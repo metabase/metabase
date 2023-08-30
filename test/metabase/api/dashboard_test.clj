@@ -2,6 +2,7 @@
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -295,6 +296,7 @@
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
+      (println (t2/select-one :model/Dashboard 33))
       (is (=? #{rasta-dash crowberto-dash}
               (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
 
