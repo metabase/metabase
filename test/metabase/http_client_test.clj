@@ -16,11 +16,13 @@
 
 (deftest parse-http-client-args-test
   (testing "parse correctly"
-    (is (= {:credentials "829a5f19-5a83-44af-af69-6c6ae4444167",
-            :expected-status 200,
-            :method :get,
-            :query-parameters {:include_ids [1 2], :query "metabase"},
-            :url "/card"}
+    (is (= {:credentials "829a5f19-5a83-44af-af69-6c6ae4444167"
+            :expected-status 200
+            :method :get
+            :query-parameters {:include_ids [1 2], :query "metabase"}
+            :url "/card"
+            :request-options nil
+            :http-body nil}
            (#'client/parse-http-client-args ["829a5f19-5a83-44af-af69-6c6ae4444167" :get 200 "/card"
                                              :query       "metabase"
                                              :include_ids 1

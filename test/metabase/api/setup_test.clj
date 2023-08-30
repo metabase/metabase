@@ -342,8 +342,8 @@
         (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-            (is (schema= {:id client/UUIDString}
-                         (client/client :post 200 "setup" body))))
+            (is (schema= {:id su/UUIDString}
+                  (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
           (reset! has-user-setup true)
           (is (setup/has-user-setup))

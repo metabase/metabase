@@ -6,10 +6,10 @@
    [clojure.core.async :as a]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.handler :as handler]
@@ -19,10 +19,11 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [ring.util.codec :as codec]
-   [schema.core :as schema])
+   [ring.util.codec :as codec])
   (:import
    (metabase.async.streaming_response StreamingResponse)
    (java.io InputStream)))
@@ -39,8 +40,8 @@
   [query-parameters]
   (str/join \& (letfn [(url-encode [s]
                                   (cond-> s
-                                    (keyword? s)       u/qualified-name
-                                    true               codec/url-encode))
+                                    (keyword? s) u/qualified-name
+                                    (some? s)    codec/url-encode))
                        (encode-key-value [k v]
                          (str (url-encode k) \= (url-encode v)))]
                       (flatten (for [[k value-or-values] query-parameters]
@@ -128,15 +129,11 @@
 (declare client)
 
 (def ^:private Credentials
-  {:username su/NonBlankString, :password su/NonBlankString})
+  [:map {:closed true}
+   [:username ms/NonBlankString]
+   [:password ms/NonBlankString]])
 
-(def UUIDString
-  "Schema for a canonical string representation of a UUID."
-  (schema/constrained
-   su/NonBlankString
-   (partial re-matches #"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")))
-
-(schema/defn authenticate :- UUIDString
+(mu/defn authenticate :- ms/UUIDString
   "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
   Exception if that fails."
   [credentials :- Credentials]
@@ -200,19 +197,16 @@
    :delete http/delete})
 
 (def ^:private ClientParamsMap
-  {(schema/optional-key :credentials)      (schema/maybe (schema/cond-pre UUIDString Credentials))
-   :method                                 (apply schema/enum (keys method->request-fn))
-   (schema/optional-key :expected-status)  (schema/maybe su/IntGreaterThanZero)
-   :url                                    su/NonBlankString
-   ;; body can be either a map or a vector -- we encode it as JSON. Of course, other things are valid JSON as well, but
-   ;; currently none of our endpoints accept them -- add them if needed.
-   (schema/optional-key :http-body)        (schema/cond-pre
-                                            (schema/maybe su/Map)
-                                            (schema/maybe clojure.lang.IPersistentVector))
-   (schema/optional-key :query-parameters) (schema/maybe su/Map)
-   (schema/optional-key :request-options)  (schema/maybe su/Map)})
+  [:map {:closed true}
+   [:credentials      {:optional true} [:maybe [:or ms/UUIDString map?]]]
+   [:method                            (into [:enum] (keys method->request-fn))]
+   [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
+   [:url                               ms/NonBlankString]
+   [:http-body        {:optional true} [:maybe [:or map? vector?]]]
+   [:query-parameters {:optional true} [:maybe map?]]
+   [:request-options  {:optional true} [:maybe map?]]])
 
-(schema/defn ^:private -client
+(mu/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
@@ -243,7 +237,7 @@
 (defn- read-streaming-response
   [streaming-response content-type]
   (with-open [os (java.io.ByteArrayOutputStream.)]
-    (let [f             (.f streaming-response)
+    (let [f             (.f ^StreamingResponse streaming-response)
           canceled-chan (a/promise-chan)]
       (f os canceled-chan)
       (cond-> (.toByteArray os)
@@ -262,7 +256,7 @@
 
              ;; read byte array stuffs like image
              (instance? (Class/forName "[B") body)
-             (String. body "UTF-8")
+             (String. ^bytes body "UTF-8")
 
              ;; Most APIs that execute a request returns a streaming response
              (instance? StreamingResponse body)
@@ -303,11 +297,10 @@
         (m/update-existing :body (fn [http-body]
                                    (java.io.ByteArrayInputStream.
                                     (.getBytes (if (string? http-body)
-                                                 http-body
+                                                 ^String http-body
                                                  (json/generate-string http-body)))))))))
 
-
-(schema/defn ^:private -mock-client
+(mu/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [method expected-status] :as params} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
@@ -333,23 +326,37 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
-(s/def ::http-client-args
-  (s/cat
-   :credentials      (s/? (some-fn map? string?))
-   :method           #{:get :put :post :delete}
-   :expected-status  (s/? integer?)
-   :url              string?
-   :request-options  (s/? (every-pred map? :request-options))
-   :http-body        (s/? (some-fn map? sequential?))
-   :query-parameters (s/* (s/cat :k keyword? :v any?))))
+#_(s/def ::http-client-args
+    (s/cat
+     :credentials      (s/? (some-fn map? string?))
+     :method           #{:get :put :post :delete}
+     :expected-status  (s/? integer?)
+     :url              string?
+     :request-options  (s/? (every-pred map? :request-options))
+     :http-body        (s/? (some-fn map? sequential?))
+     :query-parameters (s/* (s/cat :k keyword? :v any?))))
+
+(def ^:private http-client-args
+  [:catn
+   [:credentials      [:? [:or string? map?]]]
+   [:method           [:enum :get :put :post :delete]]
+   [:expected-status  [:? integer?]]
+   [:url              string?]
+   [:request-options  [:? [:fn (every-pred map? :request-options)]]]
+   [:http-body        [:? [:or map? sequential?]]]
+   [:query-parameters [:* [:catn [:k keyword?] [:v any?]]]]])
+
+(def ^:private http-client-args-parser
+  (mc/parser http-client-args))
 
 (defn- parse-http-client-args
   "Parse the list of required and optional `args` into the various separated params that `-client` requires"
   [args]
-  (let [parsed (s/conform ::http-client-args args)]
-    (when (= parsed ::s/invalid)
-      (throw (ex-info (str "Invalid http-client args: " (s/explain-str ::http-client-args args))
-                      (s/explain-data ::http-client-args args))))
+  (let [parsed (http-client-args-parser args)]
+    (when (= parsed :malli.core/invalid)
+      (let [explain-data (mc/explain http-client-args args)]
+        (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
+                        explain-data))))
     (cond-> parsed
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed) (update :request-options :request-options)

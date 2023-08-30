@@ -58,7 +58,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          client/UUIDString
+                        :device_id          su/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
@@ -215,7 +215,7 @@
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          client/UUIDString
+                        :device_id          su/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
