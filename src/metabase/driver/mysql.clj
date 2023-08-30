@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -96,9 +97,9 @@
        min-supported-mariadb-version
        min-supported-mysql-version)))
 
-(defn get-db-version [driver conn-spec]
+(defn get-db-version [conn-spec]
   (sql-jdbc.execute/do-with-connection-with-options
-   driver
+   :mysql
    conn-spec
    nil
    (fn [^java.sql.Connection conn]
@@ -235,7 +236,7 @@
   [_driver _coercion-strategy expr]
   (h2x/->datetime expr))
 
-(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
+(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->]
   [_driver _coercion-strategy expr]
   [:convert expr [:raw "DATETIME"]])
 
@@ -678,68 +679,115 @@
         (finally
           (.delete temp-file))))))
 
+(defn- parse-grant
+  "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
+   to reconstruct the set of table privileges that the current user has. Returns nil if the grant doesn't
+   contain any information we care about.
+
+   The syntax for GRANT statements are documented here:
+   https://dev.mysql.com/doc/refman/8.0/en/grant.html
+   But this function parses the subset of this syntax that appears in the output of `SHOW GRANTS` statements.
+
+   There are two types of grants we care about: privileges and roles.
+
+   Privilege example:
+   (parse-grant \"GRANT SELECT, INSERT, UPDATE, DELETE ON `test-data`.* TO 'metabase'@'localhost'\")
+   =>
+   {:type       ::privileges
+    :privileges #{:select :insert :update :delete}
+    :object-type :table
+    :object-name \"test-data\"}
+
+   Role example:
+   (parse-grant \"GRANT 'example_role_1'@'%','example_role_2'@'%' TO 'metabase'@'localhost'\")
+   =>
+   {:type  ::roles
+    :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
+  [grant]
+  (condp #(re-find % grant)
+    #"^GRANT PROXY ON (.*)"
+    nil
+    #"^GRANT (.*) ON FUNCTION (.*)"
+    nil
+    #"^GRANT (.*) ON PROCEDURE (.*)"
+    nil
+    ;; GRANT
+    ;;     priv_type [(column_list)]
+    ;;       [, priv_type [(column_list)]] ...
+    ;;     ON priv_level
+    ;;     TO user etc.
+    ;; }
+    (re-find #"^GRANT (.+) ON (.+) TO (.+)")
+    (fn [[_ priv_types object_type _rest]]
+      (when-let [privileges (not-empty
+                             (if (= priv_types "ALL PRIVILEGES")
+                               #{:select :update :delete :insert}
+                               (let [split-priv-types (set (map (comp keyword u/lower-case-en) (str/split priv_types #", ")))]
+                                 (set/intersection #{:select :update :delete :insert} split-priv-types))))]
+        {:type       ::privileges
+         :privileges privileges
+         :object-type (cond
+                        (= object_type "*.*")             :global
+                        (str/ends-with? object_type ".*") :database
+                        :else                             :table)
+         :object-name object_type}))
+    ;; GRANT role [, role] ... TO user etc.
+    (re-find #"^GRANT (.+) TO (.+)" grant)
+    (fn [[_ roles _rest]]
+      {:type  ::roles
+       :roles (set (map u/lower-case-en (str/split roles #",")))})))
+
+(defn- grants [conn-spec]
+  (loop [user "CURRENT_USER()"]
+    (let [grants (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user) {:as-arrays? true})
+                      (drop 1)
+                      (map first))]
+      (let [parsed-grants (map parse-grant grants)
+            {role-grants      ::roles
+             privilege-grants ::privileges} (group-by :type parsed-grants)]
+        (concat privilege-grants (mapcat #(recur (:user %)) role-grants))))))
+
+(defn- table-names->privileges
+  "Given a set of parsed grants, a database name, and a list of table names in the database, return a map of table names
+   to the set of privileges that apply to them.
+   that apply to each table.
+   The rules are:
+   - global grants apply to all tables
+   - database grants apply to all tables in the database
+   - table grants apply to the table"
+  [grants database-name table-names]
+  (let [{global-grants   :global
+         database-grants :database
+         table-grants    :table} (group-by :object-type grants)
+        lower-database-name (u/lower-case-en database-name)
+        ;; TODO: this assumes that there can only be one global grant, and that there is only one database grant per database, and
+        ;; that there is only one table grant per table. this might not be the case.
+        all-table-privileges (set/union (:privileges (first global-grants))
+                                        (:privileges (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
+                                                                   database-grants)))
+        table-privileges (into {}
+                               (keep (fn [grant]
+                                       (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object-name grant))]
+                                         (let [[_ table-name] match]
+                                           [table-name (:privileges grant)]))))
+                               table-grants)]
+    (into {}
+          (keep (fn [table-name]
+                  (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
+                    [table-name privileges])))
+          table-names)))
+
 (defmethod driver/current-user-table-privileges :mysql
-  [driver database]
+  [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-        version   (mysql/get-db-version driver conn-spec)]
-    (jdbc/query
-     conn-spec
-     (if (>= version 8)
-       (str/join
-        "\n"
-        ["WITH RECURSIVE user_roles AS ("
-         "    SELECT FROM_USER, FROM_HOST"
-         "    FROM mysql.role_edges"
-         "    WHERE TO_USER = SUBSTRING_INDEX(CURRENT_USER(), '@', 1) AND TO_HOST = SUBSTRING_INDEX(CURRENT_USER(), '@', -1)"
-         "    UNION"
-         "    SELECT re.FROM_USER, re.FROM_HOST"
-         "    FROM user_roles ur"
-         "    JOIN mysql.role_edges re ON ur.FROM_USER = re.TO_USER AND ur.FROM_HOST = re.TO_HOST"
-         ")"
-         ", combined_privileges AS ("
-         "    SELECT "
-         "      TABLE_SCHEMA, "
-         "      TABLE_NAME,"
-         "      PRIVILEGE_TYPE"
-         "    FROM information_schema.TABLE_PRIVILEGES"
-         "    WHERE GRANTEE IN (SELECT CONCAT('''', FROM_USER, '''@''', FROM_HOST, '''') FROM user_roles)"
-         "    UNION ALL"
-         "    SELECT TABLE_SCHEMA, TABLE_NAME, PRIVILEGE_TYPE"
-         "    FROM information_schema.TABLE_PRIVILEGES"
-         "    WHERE GRANTEE = CONCAT('''', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '''@''', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '''')"
-         ")"
-         "SELECT "
-         "    null as `role`,"
-         "    TABLE_SCHEMA as `schema`, "
-         "    TABLE_NAME as `table`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'SELECT', 1, 0)) > 0, TRUE, FALSE) AS `select`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'UPDATE', 1, 0)) > 0, TRUE, FALSE) AS `update`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'INSERT', 1, 0)) > 0, TRUE, FALSE) AS `insert`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'DELETE', 1, 0)) > 0, TRUE, FALSE) AS `delete`"
-         "FROM "
-         "    combined_privileges"
-         "WHERE "
-         "    TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
-         "GROUP BY "
-         "    TABLE_SCHEMA, TABLE_NAME"
-         "HAVING "
-         "    `select` OR `update` OR `insert` OR `delete`;"])
-       (str/join
-        "\n"
-        ["SELECT "
-         "    NULL as `role`,"
-         "    TABLE_SCHEMA as `schema`,"
-         "    TABLE_NAME as `table`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'SELECT', 1, 0)) > 0, TRUE, FALSE) AS `select`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'UPDATE', 1, 0)) > 0, TRUE, FALSE) AS `update`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'INSERT', 1, 0)) > 0, TRUE, FALSE) AS `insert`,"
-         "    IF(SUM(IF(PRIVILEGE_TYPE = 'DELETE', 1, 0)) > 0, TRUE, FALSE) AS `delete`"
-         "FROM"
-         "    information_schema.TABLE_PRIVILEGES"
-         "WHERE"
-         "    GRANTEE = CONCAT('''', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '''@''', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '''')"
-         "AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
-         "GROUP BY"
-         "    TABLE_SCHEMA, TABLE_NAME"
-         "HAVING"
-         "    `select` OR `update` OR `insert` OR `delete`;"])))))
+        table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
+                         (drop 1)
+                         (map first))]
+    (for [[table-name privileges] (table-names->privileges (grants conn-spec) (:name database) table-names)]
+      {:role   nil
+       :schema nil
+       :table  table-name
+       :select (contains? privileges :select)
+       :update (contains? privileges :update)
+       :insert (contains? privileges :insert)
+       :delete (contains? privileges :delete)})))

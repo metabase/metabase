@@ -644,38 +644,103 @@
                                                            :filter       [:= $mytable.id 2]}
                                               :type       :query}))))))))))))
 
+(deftest parse-grant-test
+  (is (= {:type       ::mysql/privileges
+          :privileges #{"select" "insert" "update" "delete"}
+          :object-type :database
+          :object-name "`test-data`.*"}
+         (mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+  (is (= {:type       ::mysql/privileges
+          :privileges #{"select" "insert" "update" "delete"}
+          :object-type :database
+          :object-name "`test-data`.*"}
+         (mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+  (is (= {:type       ::mysql/privileges
+          :privileges #{"select"}
+          :object-type :database
+          :object-name "`test-data`.*"}
+         (mysql/parse-grant "GRANT SELECT, DELETE (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+  (is (= {:type       ::mysql/privileges
+          :privileges #{"select" "insert" "update" "delete"}
+          :object-type :table
+          :object-name "`test-data`.`foo`"}
+         (mysql/parse-grant "GRANT ALL PRIVILEGES ON `test-data`.`foo` TO 'metabase'@'localhost'")))
+  (is (= {:type  ::mysql/roles
+          :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
+         (mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
+  (is (nil? (mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION"))))
+
+(deftest table-name->privileges-test
+  (is (= {"foo" #{"select"}, "bar" #{"select"}}
+         (mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
+                                         :privileges #{"select"}
+                                         :object-type :database
+                                         :object-name "`test-data`.*"}]
+                                       "test-data"
+                                       ["foo" "bar"])))
+  (is (= {"foo" #{"select"}, "bar" #{"select"}}
+         (mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
+                                         :privileges #{"select"}
+                                         :object-type :global
+                                         :object-name "*.*"}]
+                                       "test-data"
+                                       ["foo" "bar"])))
+  (is (= {"foo" #{"delete" "insert" "select" "update"}}
+         (mysql/table-names->privileges [{:privileges #{"select" "insert" "update" "delete"}
+                                         :object-type :table
+                                         :object-name "`test-data`.`foo`"}]
+                                       "test-data"
+                                       ["foo" "bar"]))))
+
 (deftest table-privileges-test
   (mt/test-driver :mysql
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              lower-db-name  (u/lower-case-en (:name (mt/db)))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                 [spec [:mysql (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
+                                 [spec [:mysql (assoc (:details (mt/db)) :user "table_privileges_test_user" :password "password")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
           (try
-            (jdbc/execute! conn-spec (str "CREATE SCHEMA `dotted.schema`;"
-                                          "CREATE TABLE `dotted.schema`.bar (id INTEGER);"
-                                          "CREATE TABLE `dotted.schema`.`dotted.table` (id INTEGER);"
-                                          "CREATE USER 'privilege_rows_test_example_role'@'localhost' IDENTIFIED BY 'password';"
-                                          "GRANT SELECT ON `dotted.schema`.`dotted.table` TO 'privilege_rows_test_example_role'@'localhost';"
-                                          "GRANT UPDATE ON `dotted.schema`.`dotted.table` TO 'privilege_rows_test_example_role'@'localhost';"))
-            (testing "check that without USAGE privileges on the schema, nothing is returned"
-              (is (= []
-                     (get-privileges))))
-            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-              (jdbc/execute! conn-spec "GRANT USAGE ON `dotted.schema` TO 'privilege_rows_test_example_role'@'localhost';")
+            (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
+                          "CREATE TABLE `baz` (id INTEGER);"
+                          "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
+                          (str "GRANT SELECT ON `bar` TO 'table_privileges_test_user'")]]
+              (jdbc/execute! conn-spec stmt))
+            (testing "should return privileges on the table"
               (is (= [{:role   nil
-                       :schema "dotted.schema",
-                       :table  "dotted.table",
-                       :select true,
-                       :update true,
-                       :insert false,
+                       :schema nil
+                       :table  "bar"
+                       :select true
+                       :update false
+                       :insert false
                        :delete false}]
                      (get-privileges))))
+            (testing "should return privileges on the database"
+              (jdbc/execute! conn-spec (str "GRANT UPDATE ON `" lower-db-name "`.* TO 'table_privileges_test_user'"))
+              (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
+                      {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                     (get-privileges))))
+            (when (<= (mysql/get-db-version (mt/db)) 8)
+              (testing "should return privileges on roles that the user has been granted"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
+                              (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                              "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
+                  (jdbc/execute! conn-spec stmt))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                       (get-privileges))))
+              (testing "should return privileges from recursively granted roles"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
+                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_2'")
+                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_role'"]]
+                  (jdbc/execute! conn-spec stmt))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                       (get-privileges)))))
             (finally
-              (doseq [stmt ["REVOKE ALL PRIVILEGES ON `dotted.schema`.`dotted.table` FROM 'privilege_rows_test_example_role'@'localhost';"
-                            "REVOKE ALL PRIVILEGES ON `dotted.schema` FROM 'privilege_rows_test_example_role'@'localhost';"
-                            "DROP USER 'privilege_rows_test_example_role'@'localhost';"]]
+              (doseq [stmt ["DROP USER IF EXISTS 'table_privileges_test_user';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role';"]]
                 (jdbc/execute! conn-spec stmt)))))))))
