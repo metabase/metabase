@@ -1,6 +1,7 @@
 (ns metabase.lib.join-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
@@ -8,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -1158,3 +1160,26 @@
                                                        [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}]}
               (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                   (lib/join (meta/table-metadata :orders))))))))
+
+(deftest ^:parallel join-source-card-with-in-previous-stage-with-joins-test
+  (testing "Make sure we generate correct join conditions when joining source cards with joins (#31769)"
+    (doseq [broken-refs? [true false]]
+      (testing (str "\nbroken-refs? = " (pr-str broken-refs?))
+        (binding [lib.card/*force-broken-card-refs* broken-refs?]
+          (is (=? {:stages [{:source-card 1}
+                            {:joins [{:stages     [{:source-card 2}]
+                                      :fields     :all
+                                      :conditions [[:=
+                                                    {}
+                                                    (if broken-refs?
+                                                      [:field {} (meta/id :products :category)]
+                                                      [:field {:base-type :type/Text} "Products__CATEGORY"])
+                                                    [:field {:join-alias "Question 2 - Category"} (meta/id :products :category)]]]
+                                      :alias      "Question 2 - Category"}]
+                             :limit 2}]}
+                  (lib.tu.mocks-31769/query))))))))
+
+(deftest ^:parallel suggested-name-include-joins-test
+  (testing "Include the names of joined tables in suggested query names (#24703)"
+    (is (= "Venues + Categories"
+           (lib/suggested-name lib.tu/query-with-join)))))
