@@ -1,10 +1,10 @@
-(ns metabase.lib.test-util.remap-metadata-provider
+(ns metabase.lib.test-util.metadata-providers.remap
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.test-util.mock-metadata-provider
-    :as lib.tu.mock-metadata-provider]
+   [metabase.lib.test-util.metadata-providers.mock
+    :as lib.tu.metadata-providers.mock]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -76,7 +76,7 @@
                           [:sequential :any]
                           :map]]
    (let [original' (remapped-column metadata-provider original remap)]
-     (lib.tu.mock-metadata-provider/mock-metadata-provider
+     (lib.tu.metadata-providers.mock/mock-metadata-provider
       metadata-provider
       {:fields [original']})))
 

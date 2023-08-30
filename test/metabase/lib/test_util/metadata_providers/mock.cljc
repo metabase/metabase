@@ -1,4 +1,4 @@
-(ns metabase.lib.test-util.mock-metadata-provider
+(ns metabase.lib.test-util.metadata-providers.mock
   (:require
    [clojure.core.protocols]
    [medley.core :as m]

@@ -1,11 +1,11 @@
-(ns metabase.lib.test-util.merged-mock-metadata-provider
+(ns metabase.lib.test-util.metadata-providers.merged-mock
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.mock-metadata-provider
-    :as lib.tu.mock-metadata-provider]
+   [metabase.lib.test-util.metadata-providers.mock
+    :as lib.tu.metadata-providers.mock]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -28,7 +28,7 @@
    [:metrics  {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/metric]]]]]
    [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
 
-(mu/defn ^:private merged-metadata-map :- lib.tu.mock-metadata-provider/MockMetadata
+(mu/defn ^:private merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
   [parent-metadata-provider :- lib.metadata/MetadataProvider
    properties               :- MergeableProperties]
   (into {}
@@ -55,7 +55,7 @@
                 :base-type :type/TimeWithLocalTZ}]})"
   [parent-metadata-provider :- lib.metadata/MetadataProvider
    properties               :- MergeableProperties]
-  (lib.tu.mock-metadata-provider/mock-metadata-provider
+  (lib.tu.metadata-providers.mock/mock-metadata-provider
    parent-metadata-provider
    (merged-metadata-map parent-metadata-provider properties)))
 

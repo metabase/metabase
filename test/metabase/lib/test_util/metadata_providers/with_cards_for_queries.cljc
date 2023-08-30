@@ -1,8 +1,8 @@
-(ns metabase.lib.test-util.metadata-provider-with-cards-for-queries
+(ns metabase.lib.test-util.metadata-providers.with-cards-for-queries
   (:require
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util.mock-metadata-provider
-    :as lib.tu.mock-metadata-provider]
+   [metabase.lib.test-util.metadata-providers.mock
+    :as lib.tu.metadata-providers.mock]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -12,7 +12,7 @@
   metadata. Cards have IDs starting at `1` and increasing sequentially."
   [parent-metadata-provider :- lib.metadata/MetadataProvider
    queries                  :- [:sequential {:min 1} :map]]
-  (lib.tu.mock-metadata-provider/mock-metadata-provider
+  (lib.tu.metadata-providers.mock/mock-metadata-provider
    parent-metadata-provider
    {:cards (into []
                  (map-indexed

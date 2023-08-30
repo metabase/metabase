@@ -12,36 +12,28 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.merged-mock-metadata-provider
-    :as lib.tu.merged-mock-metadata-provider]
-   [metabase.lib.test-util.metadata-provider-with-cards-for-queries
-    :as lib.tu.metadata-provider-with-cards-for-queries]
-   [metabase.lib.test-util.mock-metadata-provider
-    :as lib.tu.mock-metadata-provider]
-   [metabase.lib.test-util.remap-metadata-provider
-    :as lib.tu.remap-metadata-provider]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as providers.merged-mock]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.metadata-providers.remap :as providers.remap]
+   [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.namespaces :as shared.ns]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
-(comment lib.tu.merged-mock-metadata-provider/keep-me
-         lib.tu.metadata-provider-with-cards-for-queries/keep-me
-         lib.tu.mock-metadata-provider/keep-me
-         lib.tu.remap-metadata-provider/keep-me)
+(comment providers.cards-for-queries/keep-me
+         providers.merged-mock/keep-me
+         providers.mock/keep-me
+         providers.remap/keep-me)
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (shared.ns/import-fns
- [lib.tu.merged-mock-metadata-provider
-  merged-mock-metadata-provider]
- [lib.tu.metadata-provider-with-cards-for-queries
-  metadata-provider-with-cards-for-queries]
- [lib.tu.mock-metadata-provider
-  mock-metadata-provider]
- [lib.tu.remap-metadata-provider
-  remap-metadata-provider])
+ [providers.cards-for-queries metadata-provider-with-cards-for-queries]
+ [providers.merged-mock       merged-mock-metadata-provider]
+ [providers.mock              mock-metadata-provider]
+ [providers.remap             remap-metadata-provider])
 
 (def venues-query
   "A mock query against the `VENUES` test data table."
@@ -66,7 +58,7 @@
   "[[meta/metadata-provider]], but with a Card with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
-   (lib.tu.mock-metadata-provider/mock-metadata-provider
+   (providers.mock/mock-metadata-provider
     {:cards [{:name          "My Card"
               :id            1
               :dataset-query {:database (meta/id)
@@ -89,7 +81,7 @@
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
-   (lib.tu.mock-metadata-provider/mock-metadata-provider
+   (providers.mock/mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
               :database-id     (meta/id)
@@ -227,7 +219,7 @@
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
   (lib/composed-metadata-provider
     meta/metadata-provider
-    (lib.tu.mock-metadata-provider/mock-metadata-provider
+    (providers.mock/mock-metadata-provider
       {:cards (vals mock-cards)})))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
