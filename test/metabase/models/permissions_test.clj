@@ -717,7 +717,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest revoke-db-schema-permissions-test
-  (mt/with-temp* [Database [database]]
+  (mt/with-temp [Database database {}]
     (testing "revoke-db-schema-permissions! should revoke all non-native permissions on a database"
       (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
                                            (perms/data-perms-path database)))
@@ -862,7 +862,7 @@
     "/db/3/schema/secret_base/table/3/"                 :dk/db-schema-name-and-table
     "/db/3/schema/secret_base/table/3/read/"            :dk/db-schema-name-table-and-read
     "/db/3/schema/secret_base/table/3/query/"           :dk/db-schema-name-table-and-query
-    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented ))
+    "/db/3/schema/secret_base/table/3/query/segmented/" :dk/db-schema-name-table-and-segmented))
 
 (deftest ^:parallel idempotent-move-test
   (let [;; all v1 paths:
@@ -925,20 +925,20 @@
     (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
            (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
 
-(defn- check-fn! [fn-var & [iterations]]
+(defn- check-fn [fn-var & [iterations]]
   (let [iterations (or iterations 5000)]
     (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
       result
       {:pass? true :iterations iterations})))
 
 (deftest ^:parallel quickcheck-perm-path-classification-test
-  (is (:pass? (check-fn! #'perms/classify-path))))
+  (is (:pass? (check-fn #'perms/classify-path))))
 
 (deftest ^:parallel quickcheck-data-path-classification-test
-  (is (:pass? (check-fn! #'perms/classify-data-path))))
+  (is (:pass? (check-fn #'perms/classify-data-path))))
 
 (deftest ^:parallel quickcheck-->v2-path-test
-  (is (:pass? (check-fn! #'perms/->v2-path))))
+  (is (:pass? (check-fn #'perms/->v2-path))))
 
 (deftest ^:parallel generate-graph-test
   (are [db-ids group-id->paths expected] (= expected
