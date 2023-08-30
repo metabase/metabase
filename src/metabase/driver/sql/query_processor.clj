@@ -24,8 +24,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.driver.sql.query-processor :as sql.qp])
+   [metabase.util.malli :as mu])
   (:import
    (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 

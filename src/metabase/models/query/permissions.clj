@@ -5,6 +5,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
@@ -17,8 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.lib.schema.id :as lib.schema.id]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
