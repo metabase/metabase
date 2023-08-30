@@ -68,8 +68,8 @@
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
   name. Takes card-ids and dashboard-ids and returns a map structured like
 
-  {:card     {card_id      {:id :email :first_name :last_name :timestamp}}
-  :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
+  {:card      {card_id      {:id :email :first_name :last_name :timestamp}}
+   :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
   [{:keys [card-ids dashboard-ids]}]
   (when (seq (concat card-ids dashboard-ids))
     (let [latest-changes (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name

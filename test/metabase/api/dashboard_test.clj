@@ -276,7 +276,7 @@
                                             :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
                                             :creator_id    (mt/user->id :crowberto)}]
 
-    (testing "should includes creator info and last edited info"
+    (testing "should include creator info and last edited info"
       (revision/push-revision!
        :entity      :model/Dashboard
        :id          crowberto-dash
@@ -317,6 +317,8 @@
     (testing "f=mine return dashboards created by caller but do not include archived"
       (is (=? #{crowberto-dash}
               (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
+
+(t2/select-one :model/Dashboard 136)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -1193,27 +1195,28 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-        (let [new-dash-id        (:id (mt/user-http-request :rasta :post 200
-                                                            (format "dashboard/%d/copy" dashboard-id)
-                                                            {:name        "New dashboard"
-                                                             :description "A new description"}))
-              original-tabs      (t2/select [:model/DashboardTab :id :position :name]
-                                            :dashboard_id dashboard-id
-                                            {:order-by [[:position :asc]]})
-              new-tabs           (t2/select [:model/DashboardTab :id :position :name]
-                                            :dashboard_id new-dash-id
-                                            {:order-by [[:position :asc]]})
-              new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
-         (testing "Cards are located correctly between tabs"
-           (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (ordered-cards-by-position dashboard-id))
-                  (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (for [card (ordered-cards-by-position new-dash-id)]
-                         (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [new-dash-id        (:id (mt/user-http-request :rasta :post 200
+                                                              (format "dashboard/%d/copy" dashboard-id)
+                                                              {:name        "New dashboard"
+                                                               :description "A new description"}))
+                original-tabs      (t2/select [:model/DashboardTab :id :position :name]
+                                              :dashboard_id dashboard-id
+                                              {:order-by [[:position :asc]]})
+                new-tabs           (t2/select [:model/DashboardTab :id :position :name]
+                                              :dashboard_id new-dash-id
+                                              {:order-by [[:position :asc]]})
+                new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
+            (testing "Cards are located correctly between tabs"
+              (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                          (ordered-cards-by-position dashboard-id))
+                     (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                          (for [card (ordered-cards-by-position new-dash-id)]
+                            (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
-         (testing "new tabs should have the same name and position"
-           (is (= (map #(dissoc % :id) original-tabs)
-                  (map #(dissoc % :id) new-tabs)))))))))
+            (testing "new tabs should have the same name and position"
+              (is (= (map #(dissoc % :id) original-tabs)
+                     (map #(dissoc % :id) new-tabs))))))))))
 
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}

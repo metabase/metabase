@@ -420,23 +420,21 @@
          :user-id     user-id
          :is_creation true
          :object      {:id card-2-id}))
-
-      (is (=? #{{:name           "Card 1"
+      (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
+        (is (=? {:name           "Card 1"
                  :last-edit-info {:id         (mt/user->id :rasta)
                                   :email      "rasta@metabase.com"
                                   :first_name "Rasta"
                                   :last_name  "Toucan"
-                                  :timestamp  true}}
-                {:name           "Card 2"
+                                  :timestamp  some?}}
+                (get results card-1-id)))
+        (is (=? {:name           "Card 2"
                  :last-edit-info {:id         (mt/user->id :crowberto)
                                   :email      "crowberto@metabase.com"
                                   :first_name "Crowberto"
                                   :last_name  "Corv"
-                                  :timestamp  true}}}
-              (->> (mt/user-http-request :rasta :get 200 "card")
-                   (map #(select-keys % [:name :last-edit-info]))
-                   (map #(update-in % [:last-edit-info :timestamp] boolean))
-                   set))))))
+                                  :timestamp  some?}}
+                (get results card-2-id)))))))
 
 (deftest get-series-for-card-permission-test
   (t2.with-temp/with-temp

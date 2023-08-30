@@ -330,7 +330,10 @@
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
-       :left-join [[:revision :r] [:and [:= :r.model_id :c.id] [:= :r.most_recent true] [:= :r.model (h2x/literal "Card")]]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :c.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -409,7 +412,10 @@
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[:revision :r] [:and [:= :r.model_id :d.id] [:= :r.most_recent true] [:= :r.model (h2x/literal "Dashboard")]]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :d.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
