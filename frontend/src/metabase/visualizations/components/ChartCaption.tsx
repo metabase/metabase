@@ -1,6 +1,7 @@
-import { useCallback, ReactNode } from "react";
-import { IconProps } from "metabase/core/components/Icon";
-import {
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+import type { IconProps } from "metabase/core/components/Icon";
+import type {
   Series,
   TransformedSeries,
   VisualizationSettings,

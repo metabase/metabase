@@ -190,13 +190,12 @@
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
     (testing "Too many tokens used returns a useful message"
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [_
-                              {:name    "Orders Model"
+        (mt/with-temp [Card _ {:name    "Orders Model"
                                :dataset_query
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
-                               :dataset true}]]
+                               :dataset true}]
           (let [error-code    "context_length_exceeded"
                 error-message (str/join " "
                                         ["This model's maximum context length is 8192 tokens."
@@ -220,13 +219,12 @@
   (testing "POST /database/:database-id/query"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [_orders-model
-                              {:name    "Orders Model"
-                               :dataset_query
-                               {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :orders)}}
-                               :dataset true}]]
+        (mt/with-temp [Card _orders-model {:name    "Orders Model"
+                                           :dataset_query
+                                           {:database (mt/id)
+                                            :type     :query
+                                            :query    {:source-table (mt/id :orders)}}
+                                           :dataset true}]
           (let [bot-message "SELECT COUNT(*) FROM ORDERS;"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)

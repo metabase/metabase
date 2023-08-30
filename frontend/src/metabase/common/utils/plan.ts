@@ -1,4 +1,5 @@
-import { tokenFeatures, TokenFeatures } from "metabase-types/api";
+import type { TokenFeatures } from "metabase-types/api";
+import { tokenFeatures } from "metabase-types/api";
 
 export type Plan = "oss" | "starter" | "pro-cloud" | "pro-self-hosted";
 

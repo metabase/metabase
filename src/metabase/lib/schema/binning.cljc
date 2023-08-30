@@ -8,13 +8,13 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::binning-strategies
+(mr/def ::strategy
   [:enum :bin-width :default :num-bins])
 
 (mr/def ::binning
   [:and
    [:map
-    [:strategy  [:ref ::binning-strategies]]
+    [:strategy  [:ref ::strategy]]
     [:bin-width {:optional true} pos?]
     [:num-bins  {:optional true} ::lib.schema.common/positive-int]]
    [:fn {:error/message "if :strategy is not :default, the matching key :bin-width or :num-bins must also be set"}

@@ -47,6 +47,7 @@
   column index)."
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -105,7 +106,8 @@
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
-    [:field id-or-name (remove-namespaced-options (dissoc opts :source-field))]
+    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
+                                                    (integer? id-or-name) (dissoc :base-type)))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
     [:expression expression-name opts]
@@ -196,6 +198,9 @@
             join))
         joins))
 
+(defn- fuzzify [clause]
+  (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
+
 (defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
                                                                      :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
@@ -203,31 +208,30 @@
         field-exports (filter (partial mbql.u/is-clause? :field)
                               all-exports)]
     ;; first look for an EXACT match in the `exports`
-    (or (some (fn [a-clause]
-                (when (= (normalize-fn a-clause) normalized)
-                  a-clause))
-              field-exports)
+    (or (m/find-first (fn [a-clause]
+                        (= (normalize-fn a-clause) normalized))
+                      field-exports)
         ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
-        (let [fuzzify          (fn [clause] (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
-              fuzzy-normalized (fuzzify normalized)]
-          (some (fn [a-clause]
-                  (when (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized)
-                    a-clause))
-                field-exports))
+        (let [fuzzy-normalized (fuzzify normalized)]
+          (m/find-first (fn [a-clause]
+                          (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized))
+                        field-exports))
+        ;; if still no match try looking based for a matching Field based on ID.
+        (let [[_field id-or-name _opts] field-clause]
+          (when (integer? id-or-name)
+            (m/find-first (fn [[_field an-id-or-name _opts]]
+                            (= an-id-or-name id-or-name))
+                          field-exports)))
         ;; look for a matching expression clause with the same name if still no match
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or (some
-               (fn [[_ expression-name :as expression-clause]]
-                 (when (= expression-name field-name)
-                   expression-clause))
-               (filter (partial mbql.u/is-clause? :expression) all-exports))
-              (some
-               (fn [[_ _ opts :as aggregation-options-clause]]
-                 (when (= (::source-alias opts) field-name)
-                   aggregation-options-clause))
-               (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
+          (or (m/find-first (fn [[_ expression-name :as _expression-clause]]
+                              (= expression-name field-name))
+                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+              (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
+                              (= (::source-alias opts) field-name))
+                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause

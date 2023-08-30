@@ -2,7 +2,7 @@ import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Dataset } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,

@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";

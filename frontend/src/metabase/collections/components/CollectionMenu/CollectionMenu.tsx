@@ -8,7 +8,7 @@ import {
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {
   collection: Collection;

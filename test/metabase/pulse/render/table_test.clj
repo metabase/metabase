@@ -211,4 +211,29 @@
                           :display_name "a",
                           :base_type    :type/BigInteger
                           :semantic_type nil}]
-                  :rows [[2 1] [4 3]]}})))))
+                  :rows [[2 1] [4 3]]}}))))
+    (testing "visibility_type is respected in render."
+    (is (=
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "a" :enabled true}
+                                     {:name "b" :enabled true}]}}
+          {:data {:cols [{:name            "a",
+                          :display_name    "a",
+                          :base_type       :type/BigInteger
+                          :visibility_type :normal
+                          :semantic_type   nil}
+                         {:name            "b",
+                          :display_name    "b",
+                          :base_type       :type/BigInteger
+                          :visibility_type :details-only
+                          :semantic_type   nil}]
+                  :rows [[1 2] [3 4]]}})
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}})))))

@@ -1,5 +1,6 @@
 import { t } from "ttag";
-import moment, { DurationInputArg2, MomentInput } from "moment-timezone";
+import type { DurationInputArg2, MomentInput } from "moment-timezone";
+import moment from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
 

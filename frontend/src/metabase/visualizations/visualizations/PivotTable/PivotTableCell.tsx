@@ -1,6 +1,7 @@
-import * as React from "react";
+import type * as React from "react";
 import cx from "classnames";
-import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
+import type { ControlPosition, DraggableBounds } from "react-draggable";
+import Draggable from "react-draggable";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 

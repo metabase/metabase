@@ -167,11 +167,11 @@
             ;; restore the original test DB details, no matter what just happened
             (t2/update! Database (mt/id) {:details (:details db)}))))))
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp* [Secret [secret {:name       "file based secret"
-                                    :kind       :perm-cert
-                                    :source     nil
-                                    :value      (.getBytes "super secret")
-                                    :creator_id (mt/user->id :crowberto)}]]
+    (mt/with-temp [Secret secret {:name       "file based secret"
+                                  :kind       :perm-cert
+                                  :source     nil
+                                  :value      (.getBytes "super secret")
+                                  :creator_id (mt/user->id :crowberto)}]
       (let [db {:engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"

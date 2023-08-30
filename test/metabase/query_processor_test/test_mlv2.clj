@@ -1,14 +1,14 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
    [clojure.test :as t :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +37,7 @@
       (let [pMBQL (-> original-query lib.convert/->pMBQL)]
         ;; don't bother doing this test if the output is invalid; [[test-mlv2-conversion]] will fail anyway, no point in
         ;; triggering an Exception here as well.
-        (when (mc/validate ::lib.schema/query pMBQL)
+        (when (mr/validate ::lib.schema/query pMBQL)
           (do-with-pMBQL-query-testing-context
            pMBQL
            (^:once fn* []
@@ -60,7 +60,7 @@
             (is (= query
                    (-> pMBQL lib.convert/->legacy-MBQL))))
           (testing "converted pMBQL query should validate against the pMBQL schema"
-            (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
+            (is (not (me/humanize (mr/explain ::lib.schema/query pMBQL))))))))))))
 
 (def ^:private ^:dynamic *original-query* nil)
 

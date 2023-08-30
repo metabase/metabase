@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
 import type Database from "metabase-lib/metadata/Database";
 import {
   formatIdentifier,

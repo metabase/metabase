@@ -1,14 +1,14 @@
 import Search from "metabase/entities/search";
-import {
+import type {
   CollectionItem,
   SearchListQuery,
   SearchResults,
 } from "metabase-types/api";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "../use-entity-list-query";
+import { useEntityListQuery } from "../use-entity-list-query";
 
 export const useSearchListQuery = (
   props: UseEntityListQueryProps<SearchListQuery> = {},

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
@@ -178,7 +179,8 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ^:private ColumnWithOperators
+(def ColumnWithOperators
+  "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    lib.metadata/ColumnMetadata
    [:map
@@ -188,6 +190,12 @@
   "Returns the operators for which `filterable-column` is applicable."
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
+
+(defn add-column-operators
+  "Extend the column metadata with the available operators if any."
+  [column]
+  (let [operators (lib.filter.operator/filter-operators column)]
+    (m/assoc-some column :operators (clojure.core/not-empty operators))))
 
 (mu/defn filterable-columns :- [:sequential ColumnWithOperators]
   "Get column metadata for all the columns that can be filtered in
@@ -209,15 +217,12 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         with-operators (fn [column]
-                          (when-let [operators (clojure.core/not-empty (lib.filter.operator/filter-operators column))]
-                            (assoc column :operators operators)))]
+   (let [stage (lib.util/query-stage query stage-number)]
      (clojure.core/not-empty
-       (into []
-             (keep with-operators)
-             columns)))))
+      (into []
+            (comp (map add-column-operators)
+                  (clojure.core/filter :operators))
+            (lib.metadata.calculation/visible-columns query stage-number stage))))))
 
 (mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
@@ -241,8 +246,29 @@
    (let [[op _ first-arg] a-filter-clause
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         ref->col (zipmap (map lib.ref/ref columns) columns)
-         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+         col (lib.equality/closest-matching-metadata first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                                    (lib.filter.operator/filter-operators col))
                       (lib.filter.operator/operator-def op)))))
+
+
+(mu/defn find-filter-for-legacy-filter :- [:maybe ::lib.schema.expression/boolean]
+  "Return the filter clause in `query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  ([query :- ::lib.schema/query
+    legacy-filter]
+   (find-filter-for-legacy-filter query -1 legacy-filter))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    legacy-filter]
+   (let [query-filters (vec (filters query stage-number))
+         matching-filters (clojure.core/filter #(clojure.core/= (lib.convert/->legacy-MBQL %)
+                                                                legacy-filter)
+                                               query-filters)]
+     (when (seq matching-filters)
+       (if (next matching-filters)
+         (throw (ex-info "Multiple matching filters found" {:legacy-filter legacy-filter
+                                                            :query-filters query-filters
+                                                            :matching-filters matching-filters}))
+         (first matching-filters))))))

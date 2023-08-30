@@ -6,7 +6,7 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import {
+import type {
   Aggregation,
   Breakout,
   DatabaseId,
@@ -50,10 +50,10 @@ import type { AggregationOperator } from "metabase-lib/deprecated-types";
 import * as ML from "../v2";
 import type { Limit, Query } from "../types";
 
-import Segment from "../metadata/Segment";
-import Database from "../metadata/Database";
-import Question from "../Question";
-import Table from "../metadata/Table";
+import type Segment from "../metadata/Segment";
+import type Database from "../metadata/Database";
+import type Question from "../Question";
+import type Table from "../metadata/Table";
 import Field from "../metadata/Field";
 
 import AtomicQuery from "./AtomicQuery";

@@ -1,10 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
-import Variable from "metabase-lib/variables/Variable";
+import type Variable from "metabase-lib/variables/Variable";
 import { memoizeClass } from "metabase-lib/utils";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 

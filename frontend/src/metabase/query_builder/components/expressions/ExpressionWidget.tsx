@@ -1,4 +1,5 @@
-import { ReactNode, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";

@@ -3,7 +3,6 @@
 export * from "./aggregation";
 export * from "./binning";
 export * from "./breakout";
-export * from "./breakout";
 export * from "./buckets";
 export * from "./column_types";
 export * from "./common";
@@ -15,6 +14,7 @@ export * from "./filter";
 export * from "./join";
 export * from "./limit";
 export * from "./metadata";
+export * from "./native";
 export * from "./segments";
 export * from "./metrics";
 export * from "./order_by";
