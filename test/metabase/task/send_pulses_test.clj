@@ -35,6 +35,7 @@
           (#'send-pulses/send-pulses! 0 "fri" :first :first on-error))
         (testing "emails"
           (is (= (et/email-to :rasta
+                              true
                               {:subject "Alert: My Question Name has results",
                                :body    {"My Question Name" true}})
                  (et/regex-email-bodies #"My Question Name"))))
