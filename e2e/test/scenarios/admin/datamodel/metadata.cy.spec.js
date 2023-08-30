@@ -176,8 +176,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
       cy.findByTestId("column-settings").within(() => {
         // shouldnt show currency settings by default for quantity field
-        cy.findByText("Unit of currency").should("not.exist");
-        cy.findByText("Currency label style").should("not.exist");
+        cy.findByText("Unit of currency").should("not.be.visible");
+        cy.findByText("Currency label style").should("not.be.visible");
 
         cy.get("#number_style").click();
       });

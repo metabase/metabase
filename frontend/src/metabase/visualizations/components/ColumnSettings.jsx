@@ -69,7 +69,6 @@ export function hasColumnSettingsWidgets({ value, ...props }) {
 const ColumnSettings = ({ value, variant = "default", ...props }) => {
   const storedSettings = value || {};
   const widgets = getWidgets({ storedSettings, ...props });
-  const extraWidgetProps = {};
 
   return (
     <div style={{ maxWidth: 300 }} data-testid="column-settings">
@@ -78,7 +77,6 @@ const ColumnSettings = ({ value, variant = "default", ...props }) => {
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
-            {...extraWidgetProps}
             unset={storedSettings[widget.id] === undefined}
             noPadding
             variant={variant}
