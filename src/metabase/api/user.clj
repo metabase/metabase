@@ -57,6 +57,13 @@
     (= user-id api/*current-user-id*)
     api/*is-superuser?*)))
 
+(defn check-not-internal-user
+  "Check that `user-id` is not the id of the Internal User."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (api/check (not= user-id config/internal-mb-user-id)
+           [400 (tru "Not able to modify the internal user")]))
+
 (defn- fetch-user [& query-criteria]
   (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
@@ -145,6 +152,8 @@
   [status query group_ids include_deactivated]
   (cond-> {}
     true                                               (sql.helpers/where (status-clause status include_deactivated))
+    ;; don't send the internal user
+    true                                               (sql.helpers/where [:not [:= :core_user.id config/internal-mb-user-id]])
     (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                                      (sql.helpers/where (query-clause query))
     (some? group_ids)                                  (sql.helpers/right-join
@@ -341,9 +350,9 @@
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
+  (check-not-internal-user id)
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (t2/hydrate :user_group_memberships)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
@@ -418,7 +427,7 @@
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-group-manager)))
-
+  (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
@@ -472,13 +481,13 @@
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
+  (check-not-internal-user id)
   (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
       [400 {:message (tru "Not able to reactivate an active user")}])
     (reactivate-user! user)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
@@ -514,6 +523,8 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
+  ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
+  (check-not-internal-user id)
   (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
 
@@ -527,6 +538,7 @@
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
   (check-self-or-superuser id)
+  (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
                    modal)
@@ -541,6 +553,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
+  (check-not-internal-user id)
   (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
