@@ -1,10 +1,13 @@
 (ns metabase-enterprise.internal-user-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase.config :as config]
    [metabase.models :refer [User]]
    [metabase.setup :as setup]
+   [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defmacro with-internal-user-restoration [& body]
@@ -48,3 +51,28 @@
          (with-internal-user-restoration
            ;; there's no internal-user in this block
            (setup/has-user-setup)))))
+
+(deftest internal-user-is-unmodifiable-via-api-test
+  ;; ensure the internal user exists for these test assertions
+  (ee.internal-user/ensure-internal-user-exists!)
+  (testing "GET /api/user"
+    ;; since the Internal user is deactivated, we only need to check in the `:include_deactivated` `true`
+    (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)]
+      (testing "does not return the internal user"
+        (is (not (some #{"internal@metabase.com"} (map :email data)))))
+      (testing "does not count the internal user"
+        (is (= total (count data))))))
+  (testing "User Endpoints with :id"
+    (doseq [[method endpoint status-code] [[:get "user/:id" 400]
+                                           [:put "user/:id" 400]
+                                           [:put "user/:id/reactivate" 400]
+                                           [:delete "user/:id" 400]
+                                           [:put "user/:id/modal/qbnewb" 400]
+                                           [:post "user/:id/send_invite" 400]]]
+      (let [endpoint (str/replace endpoint #":id" (str config/internal-mb-user-id))
+            testing-details-string (str/join " " [(u/upper-case-en (name :get))
+                                                  endpoint
+                                                  "does not allow modifying the internal user"])]
+        (testing testing-details-string
+          (is (= "Not able to modify the internal user"
+                 (mt/user-http-request :crowberto method status-code endpoint))))))))
