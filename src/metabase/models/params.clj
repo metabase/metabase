@@ -100,19 +100,21 @@
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (mu/defn param-target->field-clause :- [:maybe mbql.s/field]
-  "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
-  ID it references (if any)."
+  "Parse a Card parameter `target` form, which looks something like `[:dimension [:field 100 nil]]`, and return the field
+   it references (if any)."
   [target card]
   (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target]
-        (try
-          (unwrap-field-clause
-           (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension card)
-             dimension))
-          (catch Throwable e
-            (log/error e (tru "Could not find matching Field ID for target:") target)))))))
+      (let [[_ dimension] target
+            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+                            (template-tag->field-form dimension card)
+                            dimension)]
+        (if (some? field-form)
+          (try
+           (unwrap-field-clause field-form)
+           (catch Exception e
+             (log/error e "Failed to unwrap field" field-form)))
+          (log/warn (format "Could not find matching Field ID for target: %s from card %d" target (:id card))))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

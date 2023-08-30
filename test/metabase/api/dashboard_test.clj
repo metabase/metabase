@@ -523,7 +523,28 @@
                  (into {} (for [[field-id m] response]
                             [field-id (update m :values (partial take 3))])))))))))
 
-
+(deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
+  (testing "when fetching a dashboard that has a param linked to a field filter that no longer exist shouldn't throw an error (#15494)"
+    (mt/with-temp
+      [:model/Card          {card-id :id} {:name "Native card"
+                                           :database_id   (mt/id)
+                                           :dataset_query (mt/native-query
+                                                           {:query "SELECT category FROM products LIMIT 10;"})
+                                           :dataset       true}
+       :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_TEXT_"
+                                                         :type      :string/=
+                                                         :sectionId "string"}]}
+       :model/DashboardCard {}            {:dashboard_id       dash-id
+                                           :card_id            card-id
+                                           :parameter_mappings [{:parameter_id "_TEXT_"
+                                                                 :card_id      card-id
+                                                                 :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
+      (is (= [:warn  nil
+              (format "Could not find matching Field ID for target: [:dimension [:template-tag \"not-existed-filter\"]] from card %d" card-id)]
+             (first (mt/with-log-messages-for-level ['metabase.models.params :warn]
+                      (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
