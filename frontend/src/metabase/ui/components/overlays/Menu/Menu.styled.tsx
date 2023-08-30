@@ -17,15 +17,15 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
         padding: theme.spacing.md,
 
         "&:hover, &:focus": {
-          color: theme.fn.primaryColor(),
+          color: theme.colors.brand[1],
           backgroundColor: theme.colors.bg[0],
 
           [`& .${getStylesRef("itemRightSection")}`]: {
-            color: theme.fn.primaryColor(),
+            color: theme.colors.brand[1],
           },
         },
       },
@@ -41,7 +41,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[0],
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
         padding: `0.375rem ${theme.spacing.md}`,
       },
       divider: {

@@ -1,10 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 import cx from "classnames";
 import _ from "underscore";
 
-import TippyPopover, {
-  ITippyPopoverProps,
-} from "metabase/components/Popover/TippyPopover";
+import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
 

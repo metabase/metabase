@@ -14,6 +14,9 @@ import { Container } from "./EntityMenu.styled";
 
 const MENU_SHIFT_Y = 10;
 
+/**
+ * @deprecated: use Menu from "metabase/ui"
+ */
 class EntityMenu extends Component {
   state = {
     open: false,

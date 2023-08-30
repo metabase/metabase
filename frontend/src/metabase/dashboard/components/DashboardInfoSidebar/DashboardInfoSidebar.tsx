@@ -8,7 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
 
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
 
 import {

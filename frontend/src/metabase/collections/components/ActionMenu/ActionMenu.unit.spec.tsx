@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
-import { Collection, CollectionItem, Database } from "metabase-types/api";
+import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,

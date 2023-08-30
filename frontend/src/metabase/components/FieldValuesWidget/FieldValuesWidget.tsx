@@ -1,4 +1,5 @@
-import { useState, useRef, StyleHTMLAttributes } from "react";
+import type { StyleHTMLAttributes } from "react";
+import { useState, useRef } from "react";
 import { useMount, useUnmount } from "react-use";
 
 import { connect } from "react-redux";

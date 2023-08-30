@@ -1,5 +1,5 @@
-import { SelectAll } from "metabase/components/Calendar";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type { SelectAll } from "metabase/components/Calendar";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   clearDateFilterTime,
   getDateFilterValue,

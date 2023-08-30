@@ -1,6 +1,6 @@
-import { CardId } from "./card";
-import { RowValue } from "./dataset";
-import { LocalFieldReference } from "./query";
+import type { CardId } from "./card";
+import type { RowValue } from "./dataset";
+import type { LocalFieldReference } from "./query";
 
 export type StringParameterType =
   | "string/="

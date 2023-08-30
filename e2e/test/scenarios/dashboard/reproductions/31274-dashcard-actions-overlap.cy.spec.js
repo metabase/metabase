@@ -3,37 +3,17 @@ import {
   restore,
   visitDashboard,
   createLinkCard,
+  createTextCard,
 } from "e2e/support/helpers";
-
-const baseTextDashcardDetails = {
-  col: 0,
-  row: 0,
-  size_x: 2,
-  size_y: 2,
-  visualization_settings: {
-    virtual_card: {
-      name: null,
-      display: "text",
-      visualization_settings: {},
-      dataset_query: {},
-      archived: false,
-    },
-    text: "Text card",
-  },
-};
 
 const createTextCards = length => {
   return Array.from({ length }).map((_, index) => {
-    return {
-      ...baseTextDashcardDetails,
-      id: index + 1,
-      // reversed order of appearing
+    return createTextCard({
+      size_x: 2,
+      size_y: 2,
       row: (length - index - 1) * 2,
-      visualization_settings: {
-        ...baseTextDashcardDetails.visualization_settings,
-        text: `Text card ${index + 1}`,
-      },
-    };
+      text: `Text card ${index + 1}`,
+    });
   });
 };
 

@@ -1,4 +1,4 @@
-import { Database, DatabaseCandidate } from "metabase-types/api";
+import type { Database, DatabaseCandidate } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockDatabaseCandidate,

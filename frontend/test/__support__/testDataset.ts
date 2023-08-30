@@ -1,4 +1,4 @@
-import { DatasetColumn, DatasetData } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { createMockDatasetData } from "metabase-types/api/mocks";
 
 const testColumns: DatasetColumn[] = [

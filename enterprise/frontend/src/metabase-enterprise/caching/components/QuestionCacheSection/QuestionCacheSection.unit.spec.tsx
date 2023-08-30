@@ -1,6 +1,6 @@
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";

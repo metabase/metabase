@@ -156,6 +156,13 @@ export type ExternalOp = {
   args: [ColumnMetadata, ...ExpressionArg[]];
 };
 
+export type FilterParts = {
+  operator: FilterOperator;
+  options: Record<string, unknown>;
+  column: ColumnWithOperators | null;
+  args: ExpressionArg[];
+};
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 

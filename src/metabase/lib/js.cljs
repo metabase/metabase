@@ -372,6 +372,15 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-operator a-query stage-number a-filter-clause))
 
+(defn ^:export filter-parts
+  "Returns the parts (operator, args, and optionally, options) of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (let [{:keys [operator options column args]} (lib.core/filter-parts a-query stage-number a-filter-clause)]
+    #js {:operator operator
+         :options (clj->js (select-keys options [:case-sensitive :include-current]))
+         :column column
+         :args (to-array args)}))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -384,6 +393,14 @@
   attached to the query."
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
+
+(defn ^:export find-filter-for-legacy-filter
+  "Return the filter clause in `a-query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  [a-query stage-number legacy-filter]
+  (->> (js->clj legacy-filter :keywordize-keys true)
+       (mbql.normalize/normalize-fragment [:query :filter])
+       (lib.core/find-filter-for-legacy-filter a-query stage-number)))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -426,6 +443,15 @@
     itself should be removed from the query."
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
+
+(defn ^:export find-visible-column-for-legacy-ref
+  "Return the visible column in `a-query` at `stage-number` referenced by `legacy-ref`."
+  [a-query stage-number legacy-ref]
+  (let [ref (-> legacy-ref
+                (js->clj :keywordize-keys true)
+                (update 0 keyword)
+                convert/->pMBQL)]
+    (lib.core/find-visible-column-for-ref a-query stage-number ref)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
@@ -631,9 +657,12 @@
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
-  "Returns whether the extra keys required by the database."
+  "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
+  needed for MongoDB queries."
   [database-id metadata]
-  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+  (to-array
+   (map u/qualified-name
+        (lib.core/required-native-extras (metadataProvider database-id metadata)))))
 
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
@@ -644,8 +673,8 @@
    (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
 
 (defn ^:export with-native-extras
-  "Updates the extras required for the db to run this query.
-   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  "Updates the extras required for the db to run this query. The first stage must be a native type. Will ignore extras
+  not in `required-native-extras`."
   [a-query native-extras]
   (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
 

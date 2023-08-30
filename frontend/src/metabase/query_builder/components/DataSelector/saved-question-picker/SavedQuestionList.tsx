@@ -4,7 +4,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import Search from "metabase/entities/search";
 import EmptyState from "metabase/components/EmptyState";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import { Collection, CollectionItem } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 import {

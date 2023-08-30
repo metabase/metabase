@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import OperatorSelector from "../OperatorSelector";
 import SidebarHeader from "../../SidebarHeader";
 

@@ -1,4 +1,4 @@
-import { DatabaseData } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 import { createMockDatabaseData } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,

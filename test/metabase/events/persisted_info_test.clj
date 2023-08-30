@@ -9,8 +9,8 @@
 
 (deftest event-test
   (mt/with-temporary-setting-values [persisted-models-enabled true]
-    (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}}]
-                    Card     [card {:database_id (u/the-id db)}]]
+    (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
+                   Card     card {:database_id (u/the-id db)}]
       (events.persisted-info/process-event {:topic :card-create
                                             :item  card})
       (is (zero? (count (t2/select PersistedInfo :card_id (u/the-id card)))))

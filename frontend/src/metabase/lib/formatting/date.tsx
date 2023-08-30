@@ -1,4 +1,5 @@
-import moment, { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone";
+import moment from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
 import type { DatetimeUnit } from "metabase-types/api/query";

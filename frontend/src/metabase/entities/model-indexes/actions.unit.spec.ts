@@ -12,11 +12,8 @@ import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
-import {
-  updateModelIndexes,
-  cleanIndexFlags,
-  FieldWithMaybeIndex,
-} from "./actions";
+import type { FieldWithMaybeIndex } from "./actions";
+import { updateModelIndexes, cleanIndexFlags } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
   return createBaseMockField(options as Partial<Field>);

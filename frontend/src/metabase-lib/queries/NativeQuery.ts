@@ -5,7 +5,7 @@ import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
 import * as ML from "cljs/metabase.lib.js";
-import {
+import type {
   Card,
   DatabaseId,
   DatasetQuery,
@@ -15,16 +15,17 @@ import {
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
-import Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
-import Variable from "metabase-lib/variables/Variable";
+import type Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import ValidationError from "metabase-lib/ValidationError";
 import { isFieldReference } from "metabase-lib/references";
-import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
+import type Dimension from "../Dimension";
+import { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";

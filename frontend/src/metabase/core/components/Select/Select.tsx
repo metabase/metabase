@@ -1,22 +1,20 @@
-import {
-  createRef,
-  Children,
-  Component,
+import type {
   CSSProperties,
   Key,
   ReactElement,
   ReactNode,
   RefObject,
 } from "react";
+import { createRef, Children, Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
 import { createSelector } from "@reduxjs/toolkit";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton, {
-  SelectButtonProps,
-} from "metabase/core/components/SelectButton";
+import type { SelectButtonProps } from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import { color } from "metabase/lib/colors";
 
@@ -98,7 +96,7 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
-class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   SelectProps<TValue, TOption>
 > {
   _popover?: any;
@@ -329,8 +327,13 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+/**
+ * @deprecated: use Select from "metabase/ui"
+ */
+const Select = Uncontrollable()(BaseSelect);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Uncontrollable()(Select);
+export default Select;
 
 export interface OptionSectionProps {
   name?: string;

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import {
+import type {
   CheckBoxContainerProps,
   CheckBoxIconContainerProps,
   CheckBoxIconProps,
