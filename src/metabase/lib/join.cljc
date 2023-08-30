@@ -1009,3 +1009,9 @@
        (cond-> join-condition
          sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
          sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+
+(defmethod lib.metadata.calculation/describe-top-level-key-method :joins
+  [query stage-number _key]
+  (some->> (not-empty (joins query stage-number))
+           (map #(lib.metadata.calculation/display-name query stage-number %))
+           (str/join " + " )))

@@ -133,7 +133,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :joins])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
