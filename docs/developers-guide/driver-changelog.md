@@ -42,6 +42,11 @@ title: Driver interface changelog
 - `metabase.models.field/json-field?` has been removed, use `metabase.lib.field/json-field?` instead. Note that the
   new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
 
+- Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
+  metadata functions above and and the helper *metadata providers* in `metabase.lib`, `metabase.lib.test-util`, and
+  `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
+  `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
