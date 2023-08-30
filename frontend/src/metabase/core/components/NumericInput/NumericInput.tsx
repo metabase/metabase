@@ -14,6 +14,9 @@ export interface NumericInputProps extends NumericInputAttributes {
   onChange?: (value: number | undefined) => void;
 }
 
+/**
+ * @deprecated: use NumberInput from "metabase/ui"
+ */
 const NumericInput = forwardRef(function NumericInput(
   { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
   ref: Ref<HTMLDivElement>,

@@ -421,7 +421,9 @@ const initValues =
 const settings = new MetabaseSettings(initValues);
 
 if (typeof window !== "undefined") {
-  window.__metabaseSettings = settings;
+  (
+    window as Window & { __metabaseSettings?: MetabaseSettings }
+  ).__metabaseSettings = settings;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -16,7 +16,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -180,7 +179,8 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ^:private ColumnWithOperators
+(def ColumnWithOperators
+  "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    lib.metadata/ColumnMetadata
    [:map
@@ -191,7 +191,8 @@
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(defn- add-column-operators
+(defn add-column-operators
+  "Extend the column metadata with the available operators if any."
   [column]
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
@@ -271,32 +272,3 @@
                                                             :query-filters query-filters
                                                             :matching-filters matching-filters}))
          (first matching-filters))))))
-
-(def ^:private FilterParts
-  [:map
-   [:lib/type [:= :mbql/filter-parts]]
-   [:operator ::lib.schema.filter/operator]
-   [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
-   [:args [:sequential :any]]])
-
-(mu/defn filter-parts :- FilterParts
-  "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
-  Might obsolate [[filter-operator]]."
-  ([query a-filter-clause]
-   (filter-parts query -1 a-filter-clause))
-
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    a-filter-clause :- ::lib.schema.expression/boolean]
-   (let [[op options first-arg & rest-args] a-filter-clause
-         stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col (lib.equality/closest-matching-metadata first-arg columns)]
-     {:lib/type :mbql/filter-parts
-      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                               (lib.filter.operator/filter-operators col))
-                                 (lib.filter.operator/operator-def op))
-      :options  options
-      :column   (some-> col add-column-operators)
-      :args     (vec rest-args)})))

@@ -13,6 +13,7 @@
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
@@ -150,6 +151,8 @@
   rtrim
   upper
   lower]
+ [lib.fe-util
+  filter-parts]
  [lib.field
   add-field
   field-id
@@ -165,7 +168,6 @@
   filterable-column-operators
   filter-clause
   filter-operator
-  filter-parts
   find-filter-for-legacy-filter
   and
   or
