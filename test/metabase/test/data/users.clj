@@ -169,23 +169,12 @@
     (do
      (fetch-user user)
      (apply client-fn the-client user args))
-    (let [user-id             (u/the-id user)
-          user-email          (t2/select-one-fn :email User :id user-id)
-          [old-password-info] (t2/query {:select [:password :password_salt]
-                                         :from   [:core_user]
-                                         :where  [:= :id user-id]})]
-      (when-not user-email
+    (let [user-id (u/the-id user)]
+      (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (try
-       (t2/query-one {:update :core_user
-                      :set    {:password      (u.password/hash-bcrypt user-email)
-                               :password_salt ""}
-                      :where  [:= :id user-id]})
-       (apply the-client {:username user-email, :password user-email} args)
-       (finally
-        (t2/query-one {:update :core_user
-                       :set    old-password-info
-                       :where  [:= :id user-id]}))))))
+      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
+                                                                :user_id user-id}]
+        (apply the-client session-id args)))))
 
 (def user-http-request
   ^{:doc
