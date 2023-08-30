@@ -9,7 +9,7 @@
    [filter])
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as convert]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -62,7 +62,7 @@
       <>
       (assoc <> :type :query))
     (mbql.normalize/normalize <>)
-    (convert/->pMBQL <>)))
+    (lib.convert/->pMBQL <>)))
 
 (defn ^:export metadataProvider
   "Convert metadata to a metadata provider if it is not one already."
@@ -95,7 +95,7 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> query-map lib.convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new blank stage to the end of the pipeline"
@@ -462,8 +462,19 @@
   (let [ref (-> legacy-ref
                 (js->clj :keywordize-keys true)
                 (update 0 keyword)
-                convert/->pMBQL)]
+                lib.convert/->pMBQL)]
     (lib.core/find-visible-column-for-ref a-query stage-number ref)))
+
+(defn ^:export legacy-field-ref
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+  [column]
+  (-> column
+      lib.core/ref
+      lib.convert/->legacy-MBQL
+      (update 2 update-vals #(if (qualified-keyword? %)
+                               (u/qualified-name %)
+                               %))
+      clj->js))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
