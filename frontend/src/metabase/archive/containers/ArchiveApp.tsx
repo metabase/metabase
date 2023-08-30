@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
