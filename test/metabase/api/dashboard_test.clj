@@ -256,9 +256,7 @@
                 (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
                                                                     :collection_id       (u/the-id collection)
                                                                     :collection_position 1000})
-                (is (= nil
-                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                               (update :collection_id (partial = (u/the-id collection))))))))))))))
+                (is (not (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GET /api/dashboard/                                              |
@@ -296,24 +294,24 @@
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
-      (is (=? #{rasta-dash crowberto-dash}
-              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+      (is (= #{rasta-dash crowberto-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
 
       (testing "and should respect read perms"
-        (is (=? #{rasta-dash}
-                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))))
+        (is (= #{rasta-dash}
+               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))))
 
     (testing "f=archvied return archived dashboards"
-      (is (=? #{archived-dash}
-              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
+      (is (= #{archived-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
 
       (testing "and should return read perms"
-        (is (=? #{}
-                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
+        (is (= #{}
+               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
 
     (testing "f=mine return dashboards created by caller but do not include archived"
-      (is (=? #{crowberto-dash}
-              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
+      (is (= #{crowberto-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
