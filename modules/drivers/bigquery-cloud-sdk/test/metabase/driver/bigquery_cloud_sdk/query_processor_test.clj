@@ -9,7 +9,6 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
@@ -339,12 +338,11 @@
                                 :base-type      :type/DateTimeWithLocalTZ
                                 :effective-type :type/DateTimeWithLocalTZ
                                 :database-type  "timestamp"})]
-    (lib/composed-metadata-provider
-     (lib.tu/mock-metadata-provider
-      {:fields [date-field
-                datetime-field
-                timestamp-field]})
-     meta/metadata-provider)))
+    (lib.tu/mock-metadata-provider
+     meta/metadata-provider
+     {:fields [date-field
+               datetime-field
+               timestamp-field]})))
 
 (def ^:private mock-temporal-fields
   {:date      (lib.metadata/field mock-temporal-fields-metadata-provider 1)
@@ -425,13 +423,11 @@
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset sample-dataset
-        (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-                                           (lib/composed-metadata-provider
-                                            (lib.tu/mock-metadata-provider
-                                             {:fields [(merge (lib.metadata/field app-db-provider (mt/id :reviews :rating))
-                                                              {:coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                               :effective-type    :type/Instant})]})
-                                            app-db-provider))
+        (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                          {:fields [{:id                (mt/id :reviews :rating)
+                                                     :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                     :effective-type    :type/Instant}]})
           (let [query         (mt/mbql-query reviews
                                 {:filter   [:=
                                             [:field %rating {::add/source-table $$reviews}]
@@ -772,15 +768,14 @@
                ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
                :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
                                                      " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
-        (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                          (lib.tu/mock-metadata-provider
-                                           {:fields [(merge (meta/field-metadata :checkins :date)
-                                                            {:id             1
-                                                             :name           (u/lower-case-en (name field-type))
-                                                             :base-type      field-type
-                                                             :effective-type field-type
-                                                             :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
-                                          meta/metadata-provider)
+        (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                          meta/metadata-provider
+                                          {:fields [(merge (meta/field-metadata :checkins :date)
+                                                           {:id             1
+                                                            :name           (u/lower-case-en (name field-type))
+                                                            :base-type      field-type
+                                                            :effective-type field-type
+                                                            :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
           (testing (format "%s field" field-type)
             (is (= [expected-sql]
                    (hsql/format {:where (sql.qp/->honeysql
@@ -805,15 +800,14 @@
                    ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
                    :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
                                                          " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-            (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                              (lib.tu/mock-metadata-provider
-                                               {:fields [(merge (meta/field-metadata :checkins :date)
-                                                                {:id             1
-                                                                 :name           (u/lower-case-en (name field-type))
-                                                                 :base-type      field-type
-                                                                 :effective-type field-type
-                                                                 :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
-                                              meta/metadata-provider)
+            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                              meta/metadata-provider
+                                              {:fields [(merge (meta/field-metadata :checkins :date)
+                                                               {:id             1
+                                                                :name           (u/lower-case-en (name field-type))
+                                                                :base-type      field-type
+                                                                :effective-type field-type
+                                                                :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
               (testing (format "%s field" field-type)
                 (is (= [expected-sql]
                        (hsql/format {:where (sql.qp/->honeysql
@@ -927,12 +921,9 @@
 (deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
-      (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-                                         (lib/composed-metadata-provider
-                                          (lib.tu/mock-metadata-provider
-                                           {:tables [(merge (lib.metadata/table app-db-provider (mt/id :venues))
-                                                            {:name "Organização"})]})
-                                          app-db-provider))
+      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        {:tables [{:id (mt/id :venues), :name "Organização"}]})
         (mt/with-mock-fks-for-drivers-without-fk-constraints
           (is qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
               "Sanity check for with-mock-fks-for-drivers-without-fk-constraints macro")

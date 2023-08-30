@@ -66,20 +66,20 @@
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
-      (lib.types.isa/structured? column)  []
-      (= value :null)                     [{:name "=" :filter (operator :is-null  field-ref)}
-                                           {:name "≠" :filter (operator :not-null field-ref)}]
+      (lib.types.isa/structured? column)    []
+      (= value :null)                       [{:name "=" :filter (operator :is-null  field-ref)}
+                                             {:name "≠" :filter (operator :not-null field-ref)}]
       (or (lib.types.isa/numeric? column)
-          (lib.types.isa/date? column))   (for [[op label] [[:<  "<"]
-                                                            [:>  ">"]
-                                                            [:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)})
-      :else                               (for [[op label] [[:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)}))))
+          (lib.types.isa/temporal? column)) (for [[op label] [[:<  "<"]
+                                                              [:>  ">"]
+                                                              [:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)})
+      :else                                 (for [[op label] [[:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)}))))
 
 (mu/defn ^:private quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Filter the current query based on the value clicked.
@@ -253,9 +253,9 @@
   [query stage-number {:keys [column] :as _drill-thru} & _]
   (when (structured-query? query stage-number)
     (let [breakout (cond
-                     (lib.types.isa/date? column)    (lib.temporal-bucket/with-temporal-bucket column :month)
-                     (lib.types.isa/numeric? column) (lib.binning/with-binning column (lib.binning/default-auto-bin))
-                     :else                           (lib.ref/ref column))]
+                     (lib.types.isa/temporal? column) (lib.temporal-bucket/with-temporal-bucket column :month)
+                     (lib.types.isa/numeric? column)  (lib.binning/with-binning column (lib.binning/default-auto-bin))
+                     :else                            (lib.ref/ref column))]
       (-> query
           ;; Remove most of the target stage.
           (lib.util/update-query-stage stage-number dissoc :aggregation :breakout :limit :order-by)
@@ -284,7 +284,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    context      :- ::lib.schema.drill-thru/context]
-  (pivot-drill-pred query stage-number context lib.types.isa/date?))
+  (pivot-drill-pred query stage-number context lib.types.isa/temporal?))
 
 (mu/defn ^:private pivot-by-location-drill :- [:sequential lib.metadata/ColumnMetadata]
   "Pivots this column and value on an address dimension."
@@ -305,8 +305,8 @@
 (defn- breakout-type [query stage-number breakout]
   (let [column (lib.metadata.calculation/metadata query stage-number breakout)]
     (cond
-      (lib.types.isa/date? column) :date
-      (lib.types.isa/address? column) :address
+      (lib.types.isa/temporal? column) :date
+      (lib.types.isa/address? column)  :address
       (lib.types.isa/category? column) :category)))
 
 (mu/defn ^:private pivot-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
@@ -445,7 +445,7 @@
              (lib.types.isa/summable? column))
     ;; There must be a date dimension available.
     (when-let [breakout-column (->> (lib.breakout/breakoutable-columns query stage-number)
-                                    (filter lib.types.isa/date?)
+                                    (filter lib.types.isa/temporal?)
                                     first)]
       {:lib/type ::drill-thru
        :type     :drill-thru/summarize-column-by-time
@@ -475,7 +475,7 @@
              (not (lib.types.isa/structured? column))
              ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
              (some? (:id column)))
-    (let [initial-op (when-not (lib.types.isa/date? column) ; Date fields have special handling in the FE.
+    (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
                        (-> (lib.filter.operator/filter-operators column)
                            first
                            (assoc :lib/type :operator/filter)))]

@@ -19,12 +19,12 @@
 
 (deftest ^:parallel ordering-test
   (testing "check we fetch Fields in the right order"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:fields [(assoc (meta/field-metadata :venues :price) :position -1)]})
-                                      meta/metadata-provider)
-      (let [ids       (map second
-                           (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (meta/id :venues)))]
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:fields [{:id       (meta/id :venues :price)
+                                                 :position -1}]})
+      (let [ids (map second
+                     (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (meta/id :venues)))]
         (is (=? [ ;; sorted first because it has lowest positon
                  {:position -1, :name "PRICE", :semantic-type :type/Category}
                  ;; PK
@@ -100,19 +100,18 @@
 
 (deftest ^:parallel sort-by-field-position-test
   (testing "when adding sorted implicit Fields, Field positions should be taken into account"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:fields [{:id        1
-                                                  :table-id  (meta/id :venues)
-                                                  :position  100
-                                                  :name      "bbbbb"
-                                                  :base-type :type/Text}
-                                                 {:id        2
-                                                  :table-id  (meta/id :venues)
-                                                  :position  101
-                                                  :name      "aaaaa"
-                                                  :base-type :type/Text}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:fields [{:id        1
+                                                 :table-id  (meta/id :venues)
+                                                 :position  100
+                                                 :name      "bbbbb"
+                                                 :base-type :type/Text}
+                                                {:id        2
+                                                 :table-id  (meta/id :venues)
+                                                 :position  101
+                                                 :name      "aaaaa"
+                                                 :base-type :type/Text}]})
       (is (= (:query
               (lib.tu.macros/mbql-query venues
                 {:fields [ ;; all fields with lower positions should get sorted first according to rules above
@@ -124,14 +123,13 @@
 
 (deftest ^:parallel default-bucketing-test
   (testing "datetime Fields should get default bucketing of :day"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:fields [{:id        1
-                                                  :table-id  (meta/id :venues)
-                                                  :position  2
-                                                  :name      "aaaaa"
-                                                  :base-type :type/DateTime}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:fields [{:id        1
+                                                 :table-id  (meta/id :venues)
+                                                 :position  2
+                                                 :name      "aaaaa"
+                                                 :base-type :type/DateTime}]})
       (is (lib.types.isa/temporal? (lib.metadata/field (qp.store/metadata-provider) 1)))
       (is (query= (:query
                    (lib.tu.macros/mbql-query venues

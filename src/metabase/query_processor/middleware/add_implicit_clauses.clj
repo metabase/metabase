@@ -101,7 +101,8 @@
                         [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (lib.metadata/table (qp.store/metadata-provider) source-table-id))
+        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
+                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
                         {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))

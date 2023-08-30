@@ -496,8 +496,7 @@
    [:fn
     {:error/message ":cols with unique names"}
     (fn [cols]
-      (or (empty? cols)
-          (apply distinct? (map :name cols))))]])
+      (u/empty-or-distinct? (map :name cols)))]])
 
 (mu/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [:sequential Col]]

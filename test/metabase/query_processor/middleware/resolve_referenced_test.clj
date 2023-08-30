@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -21,14 +20,10 @@
 
 (deftest ^:parallel resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :database-id   (mt/id)
-                                                 :name          "Card 1"
-                                                 :dataset-query (mt/mbql-query venues
-                                                                  {:filter [:< $price 3]})}]})
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      [(mt/mbql-query venues
+                                         {:filter [:< $price 3]})])
       (let [query {:database (mt/id)
                    :native   {:template-tags
                               {"tag-name-not-important1" {:type    :card
@@ -46,15 +41,11 @@
 
 (deftest ^:parallel referenced-query-from-different-db-test
   (testing "fails on query that references a native query from a different database"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :database-id   (meta/id)
-                                                 :name          "Card 1"
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :native
-                                                                 :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [{:database (meta/id)
+                                        :type     :native
+                                        :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}])
       (let [card-query (:dataset-query (lib.metadata/card (qp.store/metadata-provider) 1))
             tag-name   "#1"
             query      {:database 1234
@@ -83,14 +74,10 @@
 
 (deftest ^:parallel referenced-query-from-different-db-test-2
   (testing "fails on query that references an MBQL query from a different database"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :database-id   (meta/id)
-                                                 :name          "Card 1"
-                                                 :dataset-query (lib.tu.macros/mbql-query venues
-                                                                  {:filter [:< $price 3]})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/mbql-query venues
+                                         {:filter [:< $price 3]})])
       (let [card-query  (:dataset-query (lib.metadata/card (qp.store/metadata-provider) 1))
             tag-name    "#1"
             query-db-id 1234
@@ -120,23 +107,16 @@
 
 (deftest ^:parallel circular-referencing-tags-test
   (testing "fails on query with circular referencing sub-queries"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :database-id   (meta/id)
-                                                 :name          "Card 1"
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :native
-                                                                 :native   {:query         "SELECT * FROM {{#2}} AS c2"
-                                                                            :template-tags (card-template-tags [2])}}}
-                                                {:id            2
-                                                 :database-id   (meta/id)
-                                                 :name          "Card 2"
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :native
-                                                                 :native   {:query         "SELECT * FROM {{#1}} AS c1"
-                                                                            :template-tags (card-template-tags [1])}}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [{:database (meta/id)
+                                        :type     :native
+                                        :native   {:query         "SELECT * FROM {{#2}} AS c2"
+                                                   :template-tags (card-template-tags [2])}}
+                                       {:database (meta/id)
+                                        :type     :native
+                                        :native   {:query         "SELECT * FROM {{#1}} AS c1"
+                                                   :template-tags (card-template-tags [1])}}])
       (let [entrypoint-query {:database (meta/id)
                               :type     :native
                               :native   {:query         "SELECT * FROM {{#1}}"

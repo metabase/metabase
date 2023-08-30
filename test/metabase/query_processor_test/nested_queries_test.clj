@@ -10,7 +10,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
@@ -187,20 +186,16 @@
       (doseq [dataset? [true false]]
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
                          (if dataset? "questions" "models"))
-          (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-card-with-query-and-actual-result-metadata
-                                            (mt/$ids :products
-                                              {:type     :query
-                                               :database (mt/id)
-                                               :query    {:source-table $$products
-                                                          :aggregation
-                                                          [[:aggregation-options
-                                                            [:sum $price]
-                                                            {:name "sum"}]
-                                                           [:aggregation-options
-                                                            [:max $rating]
-                                                            {:name "max"}]]
-                                                          :breakout     [$category]
-                                                          :order-by     [[:asc $category]]}}))
+          (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [(mt/mbql-query products
+                                               {:aggregation [[:aggregation-options
+                                                               [:sum $price]
+                                                               {:name "sum"}]
+                                                              [:aggregation-options
+                                                               [:max $rating]
+                                                               {:name "max"}]]
+                                                :breakout    [$category]
+                                                :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
                                          {:name "count" :display_name "Count"}]
                                   :rows [[11149 4]]}}
@@ -615,13 +610,12 @@
 (deftest ^:parallel macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (qp.store/with-metadata-provider (-> (lib.tu/mock-metadata-provider
+      (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                                           (lib.tu/mock-metadata-provider
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
                                                          :table-id   (mt/id :venues)
                                                          :definition (mt/$ids {:filter [:= $venues.price 1]})}]})
-                                           (lib/composed-metadata-provider (mt/application-database-metadata-provider
-                                                                            (mt/id)))
                                            (qp.test-util/metadata-provider-with-cards-for-queries
                                             [(mt/mbql-query venues
                                                {:filter [:segment 1]})]))
@@ -629,19 +623,18 @@
                (mt/formatted-rows [int]
                  (qp/process-query
                   (query-with-source-card 1
-                    {:aggregation [:count]})))))))))
+                                          {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection"
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [{:id            1
-                                                   :database-id   (meta/id)
-                                                   :collection-id 1000
-                                                   :name          "Card 1"
-                                                   :dataset-query {}}]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        meta/metadata-provider
+                                        {:cards [{:id            1
+                                                  :database-id   (meta/id)
+                                                  :collection-id 1000
+                                                  :name          "Card 1"
+                                                  :dataset-query {}}]})
         (is (= #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}
                (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
 
@@ -927,16 +920,16 @@
         (doseq [[description result-metadata] {"NONE"                   nil
                                                "from running the query" card-results-metadata
                                                "with QP expected cols"  expected-cols}]
-          (testing (format "with Card with result metadata %s cols => %s" description (pr-str (mapv :display_name
-                           result-metadata)))
-            (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                              (lib.tu/mock-metadata-provider
-                                               {:cards [{:id              1
-                                                         :database-id     (mt/id)
-                                                         :name            "Card 1"
-                                                         :dataset-query   (mt/mbql-query orders)
-                                                         :result-metadata result-metadata}]})
-                                              provider)
+          (testing (format "with Card with result metadata %s cols => %s"
+                           description
+                           (pr-str (mapv :display_name result-metadata)))
+            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                              provider
+                                              {:cards [{:id              1
+                                                        :database-id     (mt/id)
+                                                        :name            "Card 1"
+                                                        :dataset-query   (mt/mbql-query orders)
+                                                        :result-metadata result-metadata}]})
               ;; now try using this Card as a saved question,  should work
               (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                                 [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
@@ -1165,14 +1158,13 @@
                                {:source-query (:query query)})
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
-                    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                                      (lib.tu/mock-metadata-provider
-                                                       {:cards [{:id              1
-                                                                 :database-id     (mt/id)
-                                                                 :name            "Card 1"
-                                                                 :dataset-query   query
-                                                                 :result-metadata metadata}]})
-                                                      (mt/application-database-metadata-provider (mt/id)))
+                    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                                      (mt/application-database-metadata-provider (mt/id))
+                                                      {:cards [{:id              1
+                                                                :database-id     (mt/id)
+                                                                :name            "Card 1"
+                                                                :dataset-query   query
+                                                                :result-metadata metadata}]})
                       (test-query
                        (mt/mbql-query nil
                          {:source-table "card__1"}))))]
@@ -1334,16 +1326,15 @@
 (deftest ^:parallel nested-query-with-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "A nested query with a Metric should work as expected (#12507)"
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:metrics [{:id 1
-                                                     :name "Metric 1"
-                                                     :table-id   (mt/id :checkins)
-                                                     :definition (mt/$ids checkins
-                                                                   {:source-table $$checkins
-                                                                    :aggregation  [[:count]]
-                                                                    :filter       [:not-null $id]})}]})
-                                        (mt/application-database-metadata-provider (mt/id)))
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        (mt/application-database-metadata-provider (mt/id))
+                                        {:metrics [{:id 1
+                                                    :name "Metric 1"
+                                                    :table-id   (mt/id :checkins)
+                                                    :definition (mt/$ids checkins
+                                                                  {:source-table $$checkins
+                                                                   :aggregation  [[:count]]
+                                                                   :filter       [:not-null $id]})}]})
         (is (= [[100]]
                (mt/formatted-rows [int]
                  (mt/run-mbql-query checkins

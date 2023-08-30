@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -122,14 +121,13 @@
            "being compared against a type/DateTime `field-literal`")))
 
 (def ^:private unix-timestamp-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:fields [(merge (meta/field-metadata :checkins :date)
-                     {:id                1
-                      :base-type         :type/Integer
-                      :effective-type    :type/DateTime
-                      :coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
-   meta/metadata-provider))
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:fields [(merge (meta/field-metadata :checkins :date)
+                    {:id                1
+                     :base-type         :type/Integer
+                     :effective-type    :type/DateTime
+                     :coercion-strategy :Coercion/UNIXSeconds->DateTime})]}))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-4
   (qp.store/with-metadata-provider unix-timestamp-metadata-provider

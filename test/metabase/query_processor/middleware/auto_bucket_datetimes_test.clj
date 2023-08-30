@@ -149,13 +149,12 @@
 (deftest ^:parallel do-not-auto-bucket-time-fields-test
   (testing (str "we also should not auto-bucket Fields that are `:type/Time`, because grouping a Time Field by day "
                 "makes ZERO SENSE.")
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:fields [(merge (meta/field-metadata :checkins :date)
-                                                        {:id             1
-                                                         :base-type      :type/Time
-                                                         :effective-type :type/Time})]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:fields [(merge (meta/field-metadata :checkins :date)
+                                                       {:id             1
+                                                        :base-type      :type/Time
+                                                        :effective-type :type/Time})]})
       (is (= {:source-table 1
               :breakout     [[:field 1 nil]]}
              (auto-bucket-mbql
@@ -163,14 +162,13 @@
                :breakout     [[:field 1 nil]]}))))))
 
 (def ^:private unix-timestamp-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:fields [(merge (meta/field-metadata :checkins :date)
-                     {:id                1
-                      :base-type         :type/Integer
-                      :effective-type    :type/DateTime
-                      :coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
-   meta/metadata-provider))
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:fields [(merge (meta/field-metadata :checkins :date)
+                    {:id                1
+                     :base-type         :type/Integer
+                     :effective-type    :type/DateTime
+                     :coercion-strategy :Coercion/UNIXSeconds->DateTime})]}))
 
 (deftest ^:parallel auto-bucket-by-effective-type-test
   (testing "UNIX timestamps should be considered to be :type/DateTime based on effective type"

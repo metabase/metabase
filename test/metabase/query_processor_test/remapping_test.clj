@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
@@ -207,14 +206,12 @@
   ;; this is https://github.com/metabase/metabase/issues/8510
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
-      (qp.store/with-metadata-provider (let [provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                                          (lib.tu/remap-metadata-provider (mt/id :users :created_by)
-                                                                                          (mt/id :users :name)))]
-                                         (lib/composed-metadata-provider
-                                          (lib.tu/mock-metadata-provider
-                                           {:fields [(merge (lib.metadata/field provider (mt/id :users :created_by))
-                                                            {:fk-target-field-id (mt/id :users :id)})]})
-                                          provider))
+      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                           (lib.tu/remap-metadata-provider (mt/id :users :created_by)
+                                                                           (mt/id :users :name))
+                                           (lib.tu/merged-mock-metadata-provider
+                                            {:fields [{:id                 (mt/id :users :created_by)
+                                                       :fk-target-field-id (mt/id :users :id)}]}))
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users
                       {:order-by [[:asc $name]]
@@ -331,43 +328,22 @@
     ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
     (mt/dataset sample-dataset
       ;; this is only triggered when using the results metadata from the Card itself --  see #19895
-      (let [q1         (mt/mbql-query orders
-                         {:fields   [$id $product_id]
-                          :joins    [{:source-table $$products
-                                      :alias        "Products"
-                                      :condition    [:= $product_id &Products.products.id]
-                                      :fields       [$id
-                                                     &Products.products.title]}]
-                          :order-by [[:asc $id]]
-                          :limit    3})
-            q2         (mt/mbql-query nil {:source-table "card__1"})
-            q3         (mt/mbql-query nil {:source-table "card__2"})
-            provider   (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
-            q1-results (qp.store/with-metadata-provider provider
-                         (get-in (qp/process-query q1) [:data :results_metadata :columns]))
-            provider   (lib/composed-metadata-provider
-                        (lib.tu/mock-metadata-provider
-                         {:cards [{:id              1
-                                   :database-id     (mt/id)
-                                   :name            "Card 1"
-                                   :dataset-query   q1
-                                   :result-metadata q1-results}]})
-                        provider)
-            q2-results (qp.store/with-metadata-provider provider
-                         (get-in (qp/process-query q2) [:data :results_metadata :columns]))]
-        (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                          (lib.tu/mock-metadata-provider
-                                           {:cards [{:id              2
-                                                     :database-id     (mt/id)
-                                                     :name            "Card 2"
-                                                     :dataset-query   q2
-                                                     :result-metadata q2-results}
-                                                    {:id            3
-                                                     :database-id   (mt/id)
-                                                     :name          "Card 3"
-                                                     :dataset-query q3}]})
-                                          provider)
+      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                           (mt/id :products :title))
+                                           (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [(mt/mbql-query orders
+                                               {:fields   [$id $product_id]
+                                                :joins    [{:source-table $$products
+                                                            :alias        "Products"
+                                                            :condition    [:= $product_id &Products.products.id]
+                                                            :fields       [$id
+                                                                           &Products.products.title]}]
+                                                :order-by [[:asc $id]]
+                                                :limit    3})
+                                             (mt/mbql-query nil {:source-table "card__1"})
+                                             (mt/mbql-query nil {:source-table "card__2"})]))
+        (let [q3 (:dataset-query (lib.metadata/card (qp.store/metadata-provider) 3))]
           (mt/with-native-query-testing-context q3
             (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]
                     [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]

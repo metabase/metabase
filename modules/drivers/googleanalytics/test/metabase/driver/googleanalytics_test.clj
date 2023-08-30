@@ -8,7 +8,6 @@
    [metabase.driver.googleanalytics]
    [metabase.driver.googleanalytics.execute :as ga.execute]
    [metabase.driver.googleanalytics.query-processor :as ga.qp]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
@@ -40,12 +39,11 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                    (lib.tu/mock-metadata-provider
-                                     {:tables [{:name   "0123456"
-                                                :schema nil
-                                                :id     1}]})
-                                    meta/metadata-provider)
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:tables [{:name   "0123456"
+                                               :schema nil
+                                               :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest ^:parallel basic-compilation-test

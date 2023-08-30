@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -215,23 +214,22 @@
             {:columns [:price]})))))
 
 (def ^:private child-parent-grandparent-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:fields [(assoc (meta/field-metadata :venues :name)
-                     :id            1
-                     :name         "grandparent"
-                     :display-name "Grandparent")
-              (assoc (meta/field-metadata :venues :name)
-                     :id            2
-                     :name          "parent"
-                     :display-name  "Parent"
-                     :parent-id     1)
-              (assoc (meta/field-metadata :venues :name)
-                     :id           3
-                     :name         "child"
-                     :display-name "Child"
-                     :parent-id    2)]})
-   meta/metadata-provider))
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:fields [(assoc (meta/field-metadata :venues :name)
+                    :id            1
+                    :name         "grandparent"
+                    :display-name "Grandparent")
+             (assoc (meta/field-metadata :venues :name)
+                    :id            2
+                    :name          "parent"
+                    :display-name  "Parent"
+                    :parent-id     1)
+             (assoc (meta/field-metadata :venues :name)
+                    :id           3
+                    :name         "child"
+                    :display-name "Child"
+                    :parent-id    2)]}))
 
 (deftest ^:parallel col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
@@ -691,26 +689,21 @@
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :dataset       true
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (lib.tu.macros/$ids products
-                                                                  {:type     :query
-                                                                   :database (meta/id)
-                                                                   :query    {:source-table $$products
-                                                                              :aggregation
-                                                                              [[:aggregation-options
-                                                                                [:sum $price]
-                                                                                {:name "sum"}]
-                                                                               [:aggregation-options
-                                                                                [:max $rating]
-                                                                                {:name "max"}]]
-                                                                              :breakout     [$category]
-                                                                              :order-by     [[:asc $category]]}})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/$ids products
+                                         {:type     :query
+                                          :database (meta/id)
+                                          :query    {:source-table $$products
+                                                     :aggregation
+                                                     [[:aggregation-options
+                                                       [:sum $price]
+                                                       {:name "sum"}]
+                                                      [:aggregation-options
+                                                       [:max $rating]
+                                                       {:name "max"}]]
+                                                     :breakout     [$category]
+                                                     :order-by     [[:asc $category]]}})])
       (let [query (qp/preprocess
                    (lib.tu.macros/mbql-query nil
                      {:source-table "card__1"
@@ -766,17 +759,10 @@
                                    :source-table $$products
                                    :condition    [:= $product-id &Products.products.id]
                                    :alias        "Products"}]})]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [{:id            1
-                                                   :name          "Card 1"
-                                                   :database-id   (meta/id)
-                                                   :dataset-query card-1-query}
-                                                  {:id            2
-                                                   :name          "Card 2"
-                                                   :database-id   (meta/id)
-                                                   :dataset-query (lib.tu.macros/mbql-query people)}]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                        meta/metadata-provider
+                                        [card-1-query
+                                         (lib.tu.macros/mbql-query people)])
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (lib.tu.macros/$ids nil
             (let [base-query (qp/preprocess
@@ -800,23 +786,22 @@
     (letfn [(native [query] {:type     :native
                              :native   {:query query :template-tags {}}
                              :database (meta/id)})]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [{:id              1
-                                                   :name            "Card 1"
-                                                   :database-id   (meta/id)
-                                                   :dataset-query   (native "select 'foo' as A_COLUMN")
-                                                   :result-metadata [{:name         "A_COLUMN"
-                                                                      :display_name "A Column"
-                                                                      :base_type    :type/Text}]}
-                                                  {:id              2
-                                                   :name            "Card 2"
-                                                   :database-id   (meta/id)
-                                                   :dataset-query   (native "select 'foo' as B_COLUMN")
-                                                   :result-metadata [{:name         "B_COLUMN"
-                                                                      :display_name "B Column"
-                                                                      :base_type    :type/Text}]}]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        meta/metadata-provider
+                                        {:cards [{:id              1
+                                                  :name            "Card 1"
+                                                  :database-id     (meta/id)
+                                                  :dataset-query   (native "select 'foo' as A_COLUMN")
+                                                  :result-metadata [{:name         "A_COLUMN"
+                                                                     :display_name "A Column"
+                                                                     :base_type    :type/Text}]}
+                                                 {:id              2
+                                                  :name            "Card 2"
+                                                  :database-id     (meta/id)
+                                                  :dataset-query   (native "select 'foo' as B_COLUMN")
+                                                  :result-metadata [{:name         "B_COLUMN"
+                                                                     :display_name "B Column"
+                                                                     :base_type    :type/Text}]}]})
         (let [query {:database (meta/id)
                      :type     :query
                      :query    {:source-table "card__1"

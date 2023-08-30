@@ -165,7 +165,7 @@
    params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
-             (or #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/field field-id)
+             (or (lib.metadata/field (qp.store/metadata-provider) field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (field-filter-value tag params)}))
@@ -202,7 +202,8 @@
                 e))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, _]
+  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag
+   _params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -307,7 +308,7 @@
   "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
   are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
   [{field :field, {value :value} :value, :as field-filter} :- FieldFilter]
-  (let [effective-type (or (:effective_type field) (:base_type field))
+  (let [effective-type ((some-fn :effective-type :base-type) field)
         new-value (cond
                     (string? value)
                     (parse-value-for-field-type effective-type value)
@@ -348,7 +349,7 @@
 
     ;; Field Filters with "special" base types
     (and (= param-type :dimension)
-         (get-in value [:field :base_type]))
+         (get-in value [:field :base-type]))
     (update-filter-for-field-type value)
 
     :else

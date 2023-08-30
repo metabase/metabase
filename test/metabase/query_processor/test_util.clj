@@ -426,23 +426,21 @@
   false)
 
 (defn mock-fks-metadata-provider
-  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application database metadata
-  provider that adds FK relationships for Tables that would normally have them in drivers that have formal FK
-  constraints."
+  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
+  database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
+  formal FK constraints."
   ([]
    (mock-fks-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
-  ([base-metadata-provider]
-   (lib/composed-metadata-provider
-    (lib.tu/mock-metadata-provider
-     {:fields (letfn [(fk [[[table-name field-name] [target-table-name target-field-name]]]
-                        (merge (lib.metadata/field base-metadata-provider (data/id table-name field-name))
-                               {:fk-target-field-id (data/id target-table-name target-field-name)
-                                :semantic-type      :type/FK}))]
-                (into []
-                      (map fk)
-                      (fk-mappings)))})
-    base-metadata-provider)))
+  ([parent-metadata-provider]
+   (lib.tu/merged-mock-metadata-provider
+    parent-metadata-provider
+    {:fields (into []
+                   (map (fn [[[table-name field-name] [target-table-name target-field-name]]]
+                          {:id                 (data/id table-name field-name)
+                           :fk-target-field-id (data/id target-table-name target-field-name)
+                           :semantic-type      :type/FK}))
+                   (fk-mappings))})))
 
 (defn do-with-mock-fks-for-drivers-without-fk-constraints
   "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]."
@@ -463,7 +461,7 @@
   [& body]
   `(do-with-mock-fks-for-drivers-without-fk-constraints (^:once fn* [] ~@body)))
 
-(defn- query-results [query]
+(defn- actual-query-results [query]
   (let [results (qp/process-query query)]
     (or (get-in results [:data :results_metadata :columns])
         (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))))
@@ -479,29 +477,7 @@
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
   {:dataset_query   query
-   :result_metadata (query-results query)})
-
-(mu/defn metadata-provider-with-card-with-query-and-actual-result-metadata :- lib.metadata/MetadataProvider
-  "Create an MLv2 metadata provider based on the app DB metadata provider that adds a Card with ID `1` with `query` and
-  `:result-metadata` based on actually running that query."
-  ([query]
-   (metadata-provider-with-card-with-query-and-actual-result-metadata
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
-    query))
-
-  ([base-metadata-provider :- lib.metadata/MetadataProvider
-    query                  :- :map]
-   (lib/composed-metadata-provider
-    (lib.tu/mock-metadata-provider
-     {:cards [{:id              1
-               :name            "Card 1"
-               :database-id     (u/the-id (lib.metadata/database base-metadata-provider))
-               :dataset-query   query
-               ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
-               ;; subsequent usage.
-               :result-metadata (qp.store/with-metadata-provider base-metadata-provider
-                                  (query-results query))}]})
-    base-metadata-provider)))
+   :result_metadata (actual-query-results query)})
 
 (mu/defn metadata-provider-with-cards-for-queries :- lib.metadata/MetadataProvider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
@@ -511,9 +487,65 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries))
 
-  ([base-metadata-provider :- lib.metadata/MetadataProvider
+  ([parent-metadata-provider :- lib.metadata/MetadataProvider
     queries                :- [:sequential {:min 1} :map]]
-   (lib.tu/metadata-provider-with-cards-for-queries base-metadata-provider queries)))
+   (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
+
+(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results of [[qp/query->expected-cols]] as
+  `:result-metadata` for each Card. The metadata provider is built up progressively, meaning metadata for previous Cards
+  is available when calculating metadata for subsequent Cards."
+  ([queries]
+   (metadata-provider-with-cards-with-metadata-for-queries
+    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    queries))
+
+  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+    queries                :- [:sequential {:min 1} :map]]
+   (transduce
+    (map-indexed (fn [i query]
+                   {:id            (inc i)
+                    :database-id   (u/the-id (lib.metadata/database parent-metadata-provider))
+                    :name          (format "Card %d" (inc i))
+                    :dataset-query query}))
+    (completing
+     (fn [metadata-provider {query :dataset-query, :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp/query->expected-cols query)
+                                 (actual-query-results query))
+               card            (assoc card :result-metadata result-metadata)]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+    parent-metadata-provider
+    queries)))
+
+(deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test
+  (let [provider (metadata-provider-with-cards-with-metadata-for-queries
+                  [(data/mbql-query venues)])]
+    (is (partial= {:id              1
+                   :name            "Card 1"
+                   :dataset-query   {:type :query}
+                   :result-metadata [{:name "ID"}
+                                     {:name "NAME"}
+                                     {:name "CATEGORY_ID"}
+                                     {:name "LATITUDE"}
+                                     {:name "LONGITUDE"}
+                                     {:name "PRICE"}]}
+                  (lib.metadata/card provider 1)))))
+
+(deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-native-query-test
+  (let [provider (metadata-provider-with-cards-with-metadata-for-queries
+                  [(data/native-query (qp/compile (data/mbql-query venues)))])]
+    (is (partial= {:id              1
+                   :name            "Card 1"
+                   :dataset-query   {:type :native}
+                   :result-metadata [{:name "ID"}
+                                     {:name "NAME"}
+                                     {:name "CATEGORY_ID"}
+                                     {:name "LATITUDE"}
+                                     {:name "LONGITUDE"}
+                                     {:name "PRICE"}]}
+                  (lib.metadata/card provider 1)))))
 
 (defn field-values-from-def
   "Get values for a specific Field from a dataset definition, convenient for use with things

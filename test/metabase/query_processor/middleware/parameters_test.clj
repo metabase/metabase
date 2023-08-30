@@ -182,23 +182,13 @@
    :native   inner-query})
 
 (def ^:private mock-native-query-cards-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:cards [{:id            1
-              :name          "Card 1"
-              :database-id   (meta/id)
-              :dataset-query (native-query {:query "SELECT 1"})}
-             {:id            2
-              :name          "Card 2"
-              :database-id   (meta/id)
-              :dataset-query (native-query {:query "SELECT 2"})}
-             {:id            3
-              :name          "Card 3"
-              :database-id   (meta/id)
-              :dataset-query (native-query
-                              {:query         "SELECT * FROM {{#1}} AS c1"
-                               :template-tags (card-template-tags [1])})}]})
-   meta/metadata-provider))
+  (lib.tu/metadata-provider-with-cards-for-queries
+   meta/metadata-provider
+   [(native-query {:query "SELECT 1"})
+    (native-query {:query "SELECT 2"})
+    (native-query
+     {:query         "SELECT * FROM {{#1}} AS c1"
+      :template-tags (card-template-tags [1])})]))
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
@@ -232,19 +222,12 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-4
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (lib.tu.macros/mbql-query venues)}
-                                                {:id            2
-                                                 :name          "Card 2"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (native-query
-                                                                 {:query         "SELECT * FROM {{#1}} AS c1"
-                                                                  :template-tags (card-template-tags [1])})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/mbql-query venues)
+                                       (native-query
+                                        {:query         "SELECT * FROM {{#1}} AS c1"
+                                         :template-tags (card-template-tags [1])})])
       (let [card-1-subquery (str "SELECT "
                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                  "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -263,21 +246,17 @@
 
 (deftest ^:parallel referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (native-query
-                                                                 {:query         "SELECT {{x}}"
-                                                                  :template-tags {"x"
-                                                                                  {:id           "x"
-                                                                                   :name         "x"
-                                                                                   :display-name "Number x"
-                                                                                   :type         :number
-                                                                                   :default      "1"
-                                                                                   :required     true}}})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(native-query
+                                        {:query         "SELECT {{x}}"
+                                         :template-tags {"x"
+                                                         {:id           "x"
+                                                          :name         "x"
+                                                          :display-name "Number x"
+                                                          :type         :number
+                                                          :default      "1"
+                                                          :required     true}}})])
       (is (= (native-query
               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
@@ -287,20 +266,16 @@
 
 (deftest ^:parallel referencing-cards-with-parameters-test-2
   (testing "referencing card with parameter and NO default value, fails substitution"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (native-query
-                                                                 {:query         "SELECT {{x}}"
-                                                                  :template-tags {"x"
-                                                                                  {:id           "x"
-                                                                                   :name         "x"
-                                                                                   :display-name "Number x"
-                                                                                   :type         :number
-                                                                                   :required     true}}})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(native-query
+                                        {:query         "SELECT {{x}}"
+                                         :template-tags {"x"
+                                                         {:id           "x"
+                                                          :name         "x"
+                                                          :display-name "Number x"
+                                                          :type         :number
+                                                          :required     true}}})])
       (is (thrown-with-msg?
            ExceptionInfo
            #"\QYou'll need to pick a value for 'Number x' before this query can run.\E"
@@ -350,19 +325,15 @@
 
 (deftest ^:parallel include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (lib.tu.macros/mbql-query orders
-                                                                  {:filter      [:between $total 30 60]
-                                                                   :aggregation [[:aggregation-options
-                                                                                  [:count-where
-                                                                                   [:starts-with $product-id->products.category "G"]]
-                                                                                  {:name "G Monies", :display-name "G Monies"}]]
-                                                                   :breakout    [!month.created-at]})}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/mbql-query orders
+                                         {:filter      [:between $total 30 60]
+                                          :aggregation [[:aggregation-options
+                                                         [:count-where
+                                                          [:starts-with $product-id->products.category "G"]]
+                                                         {:name "G Monies", :display-name "G Monies"}]]
+                                          :breakout    [!month.created-at]})])
       (let [card-tag "#1"
             query    (native-query
                       {:query         (format "SELECT * FROM {{%s}}" card-tag)

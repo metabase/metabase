@@ -113,16 +113,21 @@
                              (table-or-id->schema table-or-id)
                              (u/the-id table-or-id)))))))
 
+(mu/defn ^:private card-instance :- [:and
+                                     (ms/InstanceOf :model/Card)
+                                     [:map [:collection_id [:maybe ms/PositiveInt]]]]
+  [card-id :- ::lib.schema.id/card]
+  (or (if (qp.store/initialized?)
+        (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
+          (t2/instance :model/Card {:collection_id collection-id}))
+        (t2/select-one [:model/Card :collection_id] :id card-id))
+      (throw (Exception. (tru "Card {0} does not exist." card-id)))))
+
 (mu/defn ^:private source-card-read-perms :- [:set perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
-  [source-card-id :- ms/PositiveInt]
-  (let [card (or (if (qp.store/initialized?)
-                   (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) source-card-id)]
-                     (t2/instance :model/Card {:collection_id collection-id}))
-                   (t2/select-one [:model/Card :collection_id] :id source-card-id))
-                 (throw (Exception. (tru "Card {0} does not exist." source-card-id))))]
-    (mi/perms-objects-set card :read)))
+  [source-card-id :- ::lib.schema.id/card]
+  (mi/perms-objects-set (card-instance source-card-id) :read))
 
 (defn- preprocess-query [query]
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
