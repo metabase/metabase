@@ -620,6 +620,17 @@
                                :query :segmented}}
              (test-data-graph group))))))
 
+(deftest audit-db-update-test
+  (testing "Throws exception when we attempt to change the audit db permission manually."
+    (mt/with-temp* [PermissionsGroup [group]
+                    Database         [database]
+                    Table            [table    {:db_id (u/the-id database)}]]
+      (with-redefs [perms/default-audit-db-id (constantly (u/the-id database))]
+        (is (thrown-with-msg?
+             Exception
+             #"Unable to update audit database, that requires updating through monitoring permissions."
+             (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})))))))
+
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (t2.with-temp/with-temp [Database {db-id :id}]
@@ -720,17 +731,21 @@
 
 (deftest revoke-permissions-helper-function-test
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
-    (is (thrown? Exception
-                 (perms/revoke-collection-permissions!
-                  (perms-group/all-users)
-                  (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+    (is (thrown-with-msg?
+         Exception
+         #"You cannot edit permissions for a Personal Collection or its descendants."
+         (perms/revoke-collection-permissions!
+          (perms-group/all-users)
+          (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
       (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
                                                                  (collection/user->personal-collection
                                                                   (mt/user->id :lucky)))}]
-        (is (thrown? Exception
-                     (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
+        (is (thrown-with-msg?
+             Exception
+             #"You cannot edit permissions for a Personal Collection or its descendants."
+             (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
