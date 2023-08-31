@@ -546,14 +546,15 @@
    constraints :- [:maybe ConstraintsMap]
    & options]
   (assert (even? (count options)))
-  (let [v->human-readable     (delay (human-readable-remapping-map field-id))
+  (let [{:as options}         options
+        v->human-readable     (delay (human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
      (some? @v->human-readable)
-     (-> (unremapped-chain-filter field-id constraints options)
+     (-> (unremapped-chain-filter #p field-id #p constraints #p options)
          (update :values add-human-readable-values @v->human-readable))
 
      (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
@@ -657,7 +658,8 @@
    query             :- [:maybe ms/NonBlankString]
    & options]
   (assert (even? (count options)))
-  (let [v->human-readable     (delay (human-readable-remapping-map field-id))
+  (let [{:as options}         options
+        v->human-readable     (delay (human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
      (str/blank? query)
