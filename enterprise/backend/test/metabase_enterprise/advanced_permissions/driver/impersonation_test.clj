@@ -103,7 +103,7 @@
   (mt/test-driver :snowflake
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                  :attributes     {"impersonation_attr" "limited.role"}}
+                                                  :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
         ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
         ;; since there is no way to reset the connection after impersonation is applied.
         (is (thrown-with-msg?
