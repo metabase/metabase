@@ -1,11 +1,7 @@
 import type { Location } from "history";
 import type { ComponentType } from "react";
 
-import type {
-  Collection,
-  SearchModelType,
-  SearchResult,
-} from "metabase-types/api";
+import type { Collection, SearchResult } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
 import type { SearchFilterKeys } from "metabase/search/constants";
 
@@ -29,7 +25,7 @@ export interface WrappedResult extends SearchResult {
   getCollection: () => Partial<Collection>;
 }
 
-export type TypeFilterProps = SearchModelType[];
+export type TypeFilterProps = EnabledSearchModelType[];
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;

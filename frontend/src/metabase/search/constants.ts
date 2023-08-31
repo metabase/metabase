@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import type { IconName } from "metabase/core/components/Icon";
-import type { SearchModelType } from "metabase-types/api";
+import type { EnabledSearchModelType } from "metabase/search/types";
 
 export const SearchFilterKeys = {
   Type: "type",
@@ -9,7 +9,7 @@ export const SearchFilterKeys = {
 export const SEARCH_FILTERS: {
   name: string;
   icon: IconName;
-  filter: SearchModelType;
+  filter: EnabledSearchModelType;
 }[] = [
   {
     name: t`Collections`,
