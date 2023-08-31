@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import type { FieldFilter, FieldReference } from "metabase-types/api";
+
 import type {
   ColumnMetadata,
   ColumnWithOperators,
@@ -27,9 +28,13 @@ export function filterableColumnOperators(
 export function filterClause(
   filterOperator: FilterOperator,
   column: ColumnMetadata,
-  ...args: ExpressionArg[]
+  ...args: (ExpressionArg | undefined)[]
 ): FilterClause {
-  return ML.filter_clause(filterOperator, column, ...args);
+  if (args.some(arg => arg !== undefined)) {
+    return ML.filter_clause(filterOperator, column, ...args);
+  }
+
+  return ML.filter_clause(filterOperator, column);
 }
 
 export function filter(

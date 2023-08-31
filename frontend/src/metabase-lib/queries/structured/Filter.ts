@@ -25,6 +25,9 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
+
+import { getMlv2FilterClause } from "metabase-lib/compat";
+
 import type { FilterOperator } from "../../deprecated-types";
 import type Dimension from "../../Dimension";
 import type StructuredQuery from "../StructuredQuery";
@@ -399,5 +402,9 @@ export default class Filter extends MBQLClause {
         ? otherOperator
         : otherOperator && otherOperator.name;
     return operator && operator.name === operatorName;
+  }
+
+  getMlv2FilterClause({ stageIndex = -1 }) {
+    return getMlv2FilterClause(this, stageIndex);
   }
 }
