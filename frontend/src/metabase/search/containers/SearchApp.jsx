@@ -62,16 +62,13 @@ export default function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
-  const query = useMemo(
-    () => ({
-      q: searchText,
-      ..._.omit(searchFilters, SearchFilterKeys.Type),
-      models: searchFilters[SearchFilterKeys.Type] ?? undefined,
-      limit: PAGE_SIZE,
-      offset: PAGE_SIZE * page,
-    }),
-    [page, searchFilters, searchText],
-  );
+  const query = {
+    q: searchText,
+    ..._.omit(searchFilters, SearchFilterKeys.Type),
+    models: searchFilters[SearchFilterKeys.Type] ?? undefined,
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+  };
 
   return (
     <SearchRoot data-testid="search-app">
