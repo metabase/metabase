@@ -24,6 +24,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -255,10 +256,10 @@
                                                  :model_index_id model-index-id
                                                  :model_pk pk-id)]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+               (api/read-check Card (:model_id model-index))
                (let [linked (linked-entities {:model             model
                                               :model-index       model-index
                                               :model-index-value model-index-value})]
-                 (api/read-check Card (:model_id model-index))
                  (or (create-linked-dashboard {:model             model
                                                :linked-tables     linked
                                                :model-index       model-index
