@@ -666,7 +666,7 @@
      (some? @v->human-readable)
      (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query options)
 
-     (and (search-cached-field-values? field-id constraints) (nil? the-remapped-field-id))
+     (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
      (cached-field-values-search field-id query constraints options)
 
      (some? @the-remapped-field-id)
