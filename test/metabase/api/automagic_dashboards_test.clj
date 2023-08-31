@@ -317,8 +317,15 @@
 
 
 (deftest create-linked-dashboard-test
-  (testing "If there are no linked-tables, then no dashboard"
-    (is (nil? (#'api.magic/create-linked-dashboard {:model             nil
+  (testing "If there are no linked-tables, create a default view explaining the situation."
+    (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
+                                                       :link {:entity {:model "dataset"
+                                                                       :display "table"}}}}
+                             {:visualization_settings {:text "# Unfortunately, there's not much else to show right now...",
+                                                       :virtual_card {:display :text},
+                                                       :dashcard.background false,
+                                                       :text.align_vertical :bottom}}]}
+          (#'api.magic/create-linked-dashboard {:model             nil
                                                     :linked-tables     ()
                                                     :model-index       nil
                                                     :model-index-value nil})))
