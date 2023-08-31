@@ -554,7 +554,7 @@
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
      (some? @v->human-readable)
-     (-> (unremapped-chain-filter #p field-id #p constraints #p options)
+     (-> (unremapped-chain-filter field-id constraints options)
          (update :values add-human-readable-values @v->human-readable))
 
      (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
