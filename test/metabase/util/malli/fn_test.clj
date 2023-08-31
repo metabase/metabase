@@ -154,3 +154,13 @@
            (f "path" {:opts true})))
     (is (= {:path "path", :token-check? false, :opts true}
            (f "path" {:opts true} :token-check? false)))))
+
+(deftest ^:parallel parse-fn-tail-preserve-metadata-test
+  (is (= 'Integer
+         (-> '(^{:private true} add-ints :- :int ^{:tag Integer} [x :- :int y :- :int] (+ x y))
+             mu.fn/parse-fn-tail
+             :arities
+             second
+             :args
+             meta
+             :tag))))

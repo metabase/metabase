@@ -142,7 +142,7 @@
     (try
       (lib.metadata/database new-provider)
       (catch Throwable e
-        (throw (ex-info (format "Invalid MetadataProvider; failed to return valid Database: %s" (ex-message e))
+        (throw (ex-info (format "Invalid MetadataProvider, failed to return valid Database: %s" (ex-message e))
                         {:metadata-provider new-provider}
                         e))))
     (store-miscellaneous-value! [::metadata-provider] new-provider)))

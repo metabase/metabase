@@ -5,7 +5,6 @@
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
-   [malli.experimental :as mx]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
@@ -39,21 +38,52 @@
           acc)))))
 
 (defn- arity-schema
-  "Given a `fn` arity as parsed by [[mx/SchematizedParams]] an `return-schema`, return an appropriate `:=>` schema for
+  "Given a `fn` arity as parsed by [[SchematizedParams]] an `return-schema`, return an appropriate `:=>` schema for
   the arity."
   [{:keys [args], :as _arity} return-schema]
   [:=>
    (:schema (md/parse (add-default-map-schemas args)))
    return-schema])
 
+(def ^:private SchematizedParams
+  "This is exactly the same as [[malli.experimental/SchematizedParams]], but it preserves metadata from the arglists."
+  (mc/schema
+   [:schema
+    {:registry {"Schema"    any?
+                "Separator" [:= :-]
+                "Args"      vector? ; [:vector :any] loses metadata, but vector? keeps it :shrug:
+                "PrePost"   [:map
+                             [:pre {:optional true} [:sequential any?]]
+                             [:post {:optional true} [:sequential any?]]]
+                "Arity"     [:catn
+                             [:args "Args"]
+                             [:prepost [:? "PrePost"]]
+                             [:body [:* :any]]]
+                "Params"    [:catn
+                             [:name symbol?]
+                             [:return [:? [:catn
+                                           [:- "Separator"]
+                                           [:schema "Schema"]]]]
+                             [:doc [:? string?]]
+                             [:meta [:? :map]]
+                             [:arities [:altn
+                                        [:single "Arity"]
+                                        [:multiple [:catn
+                                                    [:arities [:+ [:schema "Arity"]]]
+                                                    [:meta [:? :map]]]]]]]}}
+    "Params"]))
+
+(def ^:private ^{:arglists '([fn-tail])} parse-SchematizedParams
+  (mc/parser SchematizedParams))
+
 (defn parse-fn-tail
-  "Parse a parameterized `fn` tail with the [[mx/SchematizedParams]] schema. Throw an exception if it cannot be parsed."
+  "Parse a parameterized `fn` tail with the [[SchematizedParams]] schema. Throw an exception if it cannot be parsed."
   [fn-tail]
-  (let [parsed (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
-                                                fn-tail
-                                                (cons '&f fn-tail)))]
+  (let [parsed (parse-SchematizedParams (if (symbol? (first fn-tail))
+                                          fn-tail
+                                          (cons '&f fn-tail)))]
     (when (= parsed ::mc/invalid)
-      (let [error     (mc/explain mx/SchematizedParams fn-tail)
+      (let [error     (mc/explain SchematizedParams fn-tail)
             humanized (mu.humanize/humanize error)]
         (throw (ex-info (format "Invalid function tail: %s" humanized)
                         {:fn-tail   fn-tail

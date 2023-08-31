@@ -355,24 +355,27 @@
               'yellow
               "Skipping partitioned-table-test; Postgres major version %d doesn't support PARTITION BY" major-v))))))))
 
-;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
-
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+        (is (= [::postgres/json-query
+                [::h2x/identifier :field ["boop" "bleh"]]
+                "bigint"
+                [:meh]]
+               (#'sql.qp/json-query :postgres boop-identifier boop-field)))
         (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+      (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
         (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "meh" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
-      (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
+      (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::boolean" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
     (testing "Give us a bigint cast when the field is bigint (#22732)"
-      (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
+      (let [boolean-boop-field {:database-type "bigint" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> array[?, ?, 1234]::text[])::bigint" "boop" "foobar"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
@@ -401,43 +404,40 @@
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
 
+(def ^:private json-alias-mock-metadata-provider
+  (lib.tu/mock-metadata-provider
+   {:database (assoc meta/database :engine :postgres, :id 1)
+    :tables   [(merge (meta/table-metadata :venues)
+                      {:id     1
+                       :db-id  1
+                       :name   "json_alias_test"
+                       :schema nil})]
+    :fields   [(merge (meta/field-metadata :venues :id)
+                      {:id            1
+                       :table-id      1
+                       :name          "json_alias_test"
+                       :nfc-path      ["bob"
+                                       "injection' OR 1=1--' AND released = 1"
+                                       "injection' OR 1=1--' AND released = 1"]
+                       :database-type "VARCHAR"})]}))
+
 (deftest ^:parallel json-alias-test
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc meta/database :engine :postgres, :id 1)
-                                         :tables   [(merge (meta/table-metadata :venues)
-                                                           {:id     1
-                                                            :db-id  1
-                                                            :name   "json_alias_test"
-                                                            :schema nil})]
-                                         :fields   [(merge (meta/field-metadata :venues :id)
-                                                           {:id            1
-                                                            :table-id      1
-                                                            :name          "json_alias_test"
-                                                            :nfc-path      ["bob"
-                                                                            "injection' OR 1=1--' AND released = 1"
-                                                                            "injection' OR 1=1--' AND released = 1"]
-                                                            :database-type "VARCHAR"})]})
+      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
         (let [field-bucketed [:field 1
-                              {:temporal-unit                                              :month,
-                               :metabase.query-processor.util.add-alias-info/source-table  1,
-                               :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis",
-                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
+                              {:temporal-unit                                              :month
+                               :metabase.query-processor.util.add-alias-info/source-table  1
+                               :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
+                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
-              field-ordinary [:field 1 nil]
               compile-res    (qp/compile
                               {:database 1
                                :type     :query
                                :query    {:source-table 1
                                           :aggregation  [[:count]]
                                           :breakout     [field-bucketed]
-                                          :order-by     [[:asc field-bucketed]]}})
-              only-order     (qp/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc field-ordinary]]}})]
+                                          :order-by     [[:asc field-bucketed]]}})]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -455,7 +455,18 @@
                  (str/split-lines (mdb.query/format-sql (:query compile-res) :postgres))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
-                 (:params compile-res)))
+                 (:params compile-res))))))))
+
+(deftest ^:parallel json-alias-test-2
+  (mt/test-driver :postgres
+    (testing "json breakouts and order bys have alias coercion"
+      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
+        (let [field-ordinary [:field 1 nil]
+              only-order     (qp/compile
+                              {:database 1
+                               :type     :query
+                               :query    {:source-table 1
+                                          :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -691,7 +702,7 @@
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
     (jdbc/execute! spec [enums-db-sql])))
 
-(defn- do-with-enums-db {:style/indent 0} [f]
+(defn- do-with-enums-db [f]
   (create-enums-db!)
   (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)

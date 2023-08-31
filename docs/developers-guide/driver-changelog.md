@@ -26,6 +26,9 @@ title: Driver interface changelog
 
   Note that the new methods return keys as `kebab-case` rather than `snake_case`.
 
+- Similarly, drivers should NOT access the application database directly (via `toucan` functions or otherwise); use
+  `lib.metadata` functions instead. This access may be blocked in a future release.
+
 - SQL drivers that implement `metabase.driver.sql.query-processor/->honeysql` for
   `metabase.models.table/Table`/`:model/Table` should be updated to implement it for `:metadata/table` instead. As
   with the changes above, the main difference is that the new metadata maps use `kebab-case` keys rather than
@@ -46,6 +49,11 @@ title: Driver interface changelog
   metadata functions above and and the helper *metadata providers* in `metabase.lib`, `metabase.lib.test-util`, and
   `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
   `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
+
+- `metabase.query-processor.util.add-alias-info/field-reference` is now deprecated. If your driver implemented it,
+  implement `metabase.query-processor.util.add-alias-info/field-reference-mlv2` instead. The only difference between
+  the two is that the latter is passed Field metadata with `kebab-case` keys while the former is passed legacy
+  metadata with `snake_case` keys.
 
 ## Metabase 0.47.0
 

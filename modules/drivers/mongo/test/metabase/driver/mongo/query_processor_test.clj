@@ -27,7 +27,6 @@
              (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
                                                                         {:collection "checkins"
                                                                          :native     []}}}}))))
-
     (testing "should ignore :joins"
       (is (= nil
              (#'mongo.qp/query->collection-name {:query {:source-query
@@ -62,8 +61,8 @@
                   :mbql?       true}
                  (qp/compile
                   (mt/mbql-query attempts
-                                 {:aggregation [[:count]]
-                                  :filter      [:time-interval $datetime :last :month]})))))))))
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
@@ -111,10 +110,10 @@
                     query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
-                                            {:aggregation [[:count]]
-                                             :breakout    [[:field %datetime {:temporal-unit :month}]
-                                                           [:field %datetime {:temporal-unit :day}]]
-                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                               {:aggregation [[:count]]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
@@ -122,24 +121,24 @@
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
                                                            {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                             :startOfWeek "sunday"
-                                                                                             :timezone tz
-                                                                                             :unit "month"}}
+                                                                                     :startOfWeek "sunday"
+                                                                                     :timezone tz
+                                                                                     :unit "month"}}
                                                             "datetime_2" {:$dateTrunc {:date "$datetime"
-                                                                                           :startOfWeek "sunday"
-                                                                                           :timezone tz
-                                                                                           :unit "day"}}}
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone tz
+                                                                                       :unit "day"}}}
                                                            {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :timezone tz}}}}
+                                                                                                             :timezone tz}}}
+                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                       :month "$$parts.month"
+                                                                                                       :timezone tz}}}}
                                                             "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                               :month "$$parts.month"
-                                                                                                               :day   "$$parts.day"
-                                                                                                               :timezone tz}}}}})
+                                                                                                                 :timezone tz}}}
+                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                           :month "$$parts.month"
+                                                                                                           :day   "$$parts.day"
+                                                                                                           :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -242,9 +241,9 @@
             (let [table       (t2/select-one Table :db_id (mt/id))
                   fields      (t2/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
-                                    (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                         [:field (u/the-id f) nil])
-                                                                       fields)}))
+                                   (mt/mbql-query tips {:fields (mapv (fn [f]
+                                                                        [:field (u/the-id f) nil])
+                                                                      fields)}))
                                   :projections
                                   set)]
               ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
@@ -277,62 +276,79 @@
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
       (is (= {"bob" "$latitude", "cobb" "$name"}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:field $latitude nil]
-                                               :cobb [:field $name nil]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:field $latitude nil]
+                                :cobb [:field $name nil]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-2
+  (mt/test-driver :mongo
     (testing "Should be able to deal with 1-arity functions"
       (is (= {"cobb" {"$toUpper" "$name"},
               "bob" {"$abs" "$latitude"}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:abs $latitude]
-                                               :cobb [:upper $name]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:abs $latitude]
+                                :cobb [:upper $name]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-3
+  (mt/test-driver :mongo
     (testing "Should be able to deal with 2-arity functions"
       (is (= {"bob" {"$add" ["$price" 300]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:+ $price 300]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:+ $price 300]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-4
+  (mt/test-driver :mongo
     (testing "Should be able to deal with a little indirection"
       (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:abs [:- $price 300]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:abs [:- $price 300]]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-5
+  (mt/test-driver :mongo
     (testing "Should be able to deal with a little indirection, with an expression in"
       (is (= {"bob" {"$abs" "$latitude"},
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob  [:abs $latitude]
-                                               :cobb [:ceil [:expression "bob"]]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:abs $latitude]
+                                :cobb [:ceil [:expression "bob"]]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-6
+  (mt/test-driver :mongo
     (testing "Should be able to deal with coalescing"
       (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                  :limit       5}))))))))
 
+(deftest ^:parallel expressions-test-7
+  (mt/test-driver :mongo
     (testing "Should be able to deal with group by expressions"
       (is (= {:collection "venues",
               :mbql? true,
@@ -341,10 +357,10 @@
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp/compile
-               (mt/mbql-query venues
-                              {:expressions {:asdf ["field" $price nil]},
-                               :aggregation [["count"]],
-                               :breakout [["expression" "asdf"]]})))))))
+              (mt/mbql-query venues
+                {:expressions {:asdf ["field" $price nil]},
+                 :aggregation [["count"]],
+                 :breakout [["expression" "asdf"]]})))))))
 
 (deftest ^:parallel compile-time-interval-test
   (mt/test-driver :mongo

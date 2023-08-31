@@ -25,8 +25,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [pretty.core :refer [PrettyPrintable]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [pretty.core :refer [PrettyPrintable]])
   (:import
    (com.google.cloud.bigquery Field$Mode FieldValue)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -44,9 +44,11 @@
                     (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
 
 (def ^:private ProjectIdentifierString
-  (s/pred valid-project-identifier? "Valid BigQuery project-id"))
+  [:fn
+   {:error/message "Valid BigQuery project-id"}
+   valid-project-identifier?])
 
-(s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+(mu/defn ^:private project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
@@ -232,7 +234,7 @@
   [x]
   (:bigquery-cloud-sdk/temporal-type (meta x)))
 
-(defn- with-temporal-type {:style/indent 0} [x new-type]
+(defn- with-temporal-type [x new-type]
   (if (= (temporal-type x) new-type)
     x
     (vary-meta x assoc :bigquery-cloud-sdk/temporal-type new-type)))
@@ -246,7 +248,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-           {:type qp.error-type/invalid-query})))
+                  {:type qp.error-type/invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -538,7 +540,7 @@
   (hx/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
-  [_ identifier]
+  [_driver identifier]
   (letfn [(prefix-components [[dataset-id table & more]]
             (cons (str (when-let [proj-id (project-id-for-current-query)]
                          (str proj-id \.))
@@ -551,7 +553,7 @@
       true                                    (assoc ::do-not-qualify? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_ _ {::add/keys [source-table]} :as field-clause]]
+  [driver [_field _id-or-name {::add/keys [source-table]} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -803,7 +805,9 @@
               :date      :current_date
               :datetime  :current_datetime
               :timestamp :current_timestamp),
-          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported
+                                                         :bigquery-cloud-sdk
+                                                         (lib.metadata/database (qp.store/metadata-provider))))]
       (hformat/to-sql
         (if report-zone
           (hx/call f (hx/literal report-zone))

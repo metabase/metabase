@@ -24,6 +24,7 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -32,7 +33,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
@@ -307,7 +309,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(defn- quoted? [database-type]
+(mu/defn ^:private quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
@@ -452,8 +454,8 @@
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
-  (let [field-type        (:database_type nfc-field)
-        nfc-path          (:nfc_path nfc-field)
+  (let [field-type        (:database-type nfc-field)
+        nfc-path          (:nfc-path nfc-field)
         parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
@@ -464,7 +466,7 @@
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
-      (= (:database_type stored-field) "money")
+      (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
 
       (lib.field/json-field? stored-field)

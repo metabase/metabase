@@ -267,9 +267,9 @@
   [_driver unwrapped-identifier stored-field]
   {:pre [(h2x/identifier? unwrapped-identifier)]}
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [field-type            (:database_type stored-field)
+    (let [field-type            (:database-type stored-field)
           field-type            (get database-type->mysql-cast-type-name field-type field-type)
-          nfc-path              (:nfc_path stored-field)
+          nfc-path              (:nfc-path stored-field)
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
           json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]

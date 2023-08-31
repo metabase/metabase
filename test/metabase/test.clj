@@ -116,8 +116,7 @@
 
  [datasets
   test-driver
-  test-drivers
-  when-testing-driver]
+  test-drivers]
 
  [driver
   with-driver]

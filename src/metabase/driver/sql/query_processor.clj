@@ -466,12 +466,12 @@
   honeysql-form)
 
 (defmulti json-query
-  "Reaches into a JSON field (that is, a field with a defined :nfc_path).
+  "Reaches into a JSON field (that is, a field with a defined `:nfc-path`).
 
   Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with
   indexing into it. Implement the special syntax in this multimethod."
   {:arglists '([driver identifier json-field]), :added "0.43.1"}
-  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 
@@ -652,7 +652,7 @@
   "Get alias that should be use to refer to a `:field` clause when compiling (e.g. left-hand side of an `AS`).
 
     (field-source-alias [:field 1 nil]) ; -> \"price\""
-  [[_ id-or-name {::add/keys [source-alias]}]]
+  [[_field id-or-name {::add/keys [source-alias]}]]
   (or source-alias
       (when (string? id-or-name)
         id-or-name)

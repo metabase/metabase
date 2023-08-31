@@ -11,6 +11,7 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models :refer [Database]]
    [metabase.models.table :as table]
    [metabase.query-processor.context :as qp.context]
@@ -21,9 +22,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -112,12 +112,14 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(s/defn ^:private get-table :- Table
-  ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
+(mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
+  (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
-  ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString,
-    table-id :- su/NonBlankString]
+  (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
+           project-id       :- [:maybe ::lib.schema.common/non-blank-string]
+           dataset-id       :- ::lib.schema.common/non-blank-string
+           table-id         :- ::lib.schema.common/non-blank-string]
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
@@ -146,8 +148,8 @@
       "BIGNUMERIC" :type/Decimal
       :type/*)))
 
-(s/defn ^:private table-schema->metabase-field-info
-  [schema :- Schema]
+(mu/defn ^:private table-schema->metabase-field-info
+  [^Schema schema :- (ms/InstanceOfClass Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
           f-mode    (.getMode field)]
@@ -411,7 +413,7 @@
   [database dataset-id]
   (let [db-id (u/the-id database)]
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
-                    db-id))
+                    (pr-str db-id)))
     (try
       (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}
