@@ -5,8 +5,7 @@
    [malli.core :as mc]
    [malli.experimental :as mx]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.defn :as mu.defn]
-   [metabase.test :as mt]))
+   [metabase.util.malli.defn :as mu.defn]))
 
 (deftest ^:parallel annotated-docstring-test
   (are [fn-tail expected] (= expected
