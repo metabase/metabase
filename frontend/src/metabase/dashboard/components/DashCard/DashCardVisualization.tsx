@@ -193,7 +193,9 @@ function DashCardVisualization({
         !isEditing &&
         DashCardMenu.shouldRender({ question, result: mainSeries }));
 
-    if (isInternalQuery || !shouldShowDownloadWidget) {
+    const isInXray = question._card.collection_id == null;
+
+    if (isInternalQuery || !shouldShowDownloadWidget || isInXray) {
       return null;
     }
 
