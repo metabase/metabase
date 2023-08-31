@@ -9,6 +9,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -571,7 +572,7 @@
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver {:keys [base-type coercion-strategy], :as field} honeysql-form]
-  (if (:base_type field)
+  (if (some #(str/includes? (name %) "_") (keys field))
     (do
       (sql.qp.deprecated/log-deprecation-warning
        driver
@@ -630,7 +631,7 @@
     true                    (hx/* bin-width)
     (not (zero? min-value)) (hx/+ min-value)))
 
-(defn- field-source-table-aliases
+(mu/defn ^:private field-source-table-aliases :- [:maybe [:sequential ::lib.schema.common/non-blank-string]]
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
   `AS`).
 
@@ -645,7 +646,7 @@
       (integer? source-table)       (let [{schema :schema, table-name :name} (lib.metadata/table
                                                                               (qp.store/metadata-provider)
                                                                               source-table)]
-                                      [schema table-name])
+                                      (not-empty (filterv some? [schema table-name])))
       source-table                  [source-table])))
 
 (defn- field-source-alias
@@ -1334,7 +1335,7 @@
   (let [{table-name :name, schema :schema} table]
     (->honeysql driver (hx/identifier :table schema table-name))))
 
-(defmethod ->honeysql  [:sql :metadata/table]
+(defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   (if (has-to-honeysql-impl-for-legacy-table? driver)
     (do

@@ -9,11 +9,11 @@
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
-(defn- add-default-map-schemas
-  "Malli normally generates wacky default schemas when you use map destructuring in an argslist; this never seems to work
-  correctly, so just add `[:maybe :map]` schemas manually to circumvent Malli's weird behavior.
+(defn- add-default-schemas
+  "Malli normally generates wacky default schemas when you use destructuring in an argslist; this never seems to work
+  correctly, so just add default schemas manually to circumvent Malli's weird behavior.
 
-    (add-default-map-schemas '[x {:keys [y]}])
+    (add-default-schemas '[x {:keys [y]}])
     ;; =>
     [x {:keys [y]} :- [:maybe :map]]"
   [args]
@@ -24,12 +24,20 @@
             more   (if schema
                      (drop 2 more)
                      more)
-            schema (if (and (map? x)
-                            (not schema))
-                     (if (= (last acc) '&)
-                       [:* :any]
-                       [:maybe :map])
-                     schema)
+            schema (cond
+                     schema
+                     schema
+
+                     (and (or (map? x)
+                              (sequential? x))
+                          (= (last acc) '&))
+                     [:* :any]
+
+                     (map? x)
+                     [:maybe :map]
+
+                     (sequential? x)
+                     [:maybe [:sequential :any]])
             acc    (concat acc (if schema
                                  [x :- schema]
                                  [x]))]
@@ -42,7 +50,7 @@
   the arity."
   [{:keys [args], :as _arity} return-schema]
   [:=>
-   (:schema (md/parse (add-default-map-schemas args)))
+   (:schema (md/parse (add-default-schemas args)))
    return-schema])
 
 (def ^:private SchematizedParams

@@ -51,6 +51,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -162,22 +165,23 @@
 (defn- this-level-join-aliases [{:keys [joins]}]
   (into #{} (map :alias) joins))
 
-(defn- field-is-from-join-in-this-level? [inner-query [_ _ {:keys [join-alias]}]]
+(defn- field-is-from-join-in-this-level? [inner-query [_field _id-or-name {:keys [join-alias]}]]
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(defn- field-instance
-  {:arglists '([field-clause])}
-  [[_ id-or-name]]
+(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+  [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
-(defn- field-source-table-alias
+(mu/defn ^:private field-source-table-alias :- [:or
+                                                ::lib.schema.common/non-blank-string
+                                                ::lib.schema.id/table
+                                                [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
-  {:arglists '([inner-query field-clause])}
   [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]

@@ -13,6 +13,7 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -223,7 +224,9 @@
      :prepared-statement-args args}))
 
 (mu/defn ^:private field->clause :- mbql.s/field
-  [_driver field param-type]
+  [_driver    :- :keyword
+   field      :- lib.metadata/ColumnMetadata
+   param-type :- ::mbql.s/ParameterType]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
@@ -232,10 +235,10 @@
   ;; I haven't figured out what that is yet
   [:field
    (u/the-id field)
-   {:base-type                (:base_type field)
+   {:base-type                (:base-type field)
     :temporal-unit            (when (params.dates/date-type? param-type)
                                 :day)
-    ::add/source-table        (:table_id field) ; TODO -- are we sure we want to qualify this?
+    ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
 
@@ -292,8 +295,11 @@
       :else                                           (prepend-field
                                                        (field-filter->equals-clause-sql driver value)))))
 
-(defmethod ->replacement-snippet-info [:sql FieldFilter]
-  [driver {:keys [value], :as field-filter}]
+(mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
+  [driver                            :- :keyword
+   {:keys [value], :as field-filter} :- [:map
+                                         [:field lib.metadata/ColumnMetadata]
+                                         [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
     ;; = 1`). This is only used for field filters outside of optional clauses

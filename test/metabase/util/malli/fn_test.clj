@@ -6,9 +6,9 @@
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]))
 
-(deftest ^:parallel add-default-map-schemas-test
+(deftest ^:parallel add-default-schemas-test
   (are [input expected] (= expected
-                           (#'mu.fn/add-default-map-schemas input))
+                           (#'mu.fn/add-default-schemas input))
     []
     []
 
@@ -35,7 +35,16 @@
 
     ;; key-value varargs: add [:* :any]
     '[path opts :- :map & {:keys [token-check?], :or {token-check? true}}]
-    '[path opts :- :map & {:keys [token-check?], :or {token-check? true}} :- [:* :any]]))
+    '[path opts :- :map & {:keys [token-check?], :or {token-check? true}} :- [:* :any]]
+
+    '[x [_ id-or-name {::keys [source-table]}]]
+    '[x [_ id-or-name {::keys [source-table]}] :- [:maybe [:sequential :any]]]
+
+    '[x [_ id-or-name {::keys [source-table]}] :- [:sequential :int]]
+    '[x [_ id-or-name {::keys [source-table]}] :- [:sequential :int]]
+
+    '[x & [_ id-or-name {::keys [source-table]}]]
+    '[x & [_ id-or-name {::keys [source-table]}] :- [:* :any]]))
 
 (deftest ^:parallel fn-schema-test
   (is (= [:function

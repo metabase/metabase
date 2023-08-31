@@ -839,8 +839,10 @@
   [driver t]
   (driver.sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
 
-(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
-  [driver {:keys [field], :as field-filter}]
+(mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
+  [driver                            :- :keyword
+   {:keys [field], :as field-filter} :- [:map
+                                         [:field lib.metadata/ColumnMetadata]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]
