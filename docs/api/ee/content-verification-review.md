@@ -1,12 +1,12 @@
 ---
-title: "Content management review"
+title: "Content verification review"
 summary: |
-  API endpoints for Content management review.
+  API endpoints for Content verification review.
 ---
 
-# Content management review
+# Content verification review
 
-API endpoints for Content management review.
+API endpoints for Content verification review.
 
 ## `POST /api/moderation-review/review/`
 
