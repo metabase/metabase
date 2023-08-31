@@ -589,7 +589,7 @@
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
-                    :dashboard_id id)
+                             :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
