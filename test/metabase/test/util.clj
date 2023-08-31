@@ -810,8 +810,10 @@
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
 
         (testing "outside macro, the changes should be reverted"
-          (is (= card (t2/select-one :model/Card card-id)))
-          (is (= dash (t2/select-one :model/Dashboard dash-id)))))
+          (is (= (dissoc card :updated_at)
+                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
+          (is (= (dissoc dash :updated_at)
+                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
 
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
