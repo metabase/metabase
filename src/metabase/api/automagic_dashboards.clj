@@ -243,19 +243,20 @@
                 model             (t2/select-one Card (:model_id model-index))
                 model-index-value (t2/select-one ModelIndexValue
                                                  :model_index_id model-index-id
-                                                 :model_pk pk-id)
-                linked            (linked-entities {:model             model
-                                                    :model-index       model-index
-                                                    :model-index-value model-index-value})]
-               ;; `->entity` does a read check on the model but this is here as well to be extra sure.
-               (api/read-check Card (:model_id model-index))
-               (or (create-linked-dashboard {:model             model
-                                             :linked-tables     linked
-                                             :model-index       model-index
-                                             :model-index-value model-index-value})
-                   (throw (ex-info (tru "No linked entities")
-                                   {:model-index-id model-index-id
-                                    :status-code    400})))))
+                                                 :model_pk pk-id)]
+    ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+    (api/read-check Card (:model_id model-index))
+    ;; don't want to 404 on no linked-entities. Want better error message.
+    (let [linked (linked-entities {:model             model
+                                   :model-index       model-index
+                                   :model-index-value model-index-value})]
+      (or (create-linked-dashboard {:model             model
+                                    :linked-tables     linked
+                                    :model-index       model-index
+                                    :model-index-value model-index-value})
+          (throw (ex-info (tru "No linked entities")
+                          {:model-index-id model-index-id
+                           :status-code    400}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
