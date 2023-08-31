@@ -485,6 +485,7 @@
             (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
+          ;; FIXME this is a source of flake
           (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
             (is (= {:values          [["Good"]]
                     :has_more_values false}
