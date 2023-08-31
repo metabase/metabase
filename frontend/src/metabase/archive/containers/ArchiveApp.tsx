@@ -46,7 +46,9 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
   }, []);
 
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
-    useListSelect(item => `${item.model}:${item.id}`);
+    useListSelect<EntityWrappedCollectionItem>(
+      item => `${item.model}:${item.id}`,
+    );
 
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(list);
