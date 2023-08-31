@@ -26,11 +26,11 @@
   (when (= :ee edition)
     (let [ia-zip-file "resources/instance_analytics.zip"]
       (u/step "Packaging Instance Analytics Content"
-        (u/step "Checking for existing IA Content zip file"
+        (u/step "Delete IA Content zip file if exists"
           (if (u/file-exists? ia-zip-file)
             (u/step "found IA Content zip file: Deleting now..."
               (io/delete-file (io/file ia-zip-file)))
-            (u/step "IA Content zip file not found => skipping delete")))
+            (u/step "Don't need to delete IA Content zip file, filed does not exist.")))
         (u/step "Zipping Instance Analytics to ia-zip-file"
           (u/zip-directory->file "resources/instance_analytics"
                                  "resources/instance_analytics.zip"))))

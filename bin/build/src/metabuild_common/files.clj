@@ -163,13 +163,15 @@
                  zos (ZipOutputStream. fos)]
        (doseq [^File file (file-seq source-directory-path)]
          (when (not (.isDirectory ^File file))
-           (let [entry-name (-> (.getAbsolutePath file)
-                                (.substring (+ (.length (.getAbsolutePath source-directory-path)) 1)))
+           (let [entry-name (.getAbsolutePath file)
+                 _ (out/safe-println (pr-str {:entry-name entry-name :file file}))
+                 entry-name* (.substring entry-name
+                                 (+ (.length (.getAbsolutePath source-directory-path)) 1))
                  buffer (byte-array 1024)
                  fis (FileInputStream. file)]
-             (when verbose (out/safe-println "Zipping file:" entry-name))
+             (when verbose (out/safe-println "Zipping file:" entry-name*))
              (swap! entry-count inc)
-             (.putNextEntry zos (ZipEntry. entry-name))
+             (.putNextEntry zos (ZipEntry. entry-name*))
              (loop [len (.read fis buffer)]
                (when (pos? len)
                  (.write zos buffer 0 len)
