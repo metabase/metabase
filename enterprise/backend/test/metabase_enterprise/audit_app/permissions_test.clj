@@ -14,6 +14,7 @@
    [toucan2.core :as t2]))
 
 (deftest permissions-instance-analytics-audit-v2-test
+  #_:clj-kondo/ignore ;; TODO: with-temp* -> with-temp
   (mt/with-temp* [PermissionsGroup [{group-id :id}]
                   Database         [{database-id :id}]
                   Table            [view-table {:db_id database-id :name "v_users"}]

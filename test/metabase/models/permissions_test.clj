@@ -622,6 +622,7 @@
 
 (deftest audit-db-update-test
   (testing "Throws exception when we attempt to change the audit db permission manually."
+    #_:clj-kondo/ignore ;; TODO: with-temp* -> with-temp
     (mt/with-temp* [PermissionsGroup [group]
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
