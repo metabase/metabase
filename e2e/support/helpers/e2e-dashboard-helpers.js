@@ -62,7 +62,7 @@ export function getDashboardCardMenu(index = 0) {
 }
 
 export function showDashboardCardActions(index = 0) {
-  getDashboardCard(index).realHover();
+  getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
@@ -191,3 +191,47 @@ export function toggleDashboardInfoSidebar() {
 export function openDashboardMenu() {
   dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }
+
+/**
+ *
+ * @param {number} dashboardId
+ * @param {Object} option
+ * @param {number=} option.id
+ * @param {number=} option.col
+ * @param {number=} option.row
+ * @param {number=} option.size_x
+ * @param {number=} option.size_y
+ * @param {string} option.text
+ */
+export function createTextCard({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 6,
+  text,
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
+}
+
+export const getNextUnsavedDashboardCardId = (() => {
+  let id = 0;
+  return () => --id;
+})();

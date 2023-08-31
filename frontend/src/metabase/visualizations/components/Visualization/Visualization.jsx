@@ -456,7 +456,11 @@ class Visualization extends PureComponent {
 
     return (
       <ErrorBoundary>
-        <VisualizationRoot className={className} style={style}>
+        <VisualizationRoot
+          className={className}
+          style={style}
+          data-testid="visualization-root"
+        >
           {!!hasHeader && (
             <VisualizationHeader>
               <ChartCaption
