@@ -1,70 +1,56 @@
 import {
+  createAction,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  popover,
   resetSnowplow,
   restore,
+  setActionsEnabledForDB,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createMetric,
-  createSegment,
-} from "e2e/support/helpers/e2e-table-metadata-helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const typeFilters = [
   {
     label: "Question",
-    sidebarLabel: "Questions",
     filterName: "card",
     resultInfoText: "Saved question in",
   },
   {
     label: "Dashboard",
-    sidebarLabel: "Dashboards",
     filterName: "dashboard",
     resultInfoText: "Dashboard in",
   },
   {
     label: "Collection",
-    sidebarLabel: "Collections",
     filterName: "collection",
     resultInfoText: "Collection",
   },
   {
-    label: "Metric",
-    sidebarLabel: "Metrics",
-    filterName: "metric",
-    resultInfoText: "Metric for",
-  },
-  {
-    label: "Segment",
-    sidebarLabel: "Segments",
-    filterName: "segment",
-    resultInfoText: "Segment of",
-  },
-  {
     label: "Table",
-    sidebarLabel: "Raw Tables",
     filterName: "table",
     resultInfoText: "Table in",
   },
   {
     label: "Database",
-    sidebarLabel: "Databases",
     filterName: "database",
     resultInfoText: "Database",
   },
   {
     label: "Model",
-    sidebarLabel: "Models",
     filterName: "dataset",
     resultInfoText: "Model in",
   },
+  {
+    label: "Action",
+    filterName: "action",
+  },
 ];
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -136,31 +122,31 @@ describe("scenarios > search", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
 
-      createSegment({
-        name: "Segment",
-        description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-        },
-      });
-
-      createMetric({
-        name: "Metric",
-        description: "Sum of orders subtotal",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-      });
+      setActionsEnabledForDB(SAMPLE_DB_ID);
 
       cy.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
         dataset: true,
+      }).then(({ body: { id } }) => {
+        createAction({
+          name: "Update orders quantity",
+          description: "Set orders quantity to the same value",
+          type: "query",
+          model_id: id,
+          database_id: SAMPLE_DB_ID,
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            native: {
+              query: "UPDATE orders SET quantity = quantity",
+            },
+            type: "native",
+          },
+          parameters: [],
+          visualization_settings: {
+            type: "button",
+          },
+        });
       });
     });
 
@@ -190,9 +176,10 @@ describe("scenarios > search", () => {
           cy.wrap(result).should("contain.text", resultInfoText);
         });
 
-        throw new Error(
-          "This test needs to be changed: Add logic for checking sidebar filter here.",
-        );
+        cy.findByTestId("type-search-filter").within(() => {
+          cy.findByText("Question").should("exist");
+          cy.findByLabelText("close icon").should("exist");
+        });
       });
     });
 
@@ -230,24 +217,26 @@ describe("scenarios > search", () => {
     });
 
     describe("search filters", () => {
-      typeFilters.forEach(
-        ({ label, sidebarLabel, filterName, resultInfoText }) => {
-          it(`should filter results by ${label}`, () => {
-            cy.visit("/");
+      typeFilters.forEach(({ label, filterName, resultInfoText }) => {
+        it(`should filter results by ${label}`, () => {
+          cy.visit("/");
 
-            getSearchBar().clear().type("e{enter}");
-            cy.wait("@search");
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
 
-            cy.findAllByTestId("result-link-info-text").each(result => {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            });
-
-            throw new Error(
-              "This test needs to be changed: Change filter modal logic to clicking on a sidebar dropdown instead.",
-            );
+          cy.findByTestId("type-search-filter").click();
+          popover().within(() => {
+            cy.findByText(label).click();
+            cy.findByText("Apply filters").click();
           });
-        },
-      );
+
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            if (resultInfoText) {
+              cy.wrap(result).should("contain.text", resultInfoText);
+            }
+          });
+        });
+      });
     });
   });
 });
