@@ -119,11 +119,11 @@
                                  {:aggregation [[:count]]}))))
 
         ;; Update the test database with a default role that has full permissions
-        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "accountadmin"))
+        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
 
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
-          ;; (`limited.role` in CI Snowflake has no data access)
+          ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"SQL compilation error:\nDatabase.*does not exist or not authorized"
