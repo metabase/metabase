@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.driver.impersonation
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -68,8 +69,13 @@
       (when (not-empty role-attributes)
         (let [conn-impersonation (first conn-impersonations)
               role-attribute     (:attribute conn-impersonation)
-              user-attributes    (:login_attributes @api/*current-user*)]
-          (get user-attributes role-attribute))))))
+              user-attributes    (:login_attributes @api/*current-user*)
+              role               (get user-attributes role-attribute)]
+          (if (str/blank? role)
+            (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
+                            {:user-id api/*current-user-id*
+                             :conn-impersonations conn-impersonations}))
+            role))))))
 
 (defenterprise hash-key-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
