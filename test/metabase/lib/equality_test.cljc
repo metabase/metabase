@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -300,3 +301,65 @@
       (testing "... index-of-closest-matching-metadata finds the correct metadata, categories.name!!!"
         (is (= 7
                (lib.equality/index-of-closest-matching-metadata a-ref cols)))))))
+
+(deftest ^:parallel closest-matching-metadata-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))
+        [ag]  (lib/aggregations query)]
+    (is (=? {:display-name "Count", :lib/source :source/aggregations}
+            (lib.equality/closest-matching-metadata
+             [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+             (lib/returned-columns query))))))
+
+(deftest ^:parallel closest-matching-metadata-expression-test
+  (is (=? {:name "expr", :lib/source :source/expressions}
+          (lib.equality/closest-matching-metadata
+           [:expression {:lib/uuid (str (random-uuid))} "expr"]
+           (lib/visible-columns lib.tu/query-with-expression)))))
+
+(deftest ^:parallel find-column-for-legacy-ref-field-test
+  (are [legacy-ref] (=? {:name "NAME", :id (meta/id :venues :name)}
+                        (lib/find-column-for-legacy-ref
+                         lib.tu/venues-query
+                         legacy-ref
+                         (lib/visible-columns lib.tu/venues-query)))
+    [:field (meta/id :venues :name) nil]
+    [:field (meta/id :venues :name) {}]
+    ;; should work with refs that need normalization
+    ["field" (meta/id :venues :name) nil]
+    ["field" (meta/id :venues :name)]
+    #?@(:cljs
+        [#js ["field" (meta/id :venues :name) nil]
+         #js ["field" (meta/id :venues :name) #js {}]])))
+
+(deftest ^:parallel find-column-for-legacy-ref-expression-test
+  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
+                        (lib/find-column-for-legacy-ref
+                         lib.tu/query-with-expression
+                         legacy-ref
+                         (lib/visible-columns lib.tu/query-with-expression)))
+    [:expression "expr"]
+    ["expression" "expr"]
+    ["expression" "expr" nil]
+    ["expression" "expr" {}]
+    #?@(:cljs
+        [#js ["expression" "expr"]
+         #js ["expression" "expr" #js {}]])))
+
+(deftest ^:parallel find-column-for-legacy-ref-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))]
+    (are [legacy-ref] (=? {:name           "count"
+                           :effective-type :type/Integer
+                           :lib/source     :source/aggregations}
+                          (lib/find-column-for-legacy-ref
+                           query
+                           legacy-ref
+                           (lib/returned-columns query)))
+      [:aggregation 0]
+      ["aggregation" 0]
+      ["aggregation" 0 nil]
+      ["aggregation" 0 {}]
+      #?@(:cljs
+          [#js ["aggregation" 0]
+           #js ["aggregation" 0 #js {}]]))))
