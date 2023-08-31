@@ -14,11 +14,11 @@
    [toucan2.core :as t2]))
 
 (deftest permissions-instance-analytics-audit-v2-test
-  (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                  Database         [{database-id :id}]
-                  Table            [view-table {:db_id database-id :name "v_users"}]
-                  Collection       [{collection-id        :id
-                                     collection-entity-id :entity_id}]]
+  (mt/with-temp [PermissionsGroup {group-id :id}                    {}
+                 Database         {database-id :id}                 {}
+                 Table            view-table                        {:db_id database-id :name "v_users"}
+                 Collection       {collection-id :id
+                                   collection-entity-id :entity_id} {}]
     (with-redefs [audit-db/default-audit-db-id                (constantly database-id)
                   audit-db/default-audit-collection-entity-id (constantly collection-entity-id)]
       (testing "Adding instance analytics adds audit db permissions"
