@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { color } from "metabase/lib/colors";
 
 export const DismissIconButtonWrapper = styled(IconButtonWrapper)`
-  color: ${color("bg-dark")};
+  color: ${({ theme }) => theme.colors.bg[2]};
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${({ theme }) => theme.colors.text[1]};
   }
 `;
