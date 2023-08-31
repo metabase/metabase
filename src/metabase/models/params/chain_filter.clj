@@ -506,7 +506,7 @@
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ms/PositiveInt]]
-  (:id (first (mdb.query/query (remapped-field-id-query field-id)))))
+  (:id (t2/query-one (remapped-field-id-query field-id))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
@@ -556,7 +556,7 @@
      (-> (unremapped-chain-filter field-id constraints options)
          (update :values add-human-readable-values @v->human-readable))
 
-     (use-cached-field-values? field-id)
+     (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
      (cached-field-values field-id constraints options)
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
@@ -663,11 +663,11 @@
      (str/blank? query)
      (apply chain-filter field-id constraints options)
 
-     (search-cached-field-values? field-id constraints)
-     (cached-field-values-search field-id query constraints options)
-
      (some? @v->human-readable)
      (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query options)
+
+     (and (search-cached-field-values? field-id constraints) (nil? the-remapped-field-id))
+     (cached-field-values-search field-id query constraints options)
 
      (some? @the-remapped-field-id)
      (unremapped-chain-filter-search @the-remapped-field-id constraints query (assoc options :original-field-id field-id))
