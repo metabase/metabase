@@ -1329,3 +1329,39 @@
                                              :field_type [:entity/GenericTable :type/Number],
                                              :score      80}]}}
              bindings)))))
+
+(deftest bind-dimensions-select-most-specific-test
+  (testing "When multiple dimensions are selected the most specific dimension is selected."
+    (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity],
+                        :score      100,
+                        :matches    [{:semantic_type  :type/Quantity,
+                                      :name           "QUANTITY",
+                                      :effective_type :type/Integer,
+                                      :display_name   "Quantity",
+                                      :base_type      :type/Integer,
+                                      :link           nil,
+                                      :field_type     [:entity/GenericTable :type/Quantity],
+                                      :score          100}]}})
+        (#'magic/bind-dimensions
+          {:source {:entity_type :entity/GenericTable
+                    :fields      [{:semantic_type  :type/Discount,
+                                   :name           "DISCOUNT"
+                                   :effective_type :type/Float
+                                   :base_type      :type/Float}
+                                  {:semantic_type  :type/Quantity,
+                                   :name           "QUANTITY"
+                                   :effective_type :type/Integer
+                                   :base_type      :type/Integer}]}
+           :tables [{:entity_type :entity/TransactionTable
+                     :fields      [{:semantic_type  :type/Discount,
+                                    :name           "DISCOUNT"
+                                    :effective_type :type/Float,
+                                    :display_name   "Discount"
+                                    :base_type      :type/Float}
+                                   {:semantic_type  :type/Quantity,
+                                    :name           "QUANTITY"
+                                    :effective_type :type/Integer
+                                    :display_name   "Quantity"
+                                    :base_type      :type/Integer}]}]}
+          [{"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+           {"Quantity" {:field_type [:type/Quantity], :score 100}}]))))
