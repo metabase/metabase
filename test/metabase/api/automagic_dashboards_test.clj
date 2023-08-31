@@ -307,7 +307,6 @@
   - query: a dataset_query for the model
   - pk-ref: a field_ref for the model's pk
   - value-ref: a field_ref for the model's label."
-  {:clj-kondo/ignore [:unresolved-symbol]}
   [[bindings query-info] & body]
   `(do-with-testing-model ~query-info
                           (fn [~bindings] ~@body)))
