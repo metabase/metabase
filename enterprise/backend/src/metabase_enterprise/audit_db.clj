@@ -36,7 +36,7 @@
 
   - In the unlikely case that a user has many many databases in Metabase, and ensure there can Never be a collision, we
   do a quick check here and pick a new ID if it would have collided. Similar to finding an open port number."
-  ([engine] (install-database! engine (au)))
+  ([engine] (install-database! engine (default-audit-db-id)))
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
