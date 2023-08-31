@@ -29,7 +29,6 @@
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.sync.analyze.classify :as classify]
