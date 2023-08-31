@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Field, FieldId, FieldValuesResult } from "metabase-types/api";
+import type { Field, FieldId, FieldValuesResult } from "metabase-types/api";
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupFieldEndpoints(field: Field) {

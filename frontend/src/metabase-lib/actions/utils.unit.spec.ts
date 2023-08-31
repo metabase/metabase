@@ -1,4 +1,4 @@
-import { WritebackAction, Database } from "metabase-types/api";
+import type { WritebackAction, Database } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockQueryAction,

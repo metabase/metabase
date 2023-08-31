@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import EntityName from "metabase/entities/containers/EntityName";
+import { EntityName } from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
 

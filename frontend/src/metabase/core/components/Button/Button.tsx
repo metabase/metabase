@@ -1,14 +1,10 @@
 import cx from "classnames";
-import {
-  ButtonHTMLAttributes,
-  forwardRef,
-  ReactNode,
-  Ref,
-  ElementType,
-} from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
+import { forwardRef } from "react";
 import styled from "@emotion/styled";
 import _ from "underscore";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   ButtonContent,
   ButtonRoot,
@@ -131,13 +127,18 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)``;
+const StyledButton = styled(BaseButton)``;
 
-Button.displayName = "Button";
+StyledButton.displayName = "Button";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Button, {
+/**
+ * @deprecated: use Button from "metabase/ui"
+ */
+const Button = Object.assign(StyledButton, {
   Root: ButtonRoot,
   Content: ButtonContent,
   TextContainer: ButtonTextContainer,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Button;

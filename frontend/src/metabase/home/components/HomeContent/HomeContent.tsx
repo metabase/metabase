@@ -7,8 +7,8 @@ import {
   usePopularItemListQuery,
   useRecentItemListQuery,
 } from "metabase/common/hooks";
-import { PopularItem, RecentItem, User } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";

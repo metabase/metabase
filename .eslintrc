@@ -16,6 +16,7 @@
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
     "import/no-default-export": 2,
+    "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
     "import/order": [
       "error",
@@ -121,11 +122,16 @@
     "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
-    "plugin:import/warnings"
+    "plugin:import/warnings",
+    "plugin:import/typescript"
   ],
   "settings": {
     "import/internal-regex": "^metabase/|^metabase-lib/",
-    "import/resolver": "webpack",
+    "import/resolver": {
+      "webpack": {
+        "typescript": true
+      }
+    },
     "import/ignore": ["\\.css$"],
     "react": {
       "version": "detect"
@@ -149,6 +155,7 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
         "no-unused-vars": "off",
+        "@typescript-eslint/consistent-type-imports": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           {

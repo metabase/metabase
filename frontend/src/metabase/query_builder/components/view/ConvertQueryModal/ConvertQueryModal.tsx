@@ -8,9 +8,9 @@ import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { NativeQueryForm } from "metabase-types/api";
-import { QueryBuilderUIControls, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { NativeQueryForm } from "metabase-types/api";
+import type { QueryBuilderUIControls, State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 

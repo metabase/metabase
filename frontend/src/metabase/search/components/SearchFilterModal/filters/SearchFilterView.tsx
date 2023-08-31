@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Grid, Title } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/core/components/Icon";

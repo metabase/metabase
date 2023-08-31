@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { SearchAwareLocation, SearchFilters } from "metabase/search/types";
+import type { SearchAwareLocation, SearchFilters } from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
 export function isSearchPageLocation(location: SearchAwareLocation): boolean {

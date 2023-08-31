@@ -156,6 +156,13 @@ export type ExternalOp = {
   args: [ColumnMetadata, ...ExpressionArg[]];
 };
 
+export type FilterParts = {
+  operator: FilterOperator;
+  options: Record<string, unknown>;
+  column: ColumnWithOperators | null;
+  args: ExpressionArg[];
+};
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 
@@ -167,3 +174,70 @@ export type JoinStrategyDisplayInfo = {
   default?: boolean;
   shortName: string;
 };
+
+declare const DrillThru: unique symbol;
+export type DrillThru = unknown & { _opaque: typeof DrillThru };
+
+export type BaseDrillThruInfo<Type> = { type: Type };
+
+export type QuickFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/quick-filter"> & {
+    operators: Array<"=" | "≠" | "<" | ">">;
+  };
+
+type ObjectDetailsDrillThruInfo<Type> = BaseDrillThruInfo<Type> & {
+  objectId: string | number;
+  manyPks: boolean;
+};
+export type PKDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pk">;
+export type ZoomDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/zoom">;
+export type FKDetailsDrillThruInfo =
+  ObjectDetailsDrillThruInfo<"drill-thru/fk-details">;
+export type PivotDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pivot">;
+
+export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
+export type DistributionDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/distribution">;
+
+export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
+  directions: Array<"asc" | "desc">;
+};
+
+export type SummarizeColumnDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/summarize-column"> & {
+    aggregations: Array<"sum" | "avg" | "distinct">;
+  };
+export type SummarizeColumnByTimeDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
+
+export type ColumnFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/column-filter"> & {
+    initialOp: { short: string };
+  };
+
+export type UnderlyingRecordsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/underlying-records"> & {
+    rowCount: number;
+    tableName: string;
+  };
+
+export type DrillThruDisplayInfo =
+  | QuickFilterDrillThruInfo
+  | PKDrillThruInfo
+  | ZoomDrillThruInfo
+  | FKDetailsDrillThruInfo
+  | PivotDrillThruInfo
+  | FKFilterDrillThruInfo
+  | DistributionDrillThruInfo
+  | SortDrillThruInfo
+  | SummarizeColumnDrillThruInfo
+  | SummarizeColumnByTimeDrillThruInfo
+  | ColumnFilterDrillThruInfo
+  | UnderlyingRecordsDrillThruInfo;
+
+export interface Dimension {
+  column: Record<string, unknown>;
+  value?: any;
+}
+
+export type DataRow = Array<{ col: Record<string, unknown>; value: any }>;

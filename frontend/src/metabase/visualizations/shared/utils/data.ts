@@ -1,24 +1,24 @@
 import { t } from "ttag";
-import {
+import type {
   RowValue,
   RowValues,
   SeriesOrderSetting,
   DatasetData,
 } from "metabase-types/api";
 
-import {
+import type {
   ChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
-import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
-import {
+import type { ColumnFormatter } from "metabase/visualizations/shared/types/format";
+import type {
   GroupedDataset,
   GroupedDatum,
   MetricDatum,
   MetricValue,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import type { Series } from "metabase/visualizations/shared/components/RowChart/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { getChartMetrics } from "./series";
 

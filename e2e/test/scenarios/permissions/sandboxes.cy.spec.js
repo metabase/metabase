@@ -13,6 +13,7 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
+  sidebar,
   startNewQuestion,
   sendEmailAndAssert,
   setTokenFeatures,
@@ -909,6 +910,8 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
+      setupSMTP();
+
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
@@ -918,12 +921,10 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       visitDashboard(1);
-      cy.icon("subscription").click();
-      // We're starting without email or Slack being set up so it's expected to see the following:
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Create a dashboard subscription");
-      cy.findAllByRole("link", { name: "set up email" });
-      cy.findAllByRole("link", { name: "configure Slack" });
+      cy.findByLabelText("subscriptions").click();
+
+      // should forward to email since that is the only one setup
+      sidebar().findByText("Email this dashboard").should("exist");
     });
 
     it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
@@ -1042,12 +1043,12 @@ describeEE("formatting > sandboxes", () => {
 
         cy.signInAsSandboxedUser();
         visitDashboard(1);
-        cy.icon("subscription").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Email it").click();
-        cy.findByPlaceholderText("Enter user names or email addresses").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("User 1").click();
+        cy.findByLabelText("subscriptions").click();
+
+        sidebar()
+          .findByPlaceholderText("Enter user names or email addresses")
+          .click();
+        popover().findByText("User 1").click();
         sendEmailAndAssert(email => {
           expect(email.html).to.include("Orders in a dashboard");
           expect(email.html).to.include("37.65");

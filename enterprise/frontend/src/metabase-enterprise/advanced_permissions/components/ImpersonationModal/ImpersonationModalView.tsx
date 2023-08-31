@@ -8,13 +8,13 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Form from "metabase/core/components/Form";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Errors from "metabase/core/utils/errors";
-import { UserAttribute } from "metabase-types/api";
+import type { UserAttribute } from "metabase-types/api";
 import Alert from "metabase/core/components/Alert";
 import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
 import Link from "metabase/core/components/Link/Link";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import { ImpersonationWarning } from "../ImpersonationWarning";
 import {
   ImpersonationDescription,

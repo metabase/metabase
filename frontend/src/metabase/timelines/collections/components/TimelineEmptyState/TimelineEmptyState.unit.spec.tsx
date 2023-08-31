@@ -3,9 +3,8 @@ import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import TimelineEmptyState, {
-  TimelineEmptyStateProps,
-} from "./TimelineEmptyState";
+import type { TimelineEmptyStateProps } from "./TimelineEmptyState";
+import TimelineEmptyState from "./TimelineEmptyState";
 
 describe("TimelineEmptyState", () => {
   beforeEach(() => {

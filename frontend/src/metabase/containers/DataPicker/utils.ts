@@ -3,7 +3,7 @@ import {
   RAW_DATA_INFO_ITEM,
   SAVED_QUESTIONS_INFO_ITEM,
 } from "./constants";
-import { DataTypeInfoItem } from "./types";
+import type { DataTypeInfoItem } from "./types";
 
 export function getDataTypes({
   hasModels,

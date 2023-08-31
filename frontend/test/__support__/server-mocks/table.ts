@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 import { setupFieldEndpoints } from "./field";
 
 export function setupTableEndpoints(table: Table) {

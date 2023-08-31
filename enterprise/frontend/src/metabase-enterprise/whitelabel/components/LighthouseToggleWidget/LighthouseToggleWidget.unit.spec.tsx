@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LighthouseToggleWidget from "./LighthouseToggleWidget";
-import { LighthouseSetting } from "./types";
+import type { LighthouseSetting } from "./types";
 
 const TOGGLE_LABEL = "Show this on the home and login pages";
 

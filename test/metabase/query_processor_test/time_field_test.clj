@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn- time-query [filter-type & filter-args]
@@ -16,7 +16,7 @@
 (defn- normal-drivers-that-support-time-type []
   (filter mt/supports-time-type? (mt/normal-drivers)))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
     (doseq [[message [start end]] {"Basic between query on a time field"
                                    ["08:00:00" "09:00:00"]
@@ -32,7 +32,7 @@
                   [4 "Simcha Yan"   "08:30:00Z"]])
                (time-query :between start end)))))))
 
-(deftest greater-than-test
+(deftest ^:parallel greater-than-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]
@@ -44,7 +44,7 @@
               [10 "Frans Hevel" "19:30:00Z"]])
            (time-query :> "16:00:00Z")))))
 
-(deftest equals-test
+(deftest ^:parallel equals-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
     (is (= (if (= :sqlite driver/*driver*)
              [[3 "Kaneonuskatew Eiran" "16:15:00"]]
@@ -63,13 +63,13 @@
                ;; using a time field, the result below is what happens when the
                ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
                ;; time by the DB
-               (qp.test/supports-report-timezone? driver/*driver*)
+               (qp.test-util/supports-report-timezone? driver/*driver*)
                [[1 "Plato Yeshua" "08:30:00-08:00"]
                 [4 "Simcha Yan" "08:30:00-08:00"]]
 
                :else
                [[1 "Plato Yeshua" "08:30:00Z"]
                 [4 "Simcha Yan" "08:30:00Z"]])
-             (apply time-query :between (if (qp.test/supports-report-timezone? driver/*driver*)
+             (apply time-query :between (if (qp.test-util/supports-report-timezone? driver/*driver*)
                                           ["08:00:00"       "09:00:00"]
                                           ["08:00:00-00:00" "09:00:00-00:00"])))))))
