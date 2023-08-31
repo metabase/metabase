@@ -24,14 +24,12 @@ const TestSearchFilterModal = ({
 };
 
 const TEST_TYPES: Array<SearchModelType> = [
+  "action",
   "card",
   "collection",
   "dashboard",
   "database",
   "dataset",
-  "metric",
-  "pulse",
-  "segment",
   "table",
 ];
 

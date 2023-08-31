@@ -41,6 +41,6 @@ export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
 export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   title: string;
   iconName: IconName;
-  DisplayComponent: ComponentType<{ value: SearchFilterPropTypes[T] }>;
+  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
 };
