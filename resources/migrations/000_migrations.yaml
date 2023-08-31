@@ -16153,7 +16153,7 @@ databaseChangeLog:
                   name: uq_table_privileges_table_id_role
 
   - changeSet:
-      id: v48.00-013
+      id: v48.00-014
       author: calherries
       comment: Added 0.48.0 - Create table_privileges.table_id index
       preConditions:
@@ -16170,7 +16170,7 @@ databaseChangeLog:
       rollback: # not needed, it will be removed with the table
 
   - changeSet:
-      id: v48.00-014
+      id: v48.00-015
       author: calherries
       comment: Added 0.48.0 - Create table_privileges.role index
       changes:
