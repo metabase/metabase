@@ -1,6 +1,8 @@
 import type * as React from "react";
 import cx from "classnames";
 
+import { Button } from "metabase/ui";
+
 import {
   Root,
   Title,
@@ -24,10 +26,17 @@ type Props = {
   borderBottom?: boolean;
   dataTestId?: string;
   id: string;
+  settingsLink?: {
+    text: string;
+    settingKey: string;
+    showWhen?: (props?: Record<any, any>) => boolean;
+  };
+  handleWidgetLink: (key: String) => void;
 };
 
 const ChartSettingsWidget = ({
   title,
+  settingsLink,
   description,
   hint,
   hidden,
@@ -41,12 +50,16 @@ const ChartSettingsWidget = ({
   // disables X padding for certain widgets so divider line extends to edge
   noPadding,
   borderBottom,
+  handleWidgetLink,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
   ...extraWidgetProps
 }: Props) => {
   const isFormField = variant === "form-field";
+  const showSettingsLink = !!settingsLink && !extraWidgetProps.dashboard;
+
+  // console.log(settingsLink, showSettingsLink);
   return (
     <Root
       hidden={hidden}
@@ -76,6 +89,16 @@ const ChartSettingsWidget = ({
             </InfoIconContainer>
           )}
         </Title>
+      )}
+      {showSettingsLink && (
+        <Button
+          mb="0.25rem"
+          pl="0"
+          variant="subtle"
+          onClick={() => handleWidgetLink(settingsLink.settingKey)}
+        >
+          {settingsLink.text}
+        </Button>
       )}
       {description && <Description>{description}</Description>}
       {Widget && <Widget {...extraWidgetProps} {...props} />}

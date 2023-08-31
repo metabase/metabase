@@ -11,6 +11,7 @@ import ColumnItem from "./ColumnItem";
 interface SortableItem {
   enabled: boolean;
   color?: string;
+  icon?: string;
 }
 
 interface SortableColumnFunctions<T> {
@@ -59,6 +60,7 @@ const SortableColumn = SortableElement(function SortableColumn<
       color={item.color}
       draggable={!isDragDisabled}
       role="listitem"
+      icon={item.icon}
     />
   );
 }) as unknown as <T extends SortableItem>(

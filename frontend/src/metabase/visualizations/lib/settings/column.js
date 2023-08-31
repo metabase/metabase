@@ -55,6 +55,8 @@ import {
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
+import { ChartSettingAddRemoveColumns } from "metabase/visualizations/components/settings/ChartSettingAddRemoveColumns";
+import Question from "metabase-lib/Question";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -531,7 +533,17 @@ export const tableColumnSettings = {
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
   "table.columns": {
     section: t`Columns`,
-    title: t`Columns`,
+    getSettingsLink: ([{ card }], _settings, { isDashboard }) => {
+      const question = Question.create(card);
+      if (isDashboard || question?.type() !== "query") {
+        return null;
+      }
+
+      return {
+        text: t`Add or remove columns`,
+        settingKey: `table.columns_visibility`,
+      };
+    },
     widget: ChartSettingOrderedColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
@@ -580,5 +592,24 @@ export const tableColumnSettings = {
         },
       };
     },
+  },
+  "table.columns_visibility": {
+    widget: ChartSettingAddRemoveColumns,
+    hidden: true,
+    section: t`Columns`,
+    getSettingsLink: () => ({
+      text: t`Done picking columns`,
+      settingKey: null,
+    }),
+    writeSettingId: "table.columns",
+    readDependencies: ["table.columns"],
+    getValue: (_series, vizSettings) => vizSettings["table.columns"],
+    getProps: ([
+      {
+        data: { cols },
+      },
+    ]) => ({
+      columns: cols,
+    }),
   },
 };

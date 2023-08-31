@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import {
+  ColumnItemButton,
   ColumnItemIcon,
   ColumnItemSpan,
   ColumnItemContent,
@@ -9,14 +10,15 @@ import {
   ColumnItemColorPicker,
 } from "./ColumnItem.styled";
 
-const ActionIcon = ({ icon, onClick, ...props }) => (
-  <ColumnItemIcon
+const ActionButton = ({ icon, onClick, ...props }) => (
+  <ColumnItemButton
     data-testid={props["data-testid"]}
     onlyIcon
     icon={icon}
     iconSize={16}
     onClick={e => {
       e.stopPropagation();
+
       onClick(e.target);
     }}
   />
@@ -33,6 +35,7 @@ const ColumnItem = ({
   onColorChange,
   draggable,
   className = "",
+  icon,
   ...props
 }) => {
   return (
@@ -45,7 +48,7 @@ const ColumnItem = ({
       title={props.role ? title : null}
     >
       <ColumnItemContainer>
-        {draggable && <ColumnItemDragHandle name="grabber" />}
+        {draggable && <ColumnItemDragHandle name="grabber" size={12} />}
         {onColorChange && color && (
           <ColumnItemColorPicker
             value={color}
@@ -54,30 +57,31 @@ const ColumnItem = ({
           />
         )}
         <ColumnItemContent>
+          {icon && <ColumnItemIcon name={icon} />}
           <ColumnItemSpan>{title}</ColumnItemSpan>
           {onEdit && (
-            <ActionIcon
+            <ActionButton
               icon="ellipsis"
               onClick={onEdit}
               data-testid={`${title}-settings-button`}
             />
           )}
           {onAdd && (
-            <ActionIcon
+            <ActionButton
               icon="add"
               onClick={onAdd}
               data-testid={`${title}-add-button`}
             />
           )}
           {onRemove && (
-            <ActionIcon
+            <ActionButton
               icon="eye_outline"
               onClick={onRemove}
               data-testid={`${title}-hide-button`}
             />
           )}
           {onEnable && (
-            <ActionIcon
+            <ActionButton
               icon="eye_crossed_out"
               onClick={onEnable}
               data-testid={`${title}-show-button`}
@@ -92,4 +96,7 @@ const ColumnItem = ({
 export default Object.assign(ColumnItem, {
   Root: ColumnItemRoot,
   Container: ColumnItemContainer,
+  Content: ColumnItemContent,
+  Button: ColumnItemButton,
+  DragHandle: ColumnItemDragHandle,
 });

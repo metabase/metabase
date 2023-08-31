@@ -31,7 +31,7 @@ function StackedCheckBox({
   checkedColor = DEFAULT_CHECKED_COLOR,
   uncheckedColor = DEFAULT_UNCHECKED_COLOR,
   size = DEFAULT_SIZE,
-  className,
+  className = undefined,
   ...props
 }) {
   const renderLabel = useCallback(() => {

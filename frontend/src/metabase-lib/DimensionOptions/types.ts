@@ -15,6 +15,7 @@ export interface DimensionFK {
   name?: string;
   icon?: string;
   field: Field;
+  dimension?: Dimension;
   dimensions: Dimension[];
 }
 

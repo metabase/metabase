@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
 
 import { Icon } from "metabase/core/components/Icon";
 
@@ -22,6 +23,7 @@ import ChartSettingsButton from "./ChartSettingsButton";
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 import ActionSettingsButton from "./ActionSettingsButton";
 import LinkCardEditButton from "./LinkCardEditButton";
+import { getMetadata } from "metabase/selectors/metadata";
 
 interface Props {
   series: Series;
@@ -63,6 +65,8 @@ function DashCardActionButtons({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
+  const metadata = useSelector(getMetadata);
+
   const buttons = [];
 
   if (supportPreviewing) {
@@ -91,6 +95,7 @@ function DashCardActionButtons({
           dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          metadata={metadata}
         />,
       );
     }

@@ -9,6 +9,24 @@ interface ColumnItemRootProps {
   isDraggable: boolean;
 }
 
+export const ColumnItemButton = styled(Button)`
+  margin-left: 1rem;
+  padding: 0;
+
+  &:hover {
+    background-color: unset;
+  }
+`;
+
+export const ColumnItemDragHandle = styled(Icon)`
+  flex-shrink: 0;
+`;
+
+export const ColumnItemIcon = styled(Icon)`
+  flex-shrink: 0;
+  margin-right: 0.375rem;
+`;
+
 export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   margin: 0.5rem 0;
   overflow: hidden;
@@ -27,11 +45,6 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     props.isDraggable &&
     `
     cursor: grab;
-    &:hover {
-      ${ColumnItemDragHandle} {
-        color: ${color("brand")};
-      }
-    }
     `}
   ${props => (props.onClick ? "cursor: pointer;" : "")}
 `;
@@ -44,7 +57,6 @@ export const ColumnItemSpan = styled.span`
   font-size: 0.875rem;
   line-height: 1rem;
   flex: auto;
-  color: ${color("text-dark")};
 `;
 
 export const ColumnItemContent = styled.div`
@@ -56,25 +68,11 @@ export const ColumnItemContent = styled.div`
 `;
 
 export const ColumnItemContainer = styled.div`
-  padding: 0.75rem 0.5rem;
+  padding: 0.75rem 0.5rem 0.75rem 0.5rem;
   position: relative;
   flex: auto;
   display: flex;
   align-items: center;
-`;
-
-export const ColumnItemIcon = styled(Button)`
-  margin-left: 1rem;
-  padding: 0;
-
-  &:hover {
-    background-color: unset;
-  }
-`;
-
-export const ColumnItemDragHandle = styled(Icon)`
-  color: ${color("text-medium")};
-  flex-shrink: 0;
 `;
 
 export const ColumnItemColorPicker = styled(ChartSettingColorPicker)`

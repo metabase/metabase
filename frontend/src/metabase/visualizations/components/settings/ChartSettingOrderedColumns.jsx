@@ -1,47 +1,24 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
+import { arrayMove } from "@dnd-kit/sortable";
 
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import ColumnItem from "./ColumnItem";
+import { ChartSettingOrderedItemsAgain } from "./ChartSettingOrderedItemsAgain";
+import Dimension from "metabase-lib/Dimension";
 
-import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
+import { SortableColumnItem } from "./ChartSettingOrderedColumns.styled";
 
 export const ChartSettingOrderedColumns = ({
   value,
   onChange,
-  question,
+  metadata,
   columns,
   onShowWidget,
   getColumnName: _getColumnName,
 }) => {
-  const query = question?.query();
-  const [enabledColumns, disabledColumns] = useMemo(
-    () =>
-      _.partition(
-        value
-          .map((columnSetting, index) => ({ ...columnSetting, index }))
-          .filter(columnSetting =>
-            findColumnForColumnSetting(columns, columnSetting),
-          ),
-        columnSetting => columnSetting.enabled,
-      ),
-    [value, columns],
-  );
-
-  let additionalFieldOptions = { count: 0 };
-  if (columns && query instanceof StructuredQuery) {
-    additionalFieldOptions = query.fieldsOptions(dimension => {
-      return !_.find(columns, column =>
-        dimension.isSameBaseDimension(column.field_ref),
-      );
-    });
-  }
-
   const handleEnable = useCallback(
     columnSetting => {
       const columnSettings = [...value];
@@ -63,15 +40,16 @@ export const ChartSettingOrderedColumns = ({
   );
 
   const handleSortEnd = useCallback(
-    ({ oldIndex, newIndex }) => {
-      const adjustedOldIndex = enabledColumns[oldIndex].index;
-      const adjustedNewIndex = enabledColumns[newIndex].index;
+    event => {
+      const { active, over } = event;
+      if (active !== over) {
+        const oldIndex = active.data.current.sortable.index;
+        const newIndex = over.data.current.sortable.index;
 
-      const fields = [...value];
-      fields.splice(adjustedNewIndex, 0, fields.splice(adjustedOldIndex, 1)[0]);
-      onChange(fields);
+        onChange(arrayMove(value, oldIndex, newIndex));
+      }
     },
-    [value, onChange, enabledColumns],
+    [value, onChange],
   );
 
   const handleEdit = useCallback(
@@ -92,27 +70,6 @@ export const ChartSettingOrderedColumns = ({
     [onShowWidget, columns],
   );
 
-  const handleAddNewField = useCallback(
-    fieldRef => {
-      const columnSettingIndex = value.findIndex(columnSetting =>
-        _.isEqual(fieldRef, columnSetting.fieldRef),
-      );
-
-      if (columnSettingIndex >= 0) {
-        const columnSettings = [...value];
-        columnSettings[columnSettingIndex] = {
-          ...columnSettings[columnSettingIndex],
-          enabled: true,
-        };
-        onChange(columnSettings);
-      } else {
-        const columnSettings = [...value, { fieldRef, enabled: true }];
-        onChange(columnSettings);
-      }
-    },
-    [value, onChange],
-  );
-
   const getColumnName = useCallback(
     columnSetting => {
       return _getColumnName(columnSetting) || "[Unknown]";
@@ -120,66 +77,49 @@ export const ChartSettingOrderedColumns = ({
     [_getColumnName],
   );
 
+  const tableColumns = value.map((columnSetting, index) => {
+    const elementProps = {
+      index,
+      title: getColumnName(columnSetting),
+      draggable: true,
+      icon: Dimension.parseMBQL(columnSetting.fieldRef, metadata)
+        .field()
+        .icon(),
+      onEdit: targetElement => handleEdit(columnSetting, targetElement),
+    };
+
+    if (columnSetting.enabled) {
+      elementProps.onRemove = () => {
+        handleDisable({ ...columnSetting, index });
+      };
+    } else {
+      elementProps.onEnable = () => handleEnable({ ...columnSetting, index });
+    }
+
+    return {
+      ...columnSetting,
+      id: findColumnForColumnSetting(columns, columnSetting).name,
+      element: (
+        <SortableColumnItem
+          {...elementProps}
+          disabled={!columnSetting.enabled}
+        />
+      ),
+    };
+  });
+
   return (
     <div className="list" role="list">
-      {enabledColumns.length > 0 ? (
+      {tableColumns.length > 0 ? (
         <div role="group" data-testid="visible-columns">
-          <ChartSettingOrderedItems
-            items={enabledColumns}
-            getItemName={getColumnName}
-            onEdit={handleEdit}
-            onRemove={handleDisable}
+          <ChartSettingOrderedItemsAgain
+            items={tableColumns}
             onSortEnd={handleSortEnd}
-            distance={5}
           />
         </div>
       ) : (
         <div className="my2 p2 flex layout-centered bg-grey-0 text-light text-bold rounded">
           {t`Add fields from the list below`}
-        </div>
-      )}
-      {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
-        <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
-      ) : null}
-      <div data-testid="disabled-columns">
-        {disabledColumns.map((columnSetting, index) => (
-          <ColumnItem
-            key={index}
-            title={getColumnName(columnSetting)}
-            onAdd={() => handleEnable(columnSetting)}
-            onClick={() => handleEnable(columnSetting)}
-            role="listitem"
-          />
-        ))}
-      </div>
-      {additionalFieldOptions.count > 0 && (
-        <div data-testid="additional-columns">
-          {additionalFieldOptions.dimensions.map((dimension, index) => (
-            <ColumnItem
-              key={index}
-              title={dimension.displayName()}
-              onAdd={() => handleAddNewField(dimension.mbql())}
-              role="listitem"
-            />
-          ))}
-          {additionalFieldOptions.fks.map((fk, index) => (
-            <div key={fk.id}>
-              <div className="my2 text-medium text-bold text-uppercase text-small">
-                {fk.name ||
-                  (fk.field.target
-                    ? fk.field.target.table.display_name
-                    : fk.field.display_name)}
-              </div>
-              {fk.dimensions.map((dimension, index) => (
-                <ColumnItem
-                  key={index}
-                  title={dimension.displayName()}
-                  onAdd={() => handleAddNewField(dimension.mbql())}
-                  role="listitem"
-                />
-              ))}
-            </div>
-          ))}
         </div>
       )}
     </div>

@@ -124,7 +124,7 @@ function getSettingWidget(
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = value => {
-    const newSettings = { [settingId]: value };
+    const newSettings = { [settingDef.writeSettingId || settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }
@@ -157,6 +157,9 @@ function getSettingWidget(
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
+    settingsLink: settingDef.getSettingsLink
+      ? settingDef.getSettingsLink(object, computedSettings, extra)
+      : null,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps

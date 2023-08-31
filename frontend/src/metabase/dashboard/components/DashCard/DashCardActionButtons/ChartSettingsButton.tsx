@@ -12,12 +12,14 @@ import type {
 } from "metabase-types/api";
 
 import DashCardActionButton from "./DashCardActionButton";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardOrderedCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  metadata: Metadata;
 }
 
 function ChartSettingsButton({
@@ -25,6 +27,7 @@ function ChartSettingsButton({
   dashboard,
   dashcard,
   onReplaceAllVisualizationSettings,
+  metadata,
 }: Props) {
   return (
     <ModalWithTrigger
@@ -47,6 +50,7 @@ function ChartSettingsButton({
         isDashboard
         dashboard={dashboard}
         dashcard={dashcard}
+        metadata={metadata}
       />
     </ModalWithTrigger>
   );

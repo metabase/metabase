@@ -24,6 +24,7 @@ export default class ChartSettingsSidebar extends Component {
       onOpenChartType,
       visualizationSettings,
       showSidebarTitle = false,
+      metadata,
     } = this.props;
     const { sidebarPropsOverride } = this.state;
     const sidebarContentProps = showSidebarTitle
@@ -56,6 +57,7 @@ export default class ChartSettingsSidebar extends Component {
               initial={initialChartSetting}
               setSidebarPropsOverride={this.setSidebarPropsOverride}
               computedSettings={visualizationSettings}
+              metadata={metadata}
             />
           </ErrorBoundary>
         </SidebarContent>
