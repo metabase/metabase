@@ -12,6 +12,7 @@ import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
+import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
 
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
@@ -19,7 +20,6 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
-import ArchivedItem from "../../components/ArchivedItem";
 
 import {
   ArchiveBarContent,
