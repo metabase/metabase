@@ -68,24 +68,29 @@
              (some? value)
              (= (:lib/source column) :source/aggregations)
              (-> (lib.aggregation/aggregations query stage-number) count pos?))
-    (let [pivot-types (case (mapv #(breakout-type query stage-number %)
-                                  (lib.breakout/breakouts query stage-number))
-                        ([:date]
-                         [:date :category])     #{:category :location}
-                        [:address]              #{:category :time}
-                        ([]
-                         [:category]
-                         [:category :category]) #{:category :location :time}
-                        #{})
-          by-category (when (pivot-types :category)
+    (let [breakout-pivot-types (case (mapv #(breakout-type query stage-number %)
+                                           (lib.breakout/breakouts query stage-number))
+                                 ([:date] [:date :category])
+                                 #{:category :location}
+
+                                 [:address]
+                                 #{:category :time}
+
+                                 ([]
+                                  [:category]
+                                  [:category :category])
+                                 #{:category :location :time}
+
+                                 #{})
+          by-category (when (breakout-pivot-types :category)
                         (pivot-by-category-drill query stage-number context))
-          by-location (when (pivot-types :location)
+          by-location (when (breakout-pivot-types :location)
                         (pivot-by-location-drill query stage-number context))
-          by-time     (when (pivot-types :time)
+          by-time     (when (breakout-pivot-types :time)
                         (pivot-by-time-drill     query stage-number context))
           pivots      (merge (when (seq by-category) {:category by-category})
                              (when (seq by-location) {:location by-location})
-                             (when (seq by-time)     {:time     by-time}))]
+                             (when (seq by-time)     {:time by-time}))]
       ;; TODO: Do dimensions need to be attached? How is clicked.dimensions calculated in the FE?
       (when-not (empty? pivots)
         {:lib/type :metabase.lib.drill-thru/drill-thru
