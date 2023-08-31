@@ -193,7 +193,8 @@ function DashCardVisualization({
         !isEditing &&
         DashCardMenu.shouldRender({ question, result: mainSeries }));
 
-    const isInXray = question._card.collection_id == null;
+    const isInXray =
+      typeof dashboard.id === "string" && dashboard.id.startsWith("/auto");
 
     if (isInternalQuery || !shouldShowDownloadWidget || isInXray) {
       return null;
