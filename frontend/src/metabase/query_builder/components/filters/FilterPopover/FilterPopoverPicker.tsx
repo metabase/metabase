@@ -2,7 +2,7 @@ import { Component } from "react";
 
 import type Filter from "metabase-lib/queries/structured/Filter";
 import TimePicker from "../pickers/TimePicker";
-import BooleanPicker from "../pickers/BooleanPicker";
+import { BooleanPickerRadio } from "../pickers/BooleanPicker";
 import { DefaultPicker } from "../pickers/DefaultPicker";
 
 type Props = {
@@ -63,9 +63,8 @@ export class FilterPopoverPicker extends Component<Props> {
         maxWidth={maxWidth}
       />
     ) : field?.isBoolean() ? (
-      <BooleanPicker
+      <BooleanPickerRadio
         className={className}
-        filter={filter}
         onFilterChange={onFilterChange}
       />
     ) : (

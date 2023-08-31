@@ -54,8 +54,6 @@ export const getMlv2FilterClause = (filter: LegacyFilter, stageIndex = -1) => {
     ...filter.slice(2),
   );
 
-  // console.log({ appliedFilterClause, unappliedFilterClause, column })
-
   return {
     filterClause: appliedFilterClause ?? unappliedFilterClause,
     column,
@@ -83,7 +81,7 @@ export function toLegacyFilter(
   const legacyFilter = new LegacyFilter(
     [
       ML.displayInfo(query, -1, operator).shortName,
-      [...ML.legacyFieldRef(column).slice(0, 2), null], // to maintain compatibility with the old filter format
+      ML.legacyFieldRef(column),
       ...args,
     ],
     null,

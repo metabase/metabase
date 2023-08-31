@@ -19,11 +19,10 @@ function FilterStep({
       items={query.filters()}
       renderName={item => item.displayName()}
       readOnly={readOnly}
-      renderPopover={(filter, index) => (
+      renderPopover={filter => (
         <FilterPopover
           query={query}
           filter={filter}
-          filterIndex={index}
           onChangeFilter={newFilter =>
             filter
               ? updateQuery(filter.replace(newFilter))

@@ -1,23 +1,42 @@
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, render, screen } from "__support__/ui";
+
 import { createMockMetadata } from "__support__/metadata";
 
 import { checkNotNull } from "metabase/core/utils/types";
 
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { FilterContext } from "metabase/common/context";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import BooleanPicker, { BooleanPickerCheckbox } from "./index";
+import { BooleanPickerRadio, BooleanPickerCheckbox } from "./index";
 
 const mockOnFilterChange = jest.fn();
 
-function setup(filter: Filter) {
+function setup(filter: Filter, stageIndex = -1) {
   mockOnFilterChange.mockReset();
-  return render(
-    <BooleanPicker filter={filter} onFilterChange={mockOnFilterChange} />,
+
+  const {
+    filterClause,
+    query: mlv2Query,
+    column,
+  } = filter.getMlv2FilterClause({ stageIndex });
+
+  return renderWithProviders(
+    <FilterContext.Provider
+      value={{
+        filter: filterClause,
+        query: mlv2Query,
+        legacyQuery: filter.query(),
+        column: column,
+        stageIndex,
+      }}
+    >
+      <BooleanPickerRadio onFilterChange={mockOnFilterChange} />
+    </FilterContext.Provider>,
   );
 }
 
@@ -28,6 +47,20 @@ describe("BooleanPicker", () => {
         id: 1,
         base_type: "type/Boolean",
         effective_type: "type/Boolean",
+        table_id: 2,
+      }),
+    ],
+    tables: [
+      createMockTable({
+        id: 2,
+        fields: [
+          createMockField({
+            id: 1,
+            base_type: "type/Boolean",
+            effective_type: "type/Boolean",
+            table_id: 2,
+          }),
+        ],
       }),
     ],
   });

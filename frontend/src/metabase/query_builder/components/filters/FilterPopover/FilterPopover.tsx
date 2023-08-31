@@ -14,7 +14,7 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import type { Expression } from "metabase-types/api";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isBoolean } from "metabase-lib/types/utils/isa";
+import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import type { FieldDimension } from "metabase-lib/Dimension";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -254,7 +254,14 @@ export function FilterPopover({
     filterClause,
     query: mlv2Query,
     column,
-  } = filter.getMlv2FilterClause({ stageIndex });
+    // TODO: don't blow up trying to make an MLv2 Date filter
+  } = isDate(dimension)
+    ? filter.getMlv2FilterClause({ stageIndex })
+    : {
+        filterClause: undefined,
+        query: undefined,
+        column: undefined,
+      };
 
   return (
     <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>

@@ -106,6 +106,7 @@ export const getDimensionReferenceWithoutOptions = (
 export const BASE_DIMENSION_REFERENCE_OMIT_OPTIONS = [
   "temporal-unit",
   "binning",
+  "base-type",
 ];
 
 export const getBaseDimensionReference = (
