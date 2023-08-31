@@ -119,8 +119,8 @@
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! Pulse {:dashboard_id dashboard-id}
-              {:name (:name dashboard)
-               :collection_id (:collection_id dashboard)})
+                        {:name (:name dashboard)
+                         :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (t2/define-after-update :model/Dashboard
@@ -413,9 +413,9 @@
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
   (let [c (t2/count Collection
-                    :name     [:like (format "%s%%" collection-name)]
-                    :location (collection/children-location (t2/select-one [Collection :location :id]
-                                                              :id parent-collection-id)))]
+            :name     [:like (format "%s%%" collection-name)]
+            :location (collection/children-location (t2/select-one [Collection :location :id]
+                                                      :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -433,13 +433,13 @@
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                           :model/Dashboard
-                           (-> dashboard
-                               (dissoc :ordered_cards :ordered_tabs :rule :related
-                                       :transient_name :transient_filters :param_fields :more)
-                               (assoc :description description
-                                      :collection_id (:id collection)
-                                      :collection_position 1))))
+                            :model/Dashboard
+                            (-> dashboard
+                                (dissoc :ordered_cards :ordered_tabs :rule :related
+                                        :transient_name :transient_filters :param_fields :more)
+                                (assoc :description description
+                                       :collection_id (:id collection)
+                                       :collection_position 1))))
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
