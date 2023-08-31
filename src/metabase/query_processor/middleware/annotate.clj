@@ -489,7 +489,7 @@
 
 (defmethod column-info :query
   [{inner-query :query,
-    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indecies}
+    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
    results]
   (u/prog1 (mbql-cols (cond-> inner-query
                         replaced-indices (restore-cumulative-aggregations replaced-indices))
