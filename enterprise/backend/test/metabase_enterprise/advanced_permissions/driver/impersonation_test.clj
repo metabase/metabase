@@ -78,15 +78,15 @@
                            "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
                            "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
                            "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
-                           "DROP ROLE IF EXISTS impersonation_role;"
-                           "CREATE ROLE impersonation_role;"
-                           "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM impersonation_role;"
-                           "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO impersonation_role;"]]
+                           "DROP ROLE IF EXISTS \"impersonation.role\";"
+                           "CREATE ROLE \"impersonation.role\";"
+                           "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
+                           "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
           (jdbc/execute! spec [statement]))
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database (sync/sync-database! database)
             (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                        :attributes     {"impersonation_attr" "impersonation_role"}}
+                                                        :attributes     {"impersonation_attr" "impersonation.role"}}
               (is (= []
                      (-> {:query "SELECT * FROM \"table_with_access\";"}
                          mt/native-query
@@ -103,7 +103,7 @@
   (mt/test-driver :snowflake
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                  :attributes     {"impersonation_attr" "limited_role"}}
+                                                  :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
         ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
         ;; since there is no way to reset the connection after impersonation is applied.
         (is (thrown-with-msg?
@@ -119,11 +119,11 @@
                                  {:aggregation [[:count]]}))))
 
         ;; Update the test database with a default role that has full permissions
-        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "accountadmin"))
+        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
 
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
-          ;; (`limited_role` in CI Snowflake has no data access)
+          ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"SQL compilation error:\nDatabase.*does not exist or not authorized"
