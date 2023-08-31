@@ -817,7 +817,9 @@
 
 (defmethod driver.sql/set-role-statement :postgres
   [_ role]
-  (format "SET ROLE %s;" role))
+  (if (= (u/upper-case-en role) "NONE")
+   (format "SET ROLE %s;" role)
+   (format "SET ROLE \"%s\";" role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
