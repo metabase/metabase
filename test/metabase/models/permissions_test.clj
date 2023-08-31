@@ -622,14 +622,13 @@
 
 (deftest audit-db-update-test
   (testing "Throws exception when we attempt to change the audit db permission manually."
-    #_:clj-kondo/ignore ;; TODO: with-temp* -> with-temp
-    (mt/with-temp* [PermissionsGroup [group]
-                    Database         [database]
-                    Table            [table    {:db_id (u/the-id database)}]]
+    (mt/with-temp [PermissionsGroup group    {}
+                   Database         database {}
+                   Table            table    {:db_id (u/the-id database)}]
       (with-redefs [perms/default-audit-db-id (constantly (u/the-id database))]
         (is (thrown-with-msg?
              Exception
-             #"Unable to update audit database, that requires updating through monitoring permissions."
+             #"Audit database permissions can only be changed by updating audit collection permissions."
              (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})))))))
 
 (deftest root-permissions-graph-test
