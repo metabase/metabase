@@ -9,3 +9,6 @@ export function getValue(filter: Filter) {
     return operatorName;
   }
 }
+
+export const isBooleanValue = (value: string) =>
+  ["true", "false"].includes(value);
