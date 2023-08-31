@@ -105,7 +105,7 @@
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
                                    (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
-                                                        :card_id [:in cards-to-add]))
+                                                     :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -119,8 +119,8 @@
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! Pulse {:dashboard_id dashboard-id}
-                        {:name (:name dashboard)
-                         :collection_id (:collection_id dashboard)})
+              {:name (:name dashboard)
+               :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (t2/define-after-update :model/Dashboard
@@ -261,7 +261,7 @@
              (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
              (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
-                           (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
+                     (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
            (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
                  num-prev-cards (count prev-card-ids)
@@ -272,11 +272,11 @@
                                                       (map keys (:cards removals)))))]
              (cond
                (and
-                 (set/subset? prev-card-ids new-card-ids)
-                 (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+                (set/subset? prev-card-ids new-card-ids)
+                (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
                (and
-                 (set/subset? new-card-ids prev-card-ids)
-                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+                (set/subset? new-card-ids prev-card-ids)
+                (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
                (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
                :else                                                   (deferred-tru "modified the cards"))))
 
@@ -290,12 +290,12 @@
                  num-tabs-diff (abs (- num-prev-tabs num-new-tabs))]
              (cond
                (and
-                 (set/subset? prev-tab-ids new-tab-ids)
-                 (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
+                (set/subset? prev-tab-ids new-tab-ids)
+                (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
 
                (and
-                 (set/subset? new-tab-ids prev-tab-ids)
-                 (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
+                (set/subset? new-tab-ids prev-tab-ids)
+                (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
 
                (= (set (map #(dissoc % :position) prev-tabs))
                   (set (map #(dissoc % :position) new-tabs))) (deferred-tru "rearranged the tabs")
@@ -413,9 +413,9 @@
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
   (let [c (t2/count Collection
-            :name     [:like (format "%s%%" collection-name)]
-            :location (collection/children-location (t2/select-one [Collection :location :id]
-                                                      :id parent-collection-id)))]
+                    :name     [:like (format "%s%%" collection-name)]
+                    :location (collection/children-location (t2/select-one [Collection :location :id]
+                                                              :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -428,18 +428,18 @@
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
         collection (populate/create-collection!
-                     (ensure-unique-collection-name dashboard-name parent-collection-id)
-                     (rand-nth (populate/colors))
-                     "Automatically generated cards."
-                     parent-collection-id)
+                    (ensure-unique-collection-name dashboard-name parent-collection-id)
+                    (rand-nth (populate/colors))
+                    "Automatically generated cards."
+                    parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            :model/Dashboard
-                            (-> dashboard
-                                (dissoc :ordered_cards :ordered_tabs :rule :related
-                                        :transient_name :transient_filters :param_fields :more)
-                                (assoc :description description
-                                       :collection_id (:id collection)
-                                       :collection_position 1))))
+                           :model/Dashboard
+                           (-> dashboard
+                               (dissoc :ordered_cards :ordered_tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more)
+                               (assoc :description description
+                                      :collection_id (:id collection)
+                                      :collection_position 1))))
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
@@ -589,7 +589,7 @@
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
-                             :dashboard_id id)
+                    :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
@@ -605,3 +605,4 @@
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
+
