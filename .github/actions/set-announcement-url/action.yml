@@ -1,0 +1,32 @@
+name: Set Announcement URL
+
+description: Sets the `announcement_url` in version-info.json. This powers the "What's New?" announcement.
+on:
+  workflow_dispatch:
+    inputs:
+      announcement-url:
+        required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: Update OSS JSON
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - run: curl http://static.metabase.com/version-info.json | python3 -c 'import json, sys; parsed = json.load(sys.stdin); parsed["latest"]["announcement_url"] = "${{ github.event.inputs.announcement-url }}"; print(json.dumps(parsed))' | aws s3 cp - s3://static.metabase.com/version-info.json
+    - name: Update EE JSON
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - run: curl http://static.metabase.com/version-info-ee.json | python3 -c 'import json, sys; parsed = json.load(sys.stdin); parsed["latest"]["announcement_url"] = "${{ github.event.inputs.announcement-url }}"; print(json.dumps(parsed))' | aws s3 cp - s3://static.metabase.com/version-info-ee.json
