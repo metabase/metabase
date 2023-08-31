@@ -401,7 +401,7 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        'Card
+                        Card
                         (-> card
                             (update :result_metadata #(or % (-> card
                                                                 :dataset_query
