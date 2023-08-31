@@ -139,7 +139,7 @@
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.15"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
-  org.graalvm.js/js                         {:mvn/version "23.0.1"}             ; JavaScript engine
+  org.graalvm.js/js                         {:mvn/version "22.3.3"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
