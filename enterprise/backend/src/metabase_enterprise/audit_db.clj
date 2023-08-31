@@ -14,6 +14,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+;; delete me
+
 (set! *warn-on-reflection* true)
 
 (defenterprise default-audit-db-id
