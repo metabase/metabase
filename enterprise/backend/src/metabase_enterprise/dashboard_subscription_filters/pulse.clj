@@ -11,9 +11,7 @@
         dashboard-params       (:parameters dashboard)
         pulse-params-by-id     (group-by :id pulse-params)
         dashboard-params-by-id (group-by :id dashboard-params)
-        default-pulse?         (some (comp nil? :value) pulse-params)
-        selected-params        (concat pulse-params (when default-pulse? dashboard-params))
-        selected-ids           (distinct (map :id selected-params))]
-    (for [id selected-ids]
+        ids                    (distinct (map :id (concat pulse-params dashboard-params)))]
+    (for [id ids]
       (merge (first (get dashboard-params-by-id id))
              (first (get pulse-params-by-id id))))))

@@ -5,15 +5,13 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
+import { assocIn } from "icepick";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
 import { getPulseParameters } from "metabase/lib/pulse";
-import {
-  getValuePopulatedParameters,
-  isParameterValueEmpty,
-} from "metabase-lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
@@ -34,18 +32,10 @@ function MutableParametersSection({
   );
 
   const setParameterValue = (id, value) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
-    const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
-    );
-    const newParameters = isParameterValueEmpty(value)
-      ? filteredParameters
-      : filteredParameters.concat({
-          ...parameter,
-          value,
-        });
-
-    setPulseParameters(newParameters);
+    const i = pulseParameters.findIndex(parameter => parameter.id === id);
+    if (i >= 0) {
+      setPulseParameters(assocIn(pulseParameters, [i, "value"], value));
+    }
   };
 
   return _.isEmpty(parameters) ? null : (
