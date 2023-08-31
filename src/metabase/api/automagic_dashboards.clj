@@ -193,7 +193,7 @@
     {query-filter :pk_ref}                       :model-index
     {model-name :name :as model}                 :model
     :keys                                        [linked-tables]}]
-  (when (seq linked-tables)
+  (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (t2/select-one Table :id linked-table-id)
                                         q     (update query-filter
@@ -230,7 +230,18 @@
                    :param_fields  {}})
                 tabs-and-cards)
         (dissoc :transient_name
-                :transient_filters)))))
+                :transient_filters)))
+    {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+     :ordered_cards (add-source-model-link
+                      model
+                      [{:row                    0
+                        :col                    0
+                        :size_x                 18
+                        :size_y                 2
+                        :visualization_settings {:text                "# Unfortunately, there's not much else to show right now..."
+                                                 :virtual_card        {:display :text}
+                                                 :dashcard.background false
+                                                 :text.align_vertical :bottom}}])}))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
@@ -238,23 +249,23 @@
   [model-index-id pk-id]
   {model-index-id :int
    pk-id          :int}
-  (api/let-404 [model-index       (t2/select-one ModelIndex model-index-id)
-                model             (t2/select-one Card (:model_id model-index))
+  (api/let-404 [model-index (t2/select-one ModelIndex model-index-id)
+                model (t2/select-one Card (:model_id model-index))
                 model-index-value (t2/select-one ModelIndexValue
                                                  :model_index_id model-index-id
-                                                 :model_pk pk-id)
-                linked            (linked-entities {:model             model
-                                                    :model-index       model-index
-                                                    :model-index-value model-index-value})]
+                                                 :model_pk pk-id)]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
-               (api/read-check Card (:model_id model-index))
-               (or (create-linked-dashboard {:model             model
-                                             :linked-tables     linked
-                                             :model-index       model-index
-                                             :model-index-value model-index-value})
-                   (throw (ex-info (tru "No linked entities")
-                                   {:model-index-id model-index-id
-                                    :status-code    400})))))
+               (let [linked (linked-entities {:model             model
+                                              :model-index       model-index
+                                              :model-index-value model-index-value})]
+                 (api/read-check Card (:model_id model-index))
+                 (or (create-linked-dashboard {:model             model
+                                               :linked-tables     linked
+                                               :model-index       model-index
+                                               :model-index-value model-index-value})
+                     (throw (ex-info (tru "No linked entities")
+                                     {:model-index-id model-index-id
+                                      :status-code    400}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
