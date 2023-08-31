@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 
-export const useListSelect = (keyFn = item => item) => {
+export const useListSelect = (keyFn = (item: any) => item) => {
   const [selectedKeys, setSelectedKeys] = useState(new Set());
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState<any[]>([]);
 
   const getIsSelected = useCallback(
     item => selectedKeys.has(keyFn(item)),
