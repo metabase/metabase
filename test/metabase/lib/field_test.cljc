@@ -1237,3 +1237,40 @@
                :lib/desired-column-alias "USER_ID"
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-field-test
+  (are [legacy-ref] (=? {:id   (meta/id :venues :name)
+                         :name "NAME"}
+                        (lib/find-visible-column-for-legacy-ref lib.tu/venues-query legacy-ref))
+    [:field (meta/id :venues :name) nil]
+    [:field (meta/id :venues :name) {}]
+    ;; should work with refs that need normalization
+    ["field" (meta/id :venues :name) nil]
+    ["field" (meta/id :venues :name)]
+    #?@(:cljs
+        [#js ["field" (meta/id :venues :name) nil]
+         #js ["field" (meta/id :venues :name) #js {}]])))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-expression-test
+  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
+                        (lib/find-visible-column-for-legacy-ref lib.tu/query-with-expression legacy-ref))
+    [:expression "expr"]
+    ["expression" "expr"]
+    ["expression" "expr" nil]
+    ["expression" "expr" {}]
+    #?@(:cljs
+        [#js ["expression" "expr"]
+         #js ["expression" "expr" #js {}]])))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))]
+    (are [legacy-ref] (=? {:name "count", :lib/source :source/aggregations}
+                          (lib/find-visible-column-for-legacy-ref query legacy-ref))
+      [:aggregation 0]
+      ["aggregation" 0]
+      ["aggregation" 0 nil]
+      ["aggregation" 0 {}]
+      #?@(:cljs
+          [#js ["aggregation" 0]
+           #js ["aggregation" 0 #js {}]]))))

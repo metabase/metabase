@@ -4,8 +4,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.config :as config]
+   [metabase.db.custom-migrations]
    [metabase.db.liquibase.h2 :as liquibase.h2]
    [metabase.db.liquibase.mysql :as liquibase.mysql]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -13,15 +15,19 @@
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
+   (liquibase Contexts LabelExpression Liquibase)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeSet)
-   (liquibase Contexts LabelExpression Liquibase)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
    (liquibase.resource ClassLoaderResourceAccessor)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; load our custom migrations
+  metabase.db.custom-migrations/keep-me)
 
 ;; register our custom MySQL SQL generators
 (liquibase.mysql/register-mysql-generators!)
@@ -54,7 +60,7 @@
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^Database database]
-  (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))
+  (Liquibase. changelog-file (ClassLoaderResourceAccessor. (classloader/the-classloader)) database))
 
 (s/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."

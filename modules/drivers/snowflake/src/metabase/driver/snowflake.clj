@@ -43,10 +43,11 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:datetime-diff            true
-                              :now                      true
-                              :convert-timezone         true
-                              :connection-impersonation true}]
+(doseq [[feature supported?] {:datetime-diff                          true
+                              :now                                    true
+                              :convert-timezone                       true
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -587,6 +588,4 @@
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
-  (or
-   (-> database :details :role)
-   "ACCOUNTADMIN"))
+  (-> database :details :role))

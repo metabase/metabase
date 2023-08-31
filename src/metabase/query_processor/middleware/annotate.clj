@@ -43,7 +43,7 @@
    [:source       [:enum :aggregation :fields :breakout :native]]
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true} mbql.s/FieldOrAggregationReference]])
+   [:field_ref {:optional true} mbql.s/Reference]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
