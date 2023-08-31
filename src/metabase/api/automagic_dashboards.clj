@@ -215,19 +215,22 @@
                                                     (assoc dc :dashboard_tab_id tab-id))
                                                   (add-source-model-link model tab-cards))}))
                                         child-dashboards)]
-      (reduce (fn [dashboard {:keys [tab dash-cards]}]
-                (-> dashboard
-                    (update :ordered_cards into dash-cards)
-                    (update :ordered_tabs conj tab)))
-              (merge
-               (first child-dashboards)
-               {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-                :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
-                :ordered_cards []
-                :ordered_tabs  []
-                :parameters    []
-                :param_fields  {}})
-              tabs-and-cards))))
+      (->
+        (reduce (fn [dashboard {:keys [tab dash-cards]}]
+                  (-> dashboard
+                      (update :ordered_cards into dash-cards)
+                      (update :ordered_tabs conj tab)))
+                (merge
+                  (first child-dashboards)
+                  {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+                   :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                   :ordered_cards []
+                   :ordered_tabs  []
+                   :parameters    []
+                   :param_fields  {}})
+                tabs-and-cards)
+        (dissoc :transient_name
+                :transient_filters)))))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
@@ -235,7 +238,6 @@
   [model-index-id pk-id]
   {model-index-id :int
    pk-id          :int}
-  ;; Stuff...
   (api/let-404 [model-index       (t2/select-one ModelIndex model-index-id)
                 model             (t2/select-one Card (:model_id model-index))
                 model-index-value (t2/select-one ModelIndexValue
