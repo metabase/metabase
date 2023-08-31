@@ -16,7 +16,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-audit-db-id 13371337)
+(defenterprise default-audit-db-id
+  "Default audit db id."
+  :feature :audit-app
+  []
+  13371337)
+
+(defenterprise default-audit-collection-entity-id
+  "Default audit collection entity (instance analytics) id."
+  :feature :audit-app
+  []
+  "vG58R8k-QddHWA7_47umn")
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -26,7 +36,7 @@
 
   - In the unlikely case that a user has many many databases in Metabase, and ensure there can Never be a collision, we
   do a quick check here and pick a new ID if it would have collided. Similar to finding an open port number."
-  ([engine] (install-database! engine default-audit-db-id))
+  ([engine] (install-database! engine (au)))
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
