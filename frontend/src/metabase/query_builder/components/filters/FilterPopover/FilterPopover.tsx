@@ -315,7 +315,6 @@ export function FilterPopover({
               ) : (
                 <>
                   <FilterPopoverHeader
-                    filter={filter}
                     onFilterChange={handleFilterChange}
                     onBack={onBack}
                     showFieldPicker={showFieldPicker}

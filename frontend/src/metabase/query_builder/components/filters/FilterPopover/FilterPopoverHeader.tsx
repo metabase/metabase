@@ -1,15 +1,17 @@
+import { useContext, useMemo } from "react";
 import cx from "classnames";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
-import OperatorSelector from "../OperatorSelector";
+import { FilterContext } from "metabase/common/context";
+import * as ML from "metabase-lib";
+import { toLegacyFilter, getOperatorsMap } from "metabase-lib/compat";
+
+import { OperatorSelector } from "../OperatorSelector";
 import SidebarHeader from "../../SidebarHeader";
 
 type Props = {
   className?: string;
-
   showFieldPicker?: boolean;
   forceShowOperatorSelector?: boolean;
-  filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onBack: () => void;
 };
@@ -18,26 +20,43 @@ export function FilterPopoverHeader({
   className,
   showFieldPicker,
   forceShowOperatorSelector,
-  filter,
   onFilterChange,
   onBack,
 }: Props) {
-  const dimension = filter.dimension();
-  if (!dimension) {
+  const { filter, query, legacyQuery, column, stageIndex } =
+    useContext(FilterContext);
+
+  const { operator, args } = filter
+    ? ML.filterParts(query as ML.Query, stageIndex, filter)
+    : { args: [], operator: undefined };
+
+  const operatorName = operator
+    ? ML.displayInfo(query as ML.Query, stageIndex, operator)?.shortName
+    : undefined;
+
+  const operatorsMap = useMemo(
+    () => getOperatorsMap({ query, stageIndex, column }),
+    [column, query, stageIndex],
+  );
+
+  if (!column || !query || !legacyQuery) {
     return null;
   }
 
-  const field = dimension.field();
-  const operator = filter.operatorName();
-
-  const showOperatorSelector = forceShowOperatorSelector ?? !field.isBoolean();
+  const showOperatorSelector =
+    forceShowOperatorSelector ?? !ML.isBoolean(column);
   const showHeader = showFieldPicker || showOperatorSelector;
   const showOperatorSelectorOnOwnRow = !showFieldPicker;
 
-  const setOperator = (operatorName: string) => {
-    if (filter.operatorName() !== operatorName) {
-      onFilterChange(filter.setOperator(operatorName));
+  const setOperator = (newOperatorName: string) => {
+    if (newOperatorName === operatorName) {
+      return;
     }
+    const newOperator = operatorsMap[newOperatorName];
+
+    const newFilter = ML.filterClause(newOperator, column, ...args);
+
+    onFilterChange(toLegacyFilter(query, legacyQuery, newFilter));
   };
 
   return showHeader ? (
@@ -51,7 +70,7 @@ export function FilterPopoverHeader({
           className={cx("text-default py1", {
             pr2: !showOperatorSelectorOnOwnRow,
           })}
-          title={field.displayName({ includeTable: true })}
+          title={ML.displayInfo(query, stageIndex, column)?.displayName}
           onBack={onBack}
         />
       )}
@@ -61,8 +80,10 @@ export function FilterPopoverHeader({
             "ml-auto": !showOperatorSelectorOnOwnRow,
             my1: showOperatorSelectorOnOwnRow,
           })}
-          operator={operator}
-          operators={filter.filterOperators(operator)}
+          operatorName={operatorName ?? ""}
+          operators={ML.filterableColumnOperators(column).map(op =>
+            ML.displayInfo(query, stageIndex, op),
+          )}
           onOperatorChange={setOperator}
         />
       )}

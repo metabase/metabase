@@ -139,6 +139,7 @@ export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 export type FilterOperatorDisplayInfo = {
   displayName: string;
   shortName: string;
+  longDisplayName: string;
   default?: boolean;
 };
 
