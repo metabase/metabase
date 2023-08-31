@@ -546,7 +546,7 @@
    constraints :- [:maybe ConstraintsMap]
    & options]
   (assert (even? (count options)))
-  (let [v->human-readable (delay (human-readable-remapping-map field-id))
+  (let [v->human-readable     (delay (human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
