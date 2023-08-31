@@ -12,29 +12,14 @@ export const SEARCH_FILTERS: {
   filter: SearchModelType;
 }[] = [
   {
-    name: t`Dashboards`,
-    filter: "dashboard",
-    icon: "dashboard",
-  },
-  {
     name: t`Collections`,
     filter: "collection",
     icon: "folder",
   },
   {
-    name: t`Databases`,
-    filter: "database",
-    icon: "database",
-  },
-  {
-    name: t`Models`,
-    filter: "dataset",
-    icon: "model",
-  },
-  {
-    name: t`Raw Tables`,
-    filter: "table",
-    icon: "table",
+    name: t`Dashboards`,
+    filter: "dashboard",
+    icon: "dashboard",
   },
   {
     name: t`Questions`,
@@ -42,19 +27,24 @@ export const SEARCH_FILTERS: {
     icon: "bar",
   },
   {
-    name: t`Pulses`,
-    filter: "pulse",
-    icon: "pulse",
+    name: t`Databases`,
+    filter: "database",
+    icon: "database",
   },
   {
-    name: t`Metrics`,
-    filter: "metric",
-    icon: "sum",
+    name: t`Tables`,
+    filter: "table",
+    icon: "table",
   },
   {
-    name: t`Segments`,
-    filter: "segment",
-    icon: "segment",
+    name: t`Models`,
+    filter: "dataset",
+    icon: "model",
+  },
+  {
+    name: t`Actions`,
+    filter: "action",
+    icon: "bolt",
   },
 ];
 

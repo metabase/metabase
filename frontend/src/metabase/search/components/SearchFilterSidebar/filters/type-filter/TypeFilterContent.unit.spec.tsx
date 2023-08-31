@@ -1,33 +1,29 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { useState } from "react";
+import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
 import { createMockSearchResult } from "metabase-types/api/mocks";
-import { TypeFilter } from "metabase/search/components/SearchFilterSidebar/filters/TypeFilter";
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import type { SearchModelType } from "metabase-types/api";
+import { TypeFilterContent } from "./TypeFilterContent";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModelType, string> = {
+  action: "Action",
   card: "Question",
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
-  metric: "Metric",
-  pulse: "Pulse",
-  segment: "Segment",
   table: "Table",
 };
 
 const TEST_TYPES: Array<SearchModelType> = [
+  "action",
   "card",
   "collection",
   "dashboard",
   "database",
   "dataset",
   "table",
-  "pulse",
-  "segment",
-  "metric",
 ];
 
 const TEST_TYPE_SUBSET: Array<SearchModelType> = [
@@ -45,11 +41,12 @@ const TestTypeFilterComponent = ({
 }) => {
   const [value, setValue] = useState<SearchModelType[]>(initialValue);
 
-  onChangeFilters.mockImplementation((value: SearchModelType[]) => {
-    setValue(value);
-  });
+  const onChange = (selectedValues: SearchModelType[]) => {
+    onChangeFilters(selectedValues);
+    setValue(selectedValues);
+  };
 
-  return <TypeFilter value={value} onChange={onChangeFilters} />;
+  return <TypeFilterContent value={value} onChange={onChange} />;
 };
 
 const setup = async ({
@@ -88,11 +85,9 @@ const getCheckboxes = () => {
     {},
   ) as HTMLInputElement[];
 };
-
-describe("TypeFilter", () => {
+describe("TypeFilterContent", () => {
   it("should display `Type` and all type labels", async () => {
     await setup();
-    expect(screen.getByText("Type")).toBeInTheDocument();
     for (const entityType of TEST_TYPES) {
       expect(
         screen.getByText(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]),

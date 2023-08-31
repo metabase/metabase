@@ -34,13 +34,17 @@ export const SearchBody = styled.div`
   align-items: start;
 `;
 
+const searchWidth = 66.66;
+
 export const SearchMain = styled.div`
-  width: 66.66%;
+  width: ${searchWidth}%;
 `;
 
 export const SearchControls = styled.div`
   padding: 0 1rem 0 1rem;
   margin-left: 0.5rem;
+
+  width: ${100 - searchWidth}%;
 
   ${breakpointMinSmall} {
     margin-left: 1rem;

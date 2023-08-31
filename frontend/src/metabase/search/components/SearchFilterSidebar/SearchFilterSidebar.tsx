@@ -1,20 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { t } from "ttag";
-import { useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import type {
   FilterTypeKeys,
-  SearchFilterComponent,
   SearchFilterPropTypes,
   SearchFilters,
+  SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { TypeFilter } from "./filters/TypeFilter";
-import { SearchFilterWrapper } from "./SearchFilterSidebar.styled";
+import { TypeFilter } from "./filters/type-filter/TypeFilter";
+import { SearchSidebarFilter } from "./search-sidebar-filter/SearchSidebarFilter";
 
-const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
+const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
 };
 
@@ -25,54 +22,33 @@ export const SearchFilterSidebar = ({
   value: SearchFilters;
   onChangeFilters: (filters: SearchFilters) => void;
 }) => {
-  const [output, setOutput] = useState<SearchFilters>(value);
-
   const onOutputChange = (
     key: FilterTypeKeys,
     val: SearchFilterPropTypes[FilterTypeKeys],
   ) => {
     if (!val || val.length === 0) {
-      setOutput(_.omit(output, key));
+      onChangeFilters(_.omit(value, key));
     } else {
-      setOutput({
-        ...output,
+      onChangeFilters({
+        ...value,
         [key]: val,
       });
     }
   };
 
-  useEffect(() => {
-    setOutput(value);
-  }, [value]);
-
-  const clearFilters = () => {
-    onChangeFilters({});
+  const getFilter = (key: FilterTypeKeys) => {
+    const Filter = filterMap[key];
+    const normalizedValue =
+      Array.isArray(value[key]) || !value[key] ? value[key] : [value[key]];
+    return (
+      <SearchSidebarFilter
+        filter={Filter}
+        data-testid={`${key}-search-filter`}
+        value={normalizedValue}
+        onChange={value => onOutputChange(key, value)}
+      />
+    );
   };
 
-  const applyFilters = () => {
-    onChangeFilters(output);
-  };
-
-  // we can use this field to control which filters are available
-  // - we can enable the 'verified' filter here
-  const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    return [SearchFilterKeys.Type];
-  }, []);
-
-  return (
-    <div>
-      {/*{availableFilters.map(key => {*/}
-      {/*  const Filter = filterMap[key];*/}
-      {/*  return (*/}
-      {/*    <Filter*/}
-      {/*      key={key}*/}
-      {/*      data-testid={`${key}-search-filter`}*/}
-      {/*      value={output[key]}*/}
-      {/*      onChange={value => onOutputChange(key, value)}*/}
-      {/*    />*/}
-      {/*  );*/}
-      {/*})}*/}
-      Under construction.
-    </div>
-  );
+  return <Flex direction="column">{getFilter(SearchFilterKeys.Type)}</Flex>;
 };

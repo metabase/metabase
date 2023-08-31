@@ -1,5 +1,6 @@
 import type { Location } from "history";
-import type { FC } from "react";
+import type { ComponentType } from "react";
+
 import type {
   Collection,
   SearchModelType,
@@ -29,12 +30,17 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
-export type SearchFilterComponent<T extends FilterTypeKeys = any> = FC<
-  {
-    value?: SearchFilterPropTypes[T];
-    onChange: (value: SearchFilterPropTypes[T]) => void;
-    "data-testid"?: string;
-  } & Record<string, unknown>
->;
+export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
+  value?: SearchFilterPropTypes[T];
+  onChange: (value: SearchFilterPropTypes[T]) => void;
+  "data-testid"?: string;
+} & Record<string, unknown>;
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
+
+export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
+  title: string;
+  iconName: IconName;
+  DisplayComponent: ComponentType<{ value: SearchFilterPropTypes[T] }>;
+  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+};

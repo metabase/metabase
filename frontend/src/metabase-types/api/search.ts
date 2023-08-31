@@ -11,12 +11,7 @@ export type SearchModelType =
   | "database"
   | "dataset"
   | "table"
-  | "indexed-entity"
-  | "pulse"
-  | "segment"
-  | "metric"
-  | "action"
-  | "snippet";
+  | "action";
 
 export interface SearchScore {
   weight: number;
