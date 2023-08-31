@@ -595,9 +595,25 @@
       :else
       cols)))
 
+(defn- restore-cumulative-aggregations
+  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
+  (let [offset   (count breakouts)
+        restored (reduce (fn [aggregations index]
+                           (mbql.u/replace-in aggregations [(- index offset)]
+                             [:count]       [:cum-count]
+                             [:count field] [:cum-count field]
+                             [:sum field]   [:cum-sum field]))
+                         (vec aggregations)
+                         replaced-indices)]
+    (assoc inner-query :aggregation restored)))
+
 (defmethod column-info :query
-  [{inner-query :query} results]
-  (u/prog1 (mbql-cols inner-query results)
+  [{inner-query :query,
+    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
+   results]
+  (u/prog1 (mbql-cols (cond-> inner-query
+                        replaced-indices (restore-cumulative-aggregations replaced-indices))
+                      results)
     (check-correct-number-of-columns-returned <> results)))
 
 
