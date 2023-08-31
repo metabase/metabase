@@ -14,6 +14,10 @@ export function withFields(
   return ML.with_fields(query, stageIndex, newFields);
 }
 
+export function legacyFieldRef(column: ColumnMetadata): FieldReference {
+  return ML.legacy_field_ref(column);
+}
+
 export function fieldableColumns(
   query: Query,
   stageIndex: number,
