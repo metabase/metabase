@@ -317,8 +317,7 @@
           time-str        (try
                             ;; need to initialize the store since we're calling [[driver/execute-reducible-query]]
                             ;; directly instead of going thru normal QP pipeline
-                            (qp.store/with-store
-                              (qp.store/fetch-and-store-database! (u/the-id database))
+                            (qp.store/with-metadata-provider (u/the-id database)
                               (let [query {:database (u/the-id database), :native {:query native-query}}
                                     reduce (fn [_metadata reducible-rows]
                                              (transduce

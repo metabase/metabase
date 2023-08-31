@@ -2,22 +2,24 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu])
   (:import
    (java.time Instant)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
-
-
-(defn schema-name
+(mu/defn schema-name :- ::lib.schema.common/non-blank-string
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
   multiple connections from multiple metabae remain distinct. The UUID will have the first character of each section taken.
 
   (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
-  [{:keys [id] :as _database} site-uuid-string]
+  [{:keys [id] :as _database} :- [:map [:id ::lib.schema.id/database]]
+   site-uuid-string           :- ::lib.schema.common/non-blank-string]
   (let [instance-string (apply str (map first (str/split site-uuid-string #"-")))]
     (format "metabase_cache_%s_%s" instance-string id)))
 

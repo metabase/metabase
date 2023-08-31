@@ -92,42 +92,44 @@
                 (filter lib.types.isa/numeric? orderable-columns))))))
 
 (deftest ^:parallel field-type-test
-  (testing "temporal"
-    (are [typ] (= ::lib.types.constants/temporal (lib.types.isa/field-type {:effective-type typ}))
-      :type/Date :type/DateTime :type/Time))
-  (testing "numeric"
-    (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {:effective-type typ}))
-      :type/BigInteger :type/Integer :type/Float :type/Decimal))
-  (testing "string"
-    (is (= ::lib.types.constants/string (lib.types.isa/field-type {:effective-type :type/Text}))))
-  (testing "types of string"
-    (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective-type :type/Text
-                                                                          :semantic-type typ}))
-      :type/Name :type/Description :type/UUID :type/URL))
-  (testing "primary key"
-    (is (= ::lib.types.constants/primary_key (lib.types.isa/field-type {:effective-type :type/Integer
-                                                                        :semantic-type :type/PK}))))
-  (testing "foreign key"
-    (is (= ::lib.types.constants/foreign_key (lib.types.isa/field-type {:effective-type :type/Integer
-                                                                        :semantic-type :type/FK}))))
-  (testing "boolean"
-    (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {:effective-type :type/Boolean}))))
-  (testing "location"
-    (are [typ] (= ::lib.types.constants/location (lib.types.isa/field-type {:semantic-type typ}))
-      :type/City :type/Country))
-  (testing "coordinate"
-    (are [typ] (= ::lib.types.constants/coordinate (lib.types.isa/field-type {:semantic-type typ}))
-      :type/Latitude :type/Longitude))
-  (testing "string like"
-    (are [typ] (= ::lib.types.constants/string_like (lib.types.isa/field-type {:effective-type typ}))
-      :type/TextLike :type/IPAddress))
-  (testing "strings, regardless of the effective type is"
-    (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective-type :type/Float
-                                                                          :semantic-type typ}))
-      :type/Name :type/Category))
-  (testing "boolean, regardless of the semantic type"
-    (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {:effective-type :type/Boolean
-                                                                    :semantic-type :type/Category}))))
+  ;; should fall back to `:base-type` if `:effective-type` isn't present.
+  (doseq [base-or-effective-type-key [:effective-type :base-type]]
+    (testing "temporal"
+      (are [typ] (= ::lib.types.constants/temporal (lib.types.isa/field-type {base-or-effective-type-key typ}))
+        :type/Date :type/DateTime :type/Time))
+    (testing "numeric"
+      (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {base-or-effective-type-key typ}))
+        :type/BigInteger :type/Integer :type/Float :type/Decimal))
+    (testing "string"
+      (is (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Text}))))
+    (testing "types of string"
+      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Text
+                                                                            :semantic-type typ}))
+        :type/Name :type/Description :type/UUID :type/URL))
+    (testing "primary key"
+      (is (= ::lib.types.constants/primary_key (lib.types.isa/field-type {base-or-effective-type-key :type/Integer
+                                                                          :semantic-type             :type/PK}))))
+    (testing "foreign key"
+      (is (= ::lib.types.constants/foreign_key (lib.types.isa/field-type {base-or-effective-type-key :type/Integer
+                                                                          :semantic-type             :type/FK}))))
+    (testing "boolean"
+      (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {base-or-effective-type-key :type/Boolean}))))
+    (testing "location"
+      (are [typ] (= ::lib.types.constants/location (lib.types.isa/field-type {:semantic-type typ}))
+        :type/City :type/Country))
+    (testing "coordinate"
+      (are [typ] (= ::lib.types.constants/coordinate (lib.types.isa/field-type {:semantic-type typ}))
+        :type/Latitude :type/Longitude))
+    (testing "string like"
+      (are [typ] (= ::lib.types.constants/string_like (lib.types.isa/field-type {base-or-effective-type-key typ}))
+        :type/TextLike :type/IPAddress))
+    (testing "strings, regardless of the effective type is"
+      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Float
+                                                                            :semantic-type typ}))
+        :type/Name :type/Category))
+    (testing "boolean, regardless of the semantic type"
+      (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {base-or-effective-type-key :type/Boolean
+                                                                      :semantic-type             :type/Category})))))
   (testing "unexpected things"
     (are [column] (nil? (lib.types.isa/field-type column))
       {:effective-type "DERP DERP DERP"}

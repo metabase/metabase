@@ -143,10 +143,13 @@
                                                            (lib.util/query-stage query previous-stage-number))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (-> col
-           (assoc :lib/source               :source/previous-stage
-                  :lib/source-column-alias  source-alias
-                  :lib/desired-column-alias (unique-name-fn source-alias))
+       (-> (merge
+            col
+            {:lib/source               :source/previous-stage
+             :lib/source-column-alias  source-alias
+             :lib/desired-column-alias (unique-name-fn source-alias)}
+            (when (:metabase.lib.card/force-broken-id-refs col)
+              (select-keys col [:metabase.lib.card/force-broken-id-refs])))
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
@@ -359,10 +362,13 @@
   [_query _stage-number _stage _style]
   (i18n/tru "Native query"))
 
-(def ^:private display-name-parts
+(def ^:private display-name-source-parts
   [:source-table
    :source-card
-   :aggregation
+   :joins])
+
+(def ^:private display-name-other-parts
+  [:aggregation
    :breakout
    :filters
    :order-by
@@ -373,9 +379,14 @@
   (let [query (ensure-previous-stages-have-metadata query stage-number)]
     (or
      (not-empty
-      (let [descriptions (for [k display-name-parts]
-                           (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-        (str/join ", " (remove str/blank? descriptions))))
+      (let [part->description  (into {}
+                                     (comp cat
+                                           (map (fn [k]
+                                                  [k (lib.metadata.calculation/describe-top-level-key query stage-number k)])))
+                                     [display-name-source-parts display-name-other-parts])
+            source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
+            other-descriptions (map part->description display-name-other-parts)]
+        (str/join ", " (remove str/blank? (cons source-description other-descriptions)))))
      (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
        (lib.metadata.calculation/display-name query
                                               previous-stage-number

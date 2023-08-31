@@ -95,13 +95,12 @@ class EmbedModalContent extends Component {
       embeddingParams,
     );
 
-    const parameterSlugValuePairs = lockedParameters.map(parameter => {
-      const value =
-        parameter.id in parameterValues ? parameterValues[parameter.id] : null;
-      return [parameter.slug, value];
-    });
-
-    return Object.fromEntries(parameterSlugValuePairs);
+    return Object.fromEntries(
+      lockedParameters.map(parameter => [
+        parameter.slug,
+        parameterValues[parameter.id] ?? null,
+      ]),
+    );
   }
 
   render() {

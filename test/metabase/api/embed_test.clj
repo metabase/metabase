@@ -212,7 +212,15 @@
                                :name    "d"
                                :slug    "d"
                                :default nil}]}
-                (client/client :get 200 (card-url card {:params {:c 100}}))))))))
+                (client/client :get 200 (card-url card {:params {:c 100}}))))
+        (testing "even if the value of the parameter is nil"
+          (is (=? {:parameters [{:id      "d"
+                                 :type    "date/single"
+                                 :target  ["variable" ["template-tag" "d"]]
+                                 :name    "d"
+                                 :slug    "d"
+                                 :default nil}]}
+                  (client/client :get 200 (card-url card {:params {:c nil}})))))))))
 
 (deftest parameters-should-include-template-tags
   (testing "parameters should get from both template-tags and card.parameters"
@@ -326,7 +334,6 @@
             (is (= "Message seems corrupt or manipulated."
                    (client/client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
 
-
 (deftest download-formatted-without-constraints-test
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
                 "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
@@ -362,7 +369,6 @@
         (testing "If `:locked` parameter is present in URL params, request should fail"
           (is (= "You can only specify a value for :venue_id in the JWT."
                  (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100")))))))))
-
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
@@ -400,6 +406,60 @@
            (client/client :get (response-format->status-code response-format)
                           (str (card-query-url card response-format) "?venue_id=200")
                           {:request-options request-options})))))))
+
+(defn card-with-date-field-filter-default
+  []
+  {:enable_embedding true
+   :dataset_query
+   {:database (mt/id)
+    :type     :native
+    :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+               :template-tags {:date {:name         "date"
+                                      :display-name "Date"
+                                      :type         "dimension"
+                                      :default      "Q1-2014"
+                                      :dimension    [:field (mt/id :checkins :date) nil]
+                                      :widget-type  "date/quarter-year"}}}}})
+
+(deftest default-value-card-query-test
+  (testing "GET /api/embed/card/:token/query with default values for params"
+    (with-embedding-enabled-and-new-secret-key
+      (testing "if the param is enabled"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :enabled})]
+          (testing "the default should apply if no param value is provided"
+            (is (= [[107]]
+                   (mt/rows (client/client :get 202 (card-query-url card "")))))
+            (testing "check this is the same result as when a default value is provided"
+              (is (= [[107]]
+                     (mt/rows (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")))))))
+          (testing "an empty value should apply if provided as an empty string in the query params"
+            (is (= [[1000]]
+                   (mt/rows (client/client :get 202 (str (card-query-url card "") "?date="))))))
+          (testing "an empty value should apply if provided as nil in the JWT params"
+            (is (= [[1000]]
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}}))))))))
+      (testing "if the param is disabled"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :disabled})]
+          (testing "the default should apply if no param is provided"
+            (is (= [[107]]
+                   (mt/rows (client/client :get 202 (card-query-url card ""))))))
+          (testing "you can't apply an empty param value if the parameter is disabled"
+            (is (= "You're not allowed to specify a value for :date."
+                   (client/client :get 400 (str (card-query-url card "") "?date=")))))))
+      (testing "if the param is locked"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
+          (testing "an empty value should apply if provided as nil in the JWT params"
+            (is (= [[1000]]
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}})))))
+            (testing "check this is different to when a non-nil value is provided"
+              (is (= [[138]]
+                     (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
+          (testing "an empty string value is invalid and should result in an error"
+            (is (= "You must specify a value for :date in the JWT."
+                   (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
@@ -610,6 +670,55 @@
                                  s/Keyword s/Any}
                       s/Keyword s/Any}
                      (client/client :get 202 (str (dashcard-url dashcard) "?venue_id=1"))))))))
+
+(deftest dashboard-native-query-params-with-default-test
+  (testing "GET api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id with default values for params"
+   (with-embedding-enabled-and-new-secret-key
+     (t2.with-temp/with-temp
+       [Card      card      (card-with-date-field-filter-default)
+        Dashboard dashboard {:enable_embedding true
+                             :embedding_params {:date "enabled"}
+                             :parameters       [{:name "Date"
+                                                 :slug "date"
+                                                 :id "_DATE_ID_"
+                                                 :type :date/quarter-year
+                                                 :sectionId "date"}]}
+        DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                :card_id            (u/the-id card)
+                                :parameter_mappings [{:parameter_id "_DATE_ID_"
+                                                      :card_id (u/the-id card)
+                                                      :target [:dimension [:template-tag "date"]]}]}]
+       (testing "the default should apply if no param value is provided"
+         (is (= [[107]]
+                (mt/rows (client/client :get 202 (dashcard-url dashcard)))))
+         (testing "check this is the same result as when a default value is provided"
+           (is (= [[107]]
+                  (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date=Q1-2014")))))))
+       (testing "an empty value should apply if provided as an empty string in the query params"
+         (is (= [[1000]]
+                (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date="))))))
+       (testing "an empty value should apply if provided as nil in the JWT params"
+         (is (= [[1000]]
+                (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}}))))))
+       (testing "if the param is disabled"
+         (mt/with-temp-vals-in-db Dashboard (u/the-id dashboard) {:embedding_params {:date "disabled"}}
+           (testing "the default should apply if no param is provided"
+             (is (= [[107]]
+                    (mt/rows (client/client :get 202 (dashcard-url dashcard))))))
+           (testing "you can't apply an empty param value if the parameter is disabled"
+             (is (= "You're not allowed to specify a value for :date."
+                    (client/client :get 400 (str (dashcard-url dashcard) "?date=")))))))
+       (testing "if the param is locked"
+         (mt/with-temp-vals-in-db Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
+           (testing "an empty value should apply if provided as nil in the JWT params"
+             (is (= [[1000]]
+                    (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}})))))
+             (testing "check this is different to when a non-nil value is provided"
+               (is (= [[138]]
+                      (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
+           (testing "an empty string value is invalid and should result in an error"
+             (is (= "You must specify a value for :date in the JWT."
+                    (client/client :get 400 (dashcard-url dashcard {:params {:date ""}})))))))))))
 
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------

@@ -127,13 +127,18 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)``;
+const StyledButton = styled(BaseButton)``;
 
-Button.displayName = "Button";
+StyledButton.displayName = "Button";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Button, {
+/**
+ * @deprecated: use Button from "metabase/ui"
+ */
+const Button = Object.assign(StyledButton, {
   Root: ButtonRoot,
   Content: ButtonContent,
   TextContainer: ButtonTextContainer,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Button;

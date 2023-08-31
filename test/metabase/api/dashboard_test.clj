@@ -1710,7 +1710,7 @@
                                                   :ordered_tabs []}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
-            (is (pos? (:id (first resp)))))
+            (is (pos-int? (:id (first resp)))))
           (is (= {:size_x                     4
                   :size_y                     4
                   :col                        4
@@ -3079,6 +3079,10 @@
                          (mt/user-http-request :rasta :post 202 url
                                                {:parameters [{:id    "_PRICE_"
                                                               :value 4}]})))
+            (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
+                         (mt/user-http-request :rasta :post 202 url
+                                               {:parameters [{:id    "_PRICE_"
+                                                              :value nil}]})))
             (testing "New parameter types"
               (testing :number/=
                 (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
@@ -3115,6 +3119,47 @@
                                                {:parameters [{:id     "_PRICE_"
                                                               :target [:dimension [:field (mt/id :venues :id) nil]]
                                                               :value  4}]})))))))))
+
+;; see also [[metabase.query-processor.dashboard-test]]
+(deftest dashboard-native-card-query-parameters-test
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query {:query         "SELECT * FROM \"PRODUCTS\" WHERE {{cat}}"
+                                    :template-tags {"cat" {:id           "__cat__"
+                                                           :name         "cat"
+                                                           :display-name "Cat"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :widget-type  :string/=
+                                                           :default      ["Gizmo"]}}})]
+        (mt/with-temp [Card          {card-id :id} {:dataset_query query}
+                       Dashboard     {dashboard-id :id} {:parameters [{:name      "Text"
+                                                                       :slug      "text"
+                                                                       :id        "_text_"
+                                                                       :type      "string/="
+                                                                       :sectionId "string"
+                                                                       :default   ["Doohickey"]}]}
+                       DashboardCard {dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
+                                                                                  :card_id      card-id
+                                                                                  :target       [:dimension [:template-tag "cat"]]}]
+                                                        :card_id                card-id
+                                                        :visualization_settings {}
+                                                        :dashboard_id           dashboard-id}]
+          (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+            (testing "Sanity check: we can apply a parameter to a native query"
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 53)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_text_"
+                                                                :value ["Gadget"]}]}))))
+            (testing "if the parameter is specified with a nil value the default should not apply"
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 200)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id    "_text_"
+                                                                :value nil}]}))))
+            (testing "if the parameter isn't specified the default should apply"
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 51)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters []}))))))))))
 
 (defn- parse-export-format-results [^bytes results export-format]
   (with-open [is (java.io.ByteArrayInputStream. results)]
@@ -3254,7 +3299,7 @@
                      (mt/user-http-request :crowberto :post 500 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
-(deftest dashcard-implicit-action-execution-test
+(deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
@@ -3279,7 +3324,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {}}))))))))
+                                                    {:parameters {}})))))))))))
+
+(deftest dashcard-implicit-action-execution-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard update"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}
@@ -3302,7 +3351,11 @@
               (testing "Missing other parameters should fail gracefully"
                 (is (partial= "Implicit parameters must be provided."
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"id" 1}}))))))))
+                                                    {:parameters {"id" 1}})))))))))))
+
+(deftest dashcard-implicit-action-execution-delete-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard delete"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}
