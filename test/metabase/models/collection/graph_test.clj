@@ -60,7 +60,7 @@
     (update graph :groups (fn [groups]
                             (m/map-vals #(select-keys % ids) groups)))))
 
-(defn- graph
+(defn graph
   "Fetch collection graph.
 
   * `:clear-revisions?` = delete any previously existing collection revision entries so we get revision = 0
