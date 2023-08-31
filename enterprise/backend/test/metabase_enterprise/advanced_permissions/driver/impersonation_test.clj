@@ -57,7 +57,15 @@
   (testing "Does not throw an exception if passed a nil `database-or-id`"
     (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
-      (is (nil? (@#'impersonation/connection-impersonation-role nil))))))
+      (is (nil? (@#'impersonation/connection-impersonation-role nil)))))
+
+  (testing "Throws an exception if impersonation should be enforced, but the user doesn't have the required attribute"
+    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                :attributes     {}}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"User does not have attribute required for connection impersonation."
+           (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
