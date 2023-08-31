@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { updateSetting } from "metabase/admin/settings/settings";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -10,6 +9,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
+import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
@@ -48,9 +48,9 @@ export function WhatsNewNotification() {
       <Stack spacing="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <IconButtonWrapper onClick={dimiss}>
-            <Icon name="close" color={color("bg-dark")} />
-          </IconButtonWrapper>
+          <DismissIconButtonWrapper onClick={dimiss}>
+            <Icon name="close" />
+          </DismissIconButtonWrapper>
         </Flex>
 
         <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
