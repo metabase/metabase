@@ -1,14 +1,15 @@
 (ns metabase.lib.filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -361,11 +362,15 @@
                                             (first (lib/filterable-column-operators expr-col))
                                             expr-col
                                             (meta/field-metadata :users :last-login))))
-          filter-clauses (lib/filters query)]
+          filter-clauses  (lib/filters query)]
       (testing "existing clauses"
-        (doseq [filter-clause filter-clauses]
-          (is (= filter-clause
-                 (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+        (doseq [filter-clause filter-clauses
+                :let          [legacy-clause (lib.convert/->legacy-MBQL filter-clause)]
+                legacy-clause [legacy-clause
+                               (update legacy-clause 0 u/qualified-name)]]
+          (testing (pr-str legacy-clause)
+            (is (= filter-clause
+                   (lib/find-filter-for-legacy-filter query legacy-clause))))))
       (testing "missing clause"
         (let [filter-clause (assoc first-filter 2 43)]
           (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
@@ -376,3 +381,16 @@
           (is (thrown-with-msg?
                #?(:clj Exception :cljs :default) #"Multiple matching filters found"
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
+
+(deftest ^:parallel find-filterable-column-for-legacy-ref-test
+  (let [query (lib/filter lib.tu/venues-query (lib/= (meta/field-metadata :venues :name) "BBQ"))]
+    (are [legacy-ref] (=? {:name      "NAME"
+                           :id        (meta/id :venues :name)
+                           :operators seq}
+                          (lib/find-filterable-column-for-legacy-ref query legacy-ref))
+      [:field (meta/id :venues :name) nil]
+      [:field (meta/id :venues :name) {}]
+      ["field" (meta/id :venues :name) nil]
+      #?@(:cljs
+          [#js ["field" (meta/id :venues :name) nil]
+           #js ["field" (meta/id :venues :name) #js {}]]))))
