@@ -3,11 +3,13 @@
   (:refer-clojure :exclude [=])
   (:require
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.mbql.util.match :as mbql.u.match]
@@ -201,6 +203,18 @@
    metadatas :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
   (when-let [i (index-of-closest-matching-metadata a-ref metadatas)]
     (nth metadatas i)))
+
+(mu/defn find-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+  "Like [[closest-matching-metadata]], but takes a legacy MBQL reference. The name here is for consistency with other
+  FE names for similar functions."
+  ([query legacy-ref metadatas]
+   (find-column-for-legacy-ref query -1 legacy-ref metadatas))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?
+    metadatas    :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
+   (closest-matching-metadata (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching

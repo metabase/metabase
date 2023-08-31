@@ -13,6 +13,7 @@
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
@@ -43,6 +44,7 @@
          lib.database/keep-me
          lib.drill-thru/keep-me
          lib.drill-thru.pivot/keep-me
+         lib.equality/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -108,6 +110,8 @@
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
+ [lib.equality
+  find-column-for-legacy-ref]
  [lib.expression
   expression
   expressions
@@ -161,6 +165,7 @@
   field-id
   fieldable-columns
   fields
+  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -172,6 +177,7 @@
   filter-clause
   filter-operator
   find-filter-for-legacy-filter
+  find-filterable-column-for-legacy-ref
   and
   or
   not

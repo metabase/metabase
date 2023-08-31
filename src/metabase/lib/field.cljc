@@ -5,6 +5,8 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -17,7 +19,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -721,14 +722,31 @@
       query)))
 
 (mu/defn find-visible-column-for-ref :- [:maybe lib.metadata/ColumnMetadata]
-  "Return the visible column in `query` at `stage-number` referenced by `field-ref`.
-  If `stage-number` is omitted, the last stage is used."
+  "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
+  last stage is used. This is currently only meant for use with `:field` clauses."
   ([query field-ref]
    (find-visible-column-for-ref query -1 field-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    field-ref    :- ::lib.schema.ref/ref]
+    field-ref    :- some?]
    (let [stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+         ;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
+         ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
+         columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
+                    lib.metadata.calculation/returned-columns
+                    lib.metadata.calculation/visible-columns)
+                  query stage-number stage)]
      (lib.equality/closest-matching-metadata field-ref columns))))
+
+(mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
+  only meant for use with `:field` clauses."
+  ([query legacy-ref]
+   (find-visible-column-for-legacy-ref query -1 legacy-ref))
+
+  ([query       :- ::lib.schema/query
+    stage-index :- :int
+    legacy-ref  :- some?]
+   (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
+     (find-visible-column-for-ref query stage-index a-ref))))
