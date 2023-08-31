@@ -1,6 +1,6 @@
-import { ScheduleSettings } from "./settings";
-import { Table } from "./table";
-import { ISO8601Time } from ".";
+import type { ScheduleSettings } from "./settings";
+import type { Table } from "./table";
+import type { ISO8601Time } from ".";
 
 export type DatabaseId = number;
 
@@ -32,7 +32,9 @@ export type DatabaseFeature =
   | "right-join"
   | "inner-join"
   | "full-join"
-  | "nested-field-columns";
+  | "nested-field-columns"
+  | "connection-impersonation"
+  | "connection-impersonation-requires-role";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

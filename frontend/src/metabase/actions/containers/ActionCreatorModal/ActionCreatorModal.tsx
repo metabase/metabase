@@ -11,7 +11,7 @@ import { setErrorPage } from "metabase/redux/app";
 
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import ActionCreator from "../ActionCreator";
 

@@ -1,10 +1,5 @@
-import {
-  ChangeEvent,
-  InputHTMLAttributes,
-  forwardRef,
-  useCallback,
-  Ref,
-} from "react";
+import type { ChangeEvent, InputHTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 import { ToggleRoot } from "./Toggle.styled";
 
 export interface ToggleProps

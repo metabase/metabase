@@ -152,10 +152,8 @@
                                               (many-random-fks
                                                100
                                                {:spec-gen {:dataset_query {:database 1
-                                                                           :query {:source-table 3
-                                                                                   :aggregation [[:count]]
-                                                                                   :breakout [[:field 16 nil]]}
-                                                                           :type :query}
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM whatever;"}}
                                                            :dataset       true}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
@@ -434,26 +432,17 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp*
-            [Database   [db1s {:name "my-db"}]
-             Collection [coll1s {:name "My Collection"}]
-             Table      [table1s {:name  "CUSTOMERS"
-                                  :db_id (:id db1s)}]
-             Field      [field1s {:name     "NAME"
-                                  :table_id (:id table1s)}]
-             Card       [card1s  {:name "Source card"}]
-             Card       [card2s  {:name "Card with parameter"
-                                  :database_id (:id db1s)
-                                  :table_id (:id table1s)
-                                  :collection_id (:id coll1s)
-                                  :parameters [{:id                   "abc"
-                                                :type                 "category"
-                                                :name                 "CATEGORY"
-                                                :values_source_type   "card"
-                                                ;; card_id is in a different collection with dashboard's collection
-                                                :values_source_config {:card_id     (:id card1s)
-                                                                       :value_field [:field (:id field1s) nil]}}]}]
-             Dashboard  [dash1s {:name "A dashboard"
+          (mt/with-temp
+            [Database   db1s {:name "my-db"}
+             Collection coll1s {:name "My Collection"}
+             Table      table1s {:name  "CUSTOMERS"
+                                 :db_id (:id db1s)}
+             Field      field1s {:name     "NAME"
+                                 :table_id (:id table1s)}
+             Card       card1s  {:name "Source card"}
+             Card       card2s  {:name "Card with parameter"
+                                 :database_id (:id db1s)
+                                 :table_id (:id table1s)
                                  :collection_id (:id coll1s)
                                  :parameters [{:id                   "abc"
                                                :type                 "category"
@@ -461,7 +450,16 @@
                                                :values_source_type   "card"
                                                ;; card_id is in a different collection with dashboard's collection
                                                :values_source_config {:card_id     (:id card1s)
-                                                                      :value_field [:field (:id field1s) nil]}}]}]]
+                                                                      :value_field [:field (:id field1s) nil]}}]}
+             Dashboard  dash1s {:name "A dashboard"
+                                :collection_id (:id coll1s)
+                                :parameters [{:id                   "abc"
+                                              :type                 "category"
+                                              :name                 "CATEGORY"
+                                              :values_source_type   "card"
+                                              ;; card_id is in a different collection with dashboard's collection
+                                              :values_source_config {:card_id     (:id card1s)
+                                                                     :value_field [:field (:id field1s) nil]}}]}]
 
             (testing "make sure we insert ParameterCard when insert Dashboard/Card"
               ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s

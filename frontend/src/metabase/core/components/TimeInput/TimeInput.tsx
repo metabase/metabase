@@ -1,6 +1,8 @@
-import { forwardRef, Ref, useCallback } from "react";
+import type { Ref } from "react";
+import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
-import moment, { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone";
+import moment from "moment-timezone";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   InputClearButton,

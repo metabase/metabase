@@ -1,6 +1,7 @@
-import { ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { Location } from "history";
+import type { Location } from "history";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
@@ -26,7 +27,7 @@ import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/components/StatusListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
-import { AppErrorDescriptor, State } from "metabase-types/store";
+import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";

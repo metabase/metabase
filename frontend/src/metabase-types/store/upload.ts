@@ -1,4 +1,4 @@
-import { CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 export type FileUpload = {
   status: "complete" | "in-progress" | "error";

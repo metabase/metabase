@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { DatabaseId } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type { DatabaseId } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
 
 type DatabasePickerProps = {
   databases: Database[];

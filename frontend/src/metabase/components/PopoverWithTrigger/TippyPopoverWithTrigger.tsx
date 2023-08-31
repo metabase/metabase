@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
 
-import ControlledPopoverWithTrigger, {
-  ControlledPopoverWithTriggerProps,
-} from "./ControlledPopoverWithTrigger";
+import type { ControlledPopoverWithTriggerProps } from "./ControlledPopoverWithTrigger";
+import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";
 
 export type TippyPopoverWithTriggerProps = {
   isInitiallyVisible?: boolean;

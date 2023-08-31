@@ -5,7 +5,7 @@ import {
   createMockTextFieldFingerprint,
 } from "metabase-types/api/mocks";
 import type { Field } from "metabase-types/api";
-import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
+import type { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 import { sortDimensions } from "./utils";
 
 function createTextField({

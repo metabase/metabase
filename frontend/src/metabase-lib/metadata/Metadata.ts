@@ -1,5 +1,5 @@
 import _ from "underscore";
-import {
+import type {
   CardId,
   DatabaseId,
   FieldId,

@@ -16,6 +16,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest connection-impersonation-role-test
@@ -95,15 +96,37 @@
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                   :attributes     {"impersonation_attr" "limited_role"}}
-        ;; User with connection impersonation should not be able to query a table they don't have access to
-        ;; (`limited_role` in CI Snowflake has no data access)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"SQL compilation error:\nDatabase.*does not exist or not authorized"
-                              (mt/run-mbql-query venues
-                                                 {:aggregation [[:count]]})))
-        ;; Non-impersonated user should stil be able to query the table
+        ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
+        ;; since there is no way to reset the connection after impersonation is applied.
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Connection impersonation is enabled for this database, but no default role is found"
+             (mt/run-mbql-query venues
+                                {:aggregation [[:count]]})))
         (mw.session/as-admin
-         (is (= [100]
-                (mt/first-row
-                 (mt/run-mbql-query venues
-                                    {:aggregation [[:count]]})))))))))
+         (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Connection impersonation is enabled for this database, but no default role is found"
+              (mt/run-mbql-query venues
+                                 {:aggregation [[:count]]}))))
+
+        ;; Update the test database with a default role that has full permissions
+        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "accountadmin"))
+
+        (try
+          ;; User with connection impersonation should not be able to query a table they don't have access to
+          ;; (`limited_role` in CI Snowflake has no data access)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"SQL compilation error:\nDatabase.*does not exist or not authorized"
+               (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]})))
+
+          ;; Non-impersonated user should stil be able to query the table
+          (mw.session/as-admin
+           (is (= [100]
+                  (mt/first-row
+                   (mt/run-mbql-query venues
+                                      {:aggregation [[:count]]})))))
+          (finally
+            (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))

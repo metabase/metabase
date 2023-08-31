@@ -3,7 +3,8 @@ import {
   createMockModerationReview,
 } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
-import { setup, SetupOpts } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup } from "./setup";
 
 const setupEnterprise = (opts: SetupOpts) => {
   return setup({

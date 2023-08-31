@@ -12,9 +12,8 @@ import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import CreateDashboardForm, {
-  CreateDashboardFormOwnProps,
-} from "./CreateDashboardForm";
+import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
+import CreateDashboardForm from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {

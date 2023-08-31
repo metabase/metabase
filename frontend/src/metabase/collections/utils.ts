@@ -1,6 +1,10 @@
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
-import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,

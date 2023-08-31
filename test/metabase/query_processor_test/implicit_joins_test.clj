@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest breakout-on-fk-field-test
+(deftest ^:parallel breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Test that we can breakout on an FK field (Note how the FK Field is returned in the results)"
       (mt/dataset tupac-sightings
@@ -25,13 +25,13 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                                  (mt/run-mbql-query sightings
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$city_id->cities.name]
-                                                      :order-by    [[:desc [:aggregation 0]]]
-                                                      :limit       10}))))))))
+                 (mt/run-mbql-query sightings
+                   {:aggregation [[:count]]
+                    :breakout    [$city_id->cities.name]
+                    :order-by    [[:desc [:aggregation 0]]]
+                    :limit       10}))))))))
 
-(deftest filter-by-fk-field-test
+(deftest ^:parallel filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Test that we can filter on an FK field"
       (mt/dataset tupac-sightings
@@ -42,7 +42,7 @@
                    {:aggregation [[:count]]
                     :filter      [:= $category_id->categories.id 8]}))))))))
 
-(deftest fk-field-in-fields-test
+(deftest ^:parallel fk-field-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Check that we can include an FK field in `:fields`"
       (mt/dataset tupac-sightings
@@ -63,7 +63,7 @@
                     :order-by [[:desc $timestamp]]
                     :limit    10}))))))))
 
-(deftest join-multiple-tables-test
+(deftest ^:parallel join-multiple-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing (str "1. Check that we can order by Foreign Keys (this query targets sightings and orders by cities.name "
                   "and categories.name)"
@@ -93,7 +93,7 @@
                     (map butlast)
                     (mt/format-rows-by [int int int]))))))))
 
-(deftest feature-check-test
+(deftest ^:parallel feature-check-test
   (mt/test-drivers (mt/normal-drivers-without-feature :foreign-keys)
     (testing "Check that trying to use a Foreign Key fails for Mongo and other DBs"
       (is
@@ -107,18 +107,18 @@
                         [:asc $id]]
              :limit    10})))))))
 
-(deftest field-refs-test
+(deftest ^:parallel field-refs-test
   (testing "Implicit joins should come back with `:fk->` field refs"
     (is (= (mt/$ids venues $category_id->categories.name)
            (-> (mt/cols
-                 (mt/run-mbql-query venues
-                   {:fields   [$category_id->categories.name]
-                    :order-by [[:asc $id]]
-                    :limit    1}))
+                (mt/run-mbql-query venues
+                  {:fields   [$category_id->categories.name]
+                   :order-by [[:asc $id]]
+                   :limit    1}))
                first
                :field_ref)))))
 
-(deftest multiple-joins-test
+(deftest ^:parallel multiple-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Can we join against the same table twice (multiple fks to a single table?)"
       (mt/dataset avian-singles
@@ -143,7 +143,7 @@
                     :breakout    [$sender_id->users.name]
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
-(deftest implicit-joins-with-expressions-test
+(deftest ^:parallel implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset sample-dataset

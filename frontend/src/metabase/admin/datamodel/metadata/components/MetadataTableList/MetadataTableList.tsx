@@ -1,4 +1,5 @@
-import { ChangeEvent, MouseEvent, useCallback, useMemo, useState } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
@@ -10,15 +11,15 @@ import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import {
+import type {
   DatabaseId,
   SchemaId,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
-import Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   AdminListItem,

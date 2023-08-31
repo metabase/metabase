@@ -1,15 +1,17 @@
+import type {
+  HTMLAttributes,
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  Ref,
+} from "react";
 import {
   useEffect,
   useContext,
   useCallback,
   useRef,
   useState,
-  HTMLAttributes,
-  ChangeEventHandler,
-  KeyboardEventHandler,
-  MouseEventHandler,
   forwardRef,
-  Ref,
 } from "react";
 import styled from "@emotion/styled";
 import { t } from "ttag";
@@ -18,12 +20,12 @@ import { css } from "@emotion/react";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 
 import { color, lighten } from "metabase/lib/colors";
+import type { TabContextType } from "../Tab";
 import {
   getTabButtonInputId,
   getTabId,
   getTabPanelId,
   TabContext,
-  TabContextType,
 } from "../Tab";
 import { TabButtonMenu } from "./TabButtonMenu";
 import {

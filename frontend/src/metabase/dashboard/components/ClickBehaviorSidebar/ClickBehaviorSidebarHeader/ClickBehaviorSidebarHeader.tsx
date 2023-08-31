@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { t, jt } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
