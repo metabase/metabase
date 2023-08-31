@@ -553,11 +553,11 @@
   (let [bindings (candidate-bindings context dimensions)
         ;; TODO - Fix this to reduce complexity as well. The mapping is just weird.
         reduced-bindings (map most-specific-definition bindings)]
-       (apply merge-with (fn [a b]
-                           (case (compare (:score a) (:score b))
-                             1  a
-                             0  (update a :matches concat (:matches b))
-                             -1 b))
+    (apply merge-with (fn [a b]
+                        (case (compare (:score a) (:score b))
+                          1  a
+                          0  (update a :matches concat (:matches b))
+                          -1 b))
            {}
            reduced-bindings)))
 
@@ -694,8 +694,8 @@
                              (conj {:filter query-filter}))
         score           (if query
                           score
-                             (* (or (->> card-dimensions
-                                         (map (partial get context-dimensions))
+                          (* (or (->> card-dimensions
+                                      (map (partial get context-dimensions))
                                       (concat filters metrics)
                                       (transduce (keep :score) stats/mean))
                                  rules/max-score)
@@ -1124,7 +1124,6 @@
                :param_fields       (->> context :query-filter (filter-referenced-fields root))
                :auto_apply_filters true))))
 
-
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
   {:arglists '([entity opts])}
@@ -1289,9 +1288,9 @@
   "Recursively finds key in coll, returns true or false"
   [coll k]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-            (loop [x coll-zip]
-              (when-not (zip/end? x)
-                (if (k (zip/node x)) true (recur (zip/next x))))))))
+             (loop [x coll-zip]
+               (when-not (zip/end? x)
+                 (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]
