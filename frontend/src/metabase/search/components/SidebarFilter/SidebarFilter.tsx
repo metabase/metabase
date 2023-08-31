@@ -13,13 +13,13 @@ import Popover from "metabase/components/Popover";
 import {
   DropdownApplyButtonDivider,
   DropdownFilterElement,
-} from "./SearchSidebarFilter.styled";
+} from "./SidebarFilter.styled";
 
 export type SearchSidebarFilterProps = {
   filter: SearchSidebarFilterComponent;
 } & SearchFilterComponentProps;
 
-export const SearchSidebarFilter = ({
+export const SidebarFilter = ({
   filter: { title, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,

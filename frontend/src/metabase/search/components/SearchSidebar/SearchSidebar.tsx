@@ -8,14 +8,14 @@ import type {
 } from "metabase/search/types";
 import { Title, Flex } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { TypeFilter } from "./filters/type-filter/TypeFilter";
-import { SearchSidebarFilter } from "./search-sidebar-filter/SearchSidebarFilter";
+import { SidebarFilter } from "metabase/search/components/SidebarFilter/SidebarFilter";
+import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
 
 const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
 };
 
-export const SearchFilterSidebar = ({
+export const SearchSidebar = ({
   value,
   onChangeFilters,
 }: {
@@ -41,7 +41,7 @@ export const SearchFilterSidebar = ({
     const normalizedValue =
       Array.isArray(value[key]) || !value[key] ? value[key] : [value[key]];
     return (
-      <SearchSidebarFilter
+      <SidebarFilter
         filter={Filter}
         data-testid={`${key}-search-filter`}
         value={normalizedValue}

@@ -9,6 +9,15 @@ import type {
 import type { IconName } from "metabase/core/components/Icon";
 import type { SearchFilterKeys } from "metabase/search/constants";
 
+export type EnabledSearchModelType =
+  | "card"
+  | "collection"
+  | "dashboard"
+  | "database"
+  | "dataset"
+  | "table"
+  | "action";
+
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;
   getIcon: () => {

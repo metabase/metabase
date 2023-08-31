@@ -3,10 +3,10 @@ import { useState } from "react";
 import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import type { SearchModelType } from "metabase-types/api";
+import type { EnabledSearchModelType } from "metabase/search/types";
 import { TypeFilterContent } from "./TypeFilterContent";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModelType, string> = {
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<EnabledSearchModelType, string> = {
   action: "Action",
   card: "Question",
   collection: "Collection",
@@ -16,7 +16,7 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<SearchModelType, string> = {
   table: "Table",
 };
 
-const TEST_TYPES: Array<SearchModelType> = [
+const TEST_TYPES: Array<EnabledSearchModelType> = [
   "action",
   "card",
   "collection",
@@ -26,7 +26,7 @@ const TEST_TYPES: Array<SearchModelType> = [
   "table",
 ];
 
-const TEST_TYPE_SUBSET: Array<SearchModelType> = [
+const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
   "dashboard",
   "collection",
   "database",
@@ -36,12 +36,12 @@ const TestTypeFilterComponent = ({
   initialValue = [],
   onChangeFilters,
 }: {
-  initialValue?: SearchModelType[];
+  initialValue?: EnabledSearchModelType[];
   onChangeFilters: jest.Mock;
 }) => {
-  const [value, setValue] = useState<SearchModelType[]>(initialValue);
+  const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
 
-  const onChange = (selectedValues: SearchModelType[]) => {
+  const onChange = (selectedValues: EnabledSearchModelType[]) => {
     onChangeFilters(selectedValues);
     setValue(selectedValues);
   };
@@ -53,8 +53,8 @@ const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
 }: {
-  availableModels?: SearchModelType[];
-  initialValue?: SearchModelType[];
+  availableModels?: EnabledSearchModelType[];
+  initialValue?: EnabledSearchModelType[];
 } = {}) => {
   setupSearchEndpoints(
     availableModels.map((type, index) =>

@@ -22,7 +22,7 @@ import {
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { SearchFilterSidebar } from "metabase/search/components/SearchFilterSidebar/SearchFilterSidebar";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
   SearchBody,
@@ -110,7 +110,7 @@ export default function SearchApp({ location }) {
               )}
             </SearchMain>
             <SearchControls>
-              <SearchFilterSidebar
+              <SearchSidebar
                 value={searchFilters}
                 onChangeFilters={onFilterChange}
               />

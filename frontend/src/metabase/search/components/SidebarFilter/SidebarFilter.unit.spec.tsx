@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
-import type { SearchSidebarFilterProps } from "./SearchSidebarFilter";
-import { SearchSidebarFilter } from "./SearchSidebarFilter";
+import type { SearchSidebarFilterProps } from "./SidebarFilter";
+import { SidebarFilter } from "./SidebarFilter";
 
 const mockFilter: SearchSidebarFilterComponent = {
   title: "Mock Filter",
@@ -34,7 +34,7 @@ const MockSearchSidebarFilter = ({
   };
 
   return (
-    <SearchSidebarFilter
+    <SidebarFilter
       filter={filter}
       value={selectedValues}
       onChange={onFilterChange}
@@ -58,7 +58,7 @@ const setup = (options: Partial<SearchSidebarFilterProps> = {}) => {
   };
 };
 
-describe("SearchSidebarFilter", () => {
+describe("SidebarFilter", () => {
   it("should render filter title, filter icon, chevrondown, but no legend text when no value is selected", () => {
     setup();
 
@@ -69,7 +69,7 @@ describe("SearchSidebarFilter", () => {
     expect(screen.queryByText("field-set-legend")).not.toBeInTheDocument();
   });
 
-  it("should render filter display component and close button when value is selected", () => {
+  it("should render filter display, close button, and filter value in the popover when value is initially selected", () => {
     setup({ value: ["value1"] });
 
     expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
@@ -78,6 +78,11 @@ describe("SearchSidebarFilter", () => {
 
     expect(screen.getByTestId("mock-display-component")).toBeInTheDocument();
     expect(screen.getByLabelText("close icon")).toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Mock Filter"));
+    expect(
+      within(screen.getByTestId("mock-content-component")).getByText("value1"),
+    ).toBeInTheDocument();
   });
 
   it("should render filter content component when popover is open", () => {
