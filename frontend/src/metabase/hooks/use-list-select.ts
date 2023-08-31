@@ -1,16 +1,16 @@
 import { useState, useCallback } from "react";
 
-export const useListSelect = (keyFn = (item: any) => item) => {
-  const [selectedKeys, setSelectedKeys] = useState(new Set());
-  const [selected, setSelected] = useState<any[]>([]);
+export function useListSelect<T>(keyFn: (item: T) => string) {
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<T[]>([]);
 
   const getIsSelected = useCallback(
-    item => selectedKeys.has(keyFn(item)),
+    (item: T) => selectedKeys.has(keyFn(item)),
     [keyFn, selectedKeys],
   );
 
   const selectOnlyTheseItems = useCallback(
-    items => {
+    (items: T[]) => {
       const newSelected = items;
       const newSelectedKeys = new Set(newSelected.map(keyFn));
 
@@ -21,7 +21,7 @@ export const useListSelect = (keyFn = (item: any) => item) => {
   );
 
   const toggleItem = useCallback(
-    itemBeingToggled => {
+    (itemBeingToggled: T) => {
       const isItemSelected = getIsSelected(itemBeingToggled);
 
       const newSelected = isItemSelected
@@ -47,4 +47,4 @@ export const useListSelect = (keyFn = (item: any) => item) => {
     selectOnlyTheseItems,
     toggleItem,
   };
-};
+}
