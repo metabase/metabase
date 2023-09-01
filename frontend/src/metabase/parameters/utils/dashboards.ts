@@ -22,6 +22,7 @@ import {
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
+import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -141,13 +142,30 @@ function buildFieldFilterUiParameter(
   );
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
-    return getTargetFieldFromCard(target, card, metadata);
+    const question = new Question(card, metadata);
+    const field = getTargetFieldFromCard(target, card, metadata);
+
+    return { field, shouldResolveFkField: !question.isNative() };
   });
-  const fields = mappedFields.filter((field): field is Field => field != null);
+
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
     return isVariableTarget(mapping.target);
   });
-  const uniqueFields = _.uniq(fields, field => field.id);
+
+  const uniqueFields = _.uniq(
+    mappedFields
+      .filter(
+        (
+          mappedField,
+        ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+          return mappedField.field != null;
+        },
+      )
+      .map(({ field, shouldResolveFkField }) => {
+        return shouldResolveFkField ? field.target ?? field : field;
+      }),
+    field => field.id,
+  );
 
   return {
     ...parameter,
