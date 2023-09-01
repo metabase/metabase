@@ -196,14 +196,11 @@
     :keys                                        [linked-tables]}]
   (when (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (t2/select-one Table :id linked-table-id)
-                                        q     (update query-filter
-                                                      (dec (count query-filter))
-                                                      assoc :source-field linked-field-id)]
+                                  (let [table (t2/select-one Table :id linked-table-id)]
                                     (magic/automagic-analysis
                                      table
                                      {:show         :all
-                                      :query-filter [:= q model_pk]})))
+                                      :query-filter [:= [:field linked-field-id nil] model_pk]})))
                                 linked-tables)
           tabs-and-cards   (map-indexed (fn [idx {tab-name :name tab-cards :ordered_cards}]
                                           ;; id starts at 0. want our temporary ids to start at -1, -2, ...
