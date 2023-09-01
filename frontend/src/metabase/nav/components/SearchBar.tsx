@@ -135,16 +135,20 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     }
   }, [previousLocation, location, setInactive]);
 
+  const goToSearchApp = useCallback(() => {
+    onChangeLocation({
+      pathname: "search",
+      query: { q: searchText.trim() },
+    });
+  }, [onChangeLocation, searchText]);
+
   const handleInputKeyPress = useCallback(
     e => {
       if (e.key === "Enter" && hasSearchText) {
-        onChangeLocation({
-          pathname: "search",
-          query: { q: searchText.trim() },
-        });
+        goToSearchApp();
       }
     },
-    [hasSearchText, onChangeLocation, searchText],
+    [goToSearchApp, hasSearchText],
   );
 
   const handleClickOnClose = useCallback(
@@ -181,6 +185,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
               <SearchResults
                 searchText={searchText.trim()}
                 onEntitySelect={onSearchItemSelect}
+                onClickViewAll={goToSearchApp}
               />
             </SearchResultsContainer>
           ) : (

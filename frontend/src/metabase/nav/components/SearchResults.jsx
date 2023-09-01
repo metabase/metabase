@@ -22,6 +22,7 @@ const propTypes = {
   forceEntitySelect: PropTypes.bool,
   searchText: PropTypes.string,
   searchFilters: PropTypes.object,
+  onClickViewAll: PropTypes.func,
 };
 
 const SearchResults = ({
@@ -31,6 +32,7 @@ const SearchResults = ({
   onEntitySelect,
   forceEntitySelect,
   searchText,
+  onClickViewAll,
 }) => {
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
     list,
@@ -81,11 +83,20 @@ const SearchResults = ({
           )}
         </ul>
       </div>
-      <Group position="apart">
+      <Group
+        position="apart"
+        align="center"
+        px="lg"
+        py="sm"
+        onClick={onClickViewAll}
+      >
         <Text
-          weight={600}
+          weight={700}
+          size="sm"
         >{jt`View and filter all ${totalResults} results`}</Text>
-        <Button leftIcon={<Icon name="arrow_right" />} />
+        <Button variant="subtle" compact color="dark">
+          <Icon name="arrow_right" />
+        </Button>
       </Group>
     </div>
   );

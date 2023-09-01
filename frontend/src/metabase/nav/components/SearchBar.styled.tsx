@@ -145,8 +145,6 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
-  display: flex;
-
   color: ${color("text-dark")};
 
   ${breakpointMaxSmall} {
@@ -159,9 +157,10 @@ export const SearchResultsFloatingContainer = styled.div`
 `;
 
 export const SearchResultsContainer = styled.div`
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
   overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
 
   background-color: ${color("bg-white")};
   line-height: 24px;
