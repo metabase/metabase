@@ -191,7 +191,6 @@
 (defn- create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
   [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
-    {query-filter :pk_ref}                       :model-index
     {model-name :name :as model}                 :model
     :keys                                        [linked-tables]}]
   (when (seq linked-tables)
