@@ -22,7 +22,7 @@ import {
 } from "metabase/lib/pulse";
 
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
-import { getParameters } from "metabase/dashboard/selectors";
+
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import {
@@ -107,7 +107,6 @@ const getEditingPulseWithDefaults = (state, props) => {
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
-  parameters: getParameters(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
 });
@@ -136,8 +135,6 @@ class SharingSidebarInner extends Component {
     initialCollectionId: PropTypes.number,
     isAdmin: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
-    parameters: PropTypes.array.isRequired,
-    parameterValues: PropTypes.object.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
