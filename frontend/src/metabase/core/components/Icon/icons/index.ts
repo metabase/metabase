@@ -25,6 +25,8 @@ import arrow_up_component from "./arrow_up.svg?component";
 import arrow_up_source from "./arrow_up.svg?source";
 import arrow_down_component from "./arrow_down.svg?component";
 import arrow_down_source from "./arrow_down.svg?source";
+import arrow_right_component from "./arrow_right.svg?component";
+import arrow_right_source from "./arrow_right.svg?source";
 import arrow_left_component from "./arrow_left.svg?component";
 import arrow_left_source from "./arrow_left.svg?source";
 import arrow_left_to_line_component from "./arrow_left_to_line.svg?component";
@@ -404,6 +406,10 @@ export const Icons = {
   arrow_left: {
     component: arrow_left_component,
     source: arrow_left_source,
+  },
+  arrow_right: {
+    component: arrow_right_component,
+    source: arrow_right_source,
   },
   arrow_left_to_line: {
     component: arrow_left_to_line_component,

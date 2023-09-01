@@ -145,6 +145,8 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
+  display: flex;
+
   color: ${color("text-dark")};
 
   ${breakpointMaxSmall} {
