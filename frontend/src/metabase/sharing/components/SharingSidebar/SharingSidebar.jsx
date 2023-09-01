@@ -241,7 +241,8 @@ class SharingSidebarInner extends Component {
       channels: [channel],
       cards: getSupportedCardsForSubscriptions(dashboard),
       parameters: parameters.map(param => ({
-        ...param,
+        id: param.id,
+        type: param.type,
         value:
           PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             ? parameterValues[param.id] ?? PULSE_PARAM_EMPTY
