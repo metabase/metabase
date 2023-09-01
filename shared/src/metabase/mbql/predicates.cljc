@@ -1,8 +1,6 @@
 (ns metabase.mbql.predicates
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
   (:require
-   [metabase.lib.schema.expression.temporal
-    :as lib.schema.expression.temporal]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.mbql.schema :as mbql.s]

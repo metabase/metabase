@@ -7,6 +7,7 @@
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
@@ -29,6 +30,12 @@
     {:error/message "Valid field datetime unit keyword or string"}
     #(mbql.preds/DateTimeUnit? (keyword %))]])
 
+(mr/def ::MaybeUnnormalizedReference
+  [:fn
+   {:error/message "Field or aggregation reference as it comes in to the API"}
+   (fn [x]
+     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
+
 (mr/def ::ResultColumnMetadata
   [:map
    [:name         :string]
@@ -40,7 +47,7 @@
    [:fingerprint        {:optional true} [:maybe i/Fingerprint]]
    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
    ;; only optional because it's not present right away, but it should be present at the end.
-   [:field_ref          {:optional true} mbql.s/Reference]
+   [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]
    ;; the timezone in which the column was converted to using `:convert-timezone` expression
    [:converted_timezone {:optional true} ::lib.schema.expression.temporal/timezone-id]])
 

@@ -302,7 +302,7 @@
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
-(def ^{:arglists '([s])} validate-cron-string
+(def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
     (fn [s]
       (when (validator s)

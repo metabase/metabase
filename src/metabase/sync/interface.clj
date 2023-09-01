@@ -4,8 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.lib.schema.id :as lib.schema.id]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::DatabaseMetadataTable
   [:map
@@ -102,8 +101,6 @@
 (mr/def ::DatabaseInstance
   [:and
    (ms/InstanceOf :model/Database)
-   #_[:map
-      [:id ::lib.schema.id/database]]
    ::no-kebab-case-keys])
 
 (def DatabaseInstance
@@ -113,9 +110,6 @@
 (mr/def ::TableInstance
   [:and
    (ms/InstanceOf :model/Table)
-   #_[:map
-      [:id ::lib.schema.id/table]
-      [:db_id ::lib.schema.id/database]]
    ::no-kebab-case-keys])
 
 (def TableInstance
@@ -126,9 +120,6 @@
   [:and
    [:and
     (ms/InstanceOf :model/Field)
-    #_[:map
-       [:id ::lib.schema.id/field]
-       [:table_id ::lib.schema.id/table]]
     ::no-kebab-case-keys]])
 
 (def FieldInstance

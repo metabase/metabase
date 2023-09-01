@@ -11,13 +11,13 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [metabase.sync.util :as sync-util]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |

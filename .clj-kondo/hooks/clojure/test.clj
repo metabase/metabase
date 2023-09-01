@@ -59,6 +59,7 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
+     metabase.test/with-temp
      metabase.test/with-temp*
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
