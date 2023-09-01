@@ -9,6 +9,10 @@ title: Driver interface changelog
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
+  
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
+  the set of privileges the database connection's current user has. It needs to be implemented if the database 
+  supports the `:actions` feature.
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
 

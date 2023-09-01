@@ -584,7 +584,7 @@
 
 (defmethod driver.sql/set-role-statement :snowflake
   [_ role]
-  (format "USE ROLE %s;" role))
+  (format "USE ROLE \"%s\";" role))
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
