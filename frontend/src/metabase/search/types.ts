@@ -3,16 +3,12 @@ import type { ComponentType } from "react";
 
 import type { Collection, SearchResult } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
-import type { SearchFilterKeys } from "metabase/search/constants";
+import type {
+  SearchFilterKeys,
+  enabledSearchTypes,
+} from "metabase/search/constants";
 
-export type EnabledSearchModelType =
-  | "card"
-  | "collection"
-  | "dashboard"
-  | "database"
-  | "dataset"
-  | "table"
-  | "action";
+export type EnabledSearchModelType = typeof enabledSearchTypes[number];
 
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;

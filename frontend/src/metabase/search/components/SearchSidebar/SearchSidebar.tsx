@@ -11,7 +11,7 @@ import { SearchFilterKeys } from "metabase/search/constants";
 import { SidebarFilter } from "metabase/search/components/SidebarFilter/SidebarFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
 
-const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
+export const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
 };
 

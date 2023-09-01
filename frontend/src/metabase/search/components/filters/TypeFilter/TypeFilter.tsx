@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { TypeFilterContent } from "metabase/search/components/filters/TypeFilter/TypeFilterContent";

@@ -1,5 +1,8 @@
 /* eslint-disable react/prop-types */
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
+import type {
+  EnabledSearchModelType,
+  SearchSidebarFilterComponent,
+} from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Flex } from "metabase/ui";
@@ -14,8 +17,9 @@ export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentCom
     });
 
     const availableModels = (metadata && metadata.available_models) ?? [];
-    const typeFilters = availableModels.filter(model =>
-      enabledSearchTypes.includes(model),
+    const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
+      (model): model is EnabledSearchModelType =>
+        availableModels.includes(model),
     );
 
     return isLoading ? (
