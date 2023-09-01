@@ -221,16 +221,15 @@
                                                       (assoc dc :dashboard_tab_id tab-id))
                                                     (add-source-model-link model tab-cards))}))
                                           child-dashboards)]
-          (->
-            (reduce (fn [dashboard {:keys [tab dash-cards]}]
-                      (-> dashboard
-                          (update :ordered_cards into dash-cards)
-                          (update :ordered_tabs conj tab)))
-                    (merge
-                      seed-dashboard
-                      {:ordered_cards []
-                       :ordered_tabs  []})
-                    tabs-and-cards)))
+          (reduce (fn [dashboard {:keys [tab dash-cards]}]
+                    (-> dashboard
+                        (update :ordered_cards into dash-cards)
+                        (update :ordered_tabs conj tab)))
+                  (merge
+                    seed-dashboard
+                    {:ordered_cards []
+                     :ordered_tabs  []})
+                  tabs-and-cards))
         (update seed-dashboard
                 :ordered_cards (fn [cards] (add-source-model-link model cards)))))
     {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
