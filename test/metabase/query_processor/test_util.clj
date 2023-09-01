@@ -14,11 +14,13 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.expression.temporal
+    :as lib.schema.expression.temporal]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
@@ -30,6 +32,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -96,9 +99,14 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (t2/select-one [Field :id :table_id :semantic_type :base_type :effective_type
-                   :coercion_strategy :name :display_name :fingerprint]
-     :id (data/id table-kw field-kw))
+   (if (qp.store/initialized?)
+     (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+         (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         qp.store/->legacy-metadata)
+     (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
+                     :coercion_strategy :name :display_name :fingerprint]
+                    :id (data/id table-kw field-kw)))
    {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
@@ -187,8 +195,10 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (#'qp.add-implicit-joins/join-alias (t2/select-one-fn :name Table :id (data/id dest-table-kw))
-                                                                 (:name source-col))))))
+               :source_alias (let [table-name (if (qp.store/initialized?)
+                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
+                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
 
 (declare cols)
 
@@ -393,7 +403,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
-(deftest nest-query-test
+(deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
            {:database 1, :type :query, :query {:source-table 2}}))
@@ -553,16 +563,11 @@
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
-(defn do-with-report-timezone-id
+(mu/defn do-with-report-timezone-id
   "Impl for `with-report-timezone-id`."
-  [timezone-id thunk]
-  {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; This will fail if the app DB isn't initialized yet. That's fine — there's no DBs to notify if the app DB isn't
-  ;; set up.
-  (try
-    (#'driver/notify-all-databases-updated)
-    (catch Throwable _))
-  (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
+  [timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+   thunk]
+  (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
     (testing (format "\nreport timezone id = %s" timezone-id)
       (thunk))))
 
@@ -571,11 +576,11 @@
   [timezone-id & body]
   `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-database-timezone-id
+(mu/defn do-with-database-timezone-id
   "Impl for `with-database-timezone-id`."
-  [timezone-id thunk]
-  {:pre [((some-fn nil? string?) timezone-id)]}
-  (binding [qp.timezone/*database-timezone-id-override* (or timezone-id ::nil)]
+  [timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+   thunk]
+  (binding [qp.timezone/*database-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
     (testing (format "\ndatabase timezone id = %s" timezone-id)
       (thunk))))
 
@@ -584,15 +589,17 @@
   [timezone-id & body]
   `(do-with-database-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-results-timezone-id
+(mu/defn do-with-results-timezone-id
   "Impl for `with-results-timezone-id`."
-  [timezone-id thunk]
+  [timezone-id :- ::lib.schema.expression.temporal/timezone-id
+   thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  (binding [qp.timezone/*results-timezone-id-override* (or timezone-id ::nil)]
-    (testing (format "\nresults timezone id = %s" timezone-id)
+  (binding [qp.timezone/*results-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
+    (testing (format "\nresults timezone id = %s" (pr-str timezone-id))
       (thunk))))
 
 (defmacro with-results-timezone-id
-  "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
+  "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage.
+  `timezone-id` cannot be `nil`."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))

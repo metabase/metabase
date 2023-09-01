@@ -47,7 +47,7 @@
              (set (mt/rows (mt/dataset toucan-microsecond-incidents
                              (mt/run-mbql-query incidents)))))))))
 
-(deftest filter-test
+(deftest ^:parallel xfilter-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
@@ -56,13 +56,13 @@
         ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
         ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
         ;; rare, but explicitly specifying UTC will make the issue go away
-        (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (mt/with-report-timezone-id "UTC"
           (testing "There were 10 'sad toucan incidents' on 2015-06-02 in UTC"
             (mt/with-native-query-testing-context query
               (is (= 10
                      (count (mt/rows (qp/process-query query))))))))))))
 
-(deftest results-test
+(deftest ^:parallel results-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= (cond
              (= :sqlite driver/*driver*)
@@ -112,7 +112,7 @@
               ["2015-06-08T00:00:00Z" 9]
               ["2015-06-09T00:00:00Z" 7]
               ["2015-06-10T00:00:00Z" 9]])
-           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+           (mt/with-report-timezone-id "America/Los_Angeles"
              (->> (mt/dataset sad-toucan-incidents
                     (mt/run-mbql-query incidents
                       {:aggregation [[:count]]

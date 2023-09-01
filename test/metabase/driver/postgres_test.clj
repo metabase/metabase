@@ -899,10 +899,10 @@
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
-(deftest timezone-test
+(deftest ^:parallel timezone-test
   (mt/test-driver :postgres
     (letfn [(get-timezone-with-report-timezone [report-timezone]
-              (mt/with-temporary-setting-values [report-timezone report-timezone]
+              (mt/with-report-timezone-id report-timezone
                 (ffirst
                  (mt/rows
                   (qp/process-query {:database (mt/id)

@@ -9,6 +9,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.test-metadata :as meta]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
@@ -396,10 +397,10 @@
             (is (= :completed
                    (:status (qp/process-query query))))))))))
 
-(deftest temporal-type-conversion-test
+(deftest ^:parallel temporal-type-conversion-test
   (mt/with-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-report-timezone-id "US/Pacific"
         (let [temporal-string "2022-01-01"
               convert         (fn [from-t to-t]
                                 (->> (#'bigquery.qp/->temporal-type to-t (#'bigquery.qp/->temporal-type from-t temporal-string))
@@ -450,12 +451,12 @@
                        (sql.qp/format-honeysql :bigquery-cloud-sdk
                                                {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)})))))))))))
 
-(deftest reconcile-relative-datetimes-test-2
+(deftest ^:parallel reconcile-relative-datetimes-test-2
   (mt/with-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
       (testing "relative-datetime clauses on their own when a reporting timezone is set"
         (doseq [timezone ["UTC" "US/Pacific"]]
-          (mt/with-temporary-setting-values [report-timezone timezone]
+          (mt/with-report-timezone-id timezone
             (doseq [[t [unit expected-sql]]
                     {:time      [:hour (str "time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
                      :date      [:year (str "date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
@@ -628,9 +629,9 @@
                   (is (= [[0]]
                          (mt/rows (qp/process-query query)))))))))))))
 
-(deftest current-datetime-honeysql-form-test
+(deftest ^:parallel current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk
-    (qp.store/with-metadata-provider (mt/id)
+    (qp.store/with-metadata-provider meta/metadata-provider
       (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
                     "whatever temporal type we want.")
         (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
@@ -650,11 +651,14 @@
                   "Should be possible to convert to another temporal type/should report its type correctly")
               (is (= [expected-sql]
                      (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
-                  "Should convert to the correct SQL")))))
+                  "Should convert to the correct SQL"))))))))
 
+(deftest ^:parallel current-datetime-honeysql-form-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    (qp.store/with-metadata-provider meta/metadata-provider
       (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
         (doseq [timezone ["UTC" "US/Pacific"]]
-          (mt/with-temporary-setting-values [report-timezone timezone]
+          (mt/with-report-timezone-id timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
               (is (= ["current_timestamp()"]
                      (hformat/format form))

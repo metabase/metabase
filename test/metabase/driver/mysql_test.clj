@@ -212,7 +212,7 @@
                   (catch Throwable e
                     e)))))))
 
-(deftest timezone-date-formatting-test
+(deftest ^:parallel timezone-date-formatting-test
   (mt/test-driver :mysql
     ;; Most of our tests either deal in UTC (offset 00:00) or America/Los_Angeles timezones (-07:00/-08:00). When dealing
     ;; with dates, we will often truncate the timestamp to a date. When we only test with negative timezone offsets, in
@@ -223,7 +223,7 @@
     ;; 2018-08-16, instead of 2018-08-17
     (mt/with-system-timezone-id "Asia/Hong_Kong"
       (letfn [(run-query-with-report-timezone [report-timezone]
-                (mt/with-temporary-setting-values [report-timezone report-timezone]
+                (mt/with-report-timezone-id report-timezone
                   (mt/first-row
                     (qp/process-query
                      {:database   (mt/id)
@@ -359,10 +359,10 @@
                    (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
 
-(deftest group-on-time-column-test
+(deftest ^:parallel group-on-time-column-test
   (mt/test-driver :mysql
     (testing "can group on TIME columns (#12846)"
-      (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (mt/with-report-timezone-id "UTC"
         (mt/dataset attempted-murders
           (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
                 add-date-fn  (fn [t] [(str now-date-str "T" t)])]
