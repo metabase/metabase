@@ -81,7 +81,9 @@
      [prepost])
    body))
 
-(defn- deparameterized-fn-tail [{[arities-type arities-value] :arities, :as _parsed}]
+(defn deparameterized-fn-tail
+  "Generate a deparameterized `fn` tail (the contents of a `fn` form after the `fn` symbol)."
+  [{[arities-type arities-value] :arities, :as _parsed}]
   (let [body (case arities-type
                :single   (deparameterized-arity arities-value)
                :multiple (for [arity (:arities arities-value)]
