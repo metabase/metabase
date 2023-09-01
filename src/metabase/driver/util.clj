@@ -182,7 +182,7 @@
                                             [(mdb.connection/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
-(mu/defn database->driver
+(mu/defn database->driver :- :keyword
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times

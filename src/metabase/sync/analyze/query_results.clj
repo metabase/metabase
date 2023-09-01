@@ -4,8 +4,9 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require
-   [malli.core :as mc]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.expression.temporal
+    :as lib.schema.expression.temporal]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
@@ -13,47 +14,52 @@
    [metabase.sync.analyze.fingerprint.insights :as insights]
    [metabase.sync.interface :as i]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [redux.core :as redux]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [redux.core :as redux]))
 
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
-  (s/constrained su/KeywordOrString
-                 #(mbql.preds/DateTimeUnit? (keyword %))
-                 "Valid field datetime unit keyword or string"))
+  [:and
+   ms/KeywordOrString
+   [:fn
+    {:error/message "Valid field datetime unit keyword or string"}
+    #(mbql.preds/DateTimeUnit? (keyword %))]])
+
+(mr/def ::ResultColumnMetadata
+  [:map
+   [:name         :string]
+   [:display_name :string]
+   [:base_type    ms/FieldTypeKeywordOrString]
+   [:description        {:optional true} [:maybe :string]]
+   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
+   [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
+   [:fingerprint        {:optional true} [:maybe i/Fingerprint]]
+   [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+   ;; only optional because it's not present right away, but it should be present at the end.
+   [:field_ref          {:optional true} mbql.s/Reference]
+   ;; the timezone in which the column was converted to using `:convert-timezone` expression
+   [:converted_timezone {:optional true} ::lib.schema.expression.temporal/timezone-id]])
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
   ;; this schema is used for both the API and the QP, so it should handle either normalized or unnormalized values. In
   ;; the QP, everything will be normalized.
-  {:name                                s/Str
-   :display_name                        s/Str
-   (s/optional-key :description)        (s/maybe s/Str)
-   :base_type                           su/FieldTypeKeywordOrString
-   (s/optional-key :semantic_type)      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
-   (s/optional-key :unit)               (s/maybe DateTimeUnitKeywordOrString)
-   (s/optional-key :fingerprint)        (s/maybe i/Fingerprint)
-   (s/optional-key :id)                 (s/maybe su/IntGreaterThanZero)
-   ;; only optional because it's not present right away, but it should be present at the end.
-   (s/optional-key :field_ref)          (s/pred
-                                         (comp (mc/validator mbql.s/Reference)
-                                               mbql.normalize/normalize-tokens)
-                                         "Field or aggregation reference as it comes in to the API")
-   ;; the timezone in which the column was converted to using `:convert-timezone` expression
-   (s/optional-key :converted_timezone) (s/pred mbql.preds/TimezoneId?)
-   s/Keyword                            s/Any})
+  [:ref ::ResultColumnMetadata])
+
+(mr/def ::ResultsMetadata
+  (mu/with-api-error-message
+   [:maybe [:sequential ResultColumnMetadata]]
+   (i18n/deferred-tru "value must be an array of valid results column metadata maps.")))
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."
-  (su/with-api-error-message (s/named [ResultColumnMetadata]
-                                      "Valid array of results column metadata maps")
-    "value must be an array of valid results column metadata maps."))
+  [:ref ::ResultsMetadata])
 
-(s/defn ^:private maybe-infer-semantic-type :- ResultColumnMetadata
+(mu/defn ^:private maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
   [col]
@@ -67,7 +73,7 @@
        (nil :type/Number) (classifiers.name/infer-semantic-type col)
        original-value))))
 
-(s/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
+(mu/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]
@@ -88,7 +94,7 @@
                (try
                  (maybe-infer-semantic-type (col->ResultColumnMetadata col))
                  (catch Throwable e
-                   (log/error e (trs "Error generating insights for column:") col)
+                   (log/error e (i18n/trs "Error generating insights for column:") col)
                    col)))]
     (redux/post-complete
      (redux/juxt
