@@ -29,6 +29,10 @@ describe("compareVersions", () => {
     expect(compareVersions("v0.46.0-BETA1", "v0.46.0-BETA2")).toBe(-1);
   });
 
+  it("should consider X.BETA and  X.0-BETA equal", () => {
+    expect(compareVersions("v0.46.0-BETA", "v0.46-BETA")).toBe(0);
+  });
+
   it("should treat missing subversions as 0", () => {
     expect(compareVersions("v0.46.0", "v0.46")).toBe(0);
     expect(compareVersions("v0.46.2", "v0.46.2.0")).toBe(0);
