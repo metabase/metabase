@@ -204,12 +204,23 @@ describe("parameters/utils/parameter-values", () => {
       expect(normalizeParameterValue("string/contains", "foo")).toEqual([
         "foo",
       ]);
-      expect(normalizeParameterValue("string/contains")).toEqual(null);
     });
 
     it("should return normalized value for number parameters", () => {
       expect(normalizeParameterValue("number/=", 0)).toEqual([0]);
-      expect(normalizeParameterValue("number/=", null)).toEqual(null);
+    });
+
+    it("should return null for empty arrays or null (indicating a no-op filter)", () => {
+      for (const type of ["category", "string/contains", "number/="]) {
+        expect(normalizeParameterValue(type, [])).toEqual(null);
+        expect(normalizeParameterValue(type, null)).toEqual(null);
+      }
+    });
+
+    it("should return undefined for undefined (for allowing fallback to a default for subscription filters)", () => {
+      for (const type of ["category", "string/contains", "number/="]) {
+        expect(normalizeParameterValue(type, undefined)).toEqual(undefined);
+      }
     });
   });
 });
