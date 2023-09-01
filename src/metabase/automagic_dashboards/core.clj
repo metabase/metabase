@@ -541,7 +541,7 @@
                            candidate (field-candidates context definition)]
                        {(name identifier)
                         (assoc definition :matches [(merge candidate definition)])})]
-    (vals (group-by (comp id-or-name first :matches val first) all-bindings))))
+    (group-by (comp id-or-name first :matches val first) all-bindings)))
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
@@ -549,16 +549,14 @@
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
   [context dimensions]
-  (let [bindings (candidate-bindings context dimensions)
-        ;; TODO - Fix this to reduce complexity as well. The mapping is just weird.
-        reduced-bindings (map most-specific-definition bindings)]
-    (apply merge-with (fn [a b]
-                        (case (compare (:score a) (:score b))
-                          1  a
-                          0  (update a :matches concat (:matches b))
-                          -1 b))
-           {}
-           reduced-bindings)))
+  (->> (candidate-bindings context dimensions)
+       (map (comp most-specific-definition val))
+       (apply merge-with (fn [a b]
+                           (case (compare (:score a) (:score b))
+                             1  a
+                             0  (update a :matches concat (:matches b))
+                             -1 b))
+              {})))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
