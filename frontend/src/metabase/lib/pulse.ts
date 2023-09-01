@@ -9,7 +9,10 @@ import type {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  normalizeParameterValue,
+  PULSE_PARAM_USE_DEFAULT,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -192,4 +195,24 @@ export function createChannel(channelSpec: ChannelSpec) {
 
 export function getPulseParameters(pulse: Pulse) {
   return pulse?.parameters || [];
+}
+
+// pulse parameters list cannot be trusted for existence/up-to-date defaults
+// rely on given parameters list but take pulse parameter values if they are not null
+export function getActivePulseParameters(
+  pulse: Pulse,
+  parameters: PulseParameter[],
+) {
+  const pulseParameters = getPulseParameters(pulse);
+  const pulseParametersById = _.indexBy(pulseParameters, "id");
+
+  return parameters
+    .map(parameter => {
+      const value = pulseParametersById[parameter.id]?.value;
+      return {
+        ...parameter,
+        value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
+      };
+    })
+    .filter(parameter => parameter.value != null);
 }
