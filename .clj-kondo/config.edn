@@ -561,8 +561,8 @@
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
-   metabase.api.card-test/with-temp-native-card                                                                              hooks.common/with-two-bindings
-   metabase.api.card-test/with-temp-native-card-with-params                                                                  hooks.common/with-two-bindings
+   metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
+   metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
