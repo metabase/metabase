@@ -355,15 +355,8 @@
 
      ;; for historic reasons a distinct count clause is still named "count". Don't change this or you might break FE
      ;; stuff that keys off of aggregation names.
-     ;;
-     ;; `cum-count` and `cum-sum` get the same names as the non-cumulative versions, due to limitations (they are
-     ;; written out of the query before we ever see them). For other code that makes use of this function give them
-     ;; the correct names to expect.
-     [(_ :guard #{:distinct :cum-count}) _]
+     [(_ :guard #{:distinct}) _]
      "count"
-
-     [:cum-sum _]
-     "sum"
 
      ;; for any other aggregation just use the name of the clause e.g. `sum`.
      [clause-name & _]
@@ -400,9 +393,8 @@
     [:distinct    arg]   (tru "Distinct values of {0}"    (aggregation-arg-display-name inner-query arg))
     [:count       arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
     [:avg         arg]   (tru "Average of {0}"            (aggregation-arg-display-name inner-query arg))
-    ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:cum-sum     arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
+    [:cum-count   arg]   (tru "Cumulative count of {0}"   (aggregation-arg-display-name inner-query arg))
+    [:cum-sum     arg]   (tru "Cumulative sum of {0}"     (aggregation-arg-display-name inner-query arg))
     [:stddev      arg]   (tru "SD of {0}"                 (aggregation-arg-display-name inner-query arg))
     [:sum         arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
     [:min         arg]   (tru "Min of {0}"                (aggregation-arg-display-name inner-query arg))
@@ -442,7 +434,7 @@
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct}) & args]
+    [(_ :guard #{:count :distinct :cum-count}) & args]
     (merge
      (col-info-for-aggregation-clause inner-query args)
      {:base_type     :type/Integer
