@@ -169,8 +169,27 @@ const MetabaseUtils = {
         .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
     // [1, 2, 3, -2, 1]
 
-    const aComponents = getComponents(aVersion);
-    const bComponents = getComponents(bVersion);
+    const aComponentsSplit = aVersion.split("-").map(getComponents);
+    const bComponentsSplit = bVersion.split("-").map(getComponents);
+    const minLength = Math.max(
+      aComponentsSplit[0].length,
+      bComponentsSplit[0].length,
+    );
+
+    const padWithZeros = (array, minLength) => {
+      while (array.length < minLength) {
+        array.push(0);
+      }
+    };
+
+    // pad versions to have the part on the left of the - of the same length
+    // so that we can compare v0.46 == v0.46.0
+    padWithZeros(aComponentsSplit[0], minLength);
+    padWithZeros(bComponentsSplit[0], minLength);
+
+    const aComponents = aComponentsSplit[0].concat(aComponentsSplit[1] ?? []);
+    const bComponents = bComponentsSplit[0].concat(bComponentsSplit[1] ?? []);
+
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];
       const b = bComponents[i];
