@@ -622,23 +622,23 @@
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Table {table-name :name :as table} {:name "FOO"}]
-        (= (format "A look at %s" (u/capitalize-en table-name))
-           (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil))))))))
+        (is (= (format "A look at %s" (u/capitalize-en table-name))
+               (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil)))))))))
 
 (deftest test-field-title-test
   (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Field {field-name :name :as field} {:name "TOTAL"}]
-        (= (format "A look at the %s field" (u/capitalize-en field-name))
-           (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil))))))))
+        (is (= (format "A look at the %s fields" (u/capitalize-en field-name))
+               (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
 (deftest test-metric-title-test
   (testing "Given the current automagic_dashboards/metric/GenericMetric.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Metric {metric-name :name :as metric} {:table_id   (mt/id :venues)
                                                             :definition {:aggregation [[:count]]}}]
-        (= (format "A look at the %s metric" metric-name)
-           (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil))))))))
+        (is (= (format "A look at the %s metrics" metric-name)
+               (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil)))))))))
 
 (deftest test-segment-title-test
   (testing "Given the current automagic_dashboards/metric/GenericTable.yaml template (This is the default template for segments), produce the expected dashboard title"
@@ -647,10 +647,10 @@
                               segment-name :name
                               :as          segment} {:table_id   (mt/id :venues)
                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
-        (= (format "A look at %s in the %s segment"
-                   (u/capitalize-en (t2/select-one-fn :name Table :id table-id))
-                   segment-name)
-           (:name (mt/with-test-user :rasta (magic/automagic-analysis segment nil))))))))
+        (is (= (format "A look at %s in the %s segment"
+                       (u/capitalize-en (t2/select-one-fn :name Table :id table-id))
+                       segment-name)
+               (:name (mt/with-test-user :rasta (magic/automagic-analysis segment nil)))))))))
 
 (deftest model-with-joins-test
   ;; This model does a join of 3 tables and aliases columns.
@@ -1180,7 +1180,7 @@
           dimensions           [generic-number-dim
                                 generic-quantity-dim
                                 unmatched-dim]
-          bindings             (#'magic/candidate-bindings context dimensions)]
+          bindings             (vals (#'magic/candidate-bindings context dimensions))]
       (testing "The single field binds to the two relevant dimensions"
         (is (=? [[generic-number-dim
                   generic-quantity-dim]]
@@ -1214,9 +1214,12 @@
       (testing "The return data shape is a vector for each field, each of which is a vector of
                 each matching dimension, each of which as associated a `:matches` into the
                 value of the dimension map."
-        (is (=? (for [field [nurnies greebles]]
-                  (for [dimension [integer-dim number-dim quantity-dim]]
-                    (update-vals dimension #(assoc % :matches [field]))))
+        (is (=? (apply
+                  merge
+                  (for [{field-name :name :as field} [nurnies greebles]]
+                    {field-name
+                     (for [dimension [integer-dim number-dim quantity-dim]]
+                       (update-vals dimension #(assoc % :matches [field])))}))
                 bindings))))))
 
 (deftest candidate-bindings-3f-4d-test
@@ -1242,7 +1245,7 @@
                          number-dim
                          quantity-dim
                          unmatched-dim]
-          bindings      (#'magic/candidate-bindings context dimensions)]
+          bindings      (vals (#'magic/candidate-bindings context dimensions))]
       bindings
       (testing "3 results are returned - one for each matched field group"
         (is (= 3 (count bindings))))
