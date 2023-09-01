@@ -147,14 +147,11 @@ function buildFieldFilterUiParameter(
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
     return isVariableTarget(mapping.target);
   });
-  const uniqueFieldsWithFKResolved = _.uniq(
-    fields.map(field => field.target ?? field),
-    field => field.id,
-  );
+  const uniqueFields = _.uniq(fields, field => field.id);
 
   return {
     ...parameter,
-    fields: uniqueFieldsWithFKResolved,
+    fields: uniqueFields,
     hasVariableTemplateTagTarget,
   };
 }
