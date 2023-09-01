@@ -37,7 +37,28 @@
 (mu/defn resolve-database-id :- ::lib.schema.id/database
   "Return the *actual* `:database` ID for a query, even if it is using
   the [[metabase.lib.schema.id/saved-questions-virtual-database-id]]."
-  [{database-id :database, :as query}]
+  [{database-id :database, :as query} :- [:multi
+                                          {:dispatch (fn [m]
+                                                       (cond
+                                                         (pos-int? (:database m)) :valid-database-id
+                                                         (:lib/type m)            :mlv2-query
+                                                         :else                    :legacy-query))}
+                                          [:valid-database-id
+                                           [:map
+                                            [:database ::lib.schema.id/database]]]
+                                          [:mlv2-query
+                                           [:map
+                                            [:stages [:cat
+                                                      [:map
+                                                       [:source-card ::lib.schema.id/card]]
+                                                      [:* :map]]]]]
+                                          [:legacy-query
+                                           [:map
+                                            [:query
+                                             [:map
+                                              [:source-table [:re
+                                                              {:error/message "card__<id>"}
+                                                              #"^card__[1-9]\d*$"]]]]]]]]
   (or
    (when (pos-int? database-id)
      database-id)

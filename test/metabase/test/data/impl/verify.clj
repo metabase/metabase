@@ -2,19 +2,27 @@
   "Logic for verifying that test data was loaded correctly."
   (:require
    [metabase.driver :as driver]
-   [metabase.models :refer [Table]]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.query-processor :as qp]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (defmulti verify-data-loaded-correctly
   "Make sure a `DatabaseDefinition` (see `metabase.test.data.interface`) was loaded correctly. This checks that all
   defined Tables and Fields exist and the correct number of rows exist."
-  {:arglists '([driver database-definition database])}
-  tx/dispatch-on-driver-with-test-extensions
+  {:arglists '([driver database-definition database-metadata])}
+  (fn [driver _database-definition database-metadata]
+    (if (driver.metadata/legacy-metadata? database-metadata)
+      ::legacy-metadata
+      (tx/dispatch-on-driver-with-test-extensions driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod verify-data-loaded-correctly ::legacy-metadata
+  [driver database-definition database]
+  (verify-data-loaded-correctly driver database-definition (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defn- loaded-tables
   "Actual Tables loaded into `database`. Returns a set of `[schema-name table-name]` pairs."
@@ -89,7 +97,7 @@
             (throw (ex-info "Error verifying Field." (params->ex-data params) e)))))
       (log/debugf "All Fields for Table %s.%s loaded correctly." (pr-str actual-schema) (pr-str actual-name))
       (log/debugf "Verifying rows...")
-      (let [table-id           (or (t2/select-one-pk Table :db_id (u/the-id database), :name actual-name)
+      (let [table-id           (or (t2/select-one-pk :model/Table :db_id (u/the-id database), :name actual-name)
                                    (throw (ex-info (format "Cannot find %s.%s after sync." (pr-str actual-schema) (pr-str actual-name))
                                                    (params->ex-data params))))
             expected-row-count (count rows)

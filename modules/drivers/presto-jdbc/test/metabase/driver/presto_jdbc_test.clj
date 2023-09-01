@@ -88,7 +88,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest page-test
+(deftest ^:parallel page-test
   (testing ":page clause"
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
@@ -106,15 +106,15 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
     (is (= nil
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
-(deftest template-tag-timezone-test
+(deftest ^:parallel template-tag-timezone-test
   (mt/test-driver :presto-jdbc
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
-      (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
+      (mt/with-report-timezone-id "Asia/Hong_Kong"
         ;; the `read-column-thunk` for `Types/TIMESTAMP` always returns an `OffsetDateTime`, not a `LocalDateTime`, as
         ;; the original Presto version of this test expected; therefore, convert the `ZonedDateTime` corresponding to
         ;; midnight on this date (at the report TZ) to `OffsetDateTime` for comparison's sake

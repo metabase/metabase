@@ -12,8 +12,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models :refer [Database]]
-   [metabase.models.table :as table]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -51,8 +49,8 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
-(defn- database->client
-  ^BigQuery [database]
+(mu/defn ^:private database->client :- (ms/InstanceOfClass BigQuery)
+  ^BigQuery [database :- [:map [:details :map]]]
   (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
@@ -113,7 +111,9 @@
   (u/varargs BigQuery$TableOption))
 
 (mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
-  (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
+  (^Table [{{:keys [project-id]} :details, :as database} :- [:map [:details :map]]
+           dataset-id
+           table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
   (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
@@ -217,9 +217,16 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
-(defmethod driver/table-rows-sample :bigquery-cloud-sdk
-  [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
-  (let [database (table/database table)
+(mu/defmethod driver/table-rows-sample :bigquery-cloud-sdk
+  [driver
+   {table-name :name, dataset-id :schema :as table} :- lib.metadata/TableMetadata
+   fields
+   rff
+   opts]
+  (let [database (qp.store/with-metadata-provider (if (qp.store/initialized?)
+                                                    (qp.store/metadata-provider)
+                                                    (:db-id table))
+                   (lib.metadata/database (qp.store/metadata-provider)))
         bq-table (get-table database dataset-id table-name)]
     (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
            ;; We couldn't easily test if the following two can show up as
@@ -383,9 +390,10 @@
                               :datetime-diff           true
                               :now                     true
                               :convert-timezone        true
-                              ;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally
-                              ;; using SET TIMEZONE, but we need to flag it as supporting set-timezone anyway so that reporting timezones are
-                              ;; returned and used, and tests expect the converted values.
+                              ;; BigQuery uses timezone operators and arguments on calls like extract() and
+                              ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
+                              ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
+                              ;; tests expect the converted values.
                               :set-timezone            true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
@@ -429,7 +437,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! Database db-id {:details (:details updated-db)})
+      (t2/update! :model/Database db-id {:details (:details updated-db)})
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk

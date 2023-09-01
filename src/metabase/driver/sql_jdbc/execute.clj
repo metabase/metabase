@@ -11,6 +11,7 @@
    [java-time :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
@@ -111,15 +112,22 @@
    connections read-only (*after* setting timezone, if needed)."
   {:added    "0.47.0"
    :arglists '([driver db-or-id-or-spec options f])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver db-or-id-or-spec _options _f]
+    (if (driver.metadata/legacy-metadata? db-or-id-or-spec)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod do-with-connection-with-options ::legacy-metadata
+  [driver database options f]
+  (do-with-connection-with-options driver (driver.metadata/->mlv2-metadata database :metadata/database) options f))
 
 (defmulti set-parameter
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
   set it with a different intended JDBC type as needed."
   {:arglists '([driver prepared-statement i object])}
-  (fn [driver _ _ object]
+  (fn [driver _prepared-statement _i object]
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 

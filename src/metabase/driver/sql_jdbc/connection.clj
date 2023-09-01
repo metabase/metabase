@@ -7,17 +7,17 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.interface :as mi]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.ssh :as ssh]
-   [schema.core :as s]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -58,8 +58,15 @@
 
   Drivers that need to override the default properties below can provide custom implementations of this method."
   {:arglists '([driver database])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver database]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod data-warehouse-connection-pool-properties ::legacy-metadata
+  [driver database]
+  (data-warehouse-connection-pool-properties driver (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defmulti data-source-name
   "Name, from connection details, to use to identify a database in the c3p0 `dataSourceName`. This is used for so the
@@ -153,6 +160,8 @@
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
+  (when config/tests-available?
+    ((requiring-resolve 'mb.hawk.parallel/assert-test-is-not-parallel) "destroy-pool!"))
   (connection-pool/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
@@ -164,10 +173,10 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(s/defn ^:private jdbc-spec-hash
+(mu/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
+  [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
@@ -211,66 +220,82 @@
                                           db-id)))
   nil)
 
-(defn db->pooled-connection-spec
+(def ^:private PooledConnectionSpec
+  [:map
+   [:datasource (ms/InstanceOfClass javax.sql.DataSource)]])
+
+(mu/defn ^:private database-metadata->pooled-connection-spec :- PooledConnectionSpec
+  [{database-id :id, :as db} :- lib.metadata/DatabaseMetadata]
+  (letfn [(get-fn [db-id log-invalidation?]
+            (let [details (get @database-id->connection-pool db-id ::not-found)]
+              (cond
+                ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+                ;; not in [[database-id->connection-pool]].
+                (:is-audit db)
+                {:datasource (mdb.connection/data-source)}
+
+                (= ::not-found details)
+                nil
+
+                ;; details hash changed from what is cached; invalid
+                (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
+                      new-hash  (jdbc-spec-hash db)]
+                  (when (and (some? curr-hash) (not= curr-hash new-hash))
+                    ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+                    ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+                    ;; our app DB, and see if it STILL doesn't match
+                    (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details] :id database-id)
+                                        jdbc-spec-hash))))
+                (when log-invalidation?
+                  (log-jdbc-spec-hash-change-msg! db-id))
+
+                (nil? (:tunnel-session details)) ; no tunnel in use; valid
+                details
+
+                (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
+                details
+
+                :else                   ; tunnel in use, and not open; invalid
+                (when log-invalidation?
+                  (log-ssh-tunnel-reconnect-msg! db-id)))))]
+    (or
+     ;; we have an existing pool for this database, so use it
+     (get-fn database-id true)
+     ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
+     ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
+     ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
+     ;; sure only one thread will be creating a pool at a given instant.
+     (locking database-id->connection-pool
+       (or
+        ;; check if another thread created the pool while we were waiting to acquire the lock
+        (get-fn database-id false)
+        ;; create a new pool and add it to our cache, then return it
+        (u/prog1 (create-pool! db)
+          (set-pool! database-id <> db)))))))
+
+(mu/defn ^:private database-or-id->pooled-connection-spec :- PooledConnectionSpec
+  [db-or-id :- [:or
+                ::lib.schema.id/database
+                [:map
+                 [:id ::lib.schema.id/database]]]]
+  ;; we need the Database instance no matter what (in order to compare details hash with cached value)
+  (let [db (or (when (driver.metadata/legacy-metadata? db-or-id)
+                 (driver.metadata/->mlv2-metadata db-or-id))
+               (when (= (lib.dispatch/dispatch-value db-or-id) :metadata/database)
+                 db-or-id)
+               (qp.store/with-metadata-provider (u/the-id db-or-id)
+                 (lib.metadata/database (qp.store/metadata-provider))))]
+    (database-metadata->pooled-connection-spec db)))
+
+(mu/defn db->pooled-connection-spec :- PooledConnectionSpec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/the-id db-or-id-or-spec)
-          ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            db-or-id-or-spec) ; passed in
-                          (qp.store/with-metadata-provider database-id
-                            (lib.metadata/database (qp.store/metadata-provider))))
-          get-fn      (fn [db-id log-invalidation?]
-                        (let [details (get @database-id->connection-pool db-id ::not-found)]
-                          (cond
-                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
-                            ;; not in [[database-id->connection-pool]].
-                            (:is_audit db)
-                            {:datasource (mdb.connection/data-source)}
-
-                            (= ::not-found details)
-                            nil
-
-                            ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
-                                  new-hash  (jdbc-spec-hash db)]
-                              (when (and (some? curr-hash) (not= curr-hash new-hash))
-                                ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
-                                ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
-                                ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
-                                                    jdbc-spec-hash))))
-                            (when log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id))
-
-                            (nil? (:tunnel-session details)) ; no tunnel in use; valid
-                            details
-
-                            (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
-                            details
-
-                            :else ; tunnel in use, and not open; invalid
-                            (when log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
-      (or
-       ;; we have an existing pool for this database, so use it
-       (get-fn database-id true)
-       ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
-       ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
-       ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
-       ;; sure only one thread will be creating a pool at a given instant.
-       (locking database-id->connection-pool
-         (or
-          ;; check if another thread created the pool while we were waiting to acquire the lock
-          (get-fn database-id false)
-          ;; create a new pool and add it to our cache, then return it
-          (u/prog1 (create-pool! db)
-            (set-pool! database-id <> db))))))
+    (database-or-id->pooled-connection-spec db-or-id-or-spec)
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)

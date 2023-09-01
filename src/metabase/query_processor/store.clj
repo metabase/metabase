@@ -14,7 +14,7 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -24,7 +24,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
@@ -255,25 +256,6 @@
    [:effective_type    {:optional true} [:maybe ms/FieldType]]
    [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
 
-(defn ->legacy-metadata
-  "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
-  or [[metabase.lib.metadata]] functions
-  (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
-  and Toucan 2 model `:type` metadata).
-
-  Try to avoid using this, we would like to remove this in the near future."
-  {:deprecated "0.48.0"}
-  [mlv2-metadata]
-  (let [model (case (:lib/type mlv2-metadata)
-                :metadata/database :model/Database
-                :metadata/table :model/Table
-                :metadata/column :model/Field)]
-    (-> mlv2-metadata
-        (dissoc :lib/type)
-        (update-keys u/->snake_case_en)
-        (vary-meta assoc :type model)
-        (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (mu/defn database :- LegacyDatabaseMetadata
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
@@ -282,7 +264,7 @@
   Deprecated in favor of [[metabase.lib.metadata/database]] + [[metadata-provider]]."
   {:deprecated "0.48.0"}
   []
-  (->legacy-metadata (lib.metadata/database (metadata-provider))))
+  (  driver.metadata/->legacy-metadata (lib.metadata/database (metadata-provider))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (mu/defn ^:deprecated table :- LegacyTableMetadata
@@ -297,7 +279,7 @@
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :table-id    table-id})))
-      ->legacy-metadata))
+        driver.metadata/->legacy-metadata))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (mu/defn ^:deprecated field :- LegacyFieldMetadata
@@ -312,4 +294,7 @@
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :field-id    field-id})))
-      ->legacy-metadata))
+        driver.metadata/->legacy-metadata))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(p/import-vars [driver.metadata ->legacy-metadata])

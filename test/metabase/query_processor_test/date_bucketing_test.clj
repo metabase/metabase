@@ -1124,7 +1124,7 @@
       (mt/test-drivers (mt/normal-drivers)
         (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
           (doseq [tz [nil "UTC"]]         ;iterate on at least two report time zones to suss out bugs related to that
-            (mt/with-temporary-setting-values [report-timezone tz]
+            (mt/with-report-timezone-id tz
               (testing (format "\nunit = %s" unit)
                 (is (= expected-count (count-of-checkins unit filter-value))
                     (format
@@ -1251,9 +1251,9 @@
                (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
-(deftest june-31st-test
+(deftest ^:parallel june-31st-test
   (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
-    (mt/with-temporary-setting-values [report-timezone "UTC"]
+    (mt/with-report-timezone-id "UTC"
       ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
       ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
       ;; `:relative-datetime` expression and do this directly in MBQL.

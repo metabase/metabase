@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.public-settings :as public-settings]
@@ -48,8 +49,15 @@
   - [false :persist.check/read-table]
   - [false :persist.check/delete-table]"
   {:arglists '([database])}
-  (fn [database] (driver/dispatch-on-initialized-driver (:engine database)))
+  (fn [database]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver (:engine database))))
   :hierarchy #'driver/hierarchy)
+
+(defmethod check-can-persist ::legacy-metadata
+  [database]
+  (check-can-persist (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defn create-kv-table-honey-sql-form
   "The honeysql form that creates the persisted schema `cache_info` table."
@@ -91,11 +99,25 @@
   if `(driver/database-supports engine :persisted-models database)` returns true. Returns a map with :state that
   is :success or :error. If :state is :error, includes a key :error with a string message."
   {:arglists '([driver database definition dataset-query])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver database _definition _dataset-query]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod refresh! ::legacy-metadata
+  [driver database definition dataset-query]
+  (refresh! driver (driver.metadata/->mlv2-metadata database :metadata/database) definition dataset-query))
 
 (defmulti unpersist!
   "Unpersist a persisted model. Responsible for removing the persisted table."
   {:arglists '([driver database persisted-info])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver database _persisted-info]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod unpersist! ::legacy-metadata
+  [driver database persisted-info]
+  (unpersist! driver (driver.metadata/->mlv2-metadata database :metadata/database) persisted-info))

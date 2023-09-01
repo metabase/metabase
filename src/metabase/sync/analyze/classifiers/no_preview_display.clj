@@ -3,24 +3,26 @@
    (This means Fields are generally not shown in Table results and the like, but
    still shown in a single-row object detail page.)"
   (:require
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sync.interface :as i]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private ^:const ^Long average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
 (defn- long-plain-text-field?
-  [{:keys [base_type semantic_type]} fingerprint]
-  (and (isa? base_type :type/Text)
-       (contains? #{nil :type/SerializedJSON} semantic_type)
+  [{:keys [base-type semantic-type]} fingerprint]
+  (and (isa? base-type :type/Text)
+       (contains? #{nil :type/SerializedJSON} semantic-type)
        (some-> fingerprint
                (get-in [:type :type/Text :average-length])
                (> average-length-no-preview-threshold))))
 
-(s/defn infer-no-preview-display :- (s/maybe i/FieldInstance)
+(mu/defn infer-no-preview-display :- [:maybe ::lib.schema.metadata/column]
   "Classifier that determines whether FIELD should be marked 'No Preview Display'.
    If FIELD is textual and its average length is too great, mark it so it isn't displayed in the UI."
-  [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
+  [field       :- ::lib.schema.metadata/column
+   fingerprint :- [:maybe i/Fingerprint]]
   (when (long-plain-text-field? field fingerprint)
     (assoc field :preview_display false)))

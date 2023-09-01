@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [fn])
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
@@ -89,7 +90,7 @@
   [fn-tail]
   (let [parsed (parse-SchematizedParams (if (symbol? (first fn-tail))
                                           fn-tail
-                                          (cons '&f fn-tail)))]
+                                          (cons '&uninstrumented fn-tail)))]
     (when (= parsed ::mc/invalid)
       (let [error     (mc/explain SchematizedParams fn-tail)
             humanized (mu.humanize/humanize error)]
@@ -133,8 +134,10 @@
     (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
     ;; =>
     (fn [x] (inc x))"
-  [parsed]
-  `(core/fn ~@(deparameterized-fn-tail parsed)))
+  ([parsed]
+   (deparameterized-fn-form nil parsed))
+  ([fn-name parsed]
+   `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed))))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -213,8 +216,8 @@
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
     (if (varargs-schema? input-schema)
-      (list* `apply '&f arg-names)
-      (list* '&f arg-names))))
+      (list* `apply '&uninstrumented arg-names)
+      (list* '&uninstrumented arg-names))))
 
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
@@ -252,8 +255,19 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed]
-  `(let [~'&f ~(deparameterized-fn-form parsed)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+  ;; attach fn-names to the generated `fn` forms if possible so the stacktraces are a little more meaningful.
+  (let [fn-name (when-let [fn-name (:fn-name error-context)]
+                  (let [fn-name (if (sequential? fn-name)
+                                  ;; unquote (quote 'fn-name) forms
+                                  (last fn-name)
+                                  fn-name)]
+                    ;; `&`/ is not a valid fn name, but `/` is; munge just this one character.
+                    (symbol (str "&" (str/replace (name fn-name) #"/" "_SLASH_")))))]
+    `(let [~'&uninstrumented ~(deparameterized-fn-form fn-name parsed)]
+       (core/fn
+         ~@(when fn-name
+             [fn-name])
+         ~@(instrumented-fn-tail error-context (fn-schema parsed))))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like
@@ -262,10 +276,10 @@
 
   compiles to something like
 
-    (let [&f (fn [x] (inc x))]
+    (let [&uninstrumented (fn [x] (inc x))]
       (fn [a]
         (validate-input {} :int a)
-        (validate-output {} :int (&f a))))
+        (validate-output {} :int (&uninstrumented a))))
 
   The map arg here is additional error context; for something like [[metabase.util.malli/defn]], it will be something
   like
@@ -286,15 +300,15 @@
   If we were to include `my-fn` in the uninstrumented `fn` form, then it would bypass schema checks when you call
   another arity:
 
-    (let [&f (fn my-fn
+    (let [&uninstrumented (fn my-fn
                ([x] (my-fn x 1))
                ([x y] (+ x y)))]
       (fn
         ([a]
-         (&f a))
+         (&uninstrumented a))
         ([a b]
          (validate-input {} :int b)
-         (&f a b))))
+         (&uninstrumented a b))))
 
     ;; skips the `:- :int` check on `y` in the 2-arity
     (my-fn 1.0) ;; => 2.0

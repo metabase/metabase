@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -23,7 +24,7 @@
 
 (declare notify-database-updated)
 
-(defn- notify-all-databases-updated
+(defn- notify-all-databases-updated!
   "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
 
   Currently only used below by [[report-timezone]] setter (i.e., only used when report timezone changes). Reusing
@@ -57,7 +58,7 @@
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+    (notify-all-databases-updated!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -186,6 +187,11 @@
   [driver & _]
   (the-initialized-driver driver))
 
+(defn- driver-or-legacy-metadata-dispatch-fn [driver & metadatas]
+  (if (some driver.metadata/legacy-metadata? metadatas)
+    ::legacy-metadata
+    (dispatch-on-initialized-driver driver)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Interface (Multimethod Defintions)                                       |
@@ -201,7 +207,7 @@
 ;;    (driver/register-driver! :my-driver, :parent :sql-jdbc)
 ;;
 ;;    (defmethod driver/describe-table :my-driver [driver database table]
-;;      (-> ((get-method driver/describe-table :sql-jdbc) driver databse table)
+;;      (-> ((get-method driver/describe-table :sql-jdbc) driver database table)
 ;;          (update :tables add-materialized-views)))
 ;;
 ;; Make sure to pass along the `driver` parameter-as when you call other methods, rather than hardcoding the name of
@@ -290,8 +296,12 @@
   `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
   specifying the flavor like `MySQL` or `MariaDB`."
   {:arglists '([driver database])}
-  dispatch-on-initialized-driver
+  driver-or-legacy-metadata-dispatch-fn
   :hierarchy #'hierarchy)
+
+(defmethod dbms-version ::legacy-metadata
+  [driver database]
+  (dbms-version driver (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 ;; Some drivers like BigQuery or Snowflake cannot provide a meaningful stable version.
 (defmethod dbms-version :default
@@ -303,8 +313,12 @@
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
   Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
   {:arglists '([driver database])}
-  dispatch-on-initialized-driver
+  driver-or-legacy-metadata-dispatch-fn
   :hierarchy #'hierarchy)
+
+(defmethod describe-database ::legacy-metadata
+  [driver database]
+  (describe-database driver (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defmulti describe-table
   "Return a map containing information that describes the physical schema of `table` (i.e. the fields contained
@@ -312,8 +326,14 @@
   is expected that this function will be peformant and avoid draining meaningful resources of the database. Results
   should match the [[metabase.sync.interface/TableMetadata]] schema."
   {:arglists '([driver database table])}
-  dispatch-on-initialized-driver
+  driver-or-legacy-metadata-dispatch-fn
   :hierarchy #'hierarchy)
+
+(defmethod describe-table ::legacy-metadata
+  [driver database table]
+  (describe-table driver
+                  (driver.metadata/->mlv2-metadata database :metadata/database)
+                  (driver.metadata/->mlv2-metadata table :metadata/table)))
 
 (defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
@@ -330,10 +350,16 @@
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
   should match the [[metabase.sync.interface/FKMetadata]] schema."
   {:arglists '([driver database table])}
-  dispatch-on-initialized-driver
+  driver-or-legacy-metadata-dispatch-fn
   :hierarchy #'hierarchy)
 
-(defmethod describe-table-fks ::driver [_ _ _]
+(defmethod describe-table-fks ::legacy-metadata
+  [driver database table]
+  (describe-table-fks driver
+                      (driver.metadata/->mlv2-metadata database :metadata/database)
+                      (driver.metadata/->mlv2-metadata table :metadata/table)))
+
+(defmethod describe-table-fks ::driver [_driver _database _table]
   nil)
 
 ;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
@@ -566,11 +592,17 @@
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
-  (fn [driver feature _database]
+  (fn [driver feature database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature])
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      [(dispatch-on-initialized-driver driver) feature]))
   :hierarchy #'hierarchy)
+
+(defmethod database-supports? ::legacy-metadata
+  [driver feature database]
+  (database-supports? driver feature (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
@@ -612,7 +644,7 @@
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
-  {:arglists '([this message])}
+  {:arglists '([driver message])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -847,8 +879,13 @@
   `:truncation-size`: size to truncate text fields to if the driver supports
   expressions."
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
-  dispatch-on-initialized-driver
+  (fn [driver table _fields _rff _opts]
+    (driver-or-legacy-metadata-dispatch-fn driver table))
   :hierarchy #'hierarchy)
+
+(defmethod table-rows-sample ::legacy-metadata
+  [driver table fields rff opts]
+  (table-rows-sample driver (driver.metadata/->mlv2-metadata table :metadata/table) fields rff opts))
 
 (defmulti set-role!
   "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
@@ -890,8 +927,12 @@
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."
   {:added "0.47.0", :arglists '([driver database])}
-  dispatch-on-initialized-driver
+  driver-or-legacy-metadata-dispatch-fn
   :hierarchy #'hierarchy)
+
+(defmethod syncable-schemas ::legacy-metadata
+  [driver database]
+  (syncable-schemas driver (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defmethod syncable-schemas ::driver [_ _] #{})
 

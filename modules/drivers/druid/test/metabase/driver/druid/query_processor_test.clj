@@ -244,7 +244,7 @@
        (sort-by first)
        (take 5)))
 
-(deftest table-rows-sample-test
+(deftest ^:paralell table-rows-sample-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
@@ -256,7 +256,7 @@
           (testing "UTC timezone"
             (is (= expected
                    (table-rows-sample))))
-          (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+          (mt/with-report-timezone-id "America/Los_Angeles"
             (is (= expected
                    (table-rows-sample))))
           (mt/with-system-timezone-id "America/Chicago"

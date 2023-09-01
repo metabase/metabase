@@ -43,7 +43,7 @@
   (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
-(deftest result-rows-test
+(deftest ^:parallel result-rows-test
   (mt/dataset test-data-with-timezones
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
@@ -58,7 +58,7 @@
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
                                                       [10 "2014-07-03T19:30:00Z"]]
                                         "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
-        (mt/with-temporary-setting-values [report-timezone timezone]
+        (mt/with-report-timezone-id timezone
           (is (= expected-rows
                  (mt/formatted-rows [int identity]
                    (mt/run-mbql-query users
@@ -67,10 +67,10 @@
                       :order-by [[:asc $last_login]]})))
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/dataset test-data-with-timezones
     (mt/test-drivers (set-timezone-drivers)
-      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (mt/with-report-timezone-id "America/Los_Angeles"
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (mt/formatted-rows [int identity identity]
                  (mt/run-mbql-query users
@@ -81,7 +81,10 @@
                (mt/formatted-rows [int identity identity]
                  (mt/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
-            "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))
+            "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))))
+
+(deftest ^:parallel filter-test-2
+  (mt/dataset test-data-with-timezones
     (testing "UTC timezone"
       (let [run-query   (fn []
                           (mt/formatted-rows [int identity identity]
@@ -90,7 +93,7 @@
             utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]]
         (mt/test-drivers (set-timezone-drivers)
           (is (= utc-results
-                 (mt/with-temporary-setting-values [report-timezone "UTC"]
+                 (mt/with-report-timezone-id "UTC"
                    (run-query)))
               "Checking UTC report timezone filtering and responses"))
         (mt/test-drivers (timezone-aware-column-drivers)
@@ -167,7 +170,7 @@
                     :target ["dimension" ["template-tag" "just_a_date"]]
                     :value  "2014-08-02"}]}}))
 
-(deftest native-sql-params-filter-test
+(deftest ^:parallel native-sql-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (mt/test-drivers (filter
@@ -175,7 +178,7 @@
                      (set/intersection (set-timezone-drivers)
                                        (mt/normal-drivers-with-feature :native-parameters)))
     (mt/dataset test-data-with-timezones
-      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (mt/with-report-timezone-id "America/Los_Angeles"
         (testing "Native dates should be parsed with the report timezone"
           (doseq [[params-description query] (native-params-queries)]
             (testing (format "Query with %s" params-description)
@@ -226,13 +229,13 @@
    (when (supports-datetime-with-zone-id?)
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
-(deftest sql-time-timezone-handling-test
+(deftest ^:parallel sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
-        (mt/with-temporary-setting-values [report-timezone timezone]
+        (mt/with-report-timezone-id timezone
           (let [expected (expected-attempts)
                 actual   (select-keys (attempts) (keys expected))]
             (is (= expected actual))))))))
@@ -244,7 +247,7 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
-(deftest general-timezone-support-test
+(deftest ^:parallel general-timezone-support-test
   (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
       (let [extract-units (disj u.date/extract-units :day-of-year)
@@ -268,7 +271,7 @@
                                           (-> in-tz
                                               u.date/format-sql
                                               (str/replace #" " "T"))]]))]]
-          (mt/with-temporary-setting-values [report-timezone timezone]
+          (mt/with-report-timezone-id timezone
             (let [rows (->> (mt/run-mbql-query alldates
                               {:expressions (->> extract-units
                                                  (map
@@ -298,7 +301,7 @@
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-relative-to-current-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
@@ -306,7 +309,7 @@
                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                  [[expected-datetime]]]
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
-            (mt/with-temporary-setting-values [report-timezone timezone]
+            (mt/with-report-timezone-id timezone
               (let [query (mt/mbql-query relative_filter {:fields [$created]
                                                           :filter [:time-interval $created :current :day]})]
                 (mt/with-native-query-testing-context query
@@ -322,7 +325,7 @@
                                    (u.date/parse nil)
                                    t/offset-date-time)))))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-relative-to-days-since-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
@@ -330,7 +333,7 @@
                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                  [[expected-datetime]]]
           (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
-            (mt/with-temporary-setting-values [report-timezone timezone]
+            (mt/with-report-timezone-id timezone
               (let [query (mt/mbql-query relative_filter {:fields [$created]
                                                           :filter [:time-interval $created -1 :day]})]
                 (mt/with-native-query-testing-context query
@@ -346,7 +349,7 @@
                                    (u.date/parse nil)
                                    t/offset-date-time)))))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-fixed-date-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
       (mt/dataset test-data-with-timezones
@@ -358,7 +361,7 @@
                   :let [expected (-> (u.date/with-time-zone-same-instant expected-datetime timezone)
                                      (u.date/format-sql)
                                      (str/replace #" " "T"))]]
-            (mt/with-temporary-setting-values [report-timezone timezone]
+            (mt/with-report-timezone-id timezone
               (is (= [expected]
                      (mt/first-row
                       (mt/run-mbql-query users

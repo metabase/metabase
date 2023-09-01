@@ -349,10 +349,10 @@
                             {:default "b"}]}}))
                    :query first :$project :E)))))))
 
-(deftest report-timezone-test
+(deftest ^:parallel report-timezone-test
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-report-timezone-id "US/Pacific"
         (let [results (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query checkins
                                                                          {:aggregation [[:count]]}))]
           (is (= {:requested_timezone "US/Pacific"

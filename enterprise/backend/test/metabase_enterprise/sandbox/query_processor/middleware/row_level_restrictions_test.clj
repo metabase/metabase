@@ -658,7 +658,7 @@
                                  "NAME col")]
                          (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
 
-(defn- do-with-sql-gtap [sql f]
+(defn- do-with-sql-gtap! [sql f]
   (met/with-gtaps (mt/$ids
                     {:gtaps      {:venues   {:query      (mt/native-query
                                                            {:query         sql
@@ -689,7 +689,7 @@
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Removing columns should be ok."
-      (do-with-sql-gtap
+      (do-with-sql-gtap!
        (str "SELECT ID, NAME "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
@@ -701,7 +701,7 @@
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-2
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Don't allow people to change the types of columns in the original Table"
-      (do-with-sql-gtap
+      (do-with-sql-gtap!
        (str "SELECT ID, 100 AS NAME "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
@@ -716,7 +716,7 @@
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Don't allow people to change the types of columns in the original Table"
       (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
-        (do-with-sql-gtap
+        (do-with-sql-gtap!
          (str "SELECT cast(ID AS bigint) AS ID, NAME "
               "FROM VENUES "
               "WHERE ID IN ({{sandbox}})")
@@ -726,7 +726,7 @@
                     (mt/rows (run-query)))))))))))
 
 (deftest dont-cache-sandboxes-test
-  (cache-test/with-mock-cache [save-chan]
+  (cache-test/with-mock-cache! [save-chan]
     (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                      :attributes {"cat" 50}}
       (letfn [(run-query []

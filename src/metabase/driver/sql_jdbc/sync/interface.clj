@@ -71,7 +71,7 @@
 
     (fallback-metadata-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT * FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  {:arglists '([driver schema table])}
+  {:arglists '([driver schema ^String table-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

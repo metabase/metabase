@@ -6,6 +6,7 @@
    [malli.error :as me]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -17,6 +18,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -65,10 +67,16 @@
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
   {:arglists '([driver action database arg-map]), :added "0.44.0"}
-  (fn [driver action _database _arg-map]
-    [(driver/dispatch-on-initialized-driver driver)
-     (keyword action)])
+  (fn [driver action database _arg-map]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      [(driver/dispatch-on-initialized-driver driver)
+       (keyword action)]))
   :hierarchy #'driver/hierarchy)
+
+(defmethod perform-action!* ::legacy-metadata
+  [driver action database arg-map]
+  (perform-action!* driver action (driver.metadata/->mlv2-metadata database :metadata/database) arg-map))
 
 (defn- known-actions
   "Set of all known actions."
@@ -118,9 +126,9 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
-(defn check-actions-enabled-for-database!
+(mu/defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
-  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db} :- lib.metadata/DatabaseMetadata]
   (when-not (driver/database-supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
@@ -134,12 +142,15 @@
 
   nil)
 
-(defn- database-for-action [action-or-id]
-  (t2/select-one Database {:select [:db.*]
-                           :from   :action
-                           :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                    [:metabase_database :db] [:= :db.id :card.database_id]]
-                           :where  [:= :action.id (u/the-id action-or-id)]}))
+(mu/defn ^:private database-for-action :- lib.metadata/DatabaseMetadata
+  [action-or-id]
+  (let [database-id (t2/select-one-fn :id Database {:select [:db.id :id]
+                                                    :from   :action
+                                                    :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                                             [:metabase_database :db] [:= :db.id :card.database_id]]
+                                                    :where  [:= :action.id (u/the-id action-or-id)]})]
+    (qp.store/with-metadata-provider database-id
+      (lib.metadata/database (qp.store/metadata-provider)))))
 
 (defn check-actions-enabled!
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,

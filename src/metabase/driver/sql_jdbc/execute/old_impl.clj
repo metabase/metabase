@@ -2,7 +2,8 @@
   "Old implementations of [[metabase.driver.sql-jdbc.execute]] methods. All methods and functions in this namespace
   should be considered deprecated and will be removed in future releases."
   (:require
-   [metabase.driver :as driver]))
+   [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,8 +13,16 @@
   {:added      "0.35.0"
    :deprecated "0.47.0"
    :arglists   '(^java.sql.Connection [driver database ^String timezone-id])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver database _timezone-id]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod connection-with-timezone ::legacy-metadata
+  [driver database timezone-id]
+  (connection-with-timezone driver (driver.metadata/->mlv2-metadata database :metadata/database) timezone-id))
 
 (defmulti set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.

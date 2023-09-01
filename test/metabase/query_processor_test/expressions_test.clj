@@ -266,28 +266,31 @@
     (for [s strs]
       [(format-fn (u.date/parse s "UTC"))])))
 
-(deftest temporal-arithmetic-test
+(deftest ^:parallel temporal-arithmetic-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
+    (testing "Test interaction of datetime arithmetics with truncation"
+      (is (= (robust-dates
+              ["2014-09-02T00:00:00"
+               "2014-07-02T00:00:00"
+               "2014-07-01T00:00:00"])
+             (mt/with-report-timezone-id "UTC"
+               (-> (mt/run-mbql-query users
+                     {:expressions {:prev_month [:+ !day.last_login [:interval -31 :day]]}
+                      :fields      [[:expression :prev_month]]
+                      :limit       3
+                      :order-by    [[:asc $name]]})
+                   mt/rows)))))))
+
+(deftest ^:parallel temporal-arithmetic-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (testing "Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions"
       (is (= (robust-dates
               ["2014-09-02T13:45:00"
                "2014-07-02T09:30:00"
                "2014-07-01T10:30:00"])
-             (mt/with-temporary-setting-values [report-timezone "UTC"]
+             (mt/with-report-timezone-id "UTC"
                (-> (mt/run-mbql-query users
                      {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
-                      :fields      [[:expression :prev_month]]
-                      :limit       3
-                      :order-by    [[:asc $name]]})
-                   mt/rows)))))
-    (testing "Test interaction of datetime arithmetics with truncation"
-      (is (= (robust-dates
-              ["2014-09-02T00:00:00"
-               "2014-07-02T00:00:00"
-               "2014-07-01T00:00:00"])
-             (mt/with-temporary-setting-values [report-timezone "UTC"]
-               (-> (mt/run-mbql-query users
-                     {:expressions {:prev_month [:+ !day.last_login [:interval -31 :day]]}
                       :fields      [[:expression :prev_month]]
                       :limit       3
                       :order-by    [[:asc $name]]})

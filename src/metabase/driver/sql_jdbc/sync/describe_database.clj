@@ -9,8 +9,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
@@ -148,15 +148,19 @@
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (mi/instance-of? Database db-or-id-or-spec)
-        db-or-id-or-spec
+  (cond
+    (mi/instance-of? :model/Database db-or-id-or-spec)
+    db-or-id-or-spec
 
-        (int? db-or-id-or-spec)
-        (qp.store/with-metadata-provider db-or-id-or-spec
-          (lib.metadata/database (qp.store/metadata-provider)))
+    (= (lib.dispatch/dispatch-value db-or-id-or-spec) :metadata/database)
+    db-or-id-or-spec
 
-        :else
-        nil))
+    (int? db-or-id-or-spec)
+    (qp.store/with-metadata-provider db-or-id-or-spec
+      (lib.metadata/database (qp.store/metadata-provider)))
+
+    :else
+    nil))
 
 (mu/defn describe-database
   "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

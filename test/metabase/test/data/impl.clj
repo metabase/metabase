@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [Database Field FieldValues Secret Table]]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.test.data.dataset-definitions :as defs]
@@ -17,7 +16,7 @@
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan.db :as db]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
@@ -170,14 +169,14 @@
 
 (defn- table-id-from-app-db
   [db-id table-name]
-  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name))
+  (t2/select-one-pk [:model/Table :id] :db_id db-id, :name table-name))
 
 (defn- throw-unfound-table-error [db-id table-name]
   (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
     (throw
      (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                          (pr-str table-name) driver db-id (pr-str db-name)
-                         (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))
+                         (u/pprint-to-str (t2/select-pk->fn :name :model/Table, :db_id db-id, :active true)))))))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
   "Internal impl of `(data/id table)."
@@ -192,7 +191,7 @@
       (throw-unfound-table-error db-id table-name)))
 
 (defn- field-id-from-app-db [table-id parent-id field-name]
-  (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id))
+  (t2/select-one-pk :model/Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id))
 
 (defn- qualified-field-name [parent-id field-name]
   (if parent-id
@@ -244,14 +243,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+  (t2/insert! :model/Field
+    (for [field (t2/select :model/Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
-  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
-        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
-        old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
-    (t2/insert! FieldValues
+  (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id)
+        new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id)
+        old-field-values   (t2/select :model/FieldValues :field_id [:in (set (keys old-field-id->name))])]
+    (t2/insert! :model/FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
             :let                                       [field-name (get old-field-id->name old-field-id)]]
         (-> field-values
@@ -259,8 +258,8 @@
             (assoc :field_id (get new-field-name->id field-name)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
-        new-table-ids (t2/insert-returning-pks! Table
+  (let [old-tables    (t2/select :model/Table :db_id old-db-id {:order-by [[:id :asc]]})
+        new-table-ids (t2/insert-returning-pks! :model/Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
@@ -268,6 +267,7 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mdb.query/query {:select    [[:source-field.name :source-field]
                                         [:source-table.name :source-table]
                                         [:target-field.name   :target-field]
@@ -280,7 +280,7 @@
                                         [:= :source-table.db_id old-db-id]
                                         [:= :target-table.db_id old-db-id]
                                         [:not= :source-field.fk_target_field_id nil]]})]
-    (t2/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
+    (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
@@ -301,8 +301,8 @@
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
-      (let [secrets (t2/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
-            new-ids (t2/insert-returning-pks! Secret (map #(dissoc % :id) secrets))
+      (let [secrets (t2/select [:model/Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+            new-ids (t2/insert-returning-pks! :model/Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database
                :details
@@ -322,13 +322,13 @@
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
-        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
+        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (t2/delete! Database :id new-db-id)))))
+        (t2/delete! :model/Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -352,11 +352,10 @@
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                             (binding [db/*disable-db-logging* true]
-                               (let [db (get-or-create-database! driver dbdef)]
-                                 (assert db)
-                                 (assert (pos-int? (:id db)))
-                                 db))))
+                             (let [db (get-or-create-database! driver dbdef)]
+                               (assert db)
+                               (assert (pos-int? (:id db)))
+                               db)))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*    db-fn
               *db-id-fn* #(u/the-id (db-fn))]

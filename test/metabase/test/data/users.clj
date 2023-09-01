@@ -5,16 +5,13 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.http-client :as client]
-   [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
-   [metabase.models.user :refer [User]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -55,7 +52,7 @@
   (set (keys user->info)))
 
 (def ^:private TestUserName
-  (apply s/enum usernames))
+  (into [:enum] usernames))
 
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
@@ -70,10 +67,10 @@
              active    true}}]
   {:pre [(string? email) (string? first-name) (string? last-name) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (t2/select-one User :email email)
+  (or (t2/select-one :model/User :email email)
       (locking create-user-lock
-        (or (t2/select-one User :email email)
-            (first (t2/insert-returning-instances! User
+        (or (t2/select-one :model/User :email email)
+            (first (t2/insert-returning-instances! :model/User
                                                    {:email        email
                                                     :first_name   first-name
                                                     :last_name    last-name
@@ -82,7 +79,7 @@
                                                     :is_qbnewb    true
                                                     :is_active    active}))))))
 
-(s/defn fetch-user :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
+(mu/defn fetch-user :- #_{:clj-kondo/ignore [:deprecated-var]} (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -113,19 +110,20 @@
    (:is_superuser user) "admin"
    :else                "non-admin"))
 
-(s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
+(mu/defn user->credentials :- [:map
+                              [:username [:fn {:error/message "valid email?"} u/email?]]
+                              [:password :string]]
   "Return a map with `:username` and `:password` for User with `username`.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username :- TestUserName]
-  {:pre [(contains? usernames username)]}
   (let [{:keys [email password]} (user->info username)]
     {:username email
      :password password}))
 
 (defonce ^:private tokens (atom {}))
 
-(s/defn username->token :- u/uuid-regex
+(mu/defn username->token :- [:re {:error/message "UUID string"} u/uuid-regex]
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
   (or (@tokens username)
@@ -175,7 +173,7 @@
       (fetch-user user)
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
-          user-email          (t2/select-one-fn :email User :id user-id)
+          user-email          (t2/select-one-fn :email :model/User :id user-id)
           [old-password-info] (t2/query {:select [:password :password_salt]
                                          :from   [:core_user]
                                          :where  [:= :id user-id]})]
@@ -215,9 +213,9 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  (t2.with-temp/with-temp [PermissionsGroup           group group
-                           PermissionsGroupMembership _     {:group_id (u/the-id group)
-                                                             :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup           group group
+                           :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                                    :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group

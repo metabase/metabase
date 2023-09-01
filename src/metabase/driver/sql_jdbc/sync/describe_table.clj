@@ -8,21 +8,21 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models :refer [Field]]
-   [metabase.models.table :as table]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -158,13 +158,14 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
-(defn describe-table-fields-xf
+(mu/defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in `table`."
-  [driver table]
+  [driver table :- lib.metadata/TableMetadata]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                  (let [base-type      (database-type->base-type-or-warn driver database-type)
                        semantic-type  (calculated-semantic-type driver column-name database-type)
-                       db             (table/database table)
+                       db             (qp.store/with-metadata-provider (:db-id table)
+                                        (lib.metadata/database (qp.store/metadata-provider)))
                        json?          (isa? base-type :type/JSON)]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
@@ -181,8 +182,15 @@
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
   {:added    "0.45.0"
    :arglists '([driver ^Connection conn table ^String db-name-or-nil])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver _conn table _db-name-or-nil]
+    (if (driver.metadata/legacy-metadata? table)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod describe-table-fields ::legacy-metadata
+  [driver conn table db-name-or-nil]
+  (describe-table-fields driver conn (driver.metadata/->mlv2-metadata table :metadata/table) db-name-or-nil))
 
 (defmethod describe-table-fields :sql-jdbc
   [driver conn table db-name-or-nil]
@@ -196,11 +204,19 @@
   The PKs should be ordered by column names if there are multiple PKs.
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
-  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection
+  can access."
   {:added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver _conn _db-name-or-nil table]
+    (if (driver.metadata/legacy-metadata? table)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod get-table-pks ::legacy-metadata
+  [driver conn db-name-or-nil table]
+  (get-table-pks driver conn db-name-or-nil (driver.metadata/->mlv2-metadata table :metadata/table)))
 
 (defmethod get-table-pks :default
   [_driver ^Connection conn db-name-or-nil table]
@@ -210,7 +226,8 @@
               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defn add-table-pks
-  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
+  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true
+  for those columns."
   [driver ^Connection conn db-name-or-nil table]
   (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
     (update table :fields (fn [fields]
@@ -411,17 +428,18 @@
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
-(defn- table->unfold-json-fields
+(mu/defn ^:private table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
-  [driver conn table]
+  [driver conn table :- lib.metadata/TableMetadata]
   (let [table-fields (describe-table-fields driver conn table nil)
         json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
     (if-not (seq json-fields)
       #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+      (let [existing-fields-by-name (m/index-by :name (qp.store/with-metadata-provider (:db-id table)
+                                                        (lib.metadata/fields (qp.store/metadata-provider) (:id table))))
             should-not-unfold?      (fn [field]
                                       (when-let [existing-field (existing-fields-by-name (:name field))]
-                                        (false? (:json_unfolding existing-field))))]
+                                        (false? (:json-unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
 (defn- sample-json-row-honey-sql

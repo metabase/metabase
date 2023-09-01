@@ -164,7 +164,7 @@
     separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
-(mu/defmethod add/field-reference-mlv2 :mongo
+(mu/defmethod add/field-reference :mongo
   [_driver field-inst :- lib.metadata/ColumnMetadata]
   (field->name field-inst))
 

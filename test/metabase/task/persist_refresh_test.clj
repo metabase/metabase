@@ -38,7 +38,7 @@
       (is (= "0 30 1 * * ? *"
              (schedule-string (#'task.persist-refresh/cron-schedule "0 30 1 * * ? *")))))))
 
-(deftest trigger-job-info-test
+(deftest ^:parallel trigger-job-info-test
   (testing "Database refresh trigger"
     (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
@@ -53,17 +53,17 @@
       (is (= "0 0 0 * * ? *"
              (schedule-string tggr))))
     (testing "in report timezone UTC"
-      (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (mt/with-report-timezone-id "UTC"
         (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "UTC"
                  (.. tggr getTimeZone getID))))))
     (testing "in report timezone LA"
-      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (mt/with-report-timezone-id "America/Los_Angeles"
         (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "America/Los_Angeles"
                  (.. tggr getTimeZone getID))))))
     (testing "in system timezone"
-      (mt/with-temporary-setting-values [report-timezone nil]
+      (mt/with-report-timezone-id nil
         (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= (qp.timezone/system-timezone-id)
                  (.. tggr getTimeZone getID)))))))

@@ -9,7 +9,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]))
 
-(deftest with-api-error-message
+(deftest ^:parallel with-api-error-message
   (let [less-than-four-fxn (fn [x] (< x 4))]
     (testing "outer schema"
       (let [special-lt-4-schema (mu/with-api-error-message

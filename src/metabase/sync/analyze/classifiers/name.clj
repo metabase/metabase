@@ -3,15 +3,14 @@
   (:require
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.models.database :refer [Database]]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -123,9 +122,10 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
-  "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
-  [field-name :- su/NonBlankString, base-type :- su/FieldType]
+(mu/defn ^:private semantic-type-for-name-and-base-type :- [:maybe ms/FieldSemanticOrRelationType]
+  "If `name` and `base-type` matches a known pattern, return the `semantic-type` we should assign to it."
+  [field-name :- ms/NonBlankString
+   base-type  :- ms/FieldType]
   (let [field-name (u/lower-case-en field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)
@@ -135,29 +135,30 @@
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
-  {:name                           s/Str ; Some DBs such as MSSQL can return columns with blank name
-   :base_type                      s/Keyword
-   (s/optional-key :semantic_type) (s/maybe s/Keyword)
-   s/Any                           s/Any})
+  [:map
+   ;; Some DBs such as MSSQL can return columns with blank name
+   [:name      :string]
+   [:base-type :keyword]
+   [:semantic-type {:optional true} [:maybe :keyword]]])
 
-(s/defn infer-semantic-type :- (s/maybe s/Keyword)
+(mu/defn infer-semantic-type :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
-  (when-not (or (some (partial isa? (:semantic_type field-or-column)) [:type/PK :type/FK])
+  (when-not (or (some (partial isa? (:semantic-type field-or-column)) [:type/PK :type/FK])
                 (str/blank? (:name field-or-column)))
-    (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
+    (semantic-type-for-name-and-base-type (:name field-or-column) (:base-type field-or-column))))
 
-(s/defn infer-and-assoc-semantic-type :- (s/maybe FieldOrColumn)
+(mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
-   _fingerprint    :- (s/maybe i/Fingerprint)]
+   _fingerprint    :- [:maybe i/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
     (log/debug (format "Based on the name of %s, we're giving it a semantic type of %s."
                        (sync-util/name-for-logging field-or-column)
                        inferred-semantic-type))
-    (assoc field-or-column :semantic_type inferred-semantic-type)))
+    (assoc field-or-column :semantic-type inferred-semantic-type)))
 
 (defn- prefix-or-postfix
   [s]
@@ -181,18 +182,15 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(s/defn infer-entity-type :- i/TableInstance
+(mu/defn infer-entity-type :- ::lib.schema.metadata/table
   "Classifer that infers the semantic type of a `table` based on its name."
-  [table :- i/TableInstance]
+  [table :- ::lib.schema.metadata/table]
   (let [table-name (-> table :name u/lower-case-en)]
-    (assoc table :entity_type (or (some (fn [[pattern type]]
+    (assoc table :entity-type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (->> table
-                                             :db_id
-                                             (t2/select-one Database :id)
-                                             :engine)
+                                  (case (driver.u/database->driver (:db-id table))
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)

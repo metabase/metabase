@@ -27,6 +27,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
+   [metabase.test.data.with-empty-h2-app-db :as test.data.with-empty-h2-app-db]
    [metabase.test.initialize :as initialize]
    [metabase.test.persistence :as test.persistence]
    [metabase.test.redefs]
@@ -76,6 +77,7 @@
   test.persistence/keep-me
   test.tz/keep-me
   test.users/keep-me
+  test.data.with-empty-h2-app-db/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
@@ -108,8 +110,7 @@
   query
   run-mbql-query
   with-db
-  with-temp-copy-of-db
-  with-empty-h2-app-db]
+  with-temp-copy-of-db]
 
  [data.impl
   *db-is-temp-copy?*]
@@ -201,6 +202,9 @@
   with-group
   with-group-for-user
   with-test-user]
+
+ [test.data.with-empty-h2-app-db
+  with-empty-h2-app-db]
 
  [t2.with-temp
   with-temp

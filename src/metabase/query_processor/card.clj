@@ -9,9 +9,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
@@ -72,8 +69,8 @@
                       (assoc :constraints constraints
                              :parameters  parameters
                              :middleware  middleware))
-        dashboard (t2/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (t2/select-one [Database :cache_ttl] :id (:database_id card))
+        dashboard (t2/select-one [:model/Dashboard :cache_ttl] :id (:dashboard-id ids))
+        database  (t2/select-one [:model/Database :cache_ttl] :id (:database_id card))
         ttl-secs  (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl-secs)))
 
@@ -102,7 +99,7 @@
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
   [card-id]
-  (let [query (api/check-404 (t2/select-one-fn :dataset_query Card :id card-id))]
+  (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
     (into
      {}
      (comp
@@ -203,7 +200,7 @@
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                                                     (qp-runner query info context))))
-        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id
+        card  (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)

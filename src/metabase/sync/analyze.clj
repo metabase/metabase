@@ -4,6 +4,7 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.field :refer [Field]]
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.analyze.fingerprint :as fingerprint]
@@ -12,7 +13,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; How does analysis decide which Fields should get analyzed?
@@ -53,8 +54,8 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
-(s/defn ^:private update-last-analyzed!
-  [tables :- [i/TableInstance]]
+(mu/defn ^:private update-last-analyzed!
+  [tables :- [:sequential ::lib.schema.metadata/table]]
   (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
     (t2/update! Field {:table_id            [:in ids]
@@ -62,21 +63,21 @@
                        :last_analyzed       nil}
                 {:last_analyzed :%now})))
 
-(s/defn ^:private update-fields-last-analyzed!
+(mu/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [table :- i/TableInstance]
+  [table :- ::lib.schema.metadata/table]
   (update-last-analyzed! [table]))
 
-(s/defn ^:private update-fields-last-analyzed-for-db!
+(mu/defn ^:private update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [_database :- i/DatabaseInstance
-   tables :- [i/TableInstance]]
+  [_database :- ::lib.schema.metadata/database
+   tables    :- [:sequential ::lib.schema.metadata/table]]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (update-last-analyzed! tables))
 
-(s/defn analyze-table!
+(mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
-  [table :- i/TableInstance]
+  [table :- ::lib.schema.metadata/table]
   (fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
@@ -111,21 +112,21 @@
                                #(classify/classify-tables-for-db! % tables log-fn)
                                classify-tables-summary)])
 
-(s/defn analyze-db!
+(mu/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field."
-  [database :- i/DatabaseInstance]
+  [database :- ::lib.schema.metadata/database]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
         (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
           (update-fields-last-analyzed-for-db! database tables))))))
 
-(s/defn refingerprint-db!
+(mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
   [[fingerprint/max-refingerprint-field-count]]."
-  [database :- i/DatabaseInstance]
+  [database :- ::lib.schema.metadata/database]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)
           log-fn (fn [step table]

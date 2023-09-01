@@ -188,7 +188,7 @@
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
 
-(deftest report-timezone-test
+(deftest ^:parallel report-timezone-test
   (mt/test-driver :snowflake
     (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036)"
       (letfn [(run-query []
@@ -207,7 +207,7 @@
           (is (= [["2014-08-02T00:00:00Z"]]
                  (run-query))))
         (testing "with report-timezone"
-          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+          (mt/with-report-timezone-id "US/Pacific"
             (is (= [["2014-08-02T00:00:00-07:00"]]
                    (run-query)))))))
     (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
@@ -234,7 +234,7 @@
         (testing "with report timezone set"
           (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
                   ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
-                 (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                 (mt/with-report-timezone-id "US/Pacific"
                    (run-query)))))))))
 
 (deftest week-start-test

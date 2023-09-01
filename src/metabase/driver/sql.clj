@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
@@ -78,15 +79,22 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod set-role-statement :default
-  [_ _ _]
+  [_driver _role]
   nil)
 
 (defmulti default-database-role
   "The name of the default role for a given database, used for queries that do not have custom user
   impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
   {:arglists '(^String [driver database])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver database]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
+
+(defmethod default-database-role ::legacy-metadata
+  [driver database]
+  (default-database-role driver (driver.metadata/->mlv2-metadata database :metadata/database)))
 
 (defmethod default-database-role :default
   [_ _database]

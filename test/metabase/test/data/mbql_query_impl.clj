@@ -4,7 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [toucan2.core :as t2]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test.data.impl]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,11 +73,17 @@
                    :source-token-str  source-token-str
                    :dest-token-str    dest-token-str})))
 
+(defn- field [field-id]
+  (qp.store/with-metadata-provider (if (qp.store/initialized?)
+                                     (qp.store/metadata-provider)
+                                     (metabase.test.data.impl/db-id))
+    (lib.metadata/field (qp.store/metadata-provider) field-id)))
+
 (defn field-name [field-id]
-  (t2/select-one-fn :name :model/Field :id field-id))
+  (:name (field field-id)))
 
 (defn field-base-type [field-id]
-  (t2/select-one-fn :base_type :model/Field :id field-id))
+  (:base-type (field field-id)))
 
 (defn- field-literal [source-table-symb token-str]
   (if (str/includes? token-str "/")

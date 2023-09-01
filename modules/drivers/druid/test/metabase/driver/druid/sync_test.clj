@@ -10,7 +10,7 @@
    [schema.core :as s]
    [toucan2.core :as t2]))
 
-(deftest sync-test
+(deftest ^:parallel sync-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "describe-database"

@@ -4,7 +4,6 @@
    [clojure.tools.reader.edn :as edn]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models :refer [Database Field Table]]
    [metabase.models.humanization :as humanization]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
@@ -13,6 +12,7 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -85,7 +85,7 @@
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (t2/select [Table :schema :name], :db_id (:id db))))))))]
+                                                      (u/pprint-to-str (t2/select [:model/Table :schema :name], :db_id (:id db))))))))]
       (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
@@ -94,7 +94,7 @@
           (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
+              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -133,7 +133,7 @@
                               :connection-details connection-details}
                              e)]
         (log/error e message)
-        (t2/delete! Database :id (u/the-id db))
+        (t2/delete! :model/Database :id (u/the-id db))
         (throw e)))))
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
@@ -146,13 +146,13 @@
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (first (t2/insert-returning-instances! Database
+          db                 (first (t2/insert-returning-instances! :model/Database
                                                                     :name    database-name
                                                                     :engine  (u/qualified-name driver)
                                                                     :details connection-details))]
       (sync-newly-created-database! driver database-definition connection-details db)
       ;; make sure we're returing an up-to-date copy of the DB
-      (t2/select-one Database :id (u/the-id db)))
+      (t2/select-one :model/Database :id (u/the-id db)))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)

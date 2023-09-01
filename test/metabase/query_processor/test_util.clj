@@ -15,6 +15,9 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.expression.temporal
+    :as lib.schema.expression.temporal]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
@@ -97,8 +100,7 @@
      (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
          (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
          #_{:clj-kondo/ignore [:deprecated-var]}
-         qp.store/->legacy-metadata
-         (dissoc :lib/type))
+         qp.store/->legacy-metadata)
      (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
                      :coercion_strategy :name :display_name :fingerprint]
                     :id (data/id table-kw field-kw)))
@@ -110,12 +112,11 @@
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
   [table-kw]
-  (case table-kw
-    :categories [:id :name]
-    :checkins   [:id :date :user_id :venue_id]
-    :users      [:id :name :last_login]
-    :venues     [:id :name :category_id :latitude :longitude :price]
-    (throw (IllegalArgumentException. (format "Sorry, we don't know the default columns for Table %s." table-kw)))))
+  (into []
+        (comp (map :name)
+              (map u/lower-case-en)
+              (map keyword))
+        (lib.metadata/fields meta/metadata-provider (meta/id table-kw))))
 
 (defn expected-cols
   "Get a sequence of Fields belonging to a Table as they would appear in the Query Processor results in `:cols`. The
@@ -398,7 +399,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
-(deftest nest-query-test
+(deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
            {:database 1, :type :query, :query {:source-table 2}}))
@@ -577,16 +578,11 @@
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
-(defn do-with-report-timezone-id
+(mu/defn do-with-report-timezone-id
   "Impl for `with-report-timezone-id`."
-  [timezone-id thunk]
-  {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; This will fail if the app DB isn't initialized yet. That's fine — there's no DBs to notify if the app DB isn't
-  ;; set up.
-  (try
-    (#'driver/notify-all-databases-updated)
-    (catch Throwable _))
-  (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
+  [timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+   thunk]
+  (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
     (testing (format "\nreport timezone id = %s" timezone-id)
       (thunk))))
 
@@ -595,11 +591,11 @@
   [timezone-id & body]
   `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-database-timezone-id
+(mu/defn do-with-database-timezone-id
   "Impl for `with-database-timezone-id`."
-  [timezone-id thunk]
-  {:pre [((some-fn nil? string?) timezone-id)]}
-  (binding [qp.timezone/*database-timezone-id-override* (or timezone-id ::nil)]
+  [timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+   thunk]
+  (binding [qp.timezone/*database-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
     (testing (format "\ndatabase timezone id = %s" timezone-id)
       (thunk))))
 
@@ -608,15 +604,17 @@
   [timezone-id & body]
   `(do-with-database-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-results-timezone-id
+(mu/defn do-with-results-timezone-id
   "Impl for `with-results-timezone-id`."
-  [timezone-id thunk]
+  [timezone-id :- ::lib.schema.expression.temporal/timezone-id
+   thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  (binding [qp.timezone/*results-timezone-id-override* (or timezone-id ::nil)]
-    (testing (format "\nresults timezone id = %s" timezone-id)
+  (binding [qp.timezone/*results-timezone-id-override* (or timezone-id ::qp.timezone/nil)]
+    (testing (format "\nresults timezone id = %s" (pr-str timezone-id))
       (thunk))))
 
 (defmacro with-results-timezone-id
-  "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
+  "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage.
+  `timezone-id` cannot be `nil`."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))

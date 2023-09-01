@@ -3,7 +3,6 @@
   (:require
    [metabase.config :as config]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.database :refer [Database]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -111,7 +110,7 @@
           details (-> (merge details {:project-id (.getServiceAccountProjectId creds)})
                       (dissoc :auth-code))]
       (when id
-        (t2/update! Database id {:details details}))
+        (t2/update! :model/Database id {:details details}))
       (.createScoped creds scopes))
 
     (if-not (and (seq access-token)
@@ -120,7 +119,7 @@
       (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
                         (dissoc :auth-code))]
         (when id
-          (t2/update! Database id {:details details}))
+          (t2/update! :model/Database id {:details details}))
         (recur scopes (assoc db :details details)))
       ;; Otherwise return credential as normal
       (doto (.build (doto (GoogleCredential$Builder.)

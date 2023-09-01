@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.driver :as driver]
+   [metabase.driver.metadata :as driver.metadata]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -44,9 +45,19 @@
 
   Or return `nil` if the parser doesn't match."
   {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
-  (fn [driver error-type _database _action-type _error-message]
-   [(driver/dispatch-on-initialized-driver driver) error-type])
+  (fn [driver error-type database _action-type _error-message]
+    (if (driver.metadata/legacy-metadata? database)
+      ::legacy-metadata
+      [(driver/dispatch-on-initialized-driver driver) error-type]))
   :hierarchy #'driver/hierarchy)
+
+(defmethod maybe-parse-sql-error ::legacy-metadata
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error driver
+                         error-type
+                         (driver.metadata/->mlv2-metadata database :metadata/database)
+                         action-type
+                         error-message))
 
 (defmethod maybe-parse-sql-error :default
   [_driver _error-type _database _e]

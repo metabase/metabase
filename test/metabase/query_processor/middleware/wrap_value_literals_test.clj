@@ -22,8 +22,9 @@
 
   ([query ^String timezone-id]
    (letfn [(thunk []
-             (mt/with-results-timezone-id timezone-id
-               (qp.wrap-value-literals/wrap-value-literals query)))]
+             (driver/with-driver :h2
+               (mt/with-results-timezone-id timezone-id
+                 (qp.wrap-value-literals/wrap-value-literals query))))]
      (if (qp.store/initialized?)
        (thunk)
        (qp.store/with-metadata-provider meta/metadata-provider
@@ -66,7 +67,7 @@
 
 (defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
-    (mt/with-report-timezone-id timezone-id
+    (mt/with-results-timezone-id timezone-id
       (is (= (qp.timezone/results-timezone-id)
              timezone-id)
           "Make sure `results-timezone-id` is returning the bound value")

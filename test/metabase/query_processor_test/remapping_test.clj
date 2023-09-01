@@ -241,8 +241,8 @@
                  (remappings-with-metadata metadata))))))))
         ;; doesn't currently work with any other metadata.
 
-(deftest remappings-with-implicit-joins-test
-  (mt/with-temporary-setting-values [report-timezone "UTC"]
+(deftest ^:parallel remappings-with-implicit-joins-test
+  (mt/with-report-timezone-id "UTC"
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
         (mt/dataset sample-dataset

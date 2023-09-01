@@ -136,7 +136,7 @@
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
 ;; TODO this test doesn't seem to run?
-(deftest report-timezone-test
+(deftest ^:parallel report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
     (mt/test-driver :postgres
       (let [query     (mt/dataset attempted-murders
@@ -185,7 +185,7 @@
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
-            (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+            (mt/with-report-timezone-id "US/Pacific"
               (test-results
                (case export-format
                  (:csv :json)

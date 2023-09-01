@@ -61,7 +61,7 @@
    (s/optional-key :attributes)
    (s/pred map?)})
 
-(defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
+(defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
   (letfn [(thunk []
             ;; remove perms for All Users group
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
@@ -92,7 +92,7 @@
   or an arbitrary User ID."
   {:style/indent :defn}
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
-  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
+  `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
 (defmacro with-gtaps
   "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
@@ -116,7 +116,7 @@
   Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."
   {:style/indent :defn}
   [gtaps-and-attributes-map & body]
-  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
+  `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
 
 (defn restricted-column-query
   "An MBQL query against Venues that only returns a subset of the columns."

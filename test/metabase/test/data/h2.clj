@@ -6,7 +6,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models.database :refer [Database]]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -16,6 +15,7 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (comment metabase.driver.h2/keep-me)
@@ -33,7 +33,7 @@
     (locking h2-test-dbs-created-by-this-instance
       (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (t2/delete! Database :engine "h2", :name database-name)
+        (t2/delete! :model/Database :engine "h2", :name database-name)
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :h2

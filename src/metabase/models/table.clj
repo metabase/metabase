@@ -3,6 +3,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
@@ -13,6 +14,8 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -205,9 +208,10 @@
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
-(defn database
+(mu/defn database :- (ms/InstanceOf :model/Database)
   "Return the `Database` associated with this `Table`."
-  [table]
+  [table :- [:map
+             [:db_id ::lib.schema.id/database]]]
   (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id

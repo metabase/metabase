@@ -86,7 +86,7 @@
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge)))))
 
-(defn do-with-mock-cache [f]
+(defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [enable-query-caching  true
@@ -107,8 +107,8 @@
                                                      (throw e))))]
             (f {:save-chan save-chan, :purge-chan purge-chan})))))))
 
-(defmacro with-mock-cache [[& bindings] & body]
-  `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))
+(defmacro with-mock-cache! [[& bindings] & body]
+  `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
 
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
@@ -152,7 +152,7 @@
 
 (deftest is-cacheable-test
   (testing "something is-cacheable? if it includes a cach_ttl and the caching setting is enabled"
-    (with-mock-cache []
+    (with-mock-cache! []
       (doseq [enable-caching? [true false]
               cache-ttl       [100 nil]
               :let            [expected (boolean (and enable-caching? cache-ttl))]]
@@ -163,13 +163,13 @@
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
-    (with-mock-cache []
+    (with-mock-cache! []
       (is (= :not-cached
              (run-query))))))
 
 (deftest return-cached-results-test
   (testing "if we run the query twice, the second run should return cached results"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (is (= true
              (cacheable?)))
       (run-query)
@@ -179,7 +179,7 @@
 
 (deftest expired-results-test
   (testing "If cached resutls are past their TTL, the cached results shouldn't be returned"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (run-query :cache-ttl 0.1)
       (mt/wait-for-result save-chan)
       (Thread/sleep 200)
@@ -188,7 +188,7 @@
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
       (mt/with-temporary-setting-values [enable-query-caching false]
@@ -199,7 +199,7 @@
 
 (deftest max-kb-test
   (testing "check that `query-caching-max-kb` is respected and queries aren't cached if they're past the threshold"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [query-caching-max-kb 0]
         (run-query)
         (let [result (mt/wait-for-result save-chan)]
@@ -215,7 +215,7 @@
                 "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
                 "`:max-ttl`; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time "
                 "should not return cached results")
-    (with-mock-cache [purge-chan]
+    (with-mock-cache! [purge-chan]
       (mt/with-temporary-setting-values [query-caching-max-ttl 0.1]
         (run-query)
         (mt/wait-for-result purge-chan)
@@ -227,7 +227,7 @@
 
 (deftest ignore-cached-results-test
   (testing "check that :ignore-cached-results? in middleware is respected when returning results..."
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (run-query :middleware {:ignore-cached-results? false})
       (mt/wait-for-result save-chan)
       (is (= :not-cached
@@ -235,7 +235,7 @@
 
 (deftest ignore-cached-results-should-still-save-test
   (testing "...but if it's set those results should still be cached for next time."
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (is (= true (cacheable?)))
       (run-query :middleware {:ignore-cached-results? true})
       (mt/wait-for-result save-chan)
@@ -243,7 +243,7 @@
 
 (deftest min-ttl-test
   (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [query-caching-min-ttl 60]
         (run-query)
         (is (= :metabase.test.util.async/timed-out
@@ -252,7 +252,7 @@
                (run-query))))))
 
   (testing "...but if it takes *longer* than the min TTL, it should be cached"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [query-caching-min-ttl 0.1]
         (binding [*query-execution-delay-ms* 120]
           (run-query)
@@ -262,7 +262,7 @@
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
       (let [query-hash (qp.util/query-hash (test-query nil))]
@@ -277,7 +277,7 @@
 
 (deftest metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (mt/with-clock #t "2020-02-19T02:31:07.798Z[UTC]"
         (run-query)
         (mt/wait-for-result save-chan)
@@ -293,7 +293,7 @@
   (testing "Test that the caching middleware actually working in the context of the entire QP"
     (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                    (mt/native-query {:query "SELECT * FROM VENUES ORDER BY ID ASC LIMIT 5;"})]]
-      (with-mock-cache [save-chan]
+      (with-mock-cache! [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (testing (format "query = %s" (pr-str query))
             (is (= true
@@ -313,7 +313,9 @@
                        (dissoc cached-result :data))
                     "Results should be cached")
                 (is (= original-result (dissoc cached-result :cached :updated_at))
-                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [query                               (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                                                      :cache-ttl 5000)
@@ -331,7 +333,7 @@
                                                                           (swap! update-avg-execution-count inc)
                                                                           (apply save-query-update-avg-time-original args))
                     cache/min-duration-ms                               (constantly 0)]
-        (with-mock-cache [save-chan]
+        (with-mock-cache! [save-chan]
           (t2/delete! Query :query_hash q-hash)
           (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
@@ -351,7 +353,7 @@
 
 (deftest insights-from-cache-test
   (testing "Insights should work on cahced results (#12556)"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (let [query (-> checkins
                       (mt/mbql-query {:breakout    [!month.date]
                                       :aggregation [[:count]]})
@@ -375,7 +377,7 @@
 
 (deftest export-test
   (testing "Should be able to cache results streaming as an alternate download format, e.g. csv"
-    (with-mock-cache [save-chan]
+    (with-mock-cache! [save-chan]
       (let [query (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 6})
                          :cache-ttl 100)]
         (with-open [os (java.io.ByteArrayOutputStream.)]
@@ -406,7 +408,7 @@
       (is (= false
              (boolean (:cached normal-results)))
           "Query shouldn't be cached when running without mock cache in place")
-      (with-mock-cache [save-chan]
+      (with-mock-cache! [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (with-open [os (java.io.ByteArrayOutputStream.)]
             (is (= false
@@ -441,7 +443,7 @@
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (mt/with-test-user :rasta
-        (with-mock-cache [save-chan]
+        (with-mock-cache! [save-chan]
           (letfn [(run-forbidden-query []
                     (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
                                              :cache-ttl 100)))]

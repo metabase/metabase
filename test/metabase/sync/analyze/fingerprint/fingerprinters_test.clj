@@ -13,12 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest fingerprint-temporal-values-test
+(deftest ^:parallel fingerprint-temporal-values-test
   ;; we want to test h2 and postgres, because h2 doesn't
   ;; support overriding the timezone for a session / report
   (mt/test-drivers #{:h2 :postgres}
     (doseq [tz ["UTC" nil]]
-      (mt/with-temporary-setting-values [report-timezone tz]
+      (mt/with-report-timezone-id tz
         (mt/with-database-timezone-id "UTC"
           (mt/with-metadata-provider (mt/id)
             (is (= {:global {:distinct-count 4

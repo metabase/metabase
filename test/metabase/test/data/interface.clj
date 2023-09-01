@@ -15,20 +15,24 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.table :refer [Table]]
+   [metabase.driver.metadata :as driver.metadata]
+   [metabase.lib.metadata :as lib.metadata]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.models.field :as field]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,7 +41,8 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defrecord+ FieldDefinition [field-name base-type effective-type coercion-strategy semantic-type visibility-type fk field-comment])
+(p.types/defrecord+ FieldDefinition [field-name base-type effective-type coercion-strategy semantic-type visibility-type
+                                     fk field-comment])
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
@@ -237,7 +242,6 @@
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
-
 (defmulti metabase-instance
   "Return the Metabase object associated with this definition, if applicable. `context` should be the parent object (the
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
@@ -247,7 +251,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (t2/select-one Field
+  (t2/select-one :model/Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -257,7 +261,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (t2/select-one Table
+            (t2/select-one :model/Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -269,7 +273,7 @@
   (assert (string? database-name))
   (assert (keyword? driver))
   (mdb/setup-db!)
-  (t2/select-one Database
+  (t2/select-one :model/Database
                  :name    database-name
                  :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))
@@ -375,10 +379,20 @@
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a
   given type (and applied to a given Field, when applicable)."
   {:arglists '([driver aggregation-type] [driver aggregation-type field])}
-  dispatch-on-driver-with-test-extensions
+  (fn
+    ([driver _aggregation-type]
+     (dispatch-on-driver-with-test-extensions driver))
+    ([driver _aggregation-type field]
+     (if (driver.metadata/legacy-metadata? field)
+       ::legacy-metadata
+       (dispatch-on-driver-with-test-extensions driver))))
   :hierarchy #'driver/hierarchy)
 
-(defmethod aggregate-column-info ::test-extensions
+(defmethod aggregate-column-info ::legacy-metadata
+  [driver aggregation-type field]
+  (aggregate-column-info driver aggregation-type (driver.metadata/->mlv2-metadata field :metadata/column)))
+
+(mu/defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
    {:base_type     :type/BigInteger
@@ -388,10 +402,12 @@
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
-  ([_driver aggregation-type {field-id :id, table-id :table_id}]
+  ([_driver aggregation-type {field-id :id, table-id :table-id} :- lib.metadata/ColumnMetadata]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+    (first (qp/query->expected-cols {:database (if (qp.store/initialized?)
+                                                 (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                                                 ((requiring-resolve 'metabase.test.data.impl/db-id)))
                                      :type     :query
                                      :query    {:source-table table-id
                                                 :aggregation  [[aggregation-type [:field-id field-id]]]}}))
