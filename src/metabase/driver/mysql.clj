@@ -674,11 +674,8 @@
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
    to reconstruct the set of table privileges that the current user has. Returns nil if the grant doesn't
-   contain any information we care about.
-
-   The syntax for GRANT statements are documented here:
-   https://dev.mysql.com/doc/refman/8.0/en/grant.html
-   But this function parses the subset of this syntax that appears in the output of `SHOW GRANTS` statements.
+   contain any information we care about. Running `help show grants` in the mysql console shows the
+   syntax for the output strings of `SHOW GRANTS` statements.
 
    There are two types of grants we care about: privileges and roles.
 
@@ -697,11 +694,11 @@
     :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
   [grant]
   (condp re-find grant
-    #"^GRANT PROXY ON (.*)"
+    #"^GRANT PROXY ON "
     nil
-    #"^GRANT (.*) ON FUNCTION (.*)"
+    #"^GRANT (.+) ON FUNCTION "
     nil
-    #"^GRANT (.*) ON PROCEDURE (.*)"
+    #"^GRANT (.+) ON PROCEDURE "
     nil
     ;; GRANT
     ;;     priv_type [(column_list)]
@@ -709,14 +706,16 @@
     ;;     ON priv_level
     ;;     TO user etc.
     ;; }
-    #"^GRANT (.+) ON (.+) TO (.+)"
+    ;; For now we ignore column-level privileges. But this is how we could get them in the future.
+    #"^GRANT (.+) ON (.+) TO "
     :>>
-    (fn [[_ priv_types object_type _rest]]
+    (fn [[_ priv_types object_type]]
       (when-let [privileges (not-empty
                              (if (= priv_types "ALL PRIVILEGES")
                                #{:select :update :delete :insert}
-                               (let [split-priv-types (set (map (comp keyword u/lower-case-en) (str/split priv_types #", ")))]
-                                 (set/intersection #{:select :update :delete :insert} split-priv-types))))]
+                               (let [split-priv-types (->> (str/split priv_types #", ")
+                                                           (map (comp keyword u/lower-case-en)))]
+                                 (set/intersection #{:select :update :delete :insert} (set split-priv-types)))))]
         {:type       ::privileges
          :privileges privileges
          :object-type (cond
@@ -725,19 +724,17 @@
                         :else                             :table)
          :object-name object_type}))
     ;; GRANT role [, role] ... TO user etc.
-    #"^GRANT (.+) TO (.+)"
+    #"^GRANT (.+) TO "
     :>>
-    (fn [[_ roles _rest]]
+    (fn [[_ roles]]
       {:type  ::roles
        :roles (set (map u/lower-case-en (str/split roles #",")))})))
 
-(defn- grants
-  "Returns a list of parsed privilege grants for a user, taking into account the roles that the user might have, and their privileges
-
-   It does so by first querying: `SHOW GRANTS FOR <user>`.
-   If the results include any roles granted to the user, we query `SHOW GRANTS FOR <user> USING <role1>,<role2>,...`
-   The results from this query will contain all privileges granted for the user, either directly or indirectly
-   through the role hierarchy."
+(defn- privilege-grants-for-user
+  "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
+   It does so by first querying: `SHOW GRANTS FOR <user>`. If the results include any roles granted to the user,
+   we query `SHOW GRANTS FOR <user> USING <role1> [,<role2>] ...`. The results from this query will contain
+   all privileges granted for the user, either directly or indirectly through the role hierarchy."
   [conn-spec user]
   (let [grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user) {:as-arrays? true})
                            (drop 1)
@@ -756,20 +753,18 @@
       privilege-grants)))
 
 (defn- table-names->privileges
-  "Given a set of parsed grants, a database name, and a list of table names in the database, return a map of table names
-   to the set of privileges that apply to them.
-   that apply to each table.
+  "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
+   return a map with table names as keys, and the set of privileges that the user has on the table as values.
+
    The rules are:
    - global grants apply to all tables
    - database grants apply to all tables in the database
    - table grants apply to the table"
-  [grants database-name table-names]
+  [privilege-grants database-name table-names]
   (let [{global-grants   :global
          database-grants :database
-         table-grants    :table} (group-by :object-type grants)
+         table-grants    :table} (group-by :object-type privilege-grants)
         lower-database-name (u/lower-case-en database-name)
-        ;; TODO: this assumes that there can only be one global grant, and that there is only one database grant per database, and
-        ;; that there is only one table grant per table. this might not be the case.
         all-table-privileges (set/union (:privileges (first global-grants))
                                         (:privileges (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
                                                                    database-grants)))
@@ -791,7 +786,7 @@
         table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                          (drop 1)
                          (map first))]
-    (for [[table-name privileges] (table-names->privileges (grants conn-spec "CURRENT_USER()") (:name database) table-names)]
+    (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()") (:name database) table-names)]
       {:role   nil
        :schema nil
        :table  table-name

@@ -34,6 +34,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -744,10 +745,18 @@
                 (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
                         {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                        (get-privileges))))
-              (testing "should return privileges from recursively granted roles"
+              (testing "should return privileges for multiple roles that the user has been granted"
                 (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
-                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_2'")
-                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_role'"]]
+                              (str "GRANT INSERT ON `baz` TO 'table_privileges_test_role_2'")
+                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_user'"]]
+                  (jdbc/execute! conn-spec stmt))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
+                       (get-privileges))))
+              (testing "should return privileges from recursively granted roles"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_3'"
+                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_3'")
+                              "GRANT 'table_privileges_test_role_3' TO 'table_privileges_test_role'"]]
                   (try (jdbc/execute! conn-spec stmt)
                     (catch SQLException e
                            (log/error "Error executing SQL:")
@@ -755,10 +764,11 @@
                                        (with-out-str (jdbc/print-sql-exception-chain e)))
                            (throw e))))
                 (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
                        (get-privileges)))))
             (finally
               (doseq [stmt ["DROP USER IF EXISTS 'table_privileges_test_user';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role';"
-                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"]]
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
                 (jdbc/execute! conn-spec stmt)))))))))
