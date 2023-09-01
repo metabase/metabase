@@ -9,8 +9,7 @@ import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import Subhead from "metabase/components/type/Subhead";
-import { Flex } from "metabase/ui";
+import { Box, Text, Flex, Paper, Group } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -25,14 +24,13 @@ import { SearchFilterKeys } from "metabase/search/constants";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  SearchBody,
   SearchControls,
-  SearchHeader,
+  SearchBody,
   SearchMain,
-  SearchRoot,
-} from "./SearchApp.styled";
+  SearchResultContainer,
+} from "metabase/search/containers/SearchApp.styled";
 
-export default function SearchApp({ location }) {
+function SearchApp({ location }) {
   const dispatch = useDispatch();
 
   const { handleNextPage, handlePreviousPage, page } = usePagination();
@@ -46,6 +44,14 @@ export default function SearchApp({ location }) {
     () => getFiltersFromLocation(location),
     [location],
   );
+
+  const query = {
+    q: searchText,
+    ..._.omit(searchFilters, SearchFilterKeys.Type),
+    models: searchFilters[SearchFilterKeys.Type] ?? undefined,
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+  };
 
   const onChangeLocation = useCallback(
     nextLocation => dispatch(push(nextLocation)),
@@ -62,27 +68,37 @@ export default function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
-  const query = {
-    q: searchText,
-    ..._.omit(searchFilters, SearchFilterKeys.Type),
-    models: searchFilters[SearchFilterKeys.Type] ?? undefined,
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-  };
-
   return (
-    <SearchRoot data-testid="search-app">
-      {searchText && (
-        <SearchHeader>
-          <Subhead>{jt`Results for "${searchText}"`}</Subhead>
-        </SearchHeader>
-      )}
-      <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) => (
+    <Search.ListLoader query={query} wrapped>
+      {({ list, metadata }) => (
+        <SearchMain direction="column" gap="2rem">
+          <Group>
+            <Text size="xl" weight={700}>
+              {jt`Results for "${searchText}"`}
+            </Text>
+          </Group>
           <SearchBody>
-            <SearchMain>
-              {list.length > 0 ? (
-                <>
+            <SearchControls>
+              <SearchSidebar
+                value={searchFilters}
+                onChangeFilters={onFilterChange}
+              />
+            </SearchControls>
+            <SearchResultContainer>
+              {list.length === 0 ? (
+                <Paper shadow="lg" p="2rem">
+                  <EmptyState
+                    title={t`Didn't find anything`}
+                    message={t`There weren't any results for your search.`}
+                    illustrationElement={
+                      <Box mb={"-2.5rem"}>
+                        <img src={NoResults} />
+                      </Box>
+                    }
+                  />
+                </Paper>
+              ) : (
+                <Box>
                   <SearchResultSection items={list} />
                   <Flex justify="flex-end" align="center" my="1rem">
                     <PaginationControls
@@ -95,33 +111,21 @@ export default function SearchApp({ location }) {
                       onPreviousPage={handlePreviousPage}
                     />
                   </Flex>
-                </>
-              ) : (
-                <Card>
-                  <EmptyState
-                    title={t`Didn't find anything`}
-                    message={t`There weren't any results for your search.`}
-                    illustrationElement={<img src={NoResults} />}
-                  />
-                </Card>
+                </Box>
               )}
-            </SearchMain>
-            <SearchControls>
-              <SearchSidebar
-                value={searchFilters}
-                onChangeFilters={onFilterChange}
-              />
-            </SearchControls>
+            </SearchResultContainer>
           </SearchBody>
-        )}
-      </Search.ListLoader>
-    </SearchRoot>
+        </SearchMain>
+      )}
+    </Search.ListLoader>
   );
 }
 
 SearchApp.propTypes = {
   location: PropTypes.object,
 };
+
+export default SearchApp;
 
 const SearchResultSection = ({ items }) => (
   <Card className="pt2">

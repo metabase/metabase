@@ -41,7 +41,7 @@ describe("TypeFilterDisplay", () => {
 
   it("should display correct text for multiple types selected", () => {
     setup(["dashboard", "database"]);
-    const expectedText = "2 types";
+    const expectedText = "2 types selected";
     expect(screen.getByText(expectedText)).toBeInTheDocument();
   });
 });

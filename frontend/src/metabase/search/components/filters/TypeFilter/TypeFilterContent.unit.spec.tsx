@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import type { EnabledSearchModelType } from "metabase/search/types";
+import type { SearchModelType } from "metabase-types/api";
 import { TypeFilterContent } from "./TypeFilterContent";
 
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<EnabledSearchModelType, string> = {
@@ -17,13 +21,13 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<EnabledSearchModelType, string> = {
 };
 
 const TEST_TYPES: Array<EnabledSearchModelType> = [
-  "action",
-  "card",
   "collection",
   "dashboard",
+  "card",
   "database",
-  "dataset",
   "table",
+  "dataset",
+  "action",
 ];
 
 const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
@@ -49,6 +53,12 @@ const TestTypeFilterComponent = ({
   return <TypeFilterContent value={value} onChange={onChange} />;
 };
 
+const TEST_DATABASE = createMockDatabase({
+  settings: {
+    "database-enable-actions": true,
+  },
+});
+
 const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
@@ -58,7 +68,11 @@ const setup = async ({
 } = {}) => {
   setupSearchEndpoints(
     availableModels.map((type, index) =>
-      createMockSearchResult({ model: type, id: index + 1 }),
+      createMockSearchResult({
+        model: type as SearchModelType,
+        id: index + 1,
+        database_id: TEST_DATABASE.id,
+      }),
     ),
   );
 
