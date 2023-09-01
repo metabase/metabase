@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
@@ -33,11 +34,12 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -645,52 +647,62 @@
                                               :type       :query}))))))))))))
 
 (deftest parse-grant-test
-  (is (= {:type       ::mysql/privileges
-          :privileges #{"select" "insert" "update" "delete"}
-          :object-type :database
-          :object-name "`test-data`.*"}
-         (mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-  (is (= {:type       ::mysql/privileges
-          :privileges #{"select" "insert" "update" "delete"}
-          :object-type :database
-          :object-name "`test-data`.*"}
-         (mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-  (is (= {:type       ::mysql/privileges
-          :privileges #{"select"}
-          :object-type :database
-          :object-name "`test-data`.*"}
-         (mysql/parse-grant "GRANT SELECT, DELETE (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-  (is (= {:type       ::mysql/privileges
-          :privileges #{"select" "insert" "update" "delete"}
-          :object-type :table
-          :object-name "`test-data`.`foo`"}
-         (mysql/parse-grant "GRANT ALL PRIVILEGES ON `test-data`.`foo` TO 'metabase'@'localhost'")))
-  (is (= {:type  ::mysql/roles
-          :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
-         (mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
-  (is (nil? (mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION"))))
+  (testing "`parse-grant` should work correctly"
+    (is (= {:type       ::mysql/privileges
+            :privileges #{:select :insert :update :delete}
+            :object-type :database
+            :object-name "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type       ::mysql/privileges
+            :privileges #{:select :insert :update :delete}
+            :object-type :database
+            :object-name "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type       ::mysql/privileges
+            :privileges #{:select}
+            :object-type :database
+            :object-name "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, DELETE (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type       ::mysql/privileges
+            :privileges #{:select :insert :update :delete}
+            :object-type :table
+            :object-name "`test-data`.`foo`"}
+           (#'mysql/parse-grant "GRANT ALL PRIVILEGES ON `test-data`.`foo` TO 'metabase'@'localhost'")))
+    (is (= {:type  ::mysql/roles
+            :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
+           (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
 
 (deftest table-name->privileges-test
-  (is (= {"foo" #{"select"}, "bar" #{"select"}}
-         (mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
-                                         :privileges #{"select"}
-                                         :object-type :database
-                                         :object-name "`test-data`.*"}]
-                                       "test-data"
-                                       ["foo" "bar"])))
-  (is (= {"foo" #{"select"}, "bar" #{"select"}}
-         (mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
-                                         :privileges #{"select"}
-                                         :object-type :global
-                                         :object-name "*.*"}]
-                                       "test-data"
-                                       ["foo" "bar"])))
-  (is (= {"foo" #{"delete" "insert" "select" "update"}}
-         (mysql/table-names->privileges [{:privileges #{"select" "insert" "update" "delete"}
-                                         :object-type :table
-                                         :object-name "`test-data`.`foo`"}]
-                                       "test-data"
-                                       ["foo" "bar"]))))
+  (testing "table-names->privileges should work correctly"
+    (is (= {"foo" #{:select}, "bar" #{:select}}
+           (#'mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
+                                              :privileges #{:select}
+                                              :object-type :database
+                                              :object-name "`test-data`.*"}]
+                                            "test-data"
+                                            ["foo" "bar"])))
+    (is (= {"foo" #{:select}, "bar" #{:select}}
+           (#'mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
+                                              :privileges #{:select}
+                                              :object-type :global
+                                              :object-name "*.*"}]
+                                            "test-data"
+                                            ["foo" "bar"])))
+    (is (= {"foo" #{:select :insert :update :delete}}
+           (#'mysql/table-names->privileges [{:privileges #{:select :insert :update :delete}
+                                              :object-type :table
+                                              :object-name "`test-data`.`foo`"}]
+                                            "test-data"
+                                            ["foo" "bar"])))))
+
+(defn- get-db-version [conn-spec]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :mysql
+   conn-spec
+   nil
+   (fn [^java.sql.Connection conn]
+     (#'mysql/db-version (.getMetaData conn)))))
 
 (deftest table-privileges-test
   (mt/test-driver :mysql
@@ -723,7 +735,7 @@
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
-            (when (<= (mysql/get-db-version (mt/db)) 8)
+            (when (<= (get-db-version conn-spec) 8)
               (testing "should return privileges on roles that the user has been granted"
                 (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
                               (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
@@ -736,11 +748,17 @@
                 (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
                               (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_2'")
                               "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_role'"]]
-                  (jdbc/execute! conn-spec stmt))
+                  (try (jdbc/execute! conn-spec stmt)
+                    (catch SQLException e
+                           (log/error "Error executing SQL:")
+                           (log/errorf "Caught SQLException:\n%s\n"
+                                       (with-out-str (jdbc/print-sql-exception-chain e)))
+                           (throw e))))
                 (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
                         {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                        (get-privileges)))))
             (finally
               (doseq [stmt ["DROP USER IF EXISTS 'table_privileges_test_user';"
-                            "DROP ROLE IF EXISTS 'table_privileges_test_role';"]]
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"]]
                 (jdbc/execute! conn-spec stmt)))))))))

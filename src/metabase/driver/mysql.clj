@@ -97,14 +97,6 @@
        min-supported-mariadb-version
        min-supported-mysql-version)))
 
-(defn get-db-version [conn-spec]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :mysql
-   conn-spec
-   nil
-   (fn [^java.sql.Connection conn]
-     (db-version (.getMetaData conn)))))
-
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (sql-jdbc.execute/do-with-connection-with-options
@@ -704,7 +696,7 @@
    {:type  ::roles
     :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
   [grant]
-  (condp #(re-find % grant)
+  (condp re-find grant
     #"^GRANT PROXY ON (.*)"
     nil
     #"^GRANT (.*) ON FUNCTION (.*)"
@@ -717,7 +709,8 @@
     ;;     ON priv_level
     ;;     TO user etc.
     ;; }
-    (re-find #"^GRANT (.+) ON (.+) TO (.+)")
+    #"^GRANT (.+) ON (.+) TO (.+)"
+    :>>
     (fn [[_ priv_types object_type _rest]]
       (when-let [privileges (not-empty
                              (if (= priv_types "ALL PRIVILEGES")
@@ -732,20 +725,35 @@
                         :else                             :table)
          :object-name object_type}))
     ;; GRANT role [, role] ... TO user etc.
-    (re-find #"^GRANT (.+) TO (.+)" grant)
+    #"^GRANT (.+) TO (.+)"
+    :>>
     (fn [[_ roles _rest]]
       {:type  ::roles
        :roles (set (map u/lower-case-en (str/split roles #",")))})))
 
-(defn- grants [conn-spec]
-  (loop [user "CURRENT_USER()"]
-    (let [grants (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user) {:as-arrays? true})
-                      (drop 1)
-                      (map first))]
-      (let [parsed-grants (map parse-grant grants)
-            {role-grants      ::roles
-             privilege-grants ::privileges} (group-by :type parsed-grants)]
-        (concat privilege-grants (mapcat #(recur (:user %)) role-grants))))))
+(defn- grants
+  "Returns a list of parsed privilege grants for a user, taking into account the roles that the user might have, and their privileges
+
+   It does so by first querying: `SHOW GRANTS FOR <user>`.
+   If the results include any roles granted to the user, we query `SHOW GRANTS FOR <user> USING <role1>,<role2>,...`
+   The results from this query will contain all privileges granted for the user, either directly or indirectly
+   through the role hierarchy."
+  [conn-spec user]
+  (let [grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user) {:as-arrays? true})
+                           (drop 1)
+                           (map first))
+        parsed-grants (map parse-grant grant-strings)
+        {role-grants      ::roles
+         privilege-grants ::privileges} (group-by :type parsed-grants)]
+    (if (seq role-grants)
+      (let [roles         (:roles (first role-grants))
+            grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user "USING " (str/join "," roles)) {:as-arrays? true})
+                               (drop 1)
+                               (map first))
+            parsed-grants (map parse-grant grant-strings)
+            {privilege-grants ::privileges} (group-by :type parsed-grants)]
+        privilege-grants)
+      privilege-grants)))
 
 (defn- table-names->privileges
   "Given a set of parsed grants, a database name, and a list of table names in the database, return a map of table names
@@ -783,7 +791,7 @@
         table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                          (drop 1)
                          (map first))]
-    (for [[table-name privileges] (table-names->privileges (grants conn-spec) (:name database) table-names)]
+    (for [[table-name privileges] (table-names->privileges (grants conn-spec "CURRENT_USER()") (:name database) table-names)]
       {:role   nil
        :schema nil
        :table  table-name
