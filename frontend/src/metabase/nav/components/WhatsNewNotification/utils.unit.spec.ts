@@ -173,6 +173,28 @@ describe("getLatestEligibleReleaseNotes", () => {
     ).toHaveProperty("version", "v0.49.1");
   });
 
+  it("returns last version if more than one are eligible - versions not in order", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        versionInfo: buildVersionInfo([
+          mockVersion({
+            version: "v0.49.0",
+            announcement_url: "url",
+          }),
+          mockVersion({
+            version: "v0.49.2",
+          }),
+          mockVersion({
+            version: "v0.49.1",
+            announcement_url: "url",
+          }),
+        ]),
+        currentVersion: "v0.49.2",
+        lastAcknowledgedVersion: "v0.47",
+      }),
+    ).toHaveProperty("version", "v0.49.1");
+  });
+
   it("should return undefined when the current version is not defined", () => {
     expect(
       getLatestEligibleReleaseNotes({

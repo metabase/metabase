@@ -24,7 +24,13 @@ export const getLatestEligibleReleaseNotes = ({
 
   const versions = [versionInfo?.latest]
     .concat(versionInfo?.older)
-    .filter(isNotFalsy);
+    .filter(isNotFalsy)
+    .filter(
+      (
+        record: VersionInfoRecord,
+      ): record is VersionInfoRecord &
+        Required<Pick<VersionInfoRecord, "version">> => Boolean(record.version),
+    );
 
   const versionInVersionInfo = versions.find(v => v.version === currentVersion);
   if (!versionInVersionInfo) {
@@ -42,5 +48,7 @@ export const getLatestEligibleReleaseNotes = ({
     );
   });
 
-  return eligibleVersions.find(({ announcement_url }) => announcement_url);
+  return eligibleVersions
+    .sort((a, b) => MetabaseUtils.compareVersions(b.version, a.version))
+    .find(({ announcement_url }) => announcement_url);
 };
