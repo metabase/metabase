@@ -629,7 +629,7 @@
   (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Field {field-name :name :as field} {:name "TOTAL"}]
-        (is (= (format "A look at the %s field" (u/capitalize-en field-name))
+        (is (= (format "A look at the %s fields" (u/capitalize-en field-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
 (deftest test-metric-title-test
@@ -637,7 +637,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Metric {metric-name :name :as metric} {:table_id   (mt/id :venues)
                                                             :definition {:aggregation [[:count]]}}]
-        (is (= (format "A look at the %s metric" metric-name)
+        (is (= (format "A look at the %s metrics" metric-name)
                (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil)))))))))
 
 (deftest test-segment-title-test
