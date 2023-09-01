@@ -156,12 +156,28 @@
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form)))))
 
+(def ^:private number-of-lines-for-a-test-to-be-considered-horrifically-long
+  200)
+
+(defn- deftest-check-not-horrifically-long
+  [node]
+  (let [{:keys [row end-row]} (meta node)]
+    (when (and row end-row)
+      (let [num-lines (- end-row row)]
+        (when (>= num-lines number-of-lines-for-a-test-to-be-considered-horrifically-long)
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message (str (format "This test is horrifically long, it's %d lines! 😱 " num-lines)
+                                                   "Do you really want to try to debug it if it fails? 💀 "
+                                                   "Split it up into smaller tests! 🥰")
+                                     :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
+
 (defn deftest [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
             (= lang :clj))
     (deftest-check-parallel node))
+  (deftest-check-not-horrifically-long node)
   {:node node})
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`

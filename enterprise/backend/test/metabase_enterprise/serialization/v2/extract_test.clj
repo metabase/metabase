@@ -1165,6 +1165,7 @@
                    {:model "Field"      :id "A Field"}]}
                 (set (serdes/dependencies ser)))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [User       {mark-id :id}              {:first_name "Mark"
