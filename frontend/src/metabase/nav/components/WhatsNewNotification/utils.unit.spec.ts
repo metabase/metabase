@@ -44,6 +44,15 @@ describe("getLatestEligibleReleaseNotes", () => {
     ).toBe(undefined);
   });
 
+  it("should return nothing when white labeling, even if other conditions are satisfied", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        isWhiteLabeling: true,
+      }),
+    ).toBe(undefined);
+  });
+
   it("should ignore versions without the annoucement_url", () => {
     expect(
       getLatestEligibleReleaseNotes({
