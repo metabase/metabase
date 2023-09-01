@@ -15,7 +15,7 @@ Metabase ships with an embedded H2 application database that you should avoid us
 
 If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
 
-The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. For example, if you're trying to migrate from the H2 database to a setup that uses AWS Elastic Beanstalk to run Metabase with an RDS database as the application database, you can run the migration from your computer instead of trying to cram the H2 file into your Elastic Beanstalk.
+The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. 
 
 ### Avoid migrating and upgrading at the same time
 
