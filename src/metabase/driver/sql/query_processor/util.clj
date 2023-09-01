@@ -1,7 +1,5 @@
 (ns metabase.driver.sql.query-processor.util
   (:require
-   [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
@@ -16,16 +14,9 @@
   Ultimately, this is just a way to get the parent identifier
 
   (metabase.util.honeysql-extensions/identifier :field \"blah\")"
-  [field-identifier field]
+  [field-identifier {:keys [nfc-path], :as _field}]
   {:pre [(hx/identifier? field-identifier)]}
-  ;; for now, we'll support `snake_cased` fields for backward-compatibility; after 51 we can drop support for them.
-  (when (:nfc_path field)
-    (sql.qp.deprecated/log-deprecation-warning
-     driver/*driver*
-     "metabase.driver.sql.query-processor.util/nfc-field->parent-identifier with legacy (snake_cased) Field metadata"
-     "0.48.0"))
-  (let [nfc-path          ((some-fn :nfc-path :nfc_path) field)
-        parent-components (-> (case hx/*honey-sql-version*
+  (let [parent-components (-> (case hx/*honey-sql-version*
                                 1 (:components field-identifier)
                                 2 (last field-identifier))
                               (vec)
