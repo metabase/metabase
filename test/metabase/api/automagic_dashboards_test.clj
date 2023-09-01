@@ -315,20 +315,39 @@
   "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
   (s/pred neg-int? 'ui-temp-id?))
 
+(defn- expected-filters
+  [{:keys [model-index-value] :as info}]
+  (let [linked-tables (api.magic/linked-entities info)]
+    (into #{} (map (fn [{fk-id :linked-field-id}]
+                     [:= [:field fk-id nil] (:model_pk model-index-value)]))
+          linked-tables)))
+
+(defn- cards-have-filters?
+  "Ensure that each of the `dashcards` which has a query includes one of the expected `filters`. Filters will be of the
+  form `[:= [:field <fk-id> nil] <pk-value>]`."
+  [dashcards filters]
+  (doseq [dashcard dashcards
+          :let [query (-> dashcard :card :dataset_query :query)]
+          :when query
+          :let [filter-tree (into #{} (tree-seq sequential? seq (:filter query)))]]
+    (is (some filters filter-tree)
+        (str "Card: " (-> dashcard :card :name)
+             "\nwith filter: " (-> dashcard :card :dataset_query :query :filter)
+             "\nis missing one of " filters))))
 
 (deftest create-linked-dashboard-test
   (testing "If there are no linked-tables, create a default view explaining the situation."
     (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
-                                                       :link {:entity {:model "dataset"
-                                                                       :display "table"}}}}
-                             {:visualization_settings {:text "# Unfortunately, there's not much else to show right now...",
-                                                       :virtual_card {:display :text},
+                                                       :link         {:entity {:model   "dataset"
+                                                                               :display "table"}}}}
+                             {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
+                                                       :virtual_card        {:display :text},
                                                        :dashcard.background false,
                                                        :text.align_vertical :bottom}}]}
-          (#'api.magic/create-linked-dashboard {:model             nil
-                                                    :linked-tables     ()
-                                                    :model-index       nil
-                                                    :model-index-value nil})))
+            (#'api.magic/create-linked-dashboard {:model             nil
+                                                  :linked-tables     ()
+                                                  :model-index       nil
+                                                  :model-index-value nil})))
     (mt/dataset sample-dataset
       (testing "x-ray an mbql model"
         (with-indexed-model [{:keys [model model-index model-index-value]}
@@ -343,9 +362,9 @@
                                                      :linked-field-id %reviews.product_id}
                                                     {:linked-table-id $$orders
                                                      :linked-field-id %orders.product_id}])})]
-            (is (=? [{:id #hawk/schema Tab-Id-Schema
+            (is (=? [{:id   #hawk/schema Tab-Id-Schema
                       :name "A look at Reviews" :position 0}
-                     {:id #hawk/schema Tab-Id-Schema
+                     {:id   #hawk/schema Tab-Id-Schema
                       :name "A look at Orders" :position 1}]
                     (:ordered_tabs dash)))
             (testing "The first card for each tab is a linked model card to the source model"
@@ -366,7 +385,12 @@
                    (and
                     (str/includes? (:name dash) (:name model))
                     (str/includes? (:name dash) (:name model-index-value)))))
-              (is (true? (str/includes? (:description dash) (:name model-index-value))))))))
+              (is (true? (str/includes? (:description dash) (:name model-index-value)))))
+            (testing "All query cards have the correct filters"
+              (let [pk-filters (expected-filters {:model             model
+                                                  :model-index       model-index
+                                                  :model-index-value model-index-value})]
+                (cards-have-filters? (:ordered_cards dash) pk-filters))))))
 
       (letfn [(l [x] (u/lower-case-en x))
               (by-id [cols col-name] (or (some (fn [col] (when (= (l (:name col)) (l col-name))
@@ -399,17 +423,22 @@
                              (by-id "id") :id)
                          id-field-id)
                       "Metadata not updated with the mapping to the database column")
-
-              (let [dash (#'api.magic/create-linked-dashboard
-                          {:model             model
-                           :model-index       model-index
-                           :model-index-value model-index-value
-                           :linked-tables     (mt/$ids [{:linked-table-id $$reviews
-                                                         :linked-field-id %reviews.product_id}
-                                                        {:linked-table-id $$orders
-                                                         :linked-field-id %orders.product_id}])})]
-                (is (=? [{:id #hawk/schema Tab-Id-Schema
+              (let [model (t2/select-one 'Card :id (:id model))
+                    dash  (#'api.magic/create-linked-dashboard
+                           {:model             model
+                            :model-index       model-index
+                            :model-index-value model-index-value
+                            :linked-tables     (mt/$ids [{:linked-table-id $$reviews
+                                                          :linked-field-id %reviews.product_id}
+                                                         {:linked-table-id $$orders
+                                                          :linked-field-id %orders.product_id}])})]
+                (is (=? [{:id   #hawk/schema Tab-Id-Schema
                           :name "A look at Reviews" :position 0}
-                         {:id #hawk/schema Tab-Id-Schema
+                         {:id   #hawk/schema Tab-Id-Schema
                           :name "A look at Orders" :position 1}]
-                        (:ordered_tabs dash)))))))))))
+                        (:ordered_tabs dash)))
+                (testing "All query cards have the correct filters"
+                  (let [pk-filters (expected-filters {:model             model
+                                                      :model-index       model-index
+                                                      :model-index-value model-index-value})]
+                    (cards-have-filters? (:ordered_cards dash) pk-filters)))))))))))
