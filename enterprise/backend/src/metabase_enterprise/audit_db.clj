@@ -138,8 +138,8 @@
              (log/info "Unzipping analytics to plugins...")
              (u.files/unzip-file analytics-root-dir-resource "plugins")
              (log/info "Unzipping done.")
-             (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
-             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+             (log/info (str "Loading Analytics Content from plugins/instance_analytics"))
+             ;; The EE token might not have :serialization enabled, but audit features must still be able to use it.
              (let [report (log/with-no-logs (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
                                                                                 {}
                                                                                 :token-check? false))]
