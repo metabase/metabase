@@ -199,6 +199,6 @@ export function getActivePulseParameters(
     return map;
   }, {});
   return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
-    parameter => parameter.value != null,
+    (parameter: any) => parameter.value != null,
   );
 }
