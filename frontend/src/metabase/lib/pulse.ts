@@ -146,7 +146,7 @@ function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
 function cleanPulseParameters(parameters: PulseParameter[]) {
   return parameters.map(parameter => {
     const { type, value, id } = parameter;
-    return { id, type, value: normalizeParameterValue(type, value) };
+    return { id, value: normalizeParameterValue(type, value) };
   });
 }
 
