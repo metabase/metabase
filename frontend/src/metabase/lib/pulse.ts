@@ -10,8 +10,8 @@ import type {
   PulseParameter,
 } from "metabase-types/api";
 import {
+  getDefaultValuePopulatedParameters,
   normalizeParameterValue,
-  PULSE_PARAM_USE_DEFAULT,
 } from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
@@ -194,16 +194,11 @@ export function getActivePulseParameters(
   pulse: Pulse,
   parameters: PulseParameter[],
 ) {
-  const pulseParameters = getPulseParameters(pulse);
-  const pulseParametersById = _.indexBy(pulseParameters, "id");
-
-  return parameters
-    .map(parameter => {
-      const value = pulseParametersById[parameter.id]?.value;
-      return {
-        ...parameter,
-        value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
-      };
-    })
-    .filter(parameter => parameter.value != null);
+  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
+  return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
+    parameter => parameter.value != null,
+  );
 }
