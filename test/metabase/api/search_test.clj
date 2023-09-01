@@ -731,11 +731,15 @@
     (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
       (t2.execute/with-call-count [call-count]
         ;; there seems to be a bug with mu/def that if this is a list it fails validation
-        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        (let [searched-models (into [] (remove #{"indexed-entity"} search-config/all-models))]
+          ;; searching indexed-entities checks if the user is sandboxed. With ee extensions hits the db a few more
+          ;; times.
+          (#'api.search/search (#'api.search/search-context "count test" nil nil
+                                                            searched-models 100 0)))
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 16 (call-count)))))))
+        (is (= 7 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
