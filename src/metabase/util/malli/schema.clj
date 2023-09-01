@@ -195,7 +195,7 @@
   (mu/with-api-error-message
     [:and
      :string
-     [:fn u.password/is-valid?]]
+     [:fn (every-pred string? #'u.password/is-valid?)]]
     (deferred-tru "password is too common.")))
 
 (def IntString
@@ -229,7 +229,7 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
-    [:enum "true" "false"]
+    [:enum "true" "false" "TRUE" "FALSE"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def TemporalString

@@ -264,24 +264,24 @@
   (testing "POST /api/setup validation"
     (testing ":token"
       (testing "missing"
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (setup! dissoc :token))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (setup! dissoc :token))))
 
       (testing "incorrect"
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (setup! assoc :token "foobar")))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (setup! assoc :token "foobar")))))
 
     (testing "site name"
-      (is (= {:errors {:site_name "value must be a non-blank string."}}
-             (setup! m/dissoc-in [:prefs :site_name]))))
+      (is (=? {:errors {:site_name "value must be a non-blank string."}}
+              (setup! m/dissoc-in [:prefs :site_name]))))
 
     (testing "site locale"
       (testing "invalid format"
-        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                     (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
+        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
-        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                     (setup! assoc-in [:prefs :site_locale] "en-EN")))))
+        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
@@ -295,21 +295,21 @@
 
       (testing "email"
         (testing "missing"
-          (is (= {:errors {:email "value must be a valid email address."}}
-                 (setup! m/dissoc-in [:user :email]))))
+          (is (=? {:errors {:email "value must be a valid email address."}}
+                  (setup! m/dissoc-in [:user :email]))))
 
         (testing "invalid"
-          (is (= {:errors {:email "value must be a valid email address."}}
-                 (setup! assoc-in [:user :email] "anything")))))
+          (is (=? {:errors {:email "value must be a valid email address."}}
+                  (setup! assoc-in [:user :email] "anything")))))
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "password is too common."}}
-                 (setup! m/dissoc-in [:user :password]))))
+          (is (=? {:errors {:password "password is too common."}}
+                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (is (= {:errors {:password "password is too common."}}
-                 (setup! assoc-in [:user :password] "anything"))))))))
+          (is (=? {:errors {:password "password is too common."}}
+                  (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
   (testing "POST /api/setup"
@@ -411,14 +411,14 @@
   (testing "POST /api/setup/validate"
     (testing "Should validate token"
       (mt/with-temporary-setting-values [has-user-setup false]
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (api-validate 400 {})))
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (api-validate 400 {:token "foobar"}))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (api-validate 400 {})))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (api-validate 400 {:token "foobar"}))))
       ;; make sure we have a valid setup token
       (setup/create-token!)
-      (is (= {:errors {:engine "value must be a valid database engine."}}
-             (api-validate 400 {:token (setup/setup-token)}))))
+      (is (=? {:errors {:engine "value must be a valid database engine."}}
+              (api-validate 400 {:token (setup/setup-token)}))))
 
     (mt/with-temporary-setting-values [has-user-setup false]
       (testing "should validate that database connection works"

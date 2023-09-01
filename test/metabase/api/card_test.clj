@@ -123,7 +123,7 @@
     :dataset_query          query
     :visualization_settings {:global {:title nil}}}))
 
-(defn- do-with-temp-native-card
+(defn- do-with-temp-native-card!
   [f]
   (mt/with-temp [Database   db    {:details (:details (mt/db)), :engine :h2}
                  Table      _     {:db_id (u/the-id db), :name "CATEGORIES"}
@@ -132,11 +132,11 @@
                                                          :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]
     (f db card)))
 
-(defmacro ^:private with-temp-native-card
+(defmacro ^:private with-temp-native-card!
   {:style/indent 1}
   [[db-binding card-binding] & body]
-  `(do-with-temp-native-card (fn [~(or db-binding '_) ~(or card-binding '_)]
-                               ~@body)))
+  `(do-with-temp-native-card! (fn [~(or db-binding '_) ~(or card-binding '_)]
+                                ~@body)))
 
 (defn do-with-cards-in-a-collection [card-or-cards-or-ids grant-perms-fn! f]
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -164,7 +164,7 @@
   [card-or-cards-or-ids & body]
   `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
 
-(defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
+(defn- do-with-temp-native-card-with-params! [f]
   (mt/with-temp
     [Database   db    {:details (:details (mt/db)), :engine :h2}
      Table      _     {:db_id (u/the-id db), :name "VENUES"}
@@ -179,13 +179,13 @@
                                                                     :required     true}}}}}]
     (f db card)))
 
-(defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
-  `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
+(defmacro ^:private with-temp-native-card-with-params! {:style/indent 1} [[db-binding card-binding] & body]
+  `(do-with-temp-native-card-with-params! (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
 
-(deftest ^:parallel run-query-with-parameters-test
+(deftest run-query-with-parameters-test
   (testing "POST /api/card/:id/query"
     (testing "should respect `:parameters`"
-      (with-temp-native-card-with-params [{db-id :id} {card-id :id}]
+      (with-temp-native-card-with-params! [{db-id :id} {card-id :id}]
         (is (=? {:database_id db-id
                  :row_count   1
                  :data        {:rows [[8]]}}
@@ -692,7 +692,7 @@
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
-    (with-temp-native-card-with-params [db card]
+    (with-temp-native-card-with-params! [db card]
       (testing "You cannot create a card with variables as a model"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :post 400 "card"
@@ -1256,7 +1256,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params [_db card]
+    (with-temp-native-card-with-params! [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
@@ -1809,7 +1809,7 @@
 
 (deftest csv-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
                 "75"]
@@ -1817,7 +1817,7 @@
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
                                                                (u/the-id card)))))))))
   (testing "with parameters"
-    (with-temp-native-card-with-params [_ card]
+    (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
                 "8"]
@@ -1827,12 +1827,12 @@
 
 (deftest json-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 75}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
-    (with-temp-native-card-with-params [_ card]
+    (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json?parameters=%s"
@@ -1847,14 +1847,14 @@
 
 (deftest xlsx-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       {:request-options {:as :byte-array}})))))))
   (testing "with parameters"
-    (with-temp-native-card-with-params [_ card]
+    (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results

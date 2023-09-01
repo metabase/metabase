@@ -43,7 +43,7 @@
     ms/NonBlankString
     [:fn
      {:error/message "setup token"}
-     #'setup/token-match?]]
+     (every-pred string? #'setup/token-match?)]]
    (i18n/deferred-tru "Token does not match the setup token.")))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
