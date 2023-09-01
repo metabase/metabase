@@ -6,11 +6,26 @@ import {
   getSourceType,
 } from "./parameter-source";
 
+export const PULSE_PARAM_EMPTY = null;
+export const PULSE_PARAM_USE_DEFAULT = undefined;
+
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameters.map(parameter => ({
     ...parameter,
     value: parameterValues?.[parameter.id] ?? null,
   }));
+}
+export function getDefaultValuePopulatedParameters(
+  parameters,
+  parameterValues,
+) {
+  return parameters.map(parameter => {
+    const value = parameterValues?.[parameter.id];
+    return {
+      ...parameter,
+      value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
+    };
+  });
 }
 
 export function hasDefaultParameterValue(parameter) {
@@ -42,9 +57,6 @@ export function normalizeParameters(parameters) {
       options,
     }));
 }
-
-export const PULSE_PARAM_EMPTY = null;
-export const PULSE_PARAM_USE_DEFAULT = undefined;
 
 export function isParameterValueEmpty(value) {
   return (

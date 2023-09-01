@@ -5,13 +5,15 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
-import { assocIn } from "icepick";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
 import { getPulseParameters } from "metabase/lib/pulse";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  getDefaultValuePopulatedParameters,
+  PULSE_PARAM_USE_DEFAULT,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
@@ -26,16 +28,25 @@ function MutableParametersSection({
     return map;
   }, {});
 
-  const valuePopulatedParameters = getValuePopulatedParameters(
+  const valuePopulatedParameters = getDefaultValuePopulatedParameters(
     parameters,
     pulseParamValuesById,
   );
 
   const setParameterValue = (id, value) => {
-    const i = pulseParameters.findIndex(parameter => parameter.id === id);
-    if (i >= 0) {
-      setPulseParameters(assocIn(pulseParameters, [i, "value"], value));
-    }
+    const parameter = parameters.find(parameter => parameter.id === id);
+    const filteredParameters = pulseParameters.filter(
+      parameter => parameter.id !== id,
+    );
+    const newParameters =
+      value === PULSE_PARAM_USE_DEFAULT
+        ? filteredParameters
+        : filteredParameters.concat({
+            ...parameter,
+            value,
+          });
+
+    setPulseParameters(newParameters);
   };
 
   return _.isEmpty(parameters) ? null : (

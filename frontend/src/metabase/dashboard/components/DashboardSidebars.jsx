@@ -15,7 +15,6 @@ import { ActionSidebar } from "./ActionSidebar";
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
   parameters: PropTypes.array,
-  parameterValues: PropTypes.object,
   showAddParameterPopover: PropTypes.func.isRequired,
   removeParameter: PropTypes.func.isRequired,
   addCardToDashboard: PropTypes.func.isRequired,
@@ -51,7 +50,6 @@ DashboardSidebars.propTypes = {
 export function DashboardSidebars({
   dashboard,
   parameters,
-  parameterValues,
   showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
@@ -161,7 +159,6 @@ export function DashboardSidebars({
         <SharingSidebar
           dashboard={dashboard}
           params={params}
-          parameterValues={parameterValues}
           onCancel={onCancel}
         />
       );
