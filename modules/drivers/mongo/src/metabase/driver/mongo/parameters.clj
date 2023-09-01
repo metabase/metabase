@@ -34,7 +34,7 @@
      t)))
 
 (defn- param-value->str
-  [{coercion :coercion_strategy, :as field} x]
+  [{coercion :coercion-strategy, :as field} x]
   (cond
     ;; #30136: Provide a way of using dashboard filter as a variable.
     (and (sequential? x) (= (count x) 1))
