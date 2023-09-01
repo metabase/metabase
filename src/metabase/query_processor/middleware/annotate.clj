@@ -44,7 +44,7 @@
    [:source       [:enum :aggregation :fields :breakout :native]]
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true} mbql.s/FieldOrAggregationReference]])
+   [:field_ref {:optional true} mbql.s/Reference]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -475,9 +475,25 @@
       :else
       cols)))
 
+(defn- restore-cumulative-aggregations
+  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
+  (let [offset   (count breakouts)
+        restored (reduce (fn [aggregations index]
+                           (mbql.u/replace-in aggregations [(- index offset)]
+                             [:count]       [:cum-count]
+                             [:count field] [:cum-count field]
+                             [:sum field]   [:cum-sum field]))
+                         (vec aggregations)
+                         replaced-indices)]
+    (assoc inner-query :aggregation restored)))
+
 (defmethod column-info :query
-  [{inner-query :query} results]
-  (u/prog1 (mbql-cols inner-query results)
+  [{inner-query :query,
+    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
+   results]
+  (u/prog1 (mbql-cols (cond-> inner-query
+                        replaced-indices (restore-cumulative-aggregations replaced-indices))
+                      results)
     (check-correct-number-of-columns-returned <> results)))
 
 

@@ -9,7 +9,7 @@
   (:require
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
-   metabase.db.custom-migrations ;; load our custom migrations
+   [metabase.db.custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -29,8 +29,11 @@
 
 (set! *warn-on-reflection* true)
 
-;;; needed so the `:h2` dialect gets registered with Honey SQL
-(comment metabase.util.honey-sql-2/keep-me)
+(comment
+  ;; load our custom migrations
+  metabase.db.custom-migrations/keep-me
+  ;; needed so the `:h2` dialect gets registered with Honey SQL
+  metabase.util.honey-sql-2/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
