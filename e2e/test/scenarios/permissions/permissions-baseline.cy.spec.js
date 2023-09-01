@@ -52,8 +52,6 @@ describe("scenarios > permissions", () => {
     // There's no pulse in the fixture data, so we stub out the api call to replace the 404 with a 403.
     cy.intercept("api/pulse/1", { statusCode: 403, body: {} });
     cy.visit("/pulse/1");
-    // pulses still do a api/user request instead of api/user/recipients, so intercept for now
-    cy.intercept("api/user", { statusCode: 200, body: { data: [] } });
     checkUnauthorized();
   });
 
