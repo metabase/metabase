@@ -197,10 +197,18 @@
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (t2/select-one Table :id linked-table-id)]
                                     (magic/automagic-analysis
-                                     table
-                                     {:show         :all
-                                      :query-filter [:= [:field linked-field-id nil] model_pk]})))
-                                linked-tables)]
+                                      table
+                                      {:show         :all
+                                       :query-filter [:= [:field linked-field-id nil] model_pk]})))
+                                linked-tables)
+          seed-dashboard   (-> (first child-dashboards)
+                               (merge
+                                 {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+                                  :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                                  :parameters   []
+                                  :param_fields {}})
+                               (dissoc :transient_name
+                                       :transient_filters))]
       (if (second child-dashboards)
         (let [tabs-and-cards (map-indexed (fn [idx {tab-name :name tab-cards :ordered_cards}]
                                             ;; id starts at 0. want our temporary ids to start at -1, -2, ...
@@ -219,25 +227,12 @@
                           (update :ordered_cards into dash-cards)
                           (update :ordered_tabs conj tab)))
                     (merge
-                      (first child-dashboards)
-                      {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-                       :description   (format "A dashboard focusing on information linked to %s" indexed-entity-name)
-                       :ordered_cards []
-                       :ordered_tabs  []
-                       :parameters    []
-                       :param_fields  {}})
-                    tabs-and-cards)
-            (dissoc :transient_name
-                    :transient_filters)))
-        (-> (first child-dashboards)
-            (update :ordered_cards (fn [cards] (add-source-model-link model cards)))
-            (merge
-              {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-               :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
-               :parameters   []
-               :param_fields {}})
-            (dissoc :transient_name
-                    :transient_filters))))
+                      seed-dashboard
+                      {:ordered_cards []
+                       :ordered_tabs  []})
+                    tabs-and-cards)))
+        (update seed-dashboard
+                :ordered_cards (fn [cards] (add-source-model-link model cards)))))
     {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
      :ordered_cards (add-source-model-link
                       model
