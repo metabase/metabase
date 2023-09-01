@@ -307,7 +307,6 @@
   - query: a dataset_query for the model
   - pk-ref: a field_ref for the model's pk
   - value-ref: a field_ref for the model's label."
-  {:clj-kondo/ignore [:unresolved-symbol]}
   [[bindings query-info] & body]
   `(do-with-testing-model ~query-info
                           (fn [~bindings] ~@body)))
@@ -318,8 +317,15 @@
 
 
 (deftest create-linked-dashboard-test
-  (testing "If there are no linked-tables, then no dashboard"
-    (is (nil? (#'api.magic/create-linked-dashboard {:model             nil
+  (testing "If there are no linked-tables, create a default view explaining the situation."
+    (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
+                                                       :link {:entity {:model "dataset"
+                                                                       :display "table"}}}}
+                             {:visualization_settings {:text "# Unfortunately, there's not much else to show right now...",
+                                                       :virtual_card {:display :text},
+                                                       :dashcard.background false,
+                                                       :text.align_vertical :bottom}}]}
+          (#'api.magic/create-linked-dashboard {:model             nil
                                                     :linked-tables     ()
                                                     :model-index       nil
                                                     :model-index-value nil})))

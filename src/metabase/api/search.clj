@@ -416,11 +416,13 @@
   ;; mapv used to realize lazy sequence. In web request, user bindings exist for entirety of request and we realize on
   ;; serialization. At repl, we print lazy sequence after bindings have elapsed and you get unbound user errors
   (mapv #(get (first %) :model)
-       (filter not-empty
-               (for [model search-config/all-models]
-                 (let [search-query     (search-query-for-model model search-ctx)
-                       query-with-limit (sql.helpers/limit search-query 1)]
-                   (mdb.query/query query-with-limit))))))
+        (filter not-empty
+                (for [model search-config/all-models
+                      :let [search-query     (search-query-for-model model search-ctx)
+                            query-with-limit (when search-query
+                                               (sql.helpers/limit search-query 1))]
+                      :when query-with-limit]
+                  (mdb.query/query query-with-limit)))))
 
 (mu/defn ^:private full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
