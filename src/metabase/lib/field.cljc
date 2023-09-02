@@ -5,6 +5,8 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -17,7 +19,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -131,11 +132,11 @@
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
                   (cond
-                    (integer? id-or-name) (resolve-field-id query stage-number id-or-name)
+                    (integer? id-or-name) (or (resolve-field-id query stage-number id-or-name)
+                                              {:lib/type :metadata/column, :name id-or-name})
                     join-alias            {:lib/type :metadata/column, :name id-or-name}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column
-                                               :name     id-or-name})))]
+                                              {:lib/type :metadata/column, :name id-or-name})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -173,30 +174,32 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-;;; TODO -- effective type should be affected by `temporal-unit`, right?
-(defmethod lib.metadata.calculation/metadata-method :field
+(defn extend-column-metadata-from-ref
+  "Extend column metadata `metadata` with information specific to `field-ref` in `query` at stage `stage-number`.
+  `metadata` should be the metadata of a resolved field or a visible column matching `field-ref`."
   [query
    stage-number
+   metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+  (let [metadata (merge
+                  {:lib/type        :metadata/column
+                   :lib/source-uuid source-uuid}
+                  metadata
+                  {:display-name (or (:display-name opts)
+                                     (lib.metadata.calculation/display-name query stage-number field-ref))})]
+    (cond-> metadata
+      effective-type (assoc :effective-type effective-type)
+      base-type      (assoc :base-type base-type)
+      temporal-unit  (assoc ::temporal-unit temporal-unit)
+      binning        (assoc ::binning binning)
+      source-field   (assoc :fk-field-id source-field)
+      join-alias     (lib.join/with-join-alias join-alias))))
+
+;;; TODO -- effective type should be affected by `temporal-unit`, right?
+(defmethod lib.metadata.calculation/metadata-method :field
+  [query stage-number field-ref]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
-        metadata       (merge
-                        {:lib/type        :metadata/column
-                         :lib/source-uuid source-uuid}
-                        field-metadata
-                        {:display-name (or (:display-name opts)
-                                           (lib.metadata.calculation/display-name query stage-number field-ref))}
-                        (when effective-type
-                          {:effective-type effective-type})
-                        (when base-type
-                          {:base-type base-type})
-                        (when temporal-unit
-                          {::temporal-unit temporal-unit})
-                        (when binning
-                          {::binning binning})
-                        (when source-field
-                          {:fk-field-id source-field}))
-        metadata       (cond-> metadata
-                         join-alias (lib.join/with-join-alias join-alias))]
+        metadata       (extend-column-metadata-from-ref query stage-number field-metadata field-ref)]
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
@@ -222,7 +225,9 @@
                        table-id           :table-id
                        :as                field-metadata} style]
   (let [field-display-name (or field-display-name
-                               (u.humanization/name->human-readable-name :simple field-name))
+                               (if (string? field-name)
+                                 (u.humanization/name->human-readable-name :simple field-name)
+                                 (str field-name)))
         join-display-name  (when (and (= style :long)
                                       ;; don't prepend a join display name if `:display-name` already contains one!
                                       ;; Legacy result metadata might include it for joined Fields, don't want to add
@@ -719,14 +724,31 @@
       query)))
 
 (mu/defn find-visible-column-for-ref :- [:maybe lib.metadata/ColumnMetadata]
-  "Return the visible column in `query` at `stage-number` referenced by `field-ref`.
-  If `stage-number` is omitted, the last stage is used."
+  "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
+  last stage is used. This is currently only meant for use with `:field` clauses."
   ([query field-ref]
    (find-visible-column-for-ref query -1 field-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    field-ref    :- ::lib.schema.ref/ref]
+    field-ref    :- some?]
    (let [stage   (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+         ;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
+         ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
+         columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
+                    lib.metadata.calculation/returned-columns
+                    lib.metadata.calculation/visible-columns)
+                  query stage-number stage)]
      (lib.equality/closest-matching-metadata field-ref columns))))
+
+(mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
+  only meant for use with `:field` clauses."
+  ([query legacy-ref]
+   (find-visible-column-for-legacy-ref query -1 legacy-ref))
+
+  ([query       :- ::lib.schema/query
+    stage-index :- :int
+    legacy-ref  :- some?]
+   (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
+     (find-visible-column-for-ref query stage-index a-ref))))

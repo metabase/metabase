@@ -175,12 +175,6 @@
   [field-or-join :- FieldOrPartialJoin
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
-    ;; this should not happen (and cannot happen in CLJ land)
-    ;; but it does seem to happen in JS land with broken MLv1 queries
-    :dispatch-type/nil
-    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
-        field-or-join)
-
     :field
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
@@ -188,7 +182,12 @@
     (u/assoc-dissoc field-or-join ::join-alias join-alias)
 
     :mbql/join
-    (with-join-alias-update-join field-or-join join-alias)))
+    (with-join-alias-update-join field-or-join join-alias)
+
+    ;; this should not happen (and cannot happen in CLJ land)
+    ;; but it does seem to happen in JS land with broken MLv1 queries
+    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+        field-or-join)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
@@ -1009,3 +1008,9 @@
        (cond-> join-condition
          sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
          sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+
+(defmethod lib.metadata.calculation/describe-top-level-key-method :joins
+  [query stage-number _key]
+  (some->> (not-empty (joins query stage-number))
+           (map #(lib.metadata.calculation/display-name query stage-number %))
+           (str/join " + " )))

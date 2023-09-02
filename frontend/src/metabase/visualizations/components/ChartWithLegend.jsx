@@ -148,5 +148,5 @@ class ChartWithLegend extends Component {
 
 export default ExplicitSize({
   wrapped: true,
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+  refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
 })(ChartWithLegend);
