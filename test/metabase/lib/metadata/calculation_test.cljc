@@ -1,10 +1,12 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"
@@ -62,6 +64,17 @@
             "Product → Rating"
             "Product → Created At"]
            results))))
+
+(deftest ^:parallel display-name-without-metadata-test
+  (testing "Some display name is generated for fields even if they cannot be resolved (#33490)"
+    (let [query lib.tu/venues-query
+          field-id (inc (apply max (map :id (lib/visible-columns query))))
+          field-name (str field-id)]
+      (mu/disable-enforcement
+       (is (=? {:name field-id
+                :display-name field-name
+                :long-display-name (str "join → " field-name)}
+               (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (deftest ^:parallel visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
