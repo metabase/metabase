@@ -8,7 +8,7 @@
     (with-redefs [cmd/call-enterprise list]
       (t))))
 
-(deftest ^:parallel error-message-test
+(deftest error-message-test
   (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"
           "Valid commands: version, help, import, dump, profile, api-documentation, load, seed-entity-ids, dump-to-h2, environment-variables-documentation, migrate, driver-methods, load-from-h2, export, rotate-encryption-key, reset-password"]
          (#'cmd/validate "a-command-that-does-not-exist" [])))
@@ -47,10 +47,14 @@
     {}
 
     ["--collection" "123"]
-    {:collections [123]}
+    {:collection-ids [123]}
 
-    ["-c" "123" "-c" "456"]
-    {:collections [123 456]}
+    ["-c" "123, 456"]
+    {:collection-ids [123 456]}
+
+    ["-c" "123,456,789"]
+    {:collection-ids [123 456 789]}
+
 
     ["--include-field-values"]
     {:include-field-values true}

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { Group } from "metabase-types/api";
-import { isAdminGroup } from "metabase/lib/groups";
+import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   getAdminGroup,
@@ -92,7 +92,7 @@ export const getApplicationPermissionEditor = createSelector(
 
       return {
         id: group.id,
-        name: group.name,
+        name: getGroupNameLocalized(group),
         permissions: [
           getPermission(
             permissions,
@@ -125,7 +125,7 @@ export const getApplicationPermissionEditor = createSelector(
         { name: t`Group name` },
         { name: t`Settings access` },
         {
-          name: `Monitoring access`,
+          name: t`Monitoring access`,
           hint: t`This grants access to Tools, Audit, and Troubleshooting`,
         },
         { name: t`Subscriptions and Alerts` },

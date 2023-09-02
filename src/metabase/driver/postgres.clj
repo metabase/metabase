@@ -18,8 +18,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -68,10 +66,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
-
-(defmethod driver/database-supports? [:postgres :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
 
 (doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -212,15 +206,6 @@
   [driver database table]
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
-
-;; Describe the nested fields present in a table (currently and maybe forever just JSON),
-;; including if they have proper keyword and type stability.
-;; Not to be confused with existing nested field functionality for mongo,
-;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
-(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
-  [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -819,12 +804,14 @@
                                      :columns     (map keyword column-names)
                                      ::from-stdin "''"}
                                     :quoted true
-                                    :dialect (sql.qp/quote-style driver))
-           tsvs         (->> values
-                             (map row->tsv)
-                             (str/join "\n")
-                             (StringReader.))]
-       (.copyIn copy-manager ^String sql tsvs)))))
+                                    :dialect (sql.qp/quote-style driver))]
+       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+       (doseq [slice-of-values (partition-all 100 values)]
+         (let [tsvs (->> slice-of-values
+                         (map row->tsv)
+                         (str/join "\n")
+                         (StringReader.))]
+           (.copyIn copy-manager ^String sql tsvs)))))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

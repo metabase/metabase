@@ -106,6 +106,7 @@ export const updateDataPermission = createThunkAction(
           Tables.actions.fetchList({
             dbId: entityId.databaseId,
             include_hidden: true,
+            remove_inactive: true,
           }),
         );
       }

@@ -34,15 +34,14 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.io ByteArrayInputStream)
-   (java.util UUID)))
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn- shared-obj []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (defn- native-query-with-template-tag []
@@ -133,7 +132,7 @@
       ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
       (testing "should return 400 if Card doesn't exist"
         (is (= "Not found."
-               (client/client :get 404 (str "public/card/" (UUID/randomUUID))))))
+               (client/client :get 404 (str "public/card/" (random-uuid))))))
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
@@ -186,7 +185,7 @@
 (deftest check-that-we-get-a-404-if-the-publiccard-doesn-t-exist-query
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (is (= "Not found."
-           (client/client :get 404 (str "public/card/" (UUID/randomUUID) "/query"))))))
+           (client/client :get 404 (str "public/card/" (random-uuid) "/query"))))))
 
 (deftest check-that-we--cannot--execute-a-publiccard-if-the-card-has-been-archived
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -379,7 +378,7 @@
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."
-               (client/client :get 404 (str "public/dashboard/" (UUID/randomUUID)))))))))
+               (client/client :get 404 (str "public/dashboard/" (random-uuid)))))))))
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
@@ -398,11 +397,11 @@
           (t2/update! Card (u/the-id card) {:archived true})
           (is (= {:name true, :ordered_cards 0, :ordered_tabs 0}
                  (fetch-public-dashboard dash)))))
-            (testing "dashboard with tabs should return ordered_tabs"
-        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
-          (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
-                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+      (testing "dashboard with tabs should return ordered_tabs"
+       (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+         (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+         (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
+                (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -418,7 +417,7 @@
                                                                                             :hidden false}
                                                                                    "price" {:id     "price"
                                                                                             :hidden true}}}}]
-            (let [dashboard-uuid (str (UUID/randomUUID))]
+            (let [dashboard-uuid (str (random-uuid))]
               (mt/with-temp* [Dashboard [{dashboard-id :id} {:public_uuid dashboard-uuid}]
                               DashboardCard [dashcard {:dashboard_id dashboard-id
                                                        :action_id    action-id
@@ -481,7 +480,7 @@
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (testing "if the Dashboard doesn't exist"
             (is (= "Not found."
-                   (client/client :get 404 (dashcard-url {:public_uuid (UUID/randomUUID)} card dashcard)))))
+                   (client/client :get 404 (dashcard-url {:public_uuid (random-uuid)} card dashcard)))))
 
           (testing "if the Card doesn't exist"
             (is (= "Not found."
@@ -918,7 +917,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "should return 404 if Action doesn't exist"
           (is (= "Not found."
-                 (client/client :get 404 (str "public/action/" (UUID/randomUUID))))))
+                 (client/client :get 404 (str "public/action/" (random-uuid))))))
         (let [action-opts (assoc-in (shared-obj) [:visualization_settings :fields] {"id" {:id "id"
                                                                                           :hidden true}
                                                                                     "name" {:id "name"
@@ -1215,39 +1214,39 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "with dashboard"
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-        (let [uuid (str (UUID/randomUUID))]
+        (let [uuid (str (random-uuid))]
           (is (= 1
                  (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
-              (is (= {:values          ["African" "American" "Asian"]
+              (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys))))))
 
             (testing "parameter with source is card"
-              (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
+              (is (= {:values          [["African"] ["American"] ["Artisan"] ["Asian"] ["BBQ"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys))))))
 
             (testing "parameter with source is chain filter"
-              (is (= {:values          [2 3 4 5 6]
+              (is (= {:values          [[2] [3] [4] [5] [6]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
                           (chain-filter-test/take-n-values 5))))))
 
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
-              (is (= {:values          ["African"]
+              (is (= {:values          [["African"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys) "af")))))
 
             (testing "parameter with source is card"
-              (is (= {:values          ["African"]
+              (is (= {:values          [["African"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "af")))))
 
             (testing "parameter with source is a chain filter"
-              (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+              (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
                           (chain-filter-test/take-n-values 3)))))))))
@@ -1264,13 +1263,13 @@
               "Enabled public setting on field-filter-card")
           (testing "GET /api/public/card/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
-              (is (= {:values          ["African" "American" "Asian"]
+              (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
-                                        "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
+              (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
+                                        ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
 
@@ -1286,12 +1285,12 @@
 
           (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
-              (is (= {:values          ["African"]
+              (is (= {:values          [["African"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys) "af")))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          ["Red Medicine"]
+              (is (= {:values          [["Red Medicine"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys) "red")))))
 
@@ -1316,41 +1315,41 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "with dashboard"
           (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (let [uuid (str (UUID/randomUUID))]
+            (let [uuid (str (random-uuid))]
               (is (= 1
                      (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
               (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-                (is (= {:values          [2 3 4 5 6]
+                (is (= {:values          [[2] [3] [4] [5] [6]]
                         :has_more_values false}
                        (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
                             (chain-filter-test/take-n-values 5)))))
               (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
-                (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
                         :has_more_values false}
                        (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
                             (chain-filter-test/take-n-values 3))))))))
 
         (testing "with card"
           (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
-            (let [uuid (str (UUID/randomUUID))]
+            (let [uuid (str (random-uuid))]
              (is (= 1
                     (t2/update! Card (u/the-id card) {:public_uuid uuid})))
              (testing "GET /api/public/card/:uuid/params/:param-key/values"
-               (is (= {:values          ["African" "American" "Asian"]
+               (is (= {:values          [["African"] ["American"] ["Asian"]]
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
 
-               (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
-                                         "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
+               (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
+                                         ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
 
              (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
-               (is (= {:values          ["African"]
+               (is (= {:values          [["African"]]
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af"))))
 
-               (is (= {:values          ["Red Medicine"]
+               (is (= {:values          [["Red Medicine"]]
                        :has_more_values false}
                       (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red"))))))))))))
 
@@ -1522,14 +1521,14 @@
               (is (= "Not found."
                      (client/client
                       :post 404
-                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      (format "public/action/%s/execute" (str (random-uuid)))
                       {:parameters {:id 1 :name "European"}})))))
           (mt/with-actions [{} action-opts]
             (testing "Check that we get a 400 if the action doesn't exist"
               (is (= "Not found."
                      (client/client
                       :post 404
-                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      (format "public/action/%s/execute" (str (random-uuid)))
                       {:parameters {:id 1 :name "European"}}))))
             (testing "Check that we get a 400 if sharing is disabled."
               (mt/with-temporary-setting-values [enable-public-sharing false]

@@ -754,16 +754,38 @@
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :venues :name))
                                       (t2/select-one Field :id (mt/id :venues :name))
                                       "Red"
                                       nil))))
     (tqpt/test-timeseries-drivers
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"
+                                      nil))))))
+
+(deftest search-values-with-field-and-search-field-is-fk-test
+  (testing "searching on a PK field should work (#32985)"
+    ;; normally PKs are ids so it's not possible to do search, because search are for text fields only
+    ;; but with a special setup you can have a PK that is text. In this case we should be able to search for it
+    (mt/with-discard-model-updates [:model/Field]
+      ;; Ngoc: users.name is a FK to categories.name ?
+      ;; I know this is weird but this test doesn't need to make sense
+      ;; A real use case is : you have a user.email as text => set email as PK
+      ;; Another field review.email => you set it up so that it's a FK to user.email
+      ;; And the desired behavior is you can search for review.email, where the query
+      ;; should query for email from user.email
+      (t2/update! :model/Field (mt/id :categories :name) {:semantic_type :type/PK})
+      (t2/update! :model/Field (mt/id :users :name) {:semantic_type      :type/FK
+                                                     :has_field_values   "search"
+                                                     :fk_target_field_id (mt/id :categories :name)})
+
+      (is (= [["African"]]
+             (api.field/search-values (t2/select-one :model/Field (mt/id :users :name))
+                                      (t2/select-one :model/Field (mt/id :users :name))
+                                      "African"
                                       nil))))))
 
 (deftest field-values-remapped-fields-test
@@ -793,7 +815,7 @@
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
         (let [database (t2/select-one Database :id (mt/id))]
@@ -834,7 +856,7 @@
 
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]
           (testing "When json_unfolding is disabled at the DB level on the first sync"

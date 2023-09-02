@@ -84,7 +84,7 @@
    "test_resources"])
 
 (defn- default-options []
-  {:namespace-pattern   #"^metabase.*test$"
+  {:namespace-pattern   #"^metabase.*"
    :exclude-directories excluded-directories
    :test-warn-time      1500})
 

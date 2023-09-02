@@ -28,6 +28,7 @@
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
@@ -37,7 +38,7 @@
    [saml20-clj.core :as saml]
    [schema.core :as s])
   (:import
-   (java.net MalformedURLException URL)
+   (java.net URI URISyntaxException)
    (java.util Base64 UUID)))
 
 (set! *warn-on-reflection* true)
@@ -111,15 +112,16 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defn- has-host? [url]
+(defn- has-host? [uri]
   (try
-    (some? (.getHost (new URL url)))
-    (catch MalformedURLException _ false)))
+    (-> uri URI. .getHost some?)
+    (catch URISyntaxException _ false)))
 
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
   [req]
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
         redirect-url (if (nil? redirect)
@@ -133,7 +135,7 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (UUID/randomUUID))
+                           {:request-id (str "id-" (random-uuid))
                             :sp-name    (sso-settings/saml-application-name)
                             :issuer     (sso-settings/saml-application-name)
                             :acs-url    (acs-url)
@@ -190,6 +192,7 @@
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) base64-decode)]

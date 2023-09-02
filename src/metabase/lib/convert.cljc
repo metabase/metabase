@@ -43,7 +43,7 @@
 (def ^:private stage-keys
   #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
-(defn- clean-stage [almost-stage]
+(defn- clean-stage-schema-errors [almost-stage]
   (loop [almost-stage almost-stage
          removals []]
     (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
@@ -63,6 +63,17 @@
           almost-stage
           (recur new-stage (conj removals [error-type error-location]))))
       almost-stage)))
+
+(defn- clean-stage-ref-errors [almost-stage]
+  (reduce (fn [almost-stage [loc _]]
+              (clean-location almost-stage ::lib.schema/invalid-ref loc))
+          almost-stage
+          (lib.schema/ref-errors-for-stage almost-stage)))
+
+(defn- clean-stage [almost-stage]
+  (-> almost-stage
+      clean-stage-schema-errors
+      clean-stage-ref-errors))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
@@ -257,14 +268,21 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- disqualify
-  "Remove any keys starting with the `:lib/` namespace from map `m`.
+(defn- metabase-lib-keyword?
+  "Does keyword `k` have a`:lib/` or a `:metabase.lib.*/` namespace?"
+  [k]
+  (and (qualified-keyword? k)
+       (when-let [symb-namespace (namespace k)]
+         (or (= symb-namespace "lib")
+             (str/starts-with? symb-namespace "metabase.lib.")))))
 
-  No args = return transducer to remove `:lib/` keys from a map. One arg = update a map `m`."
+(defn- disqualify
+  "Remove any keys starting with the `:lib/` `:metabase.lib.*/` namespaces from map `m`.
+
+  No args = return transducer to remove keys from a map. One arg = update a map `m`."
   ([]
    (remove (fn [[k _v]]
-             (and (qualified-keyword? k)
-                  (= (namespace k) "lib")))))
+             (metabase-lib-keyword? k))))
   ([m]
    (into {} (disqualify) m)))
 

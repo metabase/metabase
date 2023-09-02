@@ -7,10 +7,10 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
-import { Visualization } from "metabase/visualizations/shared/types/visualization";
 
 import { UpdateQuestionOpts } from "metabase/query_builder/actions";
 
+import type { Visualization } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import Query from "metabase-lib/queries/Query";
 
@@ -70,14 +70,14 @@ const ChartTypeSidebar = ({
       _.union(
         DEFAULT_ORDER,
         Array.from(visualizations).map(([vizType]) => vizType),
-      ).filter(vizType => !visualizations.get(vizType).hidden),
+      ).filter(vizType => !visualizations?.get(vizType)?.hidden),
       vizType => {
         const visualization = visualizations.get(vizType);
         return (
           result &&
           result.data &&
-          visualization.isSensible &&
-          visualization.isSensible(sanatizeResultData(result.data), query)
+          visualization?.isSensible &&
+          visualization?.isSensible(sanatizeResultData(result.data), query)
         );
       },
     );
@@ -102,7 +102,7 @@ const ChartTypeSidebar = ({
       } else {
         let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
         const visualization = visualizations.get(display);
-        if (visualization.onDisplayUpdate) {
+        if (visualization?.onDisplayUpdate) {
           const updatedSettings = visualization.onDisplayUpdate(
             newQuestion.settings(),
           );
@@ -188,7 +188,7 @@ const ChartTypeOption = ({
       data-is-sensible={isSensible}
       data-testid={`${visualization.uiName}-button`}
     >
-      <Icon name={visualization.iconName} />
+      <Icon name={visualization.iconName} size={20} />
       {isSelected && (
         <SettingsButton
           onlyIcon

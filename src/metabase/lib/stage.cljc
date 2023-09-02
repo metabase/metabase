@@ -85,8 +85,8 @@
    (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
             :lib/source               :source/breakouts
-            :lib/source-column-alias  (:name breakout)
-            :lib/desired-column-alias (unique-name-fn (:name breakout))))))
+            :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
+            :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query breakout))))))
 
 (mu/defn ^:private aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -99,6 +99,8 @@
             :lib/source-column-alias  (:name ag)
             :lib/desired-column-alias (unique-name-fn (:name ag))))))
 
+;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
+;;; aggregations above.
 (mu/defn ^:private fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int

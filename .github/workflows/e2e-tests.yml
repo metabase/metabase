@@ -67,7 +67,7 @@ jobs:
   e2e-tests:
     needs: [build, files-changed, test-run-id]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
@@ -98,6 +98,7 @@ jobs:
           - "collections"
           - "custom-column"
           - "dashboard"
+          - "dashboard-cards"
           - "dashboard-filters"
           - "embedding"
           - "filters"
@@ -125,9 +126,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       openldap:
-        image: osixia/openldap:1.5.0
+        image: bitnami/openldap:2.6.4
         ports:
-          - "389:389"
+          - 389:389
+        env:
+          LDAP_ADMIN_PASSWORD: adminpass
+          LDAP_USERS: user01@example.org,user02@example.org
+          LDAP_PASSWORDS: 123456,123465
+          LDAP_ROOT: dc=example,dc=org
+          LDAP_PORT_NUMBER: 389
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -154,6 +161,15 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+      - name: Install Chrome v111
+        uses: browser-actions/setup-chrome@v1
+        with:
+          # https://chromium.cypress.io/linux/stable/111.0.5563.146
+          chrome-version: 1097615
+        id: setup-chrome
+      - run: |
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
       - name: Record runs using Deploysentinel except for the release branch
         if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
         run: |
@@ -184,7 +200,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -193,7 +210,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
+          --folder ${{ matrix.folder }} \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -229,7 +247,7 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && always()
+        if: github.event_name == 'schedule' && !cancelled()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -248,7 +266,7 @@ jobs:
   e2e-tests-skipped-stub:
     needs: [build, files-changed]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
       needs.build.result == 'skipped'
     runs-on: ubuntu-22.04

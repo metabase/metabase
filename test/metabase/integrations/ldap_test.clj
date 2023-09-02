@@ -10,7 +10,7 @@
    [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.ldap.sdk LDAPConnectionPool)))
+   (com.unboundid.ldap.sdk DN LDAPConnectionPool)))
 
 (set! *warn-on-reflection* true)
 
@@ -171,6 +171,14 @@
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]
               {:group-mappings (ldap/ldap-group-mappings)}))))))
+
+(deftest valid-group-mapping
+  (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"
+    (mt/with-temporary-setting-values
+      [ldap-group-mappings nil]
+      (ldap/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
+      (is (= {(DN. "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []}
+             (ldap/ldap-group-mappings))))))
 
 ;; For hosts that do not support IPv6, the connection code will return an error
 ;; This isn't a failure of the code, it's a failure of the host.

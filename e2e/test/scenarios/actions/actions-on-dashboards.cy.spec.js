@@ -973,6 +973,11 @@ describe(
       cy.intercept("GET", "/api/action").as("getActions");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+
+      cy.intercept(
+        "GET",
+        "/api/dashboard/*/dashcard/*/execute?parameters=*",
+      ).as("executePrefetch");
     });
 
     describe("Inline action edit", () => {
@@ -984,6 +989,55 @@ describe(
         createModelFromTableName({
           tableName: TEST_TABLE,
           modelName: MODEL_NAME,
+        });
+      });
+
+      it("refetches form values when id changes (metabase#33084)", () => {
+        const actionName = "Update";
+
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "update",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName,
+          idFilter: true,
+        });
+
+        filterWidget().click();
+        addWidgetStringFilter("5");
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+
+        modal().within(() => {
+          cy.findByPlaceholderText("Team Name").should(
+            "have.value",
+            "Energetic Elephants",
+          );
+          cy.findByPlaceholderText("Score").should("have.value", "30");
+
+          cy.icon("close").click();
+        });
+
+        filterWidget().click();
+        popover().find("input").first().type("{backspace}10");
+        cy.button("Update filter").click();
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+
+        modal().within(() => {
+          cy.findByPlaceholderText("Team Name").should(
+            "have.value",
+            "Jolly Jellyfish",
+          );
+          cy.findByPlaceholderText("Score").should("have.value", "60");
         });
       });
 
@@ -1033,7 +1087,7 @@ describe(
           cy.button("Pick an action").click();
         });
 
-        cy.wait("@getActions");
+        waitForValidActions();
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(MODEL_NAME).click();
@@ -1095,7 +1149,7 @@ function createDashboardWithActionButton({
     cy.button("Pick an action").click();
   });
 
-  cy.wait("@getActions");
+  waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
     cy.findByText(modelName).click();
@@ -1181,4 +1235,14 @@ function actionEditorModal() {
 
 function getActionParametersInputModal() {
   return cy.findByTestId("action-parameters-input-modal");
+}
+
+function waitForValidActions() {
+  cy.wait("@getActions").then(({ response }) => {
+    const { body: actions } = response;
+
+    actions.forEach(action => {
+      expect(action.parameters).to.have.length.gt(0);
+    });
+  });
 }

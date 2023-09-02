@@ -84,6 +84,13 @@ A subset of our tests depend on the external services that are available through
 
 Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
 
+### Running tests with Snowplow involved
+
+Tests that depend on Snowplow expect a running server. To run them, you need to:
+
+- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
+- pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.

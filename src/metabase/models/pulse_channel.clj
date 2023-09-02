@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
@@ -166,7 +167,7 @@
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
-  (or (u/ignore-exceptions
+  (or (when config/ee-available?
         (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
         (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
       (constantly nil)))

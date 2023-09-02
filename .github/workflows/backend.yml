@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CLJ_KONDO_VERSION: "2023.04.14"
+  CLJ_KONDO_VERSION: "2023.07.13"
 
 jobs:
   files-changed:

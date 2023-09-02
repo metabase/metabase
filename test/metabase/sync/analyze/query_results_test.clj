@@ -1,7 +1,7 @@
 (ns metabase.sync.analyze.query-results-test
   (:require
    [clojure.test :refer :all]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
@@ -50,7 +50,7 @@
          :metadata)))
 
 (defn- query-for-card [card]
-  {:database mbql.s/saved-questions-virtual-database-id
+  {:database lib.schema.id/saved-questions-virtual-database-id
    :type     :query
    :query    {:source-table (str "card__" (u/the-id card))}})
 

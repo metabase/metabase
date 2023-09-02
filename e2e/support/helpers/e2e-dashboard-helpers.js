@@ -65,6 +65,15 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
+export function removeDashboardCard(index = 0) {
+  showDashboardCardActions(index);
+  cy.findAllByTestId("dashboardcard-actions-panel")
+    .eq(0)
+    .should("be.visible")
+    .icon("close")
+    .click();
+}
+
 export function showDashcardVisualizationSettings(index = 0) {
   return getDashboardCard(index)
     .realHover()
@@ -115,6 +124,10 @@ export function createEmptyTextBox() {
 
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addTextBoxWhileEditing(string, options);
+}
+
+export function addTextBoxWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
@@ -130,13 +143,17 @@ export function createEmptyHeading() {
 
 export function addHeading(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addHeadingWhileEditing(string, options);
+}
+
+export function addHeadingWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
 export function openQuestionsSidebar() {
-  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -175,3 +192,15 @@ export function resizeDashboardCard({ card, x, y }) {
 export function createLinkCard() {
   cy.icon("link").click();
 }
+
+export function toggleDashboardInfoSidebar() {
+  dashboardHeader().icon("info").click();
+}
+
+export function openDashboardMenu() {
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
+}
+
+export const dashboardHeader = () => {
+  return cy.findByTestId("dashboard-header");
+};

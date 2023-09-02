@@ -7,12 +7,13 @@ import { updateSetting } from "metabase/admin/settings/settings";
 import { addUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  useDashboardQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import { CollectionItem } from "metabase-types/api";
+import { CollectionItem, DashboardId } from "metabase-types/api";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import Database from "metabase-lib/metadata/Database";
 import {
@@ -83,12 +84,22 @@ const getHasMetabot = (
 
 const useDashboardPage = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);
-  const isLoading = useSelector(getSettingsLoading);
+  const isLoadingSettings = useSelector(getSettingsLoading);
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
+  const { data: dashboard, isLoading: isLoadingDash } = useDashboardQuery({
+    enabled: dashboardId !== null,
+    id: dashboardId as DashboardId,
+  });
+
   useEffect(() => {
-    if (dashboardId && !isLoading) {
+    if (
+      dashboardId &&
+      !isLoadingSettings &&
+      !isLoadingDash &&
+      !dashboard?.archived
+    ) {
       dispatch(replace(`/dashboard/${dashboardId}`));
 
       if (!hasDismissedToast) {
@@ -109,5 +120,12 @@ const useDashboardPage = () => {
         );
       }
     }
-  }, [dashboardId, isLoading, hasDismissedToast, dispatch]);
+  }, [
+    dashboardId,
+    isLoadingSettings,
+    hasDismissedToast,
+    dispatch,
+    isLoadingDash,
+    dashboard?.archived,
+  ]);
 };

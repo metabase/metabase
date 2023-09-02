@@ -8,7 +8,6 @@ import {
   createMockDatasetData,
   createMockTextDashboardCard,
   createMockHeadingDashboardCard,
-  createMockParameter,
   createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
@@ -116,28 +115,6 @@ describe("DashCard", () => {
       dashcardData: {},
     });
     expect(screen.getByText("What a cool section")).toBeVisible();
-  });
-
-  it("in parameter editing mode, shows faded heading text", () => {
-    const textCard = createMockHeadingDashboardCard({
-      text: "What a cool section",
-    });
-    const board = {
-      ...dashboard,
-      ordered_cards: [textCard],
-      parameters: [createMockParameter()],
-    };
-    setup({
-      dashboard: board,
-      dashcard: textCard,
-      dashcardData: {},
-      isEditing: true,
-      isEditingParameter: true,
-    });
-    expect(screen.getByText("What a cool section")).toBeVisible();
-    expect(screen.getByText("What a cool section")).toHaveStyle({
-      opacity: 0.25,
-    });
   });
 
   it("shows a link visualization", () => {

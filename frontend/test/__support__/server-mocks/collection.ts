@@ -74,13 +74,18 @@ export function setupCollectionVirtualSchemaEndpoints(
   fetchMock.get(urls.models, modelVirtualTables);
 }
 
-export function setupCollectionItemsEndpoint(
-  collection: Collection,
-  collectionItems: CollectionItem[] = [],
-) {
+export function setupCollectionItemsEndpoint({
+  collection,
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collection: Collection;
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
   fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
     const url = new URL(uri);
-    const models = url.searchParams.getAll("models");
+    const models = modelsParam ?? url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
       models.includes(model),
     );

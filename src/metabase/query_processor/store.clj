@@ -13,19 +13,15 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [pretty.core :as pretty]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -73,14 +69,12 @@
    :is_audit])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
-  (s/both
-   (mi/InstanceOf Database)
-   {:id       su/IntGreaterThanZero
-    :engine   s/Keyword
-    :name     su/NonBlankString
-    :details  su/Map
-    :settings (s/maybe su/Map)
-    s/Any     s/Any}))
+  [:map
+   [:id       ::lib.schema.id/database]
+   [:engine   :keyword]
+   [:name     ms/NonBlankString]
+   [:details  :map]
+   [:settings [:maybe :map]]])
 
 (def ^:private table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."
@@ -90,12 +84,9 @@
    :schema])
 
 (def ^:private TableInstanceWithRequiredStoreKeys
-  (s/both
-   (mi/InstanceOf Table)
-   {:schema (s/maybe s/Str)
-    :name   su/NonBlankString
-    s/Any   s/Any}))
-
+  [:map
+   [:schema [:maybe :string]]
+   [:name   ms/NonBlankString]])
 
 (def ^:private field-columns-to-fetch
   "Columns to fetch for and Field you want to stash in the Store. These get returned as part of the `:cols` metadata in
@@ -118,28 +109,26 @@
    :visibility_type])
 
 (def ^:private FieldInstanceWithRequiredStorekeys
-  (s/both
-   (mi/InstanceOf Field)
-   {:name                               su/NonBlankString
-    :table_id                           su/IntGreaterThanZero
-    :display_name                       su/NonBlankString
-    :description                        (s/maybe s/Str)
-    :database_type                      su/NonBlankString
-    :base_type                          su/FieldType
-    ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
-    ;; would make everything just use base_type.
-    (s/optional-key :effective_type)    (s/maybe su/FieldType)
-    (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategy)
-    :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
-    :fingerprint                        (s/maybe su/Map)
-    :parent_id                          (s/maybe su/IntGreaterThanZero)
-    :nfc_path                           (s/maybe [su/NonBlankString])
-    s/Any                               s/Any}))
+  [:map
+   [:name          ms/NonBlankString]
+   [:table_id      ms/PositiveInt]
+   [:display_name  ms/NonBlankString]
+   [:description   [:maybe :string]]
+   [:database_type ms/NonBlankString]
+   [:base_type     ms/FieldType]
+   [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
+   [:fingerprint   [:maybe :map]]
+   [:parent_id     [:maybe ms/PositiveInt]]
+   [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
+   ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
+   ;; would make everything just use base_type.
+   [:effective_type    {:optional true} [:maybe ms/FieldType]]
+   [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
 
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------
 
-(s/defn store-database!
+(mu/defn store-database!
   "Store the Database referenced by this query for the duration of the current query execution. Throws an Exception if
   database is invalid or doesn't have all the required keys."
   [database :- DatabaseInstanceWithRequiredStoreKeys]
@@ -147,13 +136,13 @@
 
 ;; TODO ­ I think these can be made private
 
-(s/defn store-table!
+(mu/defn store-table!
   "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
   invalid or doesn't have all required keys."
   [table :- TableInstanceWithRequiredStoreKeys]
   (swap! *store* assoc-in [:tables (u/the-id table)] table))
 
-(s/defn store-field!
+(mu/defn store-field!
   "Store a `field` in the QP Store for the duration of the current query execution. Throws an Exception if field is
   invalid or doesn't have all required keys."
   [field :- FieldInstanceWithRequiredStorekeys]
@@ -162,16 +151,16 @@
 
 ;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
 
-(s/defn ^:private db-id :- su/IntGreaterThanZero
+(mu/defn ^:private db-id :- ms/PositiveInt
   []
   (or (get-in @*store* [:database :id])
       (throw (Exception. (tru "Cannot store Tables or Fields before Database is stored.")))))
 
-(s/defn fetch-and-store-database!
+(mu/defn fetch-and-store-database!
   "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
   duration of the current query execution. If Database has already been fetched, this function will no-op. Throws an
   Exception if Table does not exist."
-  [database-id :- su/IntGreaterThanZero]
+  [database-id :- ms/PositiveInt]
   (if-let [existing-db-id (get-in @*store* [:database :id])]
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
@@ -179,24 +168,24 @@
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
-     (or (t2/select-one (into [Database] database-columns-to-fetch) :id database-id)
+     (or (t2/select-one (into [:model/Database] database-columns-to-fetch) :id database-id)
          (throw (ex-info (tru "Database {0} does not exist." (str database-id))
                   {:database database-id}))))))
 
 (def ^:private IDs
-  (s/maybe
-   (s/cond-pre
-    #{su/IntGreaterThanZero}
-    [su/IntGreaterThanZero])))
+  [:maybe
+   [:or
+    [:set ms/PositiveInt]
+    [:sequential ms/PositiveInt]]])
 
-(s/defn fetch-and-store-tables!
+(mu/defn fetch-and-store-tables!
   "Fetch Table(s) from the application database, and store them in the QP Store for the duration of the current query
   execution. If Table(s) have already been fetched, this function will no-op. Throws an Exception if Table(s) do not
   exist."
   [table-ids :- IDs]
   ;; remove any IDs for Tables that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:tables @*store*))) table-ids))]
-    (let [fetched-tables (t2/select (into [Table] table-columns-to-fetch)
+    (let [fetched-tables (t2/select (into [:model/Table] table-columns-to-fetch)
                            :id    [:in (set ids-to-fetch)]
                            :db_id (db-id))
           fetched-ids    (set (map :id fetched-tables))]
@@ -210,7 +199,7 @@
       (doseq [table fetched-tables]
         (store-table! table)))))
 
-(s/defn fetch-and-store-fields!
+(mu/defn fetch-and-store-fields!
   "Fetch Field(s) from the application database, and store them in the QP Store for the duration of the current query
   execution. If Field(s) have already been fetched, this function will no-op. Throws an Exception if Field(s) do not
   exist."
@@ -218,7 +207,7 @@
   ;; remove any IDs for Fields that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
     (let [fetched-fields (t2/select
-                          Field
+                          :model/Field
                           {:select    (for [column-kw field-columns-to-fetch]
                                         [(keyword (str "field." (name column-kw)))
                                          column-kw])
@@ -241,7 +230,7 @@
 
 ;;; ---------------------------------------- Fetching objects from the Store -----------------------------------------
 
-(s/defn database :- DatabaseInstanceWithRequiredStoreKeys
+(mu/defn database :- DatabaseInstanceWithRequiredStoreKeys
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
   returned."
   []
@@ -258,9 +247,9 @@
   "Implementation of [[table]]. Dynamic so this can be overridden as needed by tests."
   default-table)
 
-(s/defn table :- TableInstanceWithRequiredStoreKeys
+(mu/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [table-id :- su/IntGreaterThanZero]
+  [table-id :- ms/PositiveInt]
   (*table* table-id))
 
 (defn- default-field
@@ -273,21 +262,21 @@
   "Implementation of [[field]]. Dynamic so this can be overridden as needed by tests."
   default-field)
 
-(s/defn field :- FieldInstanceWithRequiredStorekeys
+(mu/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [field-id :- su/IntGreaterThanZero]
+  [field-id :- ms/PositiveInt]
   (*field* field-id))
 
 
 ;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------
 
-(s/defn store-miscellaneous-value!
+(mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
   calls."
   [ks v]
   (swap! *store* assoc-in (cons :misc ks) v))
 
-(s/defn miscellaneous-value
+(mu/defn miscellaneous-value
   "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
   ([ks]
    (miscellaneous-value ks nil))
@@ -354,6 +343,6 @@
   "Create a new MLv2 metadata provider that uses the QP store."
   []
   (cached ::metadata-provider
-    (lib.metadata.composed-provider/composed-metadata-provider
+    (lib/composed-metadata-provider
      (base-metadata-provider)
      (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))

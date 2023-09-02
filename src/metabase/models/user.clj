@@ -13,6 +13,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -20,13 +21,12 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as schema]
    [toucan2.core :as t2]
-   [toucan2.tools.default-fields :as t2.default-fields])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
@@ -317,7 +317,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -372,7 +372,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (UUID/randomUUID))
+  (u/prog1 (str user-id \_ (random-uuid))
     (t2/update! User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))
@@ -402,3 +402,12 @@
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
+
+;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
+
+;; NB: Settings are also defined where they're used, such as in metabase.events.view-log
+
+(defsetting last-acknowledged-version
+  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  :user-local :only
+  :type :string)

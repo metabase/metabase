@@ -16,6 +16,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
+   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -42,7 +43,8 @@
   `(defrecord ~name []
      CustomTaskChange
      (execute [_# database#]
-       ~migration-body)
+       (t2/with-transaction [_conn#]
+         ~migration-body))
      (getConfirmationMessage [_#]
        (str "Custom migration: " ~name))
      (setUp [_#])
@@ -52,7 +54,8 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       ~reverse-migration-body)))
+       (t2/with-transaction [_conn#]
+         ~reverse-migration-body))))
 
 (defn no-op
   "No-op logging rollback function"
@@ -673,3 +676,28 @@
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     [:like :object "%join-alias%"]]}))))
+
+(define-reversible-migration MigrateDatabaseOptionsToSettings
+  (let [update-one! (fn [{:keys [id settings options]}]
+                      (let [settings     (mi/encrypted-json-out settings)
+                            options      (mi/json-out-with-keywordization options)
+                            new-settings (mi/encrypted-json-in (merge settings options))]
+                        (t2/query {:update :metabase_database
+                                   :set    {:settings new-settings}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :settings :options]
+                                           :from   [:metabase_database]
+                                           :where  [:and
+                                                    [:not= :options ""]
+                                                    [:not= :options "{}"]
+                                                    [:not= :options nil]]})))
+  (let [rollback-one! (fn [{:keys [id settings options]}]
+                        (let [settings (mi/encrypted-json-out settings)
+                              options  (mi/json-out-with-keywordization options)]
+                          (when (some? (:persist-models-enabled settings))
+                            (t2/query {:update :metabase_database
+                                       :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
+                                                :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                       :where  [:= :id id]}))))]
+    (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
+                                             :from   [:metabase_database]}))))

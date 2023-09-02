@@ -53,7 +53,7 @@ import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
-import Logs from "metabase/admin/tasks/containers/Logs";
+import { Logs } from "metabase/admin/tasks/components/Logs";
 import { Help } from "metabase/admin/tasks/components/Help";
 
 // People
@@ -134,6 +134,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
+            <IndexRedirect to="/admin/people" />
             <ModalRoute path="edit" modal={EditUserModal} />
             <ModalRoute path="success" modal={UserSuccessModal} />
             <ModalRoute path="reset" modal={UserPasswordResetModal} />

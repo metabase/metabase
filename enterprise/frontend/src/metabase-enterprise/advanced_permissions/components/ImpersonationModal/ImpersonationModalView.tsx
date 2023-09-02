@@ -95,7 +95,7 @@ export const ImpersonationModalView = ({
 
               <ImpersonationWarning database={database} />
 
-              <FormFooter>
+              <FormFooter hasTopBorder>
                 <FormErrorMessage inline />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 <FormSubmitButton title={t`Save`} disabled={!isValid} primary />
@@ -113,7 +113,7 @@ export const ImpersonationModalView = ({
             >{t`Edit user settings`}</Link>
           </Alert>
 
-          <FormFooter>
+          <FormFooter hasTopBorder>
             <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>

@@ -52,6 +52,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -390,7 +391,9 @@
         (try
           (if raw-setting?
             (upsert-raw-setting! original-value setting-k value)
-            (setting/set! setting-k value))
+            ;; bypass the feature check when setting up mock data
+            (with-redefs [setting/has-feature? (constantly true)]
+              (setting/set! setting-k value)))
           (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
             (thunk))
           (catch Throwable e
@@ -403,7 +406,9 @@
             (try
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
-                (setting/set! setting-k original-value))
+                ;; bypass the feature check when reset settings to the original value
+                (with-redefs [setting/has-feature? (constantly true)]
+                  (setting/set! setting-k original-value)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
                                 {:setting        setting-k
@@ -516,6 +521,15 @@
   (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
                  data))
+
+(defmacro let-url
+  "Like normal `let`, but adds `testing` context with the `url` you've bound."
+  {:style/indent 1}
+  [[url-binding url] & body]
+  `(let [url# ~url
+         ~url-binding url#]
+     (testing (str "\nGET /api/" url# "\n")
+       ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -737,6 +751,71 @@
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(declare with-discard-model-updates)
+
+(defn do-with-discard-model-updates
+  "Impl for `with-discard-model-changes`."
+  [models thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
+  (if (= (count models) 1)
+   (let [model             (first models)
+         pk->original      (atom {})
+         method-unique-key (str (random-uuid))
+         before-method-fn  (fn [_model row]
+                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             row)]
+     (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
+     (try
+      (thunk)
+      (finally
+       (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
+       (doseq [[id orignal-val] @pk->original]
+         (t2/update! model id orignal-val)))))
+   (with-discard-model-updates (rest models)
+     (thunk))))
+
+(defmacro with-discard-model-updates
+  "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
+  [models & body]
+  (if (> (count models) 1)
+    (let [[model & more] models]
+      `(with-discard-model-updates [~model]
+         (with-discard-model-updates [~@more]
+           ~@body)))
+    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+
+(deftest with-discard-model-changes-test
+  (t2.with-temp/with-temp
+    [:model/Card      {card-id :id :as card} {:name "A Card"}
+     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
+    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
+
+      (testing "with single model"
+        (with-discard-model-updates [:model/Card]
+          (t2/update! :model/Card card-id {:name "New Card name"})
+          (testing "the changes takes affect inside the macro"
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))))
+
+      (testing "with multiple models"
+        (with-discard-model-updates [:model/Card :model/Dashboard]
+          (testing "the changes takes affect inside the macro"
+            (t2/update! :model/Card card-id {:name "New Card name"})
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
+
+            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
+            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))
+          (is (= dash (t2/select-one :model/Dashboard dash-id)))))
+
+      (testing "make sure that we cleaned up the aux methods after"
+        (is (= count-aux-method-before
+               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")

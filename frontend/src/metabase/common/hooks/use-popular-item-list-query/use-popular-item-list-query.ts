@@ -15,5 +15,6 @@ export const usePopularItemListQuery = (
     getLoading: PopularItems.selectors.getLoading,
     getLoaded: PopularItems.selectors.getLoaded,
     getError: PopularItems.selectors.getError,
+    getListMetadata: PopularItems.selectors.getListMetadata,
   });
 };

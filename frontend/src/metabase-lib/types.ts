@@ -14,6 +14,9 @@ export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
 declare const CardMetadata: unique symbol;
 export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
+declare const SegmentMetadata: unique symbol;
+export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
+
 declare const MetricMetadata: unique symbol;
 export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 
@@ -30,6 +33,9 @@ export type AggregationOperator = unknown & {
 declare const BreakoutClause: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
 
+declare const ExpressionClause: unique symbol;
+export type ExpressionClause = unknown & { _opaque: typeof ExpressionClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
@@ -41,6 +47,7 @@ export type FilterClause = unknown & { _opaque: typeof FilterClause };
 export type Clause =
   | AggregationClause
   | BreakoutClause
+  | ExpressionClause
   | FilterClause
   | OrderByClause;
 
@@ -50,7 +57,7 @@ declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
 declare const ColumnWithOperators: unique symbol;
-export type ColumnWithOperators = unknown & {
+export type ColumnWithOperators = ColumnMetadata & {
   _opaque: typeof ColumnWithOperators;
 };
 
@@ -129,6 +136,12 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
+export type FilterOperatorDisplayInfo = {
+  displayName: string;
+  shortName: string;
+  default?: boolean;
+};
+
 export type ExpressionArg =
   | null
   | boolean
@@ -137,13 +150,10 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
-declare const ExternalOp: unique symbol;
 export type ExternalOp = {
-  _opaque: typeof ExternalOp;
   operator: string;
   options: Record<string, unknown>;
-  args: ExpressionArg[];
+  args: [ColumnMetadata, ...ExpressionArg[]];
 };
 
 declare const Join: unique symbol;

@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 
 interface DateSingleWidgetProps {
   setValue: (value: string | null) => void;

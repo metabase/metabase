@@ -115,13 +115,33 @@ export const getDashCardTable = (state, dashcardId) => {
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
-  (dashboard, dashcards) =>
-    dashboard && {
-      ...dashboard,
-      ordered_cards: dashboard.ordered_cards
-        .map(id => dashcards[id])
-        .filter(dc => !dc.isRemoved),
-    },
+  (dashboard, dashcards) => {
+    if (!dashboard) {
+      return null;
+    }
+
+    const ordered_cards = dashboard.ordered_cards
+      .map(id => dashcards[id])
+      .filter(dc => !dc.isRemoved)
+      .sort((a, b) => {
+        const rowDiff = a.row - b.row;
+
+        // sort by y position first
+        if (rowDiff !== 0) {
+          return rowDiff;
+        }
+
+        // for items on the same row, sort by x position
+        return a.col - b.col;
+      });
+
+    return (
+      dashboard && {
+        ...dashboard,
+        ordered_cards,
+      }
+    );
+  },
 );
 
 export const getAutoApplyFiltersToastId = state =>

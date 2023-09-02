@@ -24,27 +24,27 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.util.schema :as su]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
   ;; name and display name can be blank because some wacko DBMSes like SQL Server return blank column names for
   ;; unaliased aggregations like COUNT(*) (this only applies to native queries, since we determine our own names for
   ;; MBQL.)
-  {:name                           s/Str
-   :display_name                   s/Str
+  [:map
+   [:name         :string]
+   [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   :base_type                      su/FieldType
+   [:base_type    ms/FieldType]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
-   :source                         (s/enum :aggregation :fields :breakout :native)
+   [:source       [:enum :aggregation :fields :breakout :native]]
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   (s/optional-key :field_ref)     mbql.s/FieldOrAggregationReference
-   ;; various other stuff from the original Field can and should be included such as `:settings`
-   s/Any                           s/Any})
+   [:field_ref {:optional true} mbql.s/FieldOrAggregationReference]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -65,9 +65,9 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private check-driver-native-columns
+(mu/defn ^:private check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols :- [{s/Any s/Any}], rows]
+  [cols :- [:maybe [:sequential [:map-of :any :any]]] rows]
   (when (seq rows)
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
@@ -105,8 +105,9 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
-  [{:keys [joins source-query]} :- su/Map, join-alias :- su/NonBlankString]
+(mu/defn ^:private join-with-alias :- [:maybe mbql.s/Join]
+  [{:keys [joins source-query]} :- :map
+   join-alias                   :- ms/NonBlankString]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -218,7 +219,7 @@
     :expression_name expression-name
     :field_ref       clause}))
 
-(s/defn ^:private col-info-for-field-clause*
+(mu/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
   (let [join                      (when (:join-alias opts)
                                     (join-with-alias inner-query (:join-alias opts)))
@@ -296,9 +297,11 @@
            (not join-is-at-current-level?))
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
-(s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+(mu/defn ^:private col-info-for-field-clause :- [:map
+                                                 [:field_ref mbql.s/Field]]
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
-  [inner-query :- su/Map, clause :- mbql.s/Field]
+  [inner-query :- :map
+   clause      :- mbql.s/Field]
   (mbql.u/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
@@ -325,11 +328,12 @@
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
-(s/defn ^:private col-info-for-aggregation-clause
+(mu/defn ^:private col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
-  [inner-query :- su/Map clause]
+  [inner-query :- :map
+   clause]
   (let [mlv2-clause (lib.convert/->pMBQL clause)]
     ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
     ;; inside an aggregation clause, e.g.
@@ -343,7 +347,7 @@
     ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
     ;; probably going to involve updating a ton of tests that encode the old behavior.
     (binding [lib.metadata.calculation/*display-name-style* :long]
-      (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
+      (-> (lib/metadata (mlv2-query inner-query) -1 mlv2-clause)
           (update-keys u/->snake_case_en)
           (dissoc :lib/type)))))
 
@@ -353,12 +357,12 @@
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [inner-query :- [:and
-                   [:map]
+                   :map
                    [:fn
                     {:error/message "legacy inner-query with :source-table or :source-query"}
                     (some-fn :source-table :source-query)]]
    ag-clause]
-  (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
+  (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
@@ -379,14 +383,14 @@
                   {:expected returned-mbql-columns
                    :actual   (:cols results)}))))))
 
-(s/defn ^:private cols-for-fields
-  [{:keys [fields], :as inner-query} :- su/Map]
+(mu/defn ^:private cols-for-fields
+  [{:keys [fields], :as inner-query} :- :map]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
            :source :fields)))
 
-(s/defn ^:private cols-for-ags-and-breakouts
-  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
+(mu/defn ^:private cols-for-ags-and-breakouts
+  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- :map]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
@@ -396,15 +400,16 @@
             :source    :aggregation
             :field_ref [:aggregation i]))))
 
-(s/defn cols-for-mbql-query
+(mu/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
-  [inner-query :- su/Map]
+  [inner-query :- :map]
   (concat
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
-  [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
+(mu/defn ^:private merge-source-metadata-col :- [:maybe :map]
+  [source-metadata-col :- [:maybe :map]
+   col                 :- [:maybe :map]]
   (merge
     {} ;; ensure the type is not FieldInstance
     (when-let [field-id (:id source-metadata-col)]
@@ -481,10 +486,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ColsWithUniqueNames
-  (s/constrained [Col] #(su/empty-or-distinct? (map :name %)) ":cols with unique names"))
+  [:and
+   [:maybe [:sequential Col]]
+   [:fn
+    {:error/message ":cols with unique names"}
+    #(su/empty-or-distinct? (map :name %))]])
 
-(s/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
-  [cols :- [Col]]
+(mu/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
+  [cols :- [:sequential Col]]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols
@@ -530,11 +539,11 @@
     (mapv merge-col-metadata our-cols cols-returned-by-driver)
     our-cols))
 
-(s/defn merged-column-info :- ColsWithUniqueNames
+(mu/defn merged-column-info :- ColsWithUniqueNames
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
-  [query {cols-returned-by-driver :cols, :as result}]
+  [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 

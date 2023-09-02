@@ -5,13 +5,14 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { useQuestionListQuery } from "./use-question-list-query";
 
 const TEST_CARD = createMockCard();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useQuestionListQuery();
+  const { data = [], metadata, isLoading, error } = useQuestionListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -22,6 +23,10 @@ const TestComponent = () => {
       {data.map(question => (
         <div key={question.id()}>{question.displayName()}</div>
       ))}
+
+      <div data-testid="metadata">
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
+      </div>
     </div>
   );
 };
@@ -41,5 +46,13 @@ describe("useQuestionListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
+  });
+
+  it("should not have any metadata in the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

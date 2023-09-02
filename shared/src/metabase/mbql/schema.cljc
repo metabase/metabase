@@ -1,31 +1,19 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
-  #?@
-   (:clj
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])
-     (:import
-      (java.time ZoneId)
-      (java.time.format DateTimeFormatter))]
-    :cljs
-    [(:require
-      ["moment" :as moment]
-      ["moment-timezone" :as mtz]
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])]))
-
-#?(:cljs
-   (comment
-     moment/keepme
-     mtz/keepme)) ;; to get the timezone list from moment
+  (:require
+   [clojure.core :as core]
+   [clojure.set :as set]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+   [metabase.mbql.schema.macros :refer [defclause one-of]]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli.registry :as mr]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -44,21 +32,48 @@
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  MBQL Clauses                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(def ^:private NonBlankString
+  [:ref ::lib.schema.common/non-blank-string])
 
-;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
+(def ^:private BaseType
+  [:ref ::lib.schema.common/base-type])
+
+(def ^:private SemanticOrRelationType
+  [:ref ::lib.schema.common/semantic-or-relation-type])
+
+(def ^:private PositiveInt
+  [:ref ::lib.schema.common/positive-int])
+
+(def ^:private IntGreaterThanOrEqualToZero
+  [:ref ::lib.schema.common/int-greater-than-or-equal-to-zero])
+
+(def ^:private FieldID
+  [:ref ::lib.schema.id/field])
+
+(def ^:private CardID
+  [:ref ::lib.schema.id/card])
+
+(def ^:private TableID
+  [:ref ::lib.schema.id/table])
+
+(def ^:private RawDateLiteral
+  [:ref ::lib.schema.literal/date])
+
+(def ^:private RawDateTimeLiteral
+  [:ref ::lib.schema.literal/datetime])
+
+(def ^:private RawTimeLiteral
+  [:ref ::lib.schema.literal/time])
 
 ;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
-(def date-bucketing-units
+(def ^:private date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
     :month :month-of-year :quarter :quarter-of-year :year})
 
-(def time-bucketing-units
+(def ^:private time-bucketing-units
   "Set of valid units for bucketing or comparing against a *time* Field."
   #{:default :millisecond :second :minute :minute-of-hour :hour :hour-of-day})
 
@@ -66,117 +81,59 @@
   "Set of valid units for bucketing or comparing against a *datetime* Field."
   (set/union date-bucketing-units time-bucketing-units))
 
-(def DateUnit
+(def ^:private DateUnit
   "Valid unit for *date* bucketing."
-  (s/named
-   (apply s/enum date-bucketing-units)
-   "date-bucketing-unit"))
+  (into [:enum {:error/message "date bucketing unit"}] date-bucketing-units))
 
 ;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
 ;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
 ;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
-(def TimeUnit
+(def ^:private TimeUnit
   "Valid unit for *time* bucketing."
-  (s/named
-   (apply s/enum time-bucketing-units)
-   "time-bucketing-unit"))
+  (into [:enum {:error/message "time bucketing unit"}] time-bucketing-units))
 
 (def DateTimeUnit
   "Valid unit for *datetime* bucketing."
-  (s/named
-   (apply s/enum datetime-bucketing-units)
-   "datetime-bucketing-unit"))
+  (into [:enum {:error/message "datetime bucketing unit"}] datetime-bucketing-units))
 
-(def TimezoneId
+(def ^:private TimezoneId
   "Valid timezone id."
-  (s/named
-    #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
-       :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
-    "timezone-id"))
+  [:ref ::lib.schema.expression.temporal/timezone-id])
 
-(def TemporalExtractUnits
+(def ^:private TemporalExtractUnit
   "Valid units to extract from a temporal."
-  (s/named
-    (apply s/enum #{:year-of-era
-                    :quarter-of-year
-                    :month-of-year
-                    :week-of-year-iso
-                    :week-of-year-us
-                    :week-of-year-instance
-                    :day-of-month
-                    :day-of-week
-                    :hour-of-day
-                    :minute-of-hour
-                    :second-of-minute})
-    "temporal-extract-units"))
+  [:enum
+   {:error/message "temporal extract unit"}
+   :year-of-era
+   :quarter-of-year
+   :month-of-year
+   :week-of-year-iso
+   :week-of-year-us
+   :week-of-year-instance
+   :day-of-month
+   :day-of-week
+   :hour-of-day
+   :minute-of-hour
+   :second-of-minute])
 
-(def DatetimeDiffUnits
+(def ^:private DatetimeDiffUnit
   "Valid units for a datetime-diff clause."
-  (s/named
-    (apply s/enum #{:second :minute :hour :day :week :month :quarter :year})
-    "datetime-diff-units"))
+  [:enum {:error/message "datetime-diff unit"} :second :minute :hour :day :week :month :quarter :year])
 
-(def ExtractWeekModes
+(def ^:private ExtractWeekMode
   "Valid modes to extract weeks."
-  (s/named
-    (apply s/enum #{:iso :us :instance})
-    "extract-week-modes"))
+  [:enum {:error/message "temporal-extract week extraction mode"} :iso :us :instance])
 
 (def ^:private RelativeDatetimeUnit
-  (s/named
-   (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
-   "relative-datetime-unit"))
-
-#?(:clj
-   (defn- can-parse-iso-8601?
-     [^DateTimeFormatter formatter ^String s]
-     (when (string? s)
-       (try
-         (.parse formatter s)
-         true
-         (catch Throwable _
-           false))))
-
-   :cljs
-   (defn- can-parse-iso-8601?
-     [s]
-     (when (string? s)
-       (not= (.parse js/Date s) ##NaN))))
-
-(def ^{:arglists '([s])} can-parse-date?
-  "Returns whether a string can be parsed to an ISO 8601 date or not."
-  #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
-     :cljs can-parse-iso-8601?))
-
-(def ^{:arglists '([s])} can-parse-datetime?
-  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
-  #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
-     :cljs can-parse-iso-8601?))
-
-(def ^{:arglists '([s])} can-parse-time?
-  "Returns whether a string can be parsed to an ISO 8601 time or not."
-  #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
-     :cljs can-parse-iso-8601?))
-
-(def LiteralDateString
-  "Schema for an ISO-8601-formatted date string literal."
-  (s/constrained helpers/NonBlankString can-parse-date? "valid ISO-8601 datetime string literal"))
-
-(def LiteralDatetimeString
-  "Schema for an ISO-8601-formattedor datetime string literal."
-  (s/constrained helpers/NonBlankString can-parse-datetime? "valid ISO-8601 datetime string literal"))
-
-(def LiteralTimeString
-  "Schema for an ISO-8601-formatted time string literal."
-  (s/constrained helpers/NonBlankString can-parse-time? "valid ISO-8601 time string literal"))
+  [:enum {:error/message "relative-datetime unit"} :default :minute :hour :day :week :month :quarter :year])
 
 ;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
-  n    (s/cond-pre (s/eq :current) s/Int)
+  n    [:or [:= :current] :int]
   unit (optional RelativeDatetimeUnit))
 
 (defclause interval
-  n    s/Int
+  n    :int
   unit RelativeDatetimeUnit)
 
 ;; This clause is automatically generated by middleware when datetime literals (literal strings or one of the Java
@@ -189,113 +146,87 @@
 ;;
 ;; becomes:
 ;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
+(mr/def ::absolute-datetime
+  [:multi {:error/message "valid :absolute-datetime clause"
+           :dispatch      (fn [x]
+                            (cond
+                              (core/not (is-clause? :absolute-datetime x)) :invalid
+                              (mr/validate RawDateLiteral (second x))      :date
+                              :else                                        :datetime))}
+   [:invalid [:fn
+              {:error/message "not an :absolute-datetime clause"}
+              (constantly false)]]
+   [:date (helpers/clause
+           :absolute-datetime
+           "date" RawDateLiteral
+           "unit" DateUnit)]
+   [:datetime (helpers/clause
+               :absolute-datetime
+               "datetime" RawDateTimeLiteral
+               "unit"     DateTimeUnit)]])
+
 (def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
   "Schema for an `:absolute-datetime` clause."
-  (s/conditional
-   #(core/not (is-clause? :absolute-datetime %))
-   (helpers/clause
-    :absolute-datetime
-    "t"
-    #?(:clj (s/cond-pre java.time.LocalDate java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
-       :cljs js/Date)
-    "unit"
-    DateTimeUnit)
-
-   #(instance? #?(:clj java.time.LocalDate :cljs js/Date) (second %))
-   (helpers/clause
-    :absolute-datetime
-    "date" #?(:clj java.time.LocalDate :cljs js/Date)
-    "unit" DateUnit)
-
-   :else
-   (helpers/clause
-    :absolute-datetime
-    "datetime"
-    #?(:clj (s/cond-pre java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
-       :cljs js/Date)
-    "unit"
-    DateTimeUnit)))
-
+  [:ref ::absolute-datetime])
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
-;;
-;; TODO - should we have a separate `date` type as well
 (defclause ^:internal time
-  time #?(:clj (s/cond-pre java.time.LocalTime java.time.OffsetTime)
-          :cljs js/Date)
+  time RawTimeLiteral
   unit TimeUnit)
 
 (def ^:private DateOrDatetimeLiteral
   "Schema for a valid date or datetime literal."
-  (s/conditional
-   (partial is-clause? :absolute-datetime)
+  [:or
+   {:error/message "date or datetime literal"}
    absolute-datetime
+   ;; literal datetime strings and Java types will get transformed to [[absolute-datetime]] clauses automatically by
+   ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
+   ;; `absolute-datetime` clauses.
+   RawDateTimeLiteral
+   RawDateLiteral])
 
-   can-parse-datetime?
-   LiteralDatetimeString
-
-   can-parse-date?
-   LiteralDateString
-
-   :else
-   (s/cond-pre
-    ;; literal datetime strings and Java types will get transformed to `absolute-datetime` clauses automatically by
-    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
-    ;; `absolute-datetime` clauses.
-    #?@(:clj
-        [java.time.LocalDate
-         java.time.LocalDateTime
-         java.time.OffsetDateTime
-         java.time.ZonedDateTime]
-
-        :cljs
-        [js/Date]))))
+(mr/def ::TimeLiteral
+  [:or
+   {:error/message "time literal"}
+   time
+   RawTimeLiteral])
 
 (def ^:private TimeLiteral
   "Schema for valid time literals."
-  (s/conditional
-   (partial is-clause? :time)
-   time
+  [:ref ::TimeLiteral])
 
-   can-parse-time?
-   LiteralTimeString
-
-   :else
-   (s/cond-pre
-    ;; literal datetime strings and Java types will get transformed to `time` clauses automatically by
-    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
-    ;; `time` clauses.
-    #?@(:clj
-        [java.time.LocalTime
-         java.time.OffsetTime]
-
-        :cljs
-        [js/Date]))))
+(mr/def ::TemporalLiteral
+  [:or
+   {:error/message "temporal literal"}
+   DateOrDatetimeLiteral
+   TimeLiteral])
 
 (def ^:private TemporalLiteral
   "Schema for valid temporal literals."
-  (s/cond-pre TimeLiteral DateOrDatetimeLiteral))
+  [:ref ::TemporalLiteral])
+
+(mr/def ::DateTimeValue
+  (one-of absolute-datetime relative-datetime time))
 
 (def DateTimeValue
   "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
   `relative-datetime` form."
-  (one-of absolute-datetime relative-datetime time))
+  [:ref ::DateTimeValue])
 
 
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
 
-(def ValueTypeInfo
+(def ^:private ValueTypeInfo
   "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in
   filter clauses based on the Field in the clause."
-  ;; TODO -- these should use `lisp-case` like everything else in MBQL.
-  {(s/optional-key :database_type) (s/maybe helpers/NonBlankString)
-   (s/optional-key :base_type)     (s/maybe helpers/FieldType)
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
-   (s/optional-key :unit)          (s/maybe DateTimeUnit)
-   (s/optional-key :name)          (s/maybe helpers/NonBlankString)
-   s/Keyword                       s/Any})
+  [:map
+   [:database_type {:optional true} [:maybe NonBlankString]]
+   [:base_type     {:optional true} [:maybe BaseType]]
+   [:semantic_type {:optional true} [:maybe SemanticOrRelationType]]
+   [:unit          {:optional true} [:maybe DateTimeUnit]]
+   [:name          {:optional true} [:maybe NonBlankString]]])
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver
@@ -304,8 +235,8 @@
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
 (defclause ^:internal value
-  value    s/Any
-  type-info (s/maybe ValueTypeInfo))
+  value    :any
+  type-info [:maybe ValueTypeInfo])
 
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
@@ -316,37 +247,44 @@
 ;;
 ;; As of 0.42.0 `:expression` references can have an optional options map
 (defclause ^{:requires-features #{:expressions}} expression
-  expression-name helpers/NonBlankString
-  options         (optional (s/pred map? "map")))
+  expression-name NonBlankString
+  options         (optional :map))
 
-(def BinningStrategyName
+(def ^:private BinningStrategyName
   "Schema for a valid value for the `strategy-name` param of a [[field]] clause with `:binning` information."
-  (s/enum :num-bins :bin-width :default))
+  [:enum {:error/message "binning strategy"} :num-bins :bin-width :default])
 
 (defn- validate-bin-width [schema]
-  (s/constrained
+  [:and
    schema
-   (fn [{:keys [strategy bin-width]}]
-     (if (core/= strategy :bin-width)
-       bin-width
-       true))
-   "You must specify :bin-width when using the :bin-width strategy."))
+   [:fn
+    {:error/message "You must specify :bin-width when using the :bin-width strategy."}
+    (fn [{:keys [strategy bin-width]}]
+      (if (core/= strategy :bin-width)
+        bin-width
+        true))]])
 
 (defn- validate-num-bins [schema]
-  (s/constrained
+  [:and
    schema
-   (fn [{:keys [strategy num-bins]}]
-     (if (core/= strategy :num-bins)
-       num-bins
-       true))
-   "You must specify :num-bins when using the :num-bins strategy."))
+   [:fn
+    {:error/message "You must specify :num-bins when using the :num-bins strategy."}
+    (fn [{:keys [strategy num-bins]}]
+      (if (core/= strategy :num-bins)
+        num-bins
+        true))]])
 
-(def FieldBinningOptions
+(def ^:private FieldBinningOptions
   "Schema for `:binning` options passed to a `:field` clause."
-  (-> {:strategy                   BinningStrategyName
-       (s/optional-key :num-bins)  helpers/IntGreaterThanZero
-       (s/optional-key :bin-width) (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-       s/Keyword                   s/Any}
+  (-> [:map
+       {:error/message "binning options"}
+       [:strategy                   BinningStrategyName]
+       [:num-bins {:optional true}  PositiveInt]
+       [:bin-width {:optional true} [:and
+                                     number?
+                                     [:fn
+                                      {:error/message "bin width must be >= 0."}
+                                      (complement neg?)]]]]
       validate-bin-width
       validate-num-bins))
 
@@ -369,86 +307,97 @@
 (defn- validate-temporal-unit [schema]
   ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
   ;; specific error messages
-  (s/constrained
+  [:and
    schema
-   valid-temporal-unit-for-base-type?
-   "Invalid :temporal-unit for the specified :base-type."))
+   [:fn
+    {:error/message "Invalid :temporal-unit for the specified :base-type."}
+    valid-temporal-unit-for-base-type?]])
 
 (defn- no-binning-options-at-top-level [schema]
-  (s/constrained
+  [:and
    schema
-   (complement :strategy)
-   "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."))
+   [:fn
+    {:error/message "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."}
+    (complement :strategy)]])
 
-(def ^:private FieldOptions
-  (-> {(s/optional-key :base-type)     (s/maybe helpers/FieldType)
+(mr/def ::FieldOptions
+  (-> [:map
+       {:error/message "field options"}
+       [:base-type {:optional true} [:maybe BaseType]]
        ;;
        ;; replaces `fk->`
        ;;
-       ;; `:source-field` is used to refer to a Field from a different Table you would like IMPLICITLY JOINED to the
+       ;; `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to the
        ;; source table.
        ;;
        ;; If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
        ;; `:source-field` should be for information purposes only.
-       (s/optional-key :source-field)  (s/maybe (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
+       [:source-field {:optional true} [:maybe FieldID]]
        ;;
-       ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
+       ;; `:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time
+       ;; of some sort.
        ;;
-       ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
-       ;; reasons `:field` clauses that refer to `:type/DateTime` Fields will be automatically "bucketed" in the
-       ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
-       ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
-       ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
-       ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
-       (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
+       ;; There is no requirement that all `:type/Temporal` derived FieldOrExpressions specify a `:temporal-unit`, but
+       ;; for legacy reasons `:field` clauses that refer to `:type/DateTime` FieldOrExpressions will be
+       ;; automatically "bucketed" in the `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only
+       ;; applies to `:filter` clauses when values for comparison are `yyyy-MM-dd` date strings. See the
+       ;; `auto-bucket-datetimes` middleware for more details. `:field` clauses elsewhere will not be automatically
+       ;; bucketed, so drivers still need to make sure they do any special datetime handling for plain `:field`
+       ;; clauses when their FieldOrExpression derives from `:type/DateTime`.
+       [:temporal-unit {:optional true} [:maybe DateTimeUnit]]
        ;;
        ;; replaces `joined-field`
        ;;
-       ;; `:join-alias` is used to refer to a Field from a different Table/nested query that you are EXPLICITLY
-       ;; JOINING against.
-       (s/optional-key :join-alias)    (s/maybe helpers/NonBlankString)
+       ;; `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are
+       ;; EXPLICITLY JOINING against.
+       [:join-alias {:optional true} [:maybe NonBlankString]]
        ;;
        ;; replaces `binning-strategy`
        ;;
        ;; Using binning requires the driver to support the `:binning` feature.
-       (s/optional-key :binning)       (s/maybe FieldBinningOptions)
-       ;;
-       s/Keyword                       s/Any}
+       [:binning {:optional true} [:maybe FieldBinningOptions]]]
       validate-temporal-unit
       no-binning-options-at-top-level))
 
+(def ^:private FieldOptions
+  [:ref ::FieldOptions])
+
 (defn- require-base-type-for-field-name [schema]
-  (s/constrained
+  [:and
    schema
-   (fn [[_ id-or-name {:keys [base-type]}]]
-     (if (string? id-or-name)
-       base-type
-       true))
-   ":field clauses using a string field name must specify :base-type."))
+   [:fn
+    {:error/message ":field clauses using a string field name must specify :base-type."}
+    (fn [[_ id-or-name {:keys [base-type]}]]
+      (if (string? id-or-name)
+        base-type
+        true))]])
+
+(mr/def ::field
+  (-> (helpers/clause
+       :field
+       "id-or-name" [:or FieldID NonBlankString]
+       "options"    [:maybe FieldOptions])
+      require-base-type-for-field-name))
 
 (def ^{:clause-name :field, :added "0.39.0"} field
   "Schema for a `:field` clause."
-  (-> (helpers/clause
-       :field
-       "id-or-name" (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString)
-       "options"    (s/maybe (s/recursive #'FieldOptions)))
-      require-base-type-for-field-name))
+  [:ref ::field])
 
 (def ^{:clause-name :field, :added "0.39.0"} field:id
   "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  (s/constrained
+  [:and
    field
-   (fn [[_ id-or-name]]
-     (integer? id-or-name))
-   "Must be a :field with an integer Field ID."))
+   [:fn
+    {:error/message "Must be a :field with an integer Field ID."}
+    (fn [[_ id-or-name]]
+      (integer? id-or-name))]])
 
-(def ^:private Field*
+(mr/def ::Field
   (one-of expression field))
 
-;; TODO -- consider renaming this FieldOrExpression
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
-  (s/recursive #'Field*))
+  [:ref ::Field])
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;
@@ -467,14 +416,15 @@
 ;;
 ;; As of 0.42.0 `:aggregation` references can have an optional options map.
 (defclause aggregation
-  aggregation-clause-index s/Int
-  options                  (optional (s/pred map? "map")))
+  aggregation-clause-index :int
+  options                  (optional :map))
+
+(mr/def ::FieldOrAggregationReference
+  (one-of aggregation expression field))
 
 (def FieldOrAggregationReference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
-  (s/if (partial is-clause? :aggregation)
-    aggregation
-    Field))
+  [:ref ::FieldOrAggregationReference])
 
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
@@ -485,21 +435,25 @@
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
 
-(declare StringExpression)
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  [:ref ::StringExpression])
+
+(mr/def ::StringExpressionArg
+  [:multi
+   {:dispatch (fn [x]
+                (cond
+                  (string? x)                     :string
+                  (is-clause? string-functions x) :string-expression
+                  (is-clause? :value x)           :value
+                  :else                           :else))}
+   [:string            :string]
+   [:string-expression StringExpression]
+   [:value             value]
+   [:else              Field]])
 
 (def ^:private StringExpressionArg
-  (s/conditional
-   string?
-   s/Str
-
-   (partial is-clause? string-functions)
-   (s/recursive #'StringExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
+  [:ref ::StringExpressionArg])
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
@@ -509,90 +463,118 @@
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-(def boolean-functions
+(def ^:private boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
   #{:and :or :not :< :<= :> :>= := :!=})
 
-(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
+(def ^:private aggregations
+  #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
+    :metric :aggregation-options :count})
 
-(def datetime-functions
+(def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
   #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
 
-(declare NumericExpression)
-(declare BooleanExpression)
-(declare DatetimeExpression)
-(declare Aggregation)
+(def ^:private NumericExpression
+  "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
+  [:ref ::NumericExpression])
+
+(def ^:private BooleanExpression
+  "Schema for the definition of an arithmetic expression."
+  [:ref ::BooleanExpression])
+
+(def DatetimeExpression
+  "Schema for the definition of a date function expression."
+  [:ref ::DatetimeExpression])
+
+(def Aggregation
+  "Schema for anything that is a valid `:aggregation` clause."
+  [:ref ::Aggregation])
+
+(mr/def ::NumericExpressionArg
+  [:multi
+   {:error/message "numeric expression argument"
+    :dispatch      (fn [x]
+                     (cond
+                       (number? x)                      :number
+                       (is-clause? numeric-functions x) :numeric-expression
+                       (is-clause? aggregations x)      :aggregation
+                       (is-clause? :value x)            :value
+                       :else                            :field))}
+   [:number             number?]
+   [:numeric-expression NumericExpression]
+   [:aggregation        Aggregation]
+   [:value              value]
+   [:field              Field]])
 
 (def ^:private NumericExpressionArg
-  (s/conditional
-   number?
-   s/Num
+  [:ref ::NumericExpressionArg])
 
-   (partial is-clause? numeric-functions)
-   (s/recursive #'NumericExpression)
-
-   (partial is-clause? aggregations)
-   (s/recursive #'Aggregation)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
+(mr/def ::DateTimeExpressionArg
+  [:multi
+   {:error/message "datetime expression argument"
+    :dispatch      (fn [x]
+                     (cond
+                       (is-clause? aggregations x)       :aggregation
+                       (is-clause? :value x)             :value
+                       (is-clause? datetime-functions x) :datetime-expression
+                       :else                             :else))}
+   [:aggregation         Aggregation]
+   [:value               value]
+   [:datetime-expression DatetimeExpression]
+   [:else                [:or DateOrDatetimeLiteral Field]]])
 
 (def ^:private DateTimeExpressionArg
-  (s/conditional
-   (partial is-clause? aggregations)
-   (s/recursive #'Aggregation)
+  [:ref ::DateTimeExpressionArg])
 
-   (partial is-clause? :value)
-   value
-
-   (partial is-clause? datetime-functions)
-   (s/recursive #'DatetimeExpression)
-
-   :else
-   (s/cond-pre DateOrDatetimeLiteral Field)))
+(mr/def ::ExpressionArg
+  [:multi
+   {:error/message "expression argument"
+    :dispatch      (fn [x]
+                     (cond
+                       (number? x)                       :number
+                       (boolean? x)                      :boolean
+                       (is-clause? boolean-functions x)  :boolean-expression
+                       (is-clause? numeric-functions x)  :numeric-expression
+                       (is-clause? datetime-functions x) :datetime-expression
+                       (string? x)                       :string
+                       (is-clause? string-functions x)   :string-expression
+                       (is-clause? :value x)             :value
+                       :else                             :else))}
+   [:number              number?]
+   [:boolean             :boolean]
+   [:boolean-expression  BooleanExpression]
+   [:numeric-expression  NumericExpression]
+   [:datetime-expression DatetimeExpression]
+   [:string              :string]
+   [:string-expression   StringExpression]
+   [:value               value]
+   [:else                Field]])
 
 (def ^:private ExpressionArg
-  (s/conditional
-   number?
-   s/Num
+  [:ref ::ExpressionArg])
 
-   boolean?
-   s/Bool
-
-   (partial is-clause? boolean-functions)
-   (s/recursive #'BooleanExpression)
-
-   (partial is-clause? numeric-functions)
-   (s/recursive #'NumericExpression)
-
-   (partial is-clause? datetime-functions)
-   (s/recursive #'DatetimeExpression)
-
-   string?
-   s/Str
-
-   (partial is-clause? string-functions)
-   (s/recursive #'StringExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
+(mr/def ::NumericExpressionArgOrInterval
+  [:or
+   {:error/message "numeric expression arg or interval"}
+   interval
+   NumericExpressionArg])
 
 (def ^:private NumericExpressionArgOrInterval
-  (s/if (partial is-clause? :interval)
-    interval
-    NumericExpressionArg))
+  [:ref ::NumericExpressionArgOrInterval])
+
+(mr/def ::IntGreaterThanZeroOrNumericExpression
+  [:multi
+   {:error/message "int greater than zero or numeric expression"
+    :dispatch      (fn [x]
+                     (if (number? x)
+                       :number
+                       :else))}
+   [:number PositiveInt]
+   [:else   NumericExpression]])
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
-  (s/if number?
-    helpers/IntGreaterThanZero
-    NumericExpressionArg))
+  [:ref ::IntGreaterThanZeroOrNumericExpression])
 
 (defclause ^{:requires-features #{:expressions}} coalesce
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
@@ -619,13 +601,13 @@
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} replace
-  s StringExpressionArg, match s/Str, replacement s/Str)
+  s StringExpressionArg, match :string, replacement :string)
 
 (defclause ^{:requires-features #{:expressions}} concat
   a StringExpressionArg, b StringExpressionArg, more (rest StringExpressionArg))
 
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
-  s StringExpressionArg, pattern s/Str)
+  s StringExpressionArg, pattern :string)
 
 (defclause ^{:requires-features #{:expressions}} +
   x NumericExpressionArgOrInterval, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
@@ -661,12 +643,6 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(declare NumericExpression*)
-
-(def ^:private NumericExpression
-  "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
-  (s/recursive #'NumericExpression*))
-
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
 ;; Days, weeks, months, and years are only counted if they are whole to the "day".
@@ -680,12 +656,12 @@
 (defclause ^{:requires-features #{:datetime-diff}} datetime-diff
   datetime-x DateTimeExpressionArg
   datetime-y DateTimeExpressionArg
-  unit       DatetimeDiffUnits)
+  unit       DatetimeDiffUnit)
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
-  unit     TemporalExtractUnits
-  mode     (optional ExtractWeekModes)) ;; only for get-week
+  unit     TemporalExtractUnit
+  mode     (optional ExtractWeekMode)) ;; only for get-week
 
 ;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
@@ -699,7 +675,7 @@
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-week
   date DateTimeExpressionArg
-  mode (optional ExtractWeekModes))
+  mode (optional ExtractWeekMode))
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day
   date DateTimeExpressionArg)
@@ -722,9 +698,7 @@
   from     (optional TimezoneId))
 
 (def ^:private ArithmeticDateTimeUnit
-  (s/named
-   (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
-   "arithmetic-datetime-unit"))
+  [:enum {:error/message "datetime arithmetic unit"} :millisecond :second :minute :hour :day :week :month :quarter :year])
 
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-add
   datetime DateTimeExpressionArg
@@ -738,62 +712,72 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(def ^:private DatetimeExpression*
+(mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now))
-
-(def DatetimeExpression
-  "Schema for the definition of a date function expression."
-  (s/recursive #'DatetimeExpression*))
-
-(declare StringExpression*)
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  (s/recursive #'StringExpression*))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
-(declare Filter)
+(def Filter
+  "Schema for a valid MBQL `:filter` clause."
+  [:ref ::Filter])
 
 (defclause and
-  first-clause  (s/recursive #'Filter)
-  second-clause (s/recursive #'Filter)
-  other-clauses (rest (s/recursive #'Filter)))
+  first-clause  Filter
+  second-clause Filter
+  other-clauses (rest Filter))
 
 (defclause or
-  first-clause  (s/recursive #'Filter)
-  second-clause (s/recursive #'Filter)
-  other-clauses (rest (s/recursive #'Filter)))
+  first-clause  Filter
+  second-clause Filter
+  other-clauses (rest Filter))
 
-(defclause not, clause (s/recursive #'Filter))
+(defclause not, clause Filter)
 
-(def ^:private FieldOrRelativeDatetime
-  (s/if (partial is-clause? :relative-datetime)
-   relative-datetime
-   Field))
+(def ^:private FieldOrExpressionRefOrRelativeDatetime
+  [:multi
+   {:error/message ":field or :expression reference or :relative-datetime"
+    :error/fn      (constantly ":field or :expression reference or :relative-datetime")
+    :dispatch      (fn [x]
+                     (if (is-clause? :relative-datetime x)
+                       :relative-datetime
+                       :else))}
+   [:relative-datetime relative-datetime]
+   [:else              Field]])
+
+(mr/def ::EqualityComparable
+  [:maybe
+   {:error/message "equality comparable"}
+   [:or
+    :boolean
+    number?
+    :string
+    TemporalLiteral
+    FieldOrExpressionRefOrRelativeDatetime
+    ExpressionArg
+    value]])
 
 (def ^:private EqualityComparable
   "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
-  (s/maybe
-   (s/cond-pre
-    s/Bool
-    s/Num
-    s/Str
-    TemporalLiteral
-    FieldOrRelativeDatetime
-    ExpressionArg
-    value)))
+  [:ref ::EqualityComparable])
+
+(mr/def ::OrderComparable
+  [:multi
+   {:error/message "order comparable"
+    :dispatch      (fn [x]
+                     (if (is-clause? :value x)
+                       :value
+                       :else))}
+   [:value value]
+   [:else [:or
+           number?
+           :string
+           TemporalLiteral
+           ExpressionArg
+           FieldOrExpressionRefOrRelativeDatetime]]])
 
 (def ^:private OrderComparable
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
-  (s/if (partial is-clause? :value)
-    value
-    (s/cond-pre
-     s/Num
-     s/Str
-     TemporalLiteral
-     ExpressionArg
-     FieldOrRelativeDatetime)))
+  [:ref ::OrderComparable])
 
 ;; For all of the non-compound Filter clauses below the first arg is an implicit Field ID
 
@@ -838,7 +822,9 @@
 (defclause ^:sugar not-empty, field Field)
 
 (def ^:private StringFilterOptions
-  {(s/optional-key :case-sensitive) s/Bool}) ; default true
+  [:map
+   ;; default true
+   [:case-sensitive {:optional true} :boolean]])
 
 (defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
 (defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
@@ -851,7 +837,9 @@
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
   ;; include them.
-  {(s/optional-key :include-current) s/Bool}) ; default false
+  [:map
+   ;; default false
+   [:include-current {:optional true} :boolean]])
 
 ;; Filter subclause. Syntactic sugar for specifying a specific time interval.
 ;;
@@ -867,9 +855,9 @@
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
   field   Field
-  n       (s/cond-pre
-           s/Int
-           (s/enum :current :last :next))
+  n       [:or
+           :int
+           [:enum :current :last :next]]
   unit    RelativeDatetimeUnit
   options (optional TimeIntervalOptions))
 
@@ -878,62 +866,76 @@
 ;;
 ;; It can also be used for GA, which looks something like `[:segment "gaid::-11"]`. GA segments aren't actually MBQL
 ;; segments and pass-thru to GA.
-(defclause ^:sugar segment, segment-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
+(def ^:private SegmentID
+  [:ref ::lib.schema.id/segment])
 
-(declare BooleanExpression*)
+(defclause ^:sugar segment
+  segment-id [:or SegmentID NonBlankString])
 
-(def ^:private BooleanExpression
-  "Schema for the definition of an arithmetic expression."
-  (s/recursive #'BooleanExpression*))
-
-(def ^:private BooleanExpression*
+(mr/def ::BooleanExpression
   (one-of and or not < <= > >= = !=))
 
-(def ^:private Filter*
-  (s/conditional
-   (partial is-clause? datetime-functions) DatetimeExpression
-   (partial is-clause? numeric-functions)  NumericExpression
-   (partial is-clause? string-functions)   StringExpression
-   (partial is-clause? boolean-functions)  BooleanExpression
-   :else
-   (one-of
-    ;; filters drivers must implement
-    and or not = != < > <= >= between starts-with ends-with contains
-    ;; SUGAR filters drivers do not need to implement
-    does-not-contain inside is-empty not-empty is-null not-null time-interval segment)))
+(mr/def ::Filter
+  [:multi
+   {:error/message "valid filter expression"
+    :dispatch      (fn [x]
+                     (cond
+                       (is-clause? datetime-functions x) :datetime
+                       (is-clause? numeric-functions x)  :numeric
+                       (is-clause? string-functions x)   :string
+                       (is-clause? boolean-functions x)  :boolean
+                       :else                             :else))}
+   [:datetime DatetimeExpression]
+   [:numeric  NumericExpression]
+   [:string   StringExpression]
+   [:boolean  BooleanExpression]
+   [:else    (one-of
+              ;; filters drivers must implement
+              and or not = != < > <= >= between starts-with ends-with contains
+              ;; SUGAR filters drivers do not need to implement
+              does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
 
-(def Filter
-  "Schema for a valid MBQL `:filter` clause."
-  (s/recursive #'Filter*))
+(def ^:private CaseClause
+  [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
 
-(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
-
-(def ^:private CaseClauses [CaseClause])
+(def ^:private CaseClauses
+  [:maybe [:sequential CaseClause]])
 
 (def ^:private CaseOptions
-  {(s/optional-key :default) ExpressionArg})
+  [:map
+   {:error/message ":case options"}
+   [:default {:optional true} ExpressionArg]])
 
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
-(def ^:private NumericExpression*
+(mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
-(def ^:private StringExpression*
+(mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
-  (s/conditional
-   (partial is-clause? numeric-functions)  NumericExpression
-   (partial is-clause? string-functions)   StringExpression
-   (partial is-clause? boolean-functions)  BooleanExpression
-   (partial is-clause? datetime-functions) DatetimeExpression
-   (partial is-clause? :case)              case
-   :else                                   Field))
+  [:multi
+   {:error/message ":field or :expression reference or expression"
+    :dispatch      (fn [x]
+                     (cond
+                       (is-clause? numeric-functions x)  :numeric
+                       (is-clause? string-functions x)   :string
+                       (is-clause? boolean-functions x)  :boolean
+                       (is-clause? datetime-functions x) :datetime
+                       (is-clause? :case x)              :case
+                       :else                             :else))}
+   [:numeric  NumericExpression]
+   [:string   StringExpression]
+   [:boolean  BooleanExpression]
+   [:datetime DatetimeExpression]
+   [:case     case]
+   [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -986,40 +988,54 @@
 ;;
 ;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
 ;; pass straight thru to the GA query processor.
-(defclause ^:sugar metric, metric-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
+(def ^:private MetricID
+  [:ref ::lib.schema.id/metric])
+
+(defclause metric
+  metric-id [:or MetricID NonBlankString])
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
 ;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
 
-(def ^:private UnnamedAggregation*
-  (s/if (partial is-clause? numeric-functions)
-    NumericExpression
-    (one-of avg cum-sum distinct stddev sum min max metric share count-where
-            sum-where case median percentile ag:var
-            ;; SUGAR clauses
-            cum-count count)))
+(mr/def ::UnnamedAggregation
+  [:multi
+   {:error/message "unnamed aggregation clause or numeric expression"
+    :dispatch      (fn [x]
+                     (if (is-clause? numeric-functions x)
+                       :numeric-expression
+                       :else))}
+   [:numeric-expression NumericExpression]
+   [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
+                  sum-where case median percentile ag:var
+                  ;; SUGAR clauses
+                  cum-count count)]])
 
 (def ^:private UnnamedAggregation
-  (s/recursive #'UnnamedAggregation*))
+  ::UnnamedAggregation)
 
-(def AggregationOptions
+(def ^:private AggregationOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
-  {;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
-   (s/optional-key :name)         helpers/NonBlankString
+  [:map
+   {:error/message ":aggregation-options options"}
+   ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
+   [:name         {:optional true} NonBlankString]
    ;; user-facing display name for this aggregation instead of the default one
-   (s/optional-key :display-name) helpers/NonBlankString
-   s/Keyword                      s/Any})
+   [:display-name {:optional true} NonBlankString]])
 
 (defclause aggregation-options
   aggregation UnnamedAggregation
   options     AggregationOptions)
 
-(def Aggregation
-  "Schema for anything that is a valid `:aggregation` clause."
-  (s/if (partial is-clause? :aggregation-options)
-    aggregation-options
-    UnnamedAggregation))
+(mr/def ::Aggregation
+  [:multi
+   {:error/message "aggregation clause or numeric expression"
+    :dispatch      (fn [x]
+                     (if (is-clause? :aggregation-options x)
+                       :aggregation-options
+                       :unnamed-aggregation))}
+   [:aggregation-options aggregation-options]
+   [:unnamed-aggregation UnnamedAggregation]])
 
 
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
@@ -1073,18 +1089,19 @@
 ;;
 ;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
-(def TemplateTagType
+(def ^:private TemplateTagType
   "Schema for valid values of template tag `:type`."
-  (s/enum :snippet :card :dimension :number :text :date))
+  [:enum :snippet :card :dimension :number :text :date])
 
 (def ^:private TemplateTag:Common
   "Things required by all template tag types."
-  {;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
+  [:map
+   [:type         TemplateTagType]
+   [:name         NonBlankString]
+   [:display-name NonBlankString]
+   ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   (s/optional-key :id) helpers/NonBlankString
-   :name                helpers/NonBlankString
-   :display-name        helpers/NonBlankString
-   s/Keyword            s/Any})
+   [:id {:optional true} NonBlankString]])
 
 ;; Example:
 ;;
@@ -1094,15 +1111,16 @@
 ;;     :type         :snippet
 ;;     :snippet-name "select"
 ;;     :snippet-id   1}
-(def TemplateTag:Snippet
+(def ^:private TemplateTag:Snippet
   "Schema for a native query snippet template tag."
-  (merge
+  [:merge
    TemplateTag:Common
-   {:type                      (s/eq :snippet)
-    :snippet-name              helpers/NonBlankString
-    :snippet-id                helpers/IntGreaterThanZero
+   [:map
+    [:type         [:= :snippet]]
+    [:snippet-name NonBlankString]
+    [:snippet-id   PositiveInt]
     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    (s/optional-key :database) helpers/IntGreaterThanZero}))
+    [:database {:optional true} PositiveInt]]])
 
 ;; Example:
 ;;
@@ -1111,23 +1129,31 @@
 ;;     :display-name "#1635"
 ;;     :type         :card
 ;;     :card-id      1635}
-(def TemplateTag:SourceQuery
+(def ^:private TemplateTag:SourceQuery
   "Schema for a source query template tag."
-  (merge
+  [:merge
    TemplateTag:Common
-   {:type    (s/eq :card)
-    :card-id helpers/IntGreaterThanZero}))
+   [:map
+    [:type    [:= :card]]
+    [:card-id PositiveInt]]])
 
 (def ^:private TemplateTag:Value:Common
   "Stuff shared between the Field filter and raw value template tag schemas."
-  (merge
+  [:merge
    TemplateTag:Common
-   {;; default value for this parameter
-    (s/optional-key :default)  s/Any
+   [:map
+    ;; default value for this parameter
+    [:default  {:optional true} :any]
     ;; whether or not a value for this parameter is required in order to run the query
-    (s/optional-key :required) s/Bool}))
+    [:required {:optional true} :boolean]]])
 
-(declare ParameterType WidgetType)
+(def ^:private ParameterType
+  "Schema for valid values of `:type` for a [[Parameter]]."
+  [:ref ::ParameterType])
+
+(def ^:private WidgetType
+  "Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]]."
+  [:ref ::WidgetType])
 
 ;; Example:
 ;;
@@ -1137,25 +1163,26 @@
 ;;     :type         :dimension,
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
-(def TemplateTag:FieldFilter
+(def ^:private TemplateTag:FieldFilter
   "Schema for a field filter template tag."
-  (merge
+  [:merge
    TemplateTag:Value:Common
-   {:type        (s/eq :dimension)
-    :dimension   field
+   [:map
+    [:type        [:= :dimension]]
+    [:dimension   field]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type (s/recursive #'WidgetType)
+    [:widget-type WidgetType]
     ;; optional map to be appended to filter clause
-    (s/optional-key :options) {s/Keyword s/Any}}))
+    [:options {:optional true} [:map-of :keyword :any]]]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
   #{:number :text :date :boolean})
 
-(def TemplateTag:RawValue:Type
+(def ^:private TemplateTag:RawValue:Type
   "Valid values of `:type` for raw value template tags."
-  (apply s/enum raw-value-template-tag-types))
+  (into [:enum] raw-value-template-tag-types))
 
 ;; Example:
 ;;
@@ -1165,60 +1192,82 @@
 ;;     :type         :number
 ;;     :required     true
 ;;     :default      "1"}
-(def TemplateTag:RawValue
+(def ^:private TemplateTag:RawValue
   "Schema for a raw value template tag."
-  (merge
+  [:merge
    TemplateTag:Value:Common
    ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
    ;; which types of parameters are allowed to be passed in for this template tag.
-   {:type TemplateTag:RawValue:Type}))
+   [:map
+    [:type TemplateTag:RawValue:Type]]])
 
 ;; TODO -- if we were using core.spec here I would make this a multimethod-based spec instead and have it dispatch off
 ;; of `:type`. Then we could make it possible to add new types dynamically
 
+(mr/def ::TemplateTag
+  [:multi
+   {:dispatch :type}
+   [:dimension   TemplateTag:FieldFilter]
+   [:snippet     TemplateTag:Snippet]
+   [:card        TemplateTag:SourceQuery]
+   [::mc/default TemplateTag:RawValue]])
+
 (def TemplateTag
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
   `:type` (see comments above)."
-  (s/conditional
-   #(core/= (:type %) :dimension) TemplateTag:FieldFilter
-   #(core/= (:type %) :snippet)   TemplateTag:Snippet
-   #(core/= (:type %) :card)      TemplateTag:SourceQuery
-   :else                          TemplateTag:RawValue))
+  [:ref ::TemplateTag])
 
-(def TemplateTagMap
+(def ^:private TemplateTagMap
   "Schema for the `:template-tags` map passed in as part of a native query."
   ;; map of template tag name -> template tag definition
-  (-> {helpers/NonBlankString TemplateTag}
-      ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-      (s/constrained (fn [m]
-                      (every? (fn [[tag-name tag-definition]]
-                                (core/= tag-name (:name tag-definition)))
-                              m))
-                    "keys in template tag map must match the :name of their values")))
+  [:and
+   [:map-of NonBlankString TemplateTag]
+   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+   [:fn
+    {:error/message "keys in template tag map must match the :name of their values"}
+    (fn [m]
+      (every? (fn [[tag-name tag-definition]]
+                (core/= tag-name (:name tag-definition)))
+              m))]])
+
+(def ^:private NativeQuery:Common
+  [:map
+   [:template-tags {:optional true} TemplateTagMap]
+   ;; collection (table) this query should run against. Needed for MongoDB
+   [:collection    {:optional true} [:maybe NonBlankString]]])
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
-  {:query                          s/Any
-   (s/optional-key :template-tags) TemplateTagMap
-   ;; collection (table) this query should run against. Needed for MongoDB
-   (s/optional-key :collection)    (s/maybe helpers/NonBlankString)
-   ;; other stuff gets added in my different bits of QP middleware to record bits of state or pass info around.
-   ;; Everyone else can ignore them.
-   s/Keyword                       s/Any})
+  [:merge
+   NativeQuery:Common
+   [:map
+    [:query :any]]])
+
+(def ^:private NativeSourceQuery
+  [:merge
+   NativeQuery:Common
+   [:map
+    [:native :any]]])
 
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(declare Query MBQLQuery)
+(def MBQLQuery
+  "Schema for a valid, normalized MBQL [inner] query."
+  [:ref ::MBQLQuery])
 
 (def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
-  (s/if (every-pred map? :native)
-    ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
-    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
-    ;; queries).
-    (set/rename-keys NativeQuery {:query :native})
-    (s/recursive #'MBQLQuery)))
+  [:multi
+   {:dispatch (fn [x]
+                (if ((every-pred map? :native) x)
+                  :native
+                  :mbql))}
+   ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
+   ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
+   ;; queries).
+   [:native NativeSourceQuery]
+   [:mbql   MBQLQuery]])
 
 (def SourceQueryMetadata
   "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
@@ -1228,35 +1277,108 @@
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
   ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
-  {:name                           helpers/NonBlankString
-   :base_type                      helpers/FieldType
+  [:map
+   [:name         NonBlankString]
+   [:base_type    BaseType]
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
-   :display_name                   helpers/NonBlankString
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
+   [:display_name NonBlankString]
+   [:semantic_type {:optional true} [:maybe SemanticOrRelationType]]
    ;; you'll need to provide this in order to use BINNING
-   (s/optional-key :fingerprint)   (s/maybe helpers/Map)
-   s/Any                           s/Any})
+   [:fingerprint   {:optional true} [:maybe :map]]])
 
 (def source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
   #"^card__[1-9]\d*$")
 
-(def SourceTable
+(def ^:private SourceTable
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
-  (s/cond-pre helpers/IntGreaterThanZero source-table-card-id-regex))
+  [:or
+   TableID
+   [:re
+    {:error/message "'card__<id>' string Table ID"}
+    source-table-card-id-regex]])
 
 (def join-strategies
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def JoinStrategy
+(def ^:private JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
-  (apply s/enum join-strategies))
+  (into [:enum] join-strategies))
 
-(declare Fields)
+(def Fields
+  "Schema for valid values of the MBQL `:fields` clause."
+  [:ref ::Fields])
+
+(def ^:private JoinFields
+  [:or
+   {:error/message "Valid join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."}
+   [:enum :all :none]
+   Fields])
+
+(mr/def ::Join
+  [:and
+   [:map
+    ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
+    [:source-table {:optional true} SourceTable]
+
+    [:source-query {:optional true} SourceQuery]
+    ;;
+    ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
+    ;; JOINs this is always
+    ;;
+    ;;    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]
+    ;;
+    [:condition Filter]
+    ;;
+    ;; Defaults to `:left-join`; used for all automatically-generated JOINs
+    ;;
+    ;; Driver implementations: this is guaranteed to be present after pre-processing.
+    [:strategy {:optional true} JoinStrategy]
+    ;;
+    ;; The Field to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
+    ;; `:none`, `:all`, or a sequence of Field clauses.
+    ;;
+    ;; * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by
+    ;;    breakouts or other clauses). This is the default, and what is used for automatically-generated joins.
+    ;;
+    ;; *  `:all`: will include all of the Field from the joined table or query
+    ;;
+    ;; * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
+    ;;   `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
+    ;;   automatically remove duplicate fields for you, and replace empty clauses with `:none`.
+    ;;
+    ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
+    ;; with appropriate aliases.
+    [:fields {:optional true} JoinFields]
+    ;;
+    ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
+    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
+    ;; `:join-alias` in the options.
+    ;;
+    ;; Driver implementations: This is guaranteed to be present after pre-processing.
+    [:alias {:optional true} NonBlankString]
+    ;;
+    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via a
+    ;; `:field` clause with `:source-field`, the ID of the foreign key field in the source Table will
+    ;; be recorded here. This information is used to add `fk_field_id` information to the `:cols` in the query
+    ;; results; I believe this is used to facilitate drill-thru? :shrug:
+    ;;
+    ;; Don't set this information yourself. It will have no effect.
+    [:fk-field-id {:optional true} [:maybe FieldID]]
+    ;;
+    ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
+    ;; added automatically by the `resolve-card-id-source-tables` middleware.
+    [:source-metadata {:optional true} [:maybe [:sequential SourceQueryMetadata]]]]
+   [:fn
+    {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
+    (every-pred
+     (some-fn :source-table :source-query)
+     (complement (every-pred :source-table :source-query)))]])
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
@@ -1271,131 +1393,65 @@
 
     ;; for joins against native queries
     [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
-  (->
-   {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
-    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
-    (s/optional-key :source-table)
-    SourceTable
+  [:ref ::Join])
 
-    (s/optional-key :source-query)
-    SourceQuery
-    ;;
-    ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
-    ;; JOINs this is always
-    ;;
-    ;;    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]
-    ;;
-    :condition
-    Filter
-    ;;
-    ;; Defaults to `:left-join`; used for all automatically-generated JOINs
-    ;;
-    ;; Driver implementations: this is guaranteed to be present after pre-processing.
-    (s/optional-key :strategy)
-    JoinStrategy
-    ;;
-    ;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
-    ;; `:none`, `:all`, or a sequence of Field clauses.
-    ;;
-    ;; *  `:none`: no Fields from the joined table or nested query are included (unless indirectly included by
-    ;;    breakouts or other clauses). This is the default, and what is used for automatically-generated joins.
-    ;;
-    ;; *  `:all`: will include all of the Fields from the joined table or query
-    ;;
-    ;; *  a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
-    ;;    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
-    ;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
-    ;;
-    ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
-    ;; with appropriate aliases.
-    (s/optional-key :fields)
-    (s/named
-     (s/cond-pre
-      (s/enum :all :none)
-      (s/recursive #'Fields))
-     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
-    ;;
-    ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
-    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
-    ;; `:join-alias` in the options.
-    ;;
-    ;; Driver implementations: This is guaranteed to be present after pre-processing.
-    (s/optional-key :alias)
-    helpers/NonBlankString
-    ;;
-    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via a
-    ;; `:field` clause with `:source-field`, the ID of the foreign key field in the source Table will
-    ;; be recorded here. This information is used to add `fk_field_id` information to the `:cols` in the query
-    ;; results; I believe this is used to facilitate drill-thru? :shrug:
-    ;;
-    ;; Don't set this information yourself. It will have no effect.
-    (s/optional-key :fk-field-id)
-    (s/maybe helpers/IntGreaterThanZero)
-    ;;
-    ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
-    ;; added automatically by the `resolve-card-id-source-tables` middleware.
-    (s/optional-key :source-metadata)
-    (s/maybe [SourceQueryMetadata])
+(mr/def ::Joins
+  [:and
+   (helpers/non-empty [:sequential Join])
+   [:fn
+    {:error/message "All join aliases must be unique."}
+    #(helpers/empty-or-distinct? (filter some? (map :alias %)))]])
 
-    s/Keyword s/Any}
-   (s/constrained
-    (every-pred
-     (some-fn :source-table :source-query)
-     (complement (every-pred :source-table :source-query)))
-    "Joins must have either a `source-table` or `source-query`, but not both.")))
-
-(def Joins
+(def ^:private Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
-  (s/constrained
-   (helpers/non-empty [Join])
-   #(helpers/empty-or-distinct? (filter some? (map :alias %)))
-   "All join aliases must be unique."))
+  [:ref ::Joins])
 
-(def Fields
-  "Schema for valid values of the MBQL `:fields` clause."
-  (s/named
-   (helpers/distinct (helpers/non-empty [Field]))
-   "Distinct, non-empty sequence of Field clauses"))
+(mr/def ::Fields
+  [:schema
+   {:error/message "Distinct, non-empty sequence of Field clauses"}
+   (helpers/distinct [:sequential {:min 1} Field])])
 
-(def MBQLQuery
-  "Schema for a valid, normalized MBQL [inner] query."
-  (->
-   {(s/optional-key :source-query) SourceQuery
-    (s/optional-key :source-table) SourceTable
-    (s/optional-key :aggregation)  (helpers/non-empty [Aggregation])
-    (s/optional-key :breakout)     (helpers/non-empty [Field])
-    (s/optional-key :expressions)  {helpers/NonBlankString FieldOrExpressionDef}
-    (s/optional-key :fields)       Fields
-    (s/optional-key :filter)       Filter
-    (s/optional-key :limit)        helpers/IntGreaterThanOrEqualToZero
-    (s/optional-key :order-by)     (helpers/distinct (helpers/non-empty [OrderBy]))
+(def ^:private Page
+  [:map
+   [:page  PositiveInt]
+   [:items PositiveInt]])
+
+(mr/def ::MBQLQuery
+  [:and
+   [:map
+    [:source-query    {:optional true} SourceQuery]
+    [:source-table    {:optional true} SourceTable]
+    [:aggregation     {:optional true} [:sequential {:min 1} Aggregation]]
+    [:breakout        {:optional true} [:sequential {:min 1} Field]]
+    [:expressions     {:optional true} [:map-of NonBlankString FieldOrExpressionDef]]
+    [:fields          {:optional true} Fields]
+    [:filter          {:optional true} Filter]
+    [:limit           {:optional true} IntGreaterThanOrEqualToZero]
+    [:order-by        {:optional true} (helpers/distinct [:sequential {:min 1} OrderBy])]
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.
     ;; {:page 1, :items 10} = items 1-10
     ;; {:page 2, :items 10} = items 11-20
-    (s/optional-key :page)         {:page  helpers/IntGreaterThanZero
-                                    :items helpers/IntGreaterThanZero}
+    [:page            {:optional true} Page]
     ;;
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
-    (s/optional-key :joins)        Joins
+    [:joins           {:optional true} Joins]
     ;;
     ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
     ;; used to let power things like binning when used with Field Literals instead of normal Fields
-    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
-    ;;
-    ;; Other keys are added by middleware or frontend client for various purposes
-    s/Keyword                      s/Any}
-
-   (s/constrained
+    [:source-metadata {:optional true} [:maybe [:sequential SourceQueryMetadata]]]]
+   ;;
+   ;; CONSTRAINTS
+   ;;
+   [:fn
+    {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
     (fn [query]
-      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
-    "Query must specify either `:source-table` or `:source-query`, but not both.")
-
-   (s/constrained
+      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))]
+   [:fn
+    {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))
-    "Fields specified in `:breakout` should not be specified in `:fields`; this is implied.")))
+      (empty? (set/intersection (set breakout) (set fields))))]])
 
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
@@ -1517,13 +1573,11 @@
    :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
 
-(def ParameterType
-  "Schema for valid values of `:type` for a [[Parameter]]."
-  (apply s/enum (keys parameter-types)))
+(mr/def ::ParameterType
+  (into [:enum {:error/message "valid parameter type"}] (keys parameter-types)))
 
-(def WidgetType
-  "Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]]."
-  (apply s/enum (cons :none (keys parameter-types))))
+(mr/def ::WidgetType
+  (into [:enum {:error/message "valid template tag widget type"} :none] (keys parameter-types)))
 
 ;; the next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
 ;; native query or Field for MBQL queries.
@@ -1550,130 +1604,103 @@
 ;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
 ;; `:template-tags`
 (defclause template-tag
-  tag-name
-  (s/cond-pre helpers/NonBlankString
-              {:id helpers/NonBlankString}))
+  tag-name [:or
+            NonBlankString
+            [:map
+             [:id NonBlankString]]])
 
 (defclause dimension
-  target (s/cond-pre Field template-tag))
+  target [:or Field template-tag])
 
 (defclause variable
   target template-tag)
 
-(def ParameterTarget
+(def ^:private ParameterTarget
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  (s/cond-pre
+  [:or
    Field
-   (one-of dimension variable)))
+   (one-of dimension variable)])
 
 (def Parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query."
-  {:type                     ParameterType
+  [:map
+   [:type ParameterType]
    ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
    ;; At some point we need to go fix those tests and then make these keys required
-   (s/optional-key :id)      helpers/NonBlankString
-   (s/optional-key :target)  ParameterTarget
+   [:id      {:optional true} NonBlankString]
+   [:target  {:optional true} ParameterTarget]
    ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
    ;; on the [[ParameterType]]
-   (s/optional-key :value)   s/Any
+   [:value   {:optional true} :any]
    ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
    ;; merged in appropriately
-   (s/optional-key :name)    helpers/NonBlankString
+   [:name    {:optional true} NonBlankString]
    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
    ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   (s/optional-key :slug)    helpers/NonBlankString
-   (s/optional-key :default) s/Any
-   ;; various other keys are used internally by the frontend
-   s/Keyword                 s/Any})
+   [:slug    {:optional true} NonBlankString]
+   [:default {:optional true} :any]])
 
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  [Parameter]
-  #_(->
-     ;; TODO -- disabled for now since it breaks tests. Also, I'm not sure whether these should be distinct by
-     ;; `:name` or `:id`... at any rate, neither is currently required.
-     ;;
-     (s/constrained (fn [parameters]
-                      (apply distinct? (map :id parameters)))
-                    "Cannot specify parameter more than once; IDs must be distinct")))
+  [:maybe [:sequential Parameter]])
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
 (def ^:private Settings
   "Options that tweak the behavior of the query processor."
-  ;; The timezone the query should be ran in, overriding the default report timezone for the instance.
-  {(s/optional-key :report-timezone) helpers/NonBlankString
-   ;; other Settings might be used somewhere, but I don't know about them. Add them if you come across them for
-   ;; documentation purposes
-   s/Keyword                         s/Any})
+  [:map
+   ;; The timezone the query should be ran in, overriding the default report timezone for the instance.
+   [:report-timezone {:optional true} TimezoneId]])
 
 (def ^:private Constraints
   "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
   because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
   override these values."
-  (s/constrained
-   { ;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
+  [:and
+   [:map
+    ;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
     ;; applies to all queries
-    (s/optional-key :max-results)           helpers/IntGreaterThanOrEqualToZero
+    [:max-results           {:optional true} IntGreaterThanOrEqualToZero]
     ;; maximum number of results to allow for a query with no aggregations.
     ;; If set, this should be LOWER than `:max-results`
-    (s/optional-key :max-results-bare-rows) helpers/IntGreaterThanOrEqualToZero
-    ;; other Constraints might be used somewhere, but I don't know about them. Add them if you come across them for
-    ;; documentation purposes
-    s/Keyword                               s/Any}
-   (fn [{:keys [max-results max-results-bare-rows]}]
-     (if-not (core/and max-results max-results-bare-rows)
-       true
-       (core/>= max-results max-results-bare-rows)))
-   "max-results-bare-rows must be less or equal to than max-results"))
+    [:max-results-bare-rows {:optional true} IntGreaterThanOrEqualToZero]]
+   [:fn
+    {:error/message "max-results-bare-rows must be less or equal to than max-results"}
+    (fn [{:keys [max-results max-results-bare-rows]}]
+      (if-not (core/and max-results max-results-bare-rows)
+        true
+        (core/>= max-results max-results-bare-rows)))]])
 
 (def ^:private MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
-  {;; should we skip adding results_metadata to query results after running the query? Used by
-   ;; `metabase.query-processor.middleware.results-metadata`; default `false`
-   (s/optional-key :skip-results-metadata?)
-   s/Bool
-
+  [:map
+   ;; should we skip adding results_metadata to query results after running the query? Used by
+   ;; [[metabase.query-processor.middleware.results-metadata]]; default `false`
+   [:skip-results-metadata? {:optional true} :boolean]
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
-   ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
-   (s/optional-key :format-rows?)
-   s/Bool
-
+   ;; results? Used by [[metabase.query-processor.middleware.format-rows]]; default `false`
+   [:format-rows? {:optional true} :boolean]
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
    ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
    ;; the fully pre-processed query without attempting to convert it to native.
-   (s/optional-key :disable-mbql->native?)
-   s/Bool
-
+   [:disable-mbql->native? {:optional true} :boolean]
    ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
    ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
-   (s/optional-key :disable-max-results?)
-   s/Bool
-
+   [:disable-max-results? {:optional true} :boolean]
    ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
    ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
    ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
-   (s/optional-key :userland-query?)
-   (s/maybe s/Bool)
-
+   [:userland-query? {:optional true} [:maybe :boolean]]
    ;; Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
    ;; although the functions that ultimately power most API endpoints tend to set this to `true`. See
    ;; `add-constraints` middleware for more details.
-   (s/optional-key :add-default-userland-constraints?)
-   (s/maybe s/Bool)
-
+   [:add-default-userland-constraints? {:optional true} [:maybe :boolean]]
    ;; Whether to process a question's visualization settings and include them in the result metadata so that they can
    ;; incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default `false`.
-   (s/optional-key :process-viz-settings?)
-   (s/maybe s/Bool)
-
-   ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
-   ;; for documentation purposes
-   s/Keyword
-   s/Any})
+   [:process-viz-settings? {:optional true} [:maybe :boolean]]])
 
 
 ;;; ------------------------------------------------------ Info ------------------------------------------------------
@@ -1684,48 +1711,55 @@
 
 (def Context
   "Schema for `info.context`; used for informational purposes to record how a query was executed."
-  (s/enum :ad-hoc
-          :collection
-          :csv-download
-          :dashboard
-          :embedded-dashboard
-          :embedded-question
-          :json-download
-          :map-tiles
-          :public-dashboard
-          :public-question
-          :pulse
-          :question
-          :xlsx-download))
+  [:enum
+   :action
+   :ad-hoc
+   :collection
+   :csv-download
+   :dashboard
+   :embedded-dashboard
+   :embedded-question
+   :json-download
+   :map-tiles
+   :public-dashboard
+   :public-question
+   :pulse
+   :question
+   :xlsx-download])
+
+(def ^:private Hash
+  #?(:clj bytes?
+     :cljs :any))
 
 ;; TODO - this schema is somewhat misleading because if you use a function like
 ;; `qp/process-query-and-save-with-max-results-constraints!` some of these keys (e.g. `:context`) are in fact required
-(def Info
+(def ^:private Info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
   was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
   based on this information, don't do it!"
-  {;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
+  [:map
+   ;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
    ;; used for permissions checking or anything like that so don't try to be sneaky
-   (s/optional-key :context)                   (s/maybe Context)
-   (s/optional-key :executed-by)               (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-id)                   (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :card-name)                 (s/maybe helpers/NonBlankString)
-   (s/optional-key :dashboard-id)              (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :alias/escaped->original)   (s/maybe {s/Any s/Any})
-   (s/optional-key :pulse-id)                  (s/maybe helpers/IntGreaterThanZero)
+   [:context                   {:optional true} [:maybe Context]]
+   [:executed-by               {:optional true} [:maybe PositiveInt]]
+   [:action-id                 {:optional true} [:maybe PositiveInt]]
+   [:card-id                   {:optional true} [:maybe CardID]]
+   [:card-name                 {:optional true} [:maybe NonBlankString]]
+   [:dashboard-id              {:optional true} [:maybe PositiveInt]]
+   [:alias/escaped->original   {:optional true} [:maybe [:map-of :any :any]]]
+   [:pulse-id                  {:optional true} [:maybe PositiveInt]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
-   (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
+   [:metadata/dataset-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
-                                            :cljs s/Any))})
+   [:query-hash                {:optional true} [:maybe Hash]]])
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
-(def ^Integer saved-questions-virtual-database-id
+(def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
 
    A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
@@ -1735,7 +1769,8 @@
 
    This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
    this 'virtual' database and take the appropriate actions."
-  -1337)
+  lib.schema.id/saved-questions-virtual-database-id)
+
 ;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
 ;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
 ;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
@@ -1746,70 +1781,90 @@
   actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the
   `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
   actual DB for that source query.)"
-  (s/cond-pre (s/eq saved-questions-virtual-database-id) helpers/IntGreaterThanZero))
+  [:or
+   {:error/message "valid Database ID"}
+   [:ref ::lib.schema.id/saved-questions-virtual-database]
+   [:ref ::lib.schema.id/database]])
+
+(defn- check-keys-for-query-type
+  "Make sure we have the combo of query `:type` and `:native`/`:query`"
+  [schema]
+  [:and
+   schema
+   [:fn
+    {:error/message "Query must specify either `:native` or `:query`, but not both."}
+    (every-pred
+     (some-fn :native :query)
+     (complement (every-pred :native :query)))]
+   [:fn
+    {:error/message "Native queries must specify `:native`; MBQL queries must specify `:query`."}
+    (fn [{native :native, mbql :query, query-type :type}]
+      (core/case query-type
+        :native native
+        :query  mbql))]])
+
+(defn- check-query-does-not-have-source-metadata
+  "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+  columns in the source query.
+
+   Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the
+  middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been
+  changed so it is always added at the same level the resolved `:source-query` is added.
+
+   This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
+  properly."
+  [schema]
+  [:and
+   schema
+   [:fn
+    {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
+    (complement :source-metadata)]])
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
   `Card.dataset_query`."
-  (->
-   {:database                         DatabaseID
-    ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
-    :type                             (s/enum :query :native)
-    (s/optional-key :native)          NativeQuery
-    (s/optional-key :query)           MBQLQuery
-    (s/optional-key :parameters)      ParameterList
-    ;;
-    ;; OPTIONS
-    ;;
-    ;; These keys are used to tweak behavior of the Query Processor.
-    ;; TODO - can we combine these all into a single `:options` map?
-    ;;
-    (s/optional-key :settings)        (s/maybe Settings)
-    (s/optional-key :constraints)     (s/maybe Constraints)
-    (s/optional-key :middleware)      (s/maybe MiddlewareOptions)
-    ;;
-    ;; INFO
-    ;;
-    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
-    ;; User who ran it
-    (s/optional-key :info)            (s/maybe Info)
-    ;;
-    ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
-    ;; middleware to record bits of state. Everyone else can ignore them.
-    s/Keyword                         s/Any}
-   ;;
-   ;; CONSTRAINTS
-   ;;
-   ;; Make sure we have the combo of query `:type` and `:native`/`:query`
-   (s/constrained
-    (every-pred
-     (some-fn :native :query)
-     (complement (every-pred :native :query)))
-    "Query must specify either `:native` or `:query`, but not both.")
-   (s/constrained
-    (fn [{native :native, mbql :query, query-type :type}]
-      (core/case query-type
-        :native native
-        :query  mbql))
-    "Native queries must specify `:native`; MBQL queries must specify `:query`.")
-   ;;
-   ;; `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
-   ;; columns in the source query.
-   ;;
-   ;; Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved,
-   ;; the middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has
-   ;; been changed so it is always added at the same level the resolved `:source-query` is added.
-   ;;
-   ;; This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not
-   ;; functioning properly
-   (s/constrained
-    (complement :source-metadata)
-    "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)")))
+  [:ref ::Query])
 
+(mr/def ::Query
+  (-> [:map
+       [:database DatabaseID]
+       ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
+       [:type [:enum :query :native]]
+       [:native     {:optional true} NativeQuery]
+       [:query      {:optional true} MBQLQuery]
+       [:parameters {:optional true} ParameterList]
+       ;;
+       ;; OPTIONS
+       ;;
+       ;; These keys are used to tweak behavior of the Query Processor.
+       ;; TODO - can we combine these all into a single `:options` map?
+       ;;
+       [:settings    {:optional true} [:maybe Settings]]
+       [:constraints {:optional true} [:maybe Constraints]]
+       [:middleware  {:optional true} [:maybe MiddlewareOptions]]
+       ;;
+       ;; INFO
+       ;;
+       ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+       ;; User who ran it
+       [:info {:optional true} [:maybe Info]]]
+      ;;
+      ;; CONSTRAINTS
+      check-keys-for-query-type
+      check-query-does-not-have-source-metadata))
 
-;;; --------------------------------------------------- Validators ---------------------------------------------------
+(def ^{:arglists '([query])} valid-query?
+  "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
+  (mr/validator Query))
 
 (def ^{:arglists '([query])} validate-query
-  "Compiled schema validator for an [outer] Metabase query. (Pre-compling a validator is more efficient; use this
-  instead of calling `(s/validate Query query)` or similar."
-  (s/validator Query))
+  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is."
+  (let [explainer (mr/explainer Query)]
+    (fn [query]
+      (if (valid-query? query)
+        query
+        (let [error     (explainer query)
+              humanized (me/humanize error)]
+          (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
+                          {:error    humanized
+                           :original error})))))))

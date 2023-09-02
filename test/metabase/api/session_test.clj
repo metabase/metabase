@@ -13,18 +13,18 @@
             PulseChannel Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -281,7 +281,7 @@
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
           (t2.with-temp/with-temp [User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-            (let [token (u/prog1 (str id "_" (UUID/randomUUID))
+            (let [token (u/prog1 (str id "_" (random-uuid))
                           (t2/update! User id {:reset_token <>}))
                   creds {:old {:password (:old password)
                                :username email}
@@ -325,7 +325,7 @@
                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
@@ -334,7 +334,7 @@
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
@@ -344,7 +344,7 @@
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
 
     (testing "Check that an expired but valid token returns false"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
@@ -436,9 +436,10 @@
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
       (testing "...but not if password login is disabled"
-        (mt/with-temporary-setting-values [enable-password-login false]
-          (is (= "Password login is disabled for this instance."
-                 (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))
+        (premium-features-test/with-premium-features #{:disable-password-login}
+          (mt/with-temporary-setting-values [enable-password-login false]
+            (is (= "Password login is disabled for this instance."
+                   (mt/client :post 401 "session" (mt/user->credentials :crowberto))))))))
 
     (testing "Test that login will NOT fallback for users in LDAP but with an invalid password"
       ;; NOTE: there's a different password in LDAP for Lucky

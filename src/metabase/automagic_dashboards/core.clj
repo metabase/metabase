@@ -19,7 +19,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.database :refer [Database]]
@@ -36,6 +36,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -46,10 +47,10 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field :- (s/maybe (mi/InstanceOf Field))
+(s/defn ->field :- (s/maybe #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field))
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
+   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString (s/pred mbql.preds/Field? ":field or :expression"))]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (filters/field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
@@ -1104,7 +1105,7 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(s/defn ^:private collect-metrics :- (s/maybe [(mi/InstanceOf Metric)])
+(s/defn ^:private collect-metrics :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Metric)])
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
@@ -1119,7 +1120,7 @@
                                   :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(s/defn ^:private collect-breakout-fields :- (s/maybe [(mi/InstanceOf Field)])
+(s/defn ^:private collect-breakout-fields :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field)])
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (filters/collect-field-references breakout))

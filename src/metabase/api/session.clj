@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -55,7 +56,7 @@
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
-  (let [session-uuid (UUID/randomUUID)
+  (let [session-uuid (random-uuid)
         session      (first (t2/insert-returning-instances! Session
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]

@@ -60,7 +60,7 @@ export function getParameterMappingOptions(
   card,
   dashcard = null,
 ) {
-  if (dashcard && card.display === "text") {
+  if (dashcard && ["heading", "text"].includes(card.display)) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }

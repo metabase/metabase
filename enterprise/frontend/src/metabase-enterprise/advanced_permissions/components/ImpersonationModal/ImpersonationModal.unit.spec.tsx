@@ -10,12 +10,10 @@ import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissio
 import {
   setupDatabaseEndpoints,
   setupUserAttributesEndpoint,
-} from "__support__/server-mocks";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-import {
   setupExistingImpersonationEndpoint,
   setupMissingImpersonationEndpoint,
-} from "__support__/server-mocks/impersonation";
+} from "__support__/server-mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockImpersonation } from "metabase-types/api/mocks/permissions";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
 import { AdvancedPermissionsStoreState } from "metabase-enterprise/advanced_permissions/types";

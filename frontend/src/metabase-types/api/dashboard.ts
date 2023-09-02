@@ -31,6 +31,7 @@ export interface Dashboard {
     timestamp: string;
   };
   auto_apply_filters: boolean;
+  archived: boolean;
 }
 
 export type DashCardId = number;

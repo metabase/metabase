@@ -32,9 +32,9 @@ import type {
 } from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
-import type Mode from "metabase-lib/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import {

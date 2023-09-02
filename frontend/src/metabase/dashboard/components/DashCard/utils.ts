@@ -9,7 +9,6 @@ export function shouldShowParameterMapper({
   isEditingParameter?: boolean;
 }) {
   return (
-    isEditingParameter &&
-    !["heading", "link"].includes(getVirtualCardType(dashcard) ?? "")
+    isEditingParameter && !["link"].includes(getVirtualCardType(dashcard) ?? "")
   );
 }

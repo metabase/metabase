@@ -108,7 +108,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
     : await ParameterApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -125,7 +125,7 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
     : await CardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -144,7 +144,7 @@ const loadDashboardParameterValues = async (
     : await DashboardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };

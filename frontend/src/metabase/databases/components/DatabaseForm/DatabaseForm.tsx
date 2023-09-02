@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -9,6 +10,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { DatabaseData, Engine } from "metabase-types/api";
+import { getEngines, getIsCachingEnabled, getIsHosted } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -21,31 +23,28 @@ import DatabaseDetailField from "../DatabaseDetailField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
-export interface DatabaseFormProps {
-  engines: Record<string, Engine>;
+interface DatabaseFormProps {
   initialValues?: DatabaseData;
   autofocusFieldName?: string;
-  isHosted?: boolean;
   isAdvanced?: boolean;
-  isCachingEnabled?: boolean;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
 }
 
-const DatabaseForm = ({
-  engines,
+export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,
-  isHosted = false,
   isAdvanced = false,
-  isCachingEnabled = false,
   onSubmit,
   onCancel,
   onEngineChange,
   setIsDirty,
 }: DatabaseFormProps): JSX.Element => {
+  const engines = useSelector(getEngines);
+  const isHosted = useSelector(getIsHosted);
+  const isCachingEnabled = useSelector(getIsCachingEnabled);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
@@ -135,7 +134,7 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form>
+    <Form data-testid="database-form">
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -226,6 +225,3 @@ const getEngineKey = (
     return getDefaultEngineKey(engines);
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseForm;

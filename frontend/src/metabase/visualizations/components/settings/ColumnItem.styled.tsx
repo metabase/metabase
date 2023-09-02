@@ -74,6 +74,7 @@ export const ColumnItemIcon = styled(Button)`
 
 export const ColumnItemDragHandle = styled(Icon)`
   color: ${color("text-medium")};
+  flex-shrink: 0;
 `;
 
 export const ColumnItemColorPicker = styled(ChartSettingColorPicker)`

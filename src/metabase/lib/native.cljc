@@ -61,7 +61,7 @@
 (defn- fresh-tag [tag-name]
   {:type :text
    :name tag-name
-   :id   (str (m/random-uuid))})
+   :id   (str (random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag

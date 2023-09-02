@@ -95,10 +95,24 @@ describe("scenarios > admin > people", () => {
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2 members");
 
-      removeUserFromGroup(noCollectionUserName);
+      cy.findByRole("list", { name: "admin-list-items" })
+        .findByRole("link", { name: /people/i })
+        .click();
+
+      showUserOptions(noCollectionUserName);
+
+      popover().findByText("Deactivate user").click();
+
+      clickButton("Deactivate");
+
+      cy.findByRole("link", { name: /group/i }).click();
+
+      cy.findByRole("table").findByRole("link", { name: /data/i }).click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1 member");
 
@@ -131,6 +145,7 @@ describe("scenarios > admin > people", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(FULL_NAME);
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
     it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
@@ -198,6 +213,9 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Deactivate user").click();
         clickButton("Deactivate");
         cy.findByText(FULL_NAME).should("not.exist");
+        cy.location().should(loc =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
 
         cy.log("It should load inactive users");
         cy.findByText("Deactivated").click();
@@ -205,6 +223,9 @@ describe("scenarios > admin > people", () => {
         cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
+        cy.location().should(loc =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
       });
     });
 
@@ -221,6 +242,7 @@ describe("scenarios > admin > people", () => {
       clickButton("Update");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
     it("should reset user password without SMTP set up", () => {
@@ -236,6 +258,23 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
+    });
+
+    it("should not offer to reset passwords when password login is disabled", () => {
+      setTokenFeatures("all");
+      cy.request("PUT", "/api/google/settings", {
+        "google-auth-auto-create-accounts-domain": null,
+        "google-auth-client-id": "example1.apps.googleusercontent.com",
+        "google-auth-enabled": true,
+      });
+
+      cy.request("PUT", "/api/setting", {
+        "enable-password-login": false,
+      });
+      cy.visit("/admin/people");
+      showUserOptions(normalUserName);
+      popover().findByText("Reset password").should("not.exist");
     });
 
     it(
@@ -292,13 +331,7 @@ describe("scenarios > admin > people", () => {
       beforeEach(() => {
         // Setup email server, since we show different modal message when email isn't configured
         setupSMTP();
-
-        // Setup Google authentication
-        cy.request("PUT", "/api/setting", {
-          "google-auth-client-id": "fake-id.apps.googleusercontent.com",
-          "google-auth-auto-create-accounts-domain": "metabase.com",
-          "google-auth-enabled": true,
-        });
+        setupGoogleAuth();
       });
 
       it("invite member when SSO is not configured", () => {
@@ -321,46 +354,6 @@ describe("scenarios > admin > people", () => {
         cy.contains(
           `We’ve sent an invite to ${email} with instructions to set their password.`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Done").click();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(FULL_NAME);
-      });
-
-      it("invite member when SSO is configured metabase#23630", () => {
-        // Setup Google authentication
-        cy.request("PUT", "/api/setting", {
-          "enable-password-login": false,
-        });
-
-        const { first_name, last_name, email } = TEST_USER;
-        const FULL_NAME = `${first_name} ${last_name}`;
-        cy.visit("/admin/people");
-
-        clickButton("Invite someone");
-
-        // first modal
-        cy.findByLabelText("First name").type(first_name);
-        cy.findByLabelText("Last name").type(last_name);
-        cy.findByLabelText("Email").type(email);
-        clickButton("Create");
-
-        // second modal
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${FULL_NAME} has been added`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(
-          `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-        );
-        cy.url().then(url => {
-          const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-          const { userId } = URL_REGEX.exec(url).groups;
-          assertLinkMatchesUrl(
-            "reset their password.",
-            `/admin/people/${userId}/reset`,
-          );
-        });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
@@ -504,6 +497,45 @@ describeEE("scenarios > admin > people", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Dashboard").should("not.exist");
   });
+
+  it("invite member when SSO is configured metabase#23630", () => {
+    setupSMTP();
+    setupGoogleAuth();
+    cy.request("PUT", "/api/setting", { "enable-password-login": false });
+
+    const { first_name, last_name, email } = TEST_USER;
+    const FULL_NAME = `${first_name} ${last_name}`;
+    cy.visit("/admin/people");
+
+    clickButton("Invite someone");
+
+    // first modal
+    cy.findByLabelText("First name").type(first_name);
+    cy.findByLabelText("Last name").type(last_name);
+    cy.findByLabelText("Email").type(email);
+    clickButton("Create");
+
+    // second modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(`${FULL_NAME} has been added`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains(
+      `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
+    );
+    cy.url().then(url => {
+      const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+      const { userId } = URL_REGEX.exec(url).groups;
+      assertLinkMatchesUrl(
+        "reset their password.",
+        `/admin/people/${userId}/reset`,
+      );
+    });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Done").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(FULL_NAME);
+  });
 });
 
 function showUserOptions(full_name) {
@@ -603,3 +635,12 @@ function assertLinkMatchesUrl(text, url) {
 function removeUserFromGroup(fullName) {
   cy.findByText(fullName).closest("tr").find(".Icon-close").click();
 }
+
+const setupGoogleAuth = () => {
+  // Setup Google authentication
+  cy.request("PUT", "/api/setting", {
+    "google-auth-client-id": "fake-id.apps.googleusercontent.com",
+    "google-auth-auto-create-accounts-domain": "metabase.com",
+    "google-auth-enabled": true,
+  });
+};
