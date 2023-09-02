@@ -12,11 +12,7 @@
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
-  (or
-    ;; toucan 2 models
-    (isa? model :metabase/model)
-    ;; toucan 1 models
-    (isa? model :toucan1/model)))
+  (isa? model :metabase/model))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.

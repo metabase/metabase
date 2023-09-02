@@ -524,6 +524,9 @@
     ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
     :connection-impersonation
 
+    ;; Does the driver require specifying the default connection role for connection impersonation to work?
+    :connection-impersonation-requires-role
+
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection})
 
@@ -666,6 +669,9 @@
   query)
 
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
+;;
+;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
+;; effects?
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -892,5 +898,27 @@
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."
   {:added "0.47.0", :arglists '([driver upload-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponing to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

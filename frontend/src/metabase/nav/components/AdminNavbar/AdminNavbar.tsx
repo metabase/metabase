@@ -4,8 +4,8 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import LogoIcon from "metabase/components/LogoIcon";
 import { Icon } from "metabase/core/components/Icon";
-import { User } from "metabase-types/api";
-import { AdminPath } from "metabase-types/store";
+import type { User } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
 import {
   AdminExitLink,

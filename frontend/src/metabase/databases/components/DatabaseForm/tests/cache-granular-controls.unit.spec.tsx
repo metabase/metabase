@@ -4,7 +4,8 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { screen, waitFor } from "__support__/ui";
-import { setup, SetupOpts } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup } from "./setup";
 
 const setupGranularCacheControls = (opts: SetupOpts) => {
   return setup({

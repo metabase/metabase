@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Flex, Text, Title } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";

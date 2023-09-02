@@ -12,7 +12,7 @@ import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { TokenFeatures, User } from "metabase-types/api";
+import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,

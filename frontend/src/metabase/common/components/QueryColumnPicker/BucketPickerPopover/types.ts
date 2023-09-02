@@ -1,4 +1,4 @@
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { BaseBucketPickerPopoverProps } from "./BaseBucketPickerPopover";
 
 type CommonProps = Pick<

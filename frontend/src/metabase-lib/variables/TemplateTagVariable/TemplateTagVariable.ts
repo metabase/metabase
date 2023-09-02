@@ -1,4 +1,4 @@
-import { TemplateTag } from "metabase-types/api";
+import type { TemplateTag } from "metabase-types/api";
 import Variable from "metabase-lib/variables/Variable";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { VARIABLE_ICONS } from "./constants";

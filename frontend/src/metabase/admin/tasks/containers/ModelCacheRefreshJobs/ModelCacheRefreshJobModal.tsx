@@ -10,7 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import PersistedModels from "metabase/entities/persisted-models";
 
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 

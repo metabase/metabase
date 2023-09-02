@@ -1,5 +1,5 @@
 import * as Urls from "metabase/lib/urls";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import { ModelLinkRoot } from "./ModelLink.styled";
 
 interface ModelLinkProps {

@@ -1,6 +1,6 @@
 import { Component } from "react";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import TimePicker from "../pickers/TimePicker";
 import BooleanPicker from "../pickers/BooleanPicker";
 import { DefaultPicker } from "../pickers/DefaultPicker";

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
-import {
+import type {
   FilterTypeKeys,
   SearchFilterComponent,
   SearchFilterPropTypes,

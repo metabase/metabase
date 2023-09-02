@@ -12,7 +12,7 @@ import {
 
 import { Icon } from "metabase/core/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { TabListProps } from "../TabList/TabList";
+import type { TabListProps } from "../TabList/TabList";
 import { ScrollButton, TabList } from "./TabRow.styled";
 
 interface TabRowProps<T> extends TabListProps<T> {

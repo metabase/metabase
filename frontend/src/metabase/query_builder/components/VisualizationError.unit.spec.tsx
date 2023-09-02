@@ -1,5 +1,5 @@
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Database } from "metabase-types/api";
+import type { Card, Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";

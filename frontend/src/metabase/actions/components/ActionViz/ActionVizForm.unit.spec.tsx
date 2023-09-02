@@ -11,7 +11,8 @@ import {
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import ActionVizForm, { ActionFormProps } from "./ActionVizForm";
+import type { ActionFormProps } from "./ActionVizForm";
+import ActionVizForm from "./ActionVizForm";
 
 const idParameter = createMockActionParameter({ id: "id" });
 

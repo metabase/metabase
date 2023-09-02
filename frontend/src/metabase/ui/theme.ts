@@ -1,4 +1,4 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import {
@@ -6,21 +6,44 @@ import {
   getAnchorOverrides,
   getButtonOverrides,
   getCheckboxOverrides,
+  getInputOverrides,
   getMenuOverrides,
+  getNumberInputOverrides,
   getRadioOverrides,
+  getPaperOverrides,
+  getTextInputOverrides,
   getTextOverrides,
   getTitleOverrides,
 } from "./components";
 
+type ThemeColors = MantineTheme["colors"]["brand"];
+
+const getThemeColors = (colors: string[]): ThemeColors => {
+  return Array.from(
+    { length: 10 },
+    (_, index) => colors[index] ?? "transparent",
+  ) as ThemeColors;
+};
+
 export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
-    brand: [color("brand-lighter"), color("focus"), color("brand")],
-    text: [color("text-light"), color("text-medium"), color("text-dark")],
-    border: [color("border")],
-    bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
+    brand: getThemeColors([color("brand-lighter"), color("brand")]),
+    text: getThemeColors([
+      color("text-light"),
+      color("text-medium"),
+      color("text-dark"),
+    ]),
+    focus: getThemeColors([color("focus")]),
+    border: getThemeColors([color("border")]),
+    bg: getThemeColors([
+      color("bg-light"),
+      color("bg-medium"),
+      color("bg-dark"),
+    ]),
+    error: getThemeColors([color("error")]),
   },
   primaryColor: "brand",
-  primaryShade: 2,
+  primaryShade: 1,
   shadows: {
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
@@ -44,6 +67,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     lg: rem(17),
     xl: rem(21),
   },
+  lineHeight: "1rem",
   headings: {
     sizes: {
       h1: {
@@ -68,7 +92,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
-      outline: `0.125rem solid ${theme.colors.brand[1]}`,
+      outline: `0.125rem solid ${theme.colors.focus[0]}`,
       outlineOffset: "0.125rem",
     }),
   },
@@ -77,8 +101,12 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getAnchorOverrides(),
     ...getButtonOverrides(),
     ...getCheckboxOverrides(),
+    ...getInputOverrides(),
     ...getMenuOverrides(),
+    ...getNumberInputOverrides(),
     ...getRadioOverrides(),
+    ...getTextInputOverrides(),
+    ...getPaperOverrides(),
     ...getTextOverrides(),
     ...getTitleOverrides(),
   },

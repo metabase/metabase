@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
-import { SkeletonCaptionSize } from "./types";
+import type { SkeletonCaptionSize } from "./types";
 
 export const SkeletonCaptionRoot = styled.div`
   display: flex;

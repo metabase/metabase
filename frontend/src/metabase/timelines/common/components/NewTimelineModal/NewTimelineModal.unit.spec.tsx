@@ -4,7 +4,8 @@ import {
   createMockCollection,
   createMockTimelineData,
 } from "metabase-types/api/mocks";
-import NewTimelineModal, { NewTimelineModalProps } from "./NewTimelineModal";
+import type { NewTimelineModalProps } from "./NewTimelineModal";
+import NewTimelineModal from "./NewTimelineModal";
 
 describe("NewTimelineModal", () => {
   it("should submit modal", async () => {

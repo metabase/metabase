@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import { space } from "metabase/styled-components/theme";

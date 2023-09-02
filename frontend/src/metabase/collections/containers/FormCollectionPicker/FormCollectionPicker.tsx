@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  HTMLAttributes,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 import { useField } from "formik";
 

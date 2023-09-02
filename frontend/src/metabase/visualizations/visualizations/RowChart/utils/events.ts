@@ -1,32 +1,32 @@
 import _ from "underscore";
 import { getIn } from "icepick";
-import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import {
+import type {
   ChartColumns,
   ColumnDescriptor,
-  getColumnDescriptors,
 } from "metabase/visualizations/lib/graph/columns";
-import {
+import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
+import type {
   BarData,
   Series,
 } from "metabase/visualizations/shared/components/RowChart/types";
-import {
+import type {
   GroupedDatum,
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import {
+import type {
   DataPoint,
   StackedTooltipModel,
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { isMetric } from "metabase-lib/types/utils/isa";
-import {
+import type {
   ClickObject,
   ClickObjectDimension,
 } from "metabase-lib/queries/drills/types";

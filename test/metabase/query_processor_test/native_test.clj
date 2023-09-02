@@ -3,11 +3,12 @@
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest native-test
+(deftest ^:parallel native-test
   (is (= {:rows
           [["Plato Yeshua"]
            ["Felipinho Asklepios"]
@@ -31,7 +32,7 @@
             :name         "NAME"
             :base_type    :type/Text
             :effective_type :type/Text}]}
-         (qp.test/rows-and-cols
+         (qp.test-util/rows-and-cols
           (qp/process-query
            (mt/native-query
             {:query "select name from users;"}))))))
@@ -40,10 +41,10 @@
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/with-driver :h2
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [card1 {:dataset_query (mt/mbql-query products)}]
-                        Card [card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
-                                                     :database (u/the-id (mt/db))
-                                                     :type :query}}]]
+        (t2.with-temp/with-temp [Card card1 {:dataset_query (mt/mbql-query products)}
+                                 Card card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
+                                                             :database (u/the-id (mt/db))
+                                                             :type :query}}]
           (let [card-tag (str "#" (u/the-id card2))
                 query    {:query         (format "SELECT CATEGORY, VENDOR FROM {{%s}} ORDER BY ID LIMIT 1" card-tag)
                           :template-tags {card-tag

@@ -4,7 +4,7 @@ import {
   isSearchPageLocation,
 } from "metabase/search/utils";
 
-import { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation } from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
 describe("isSearchPageLocation", () => {

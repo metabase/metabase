@@ -5,12 +5,16 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time :as t]
+   [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
+   [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -542,3 +546,100 @@
       (mt/with-empty-db
         (is (= #{}
                (driver/syncable-schemas driver/*driver* (mt/db))))))))
+
+;;; ------------------------------------------------ Actions related ------------------------------------------------
+
+;; API tests are in [[metabase.api.action-test]]
+(deftest actions-maybe-parse-sql-error-test
+  (testing "violate not null constraint"
+    (is (= {:type :metabase.actions.error/violate-not-null-constraint
+            :message "F1 must have values."
+            :errors {"f1" "You must provide a value."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :mysql actions.error/violate-not-null-constraint nil nil
+            "Column 'f1' cannot be null"))))
+
+  (testing "violate unique constraint"
+    (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
+      (is (= {:type :metabase.actions.error/violate-unique-constraint,
+              :message "Primary already exists.",
+              :errors {"PRIMARY" "This Primary value already exists."}}
+             (sql-jdbc.actions/maybe-parse-sql-error
+              :mysql actions.error/violate-unique-constraint nil nil
+              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")))))
+
+  (testing "incorrect type"
+    (is (= {:type :metabase.actions.error/incorrect-value-type,
+            :message "Some of your values aren’t of the correct type for the database."
+            :errors {"id" "This value should be of type Integer."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :mysql actions.error/incorrect-value-type nil nil
+            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1"))))
+
+  (testing "violate fk constraints"
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
+            :message "Unable to create a new record."
+            :errors {"group-id" "This Group-id does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :mysql actions.error/violate-foreign-key-constraint nil :row/create
+            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
+            :message "Unable to update the record.",
+            :errors {"group" "This Group does not exist."}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :mysql actions.error/violate-foreign-key-constraint nil :row/update
+            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+
+    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
+            :message "Other tables rely on this row so it cannot be deleted."
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :mysql actions.error/violate-foreign-key-constraint nil :row/delete
+            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
+
+;; this contains specical test cases for mysql
+;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest action-error-handling-test
+  (mt/test-driver :mysql
+    (testing "violate not-null constraints with multiple columns"
+      (drop-if-exists-and-create-db! "not_null_constraint_on_multiple_cols")
+      (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "not_null_constraint_on_multiple_cols"})]
+        (doseq [stmt ["CREATE TABLE IF NOT EXISTS mytable (
+                      id INT PRIMARY KEY,
+                      column1 VARCHAR(50),
+                      column2 VARCHAR(50),
+                      UNIQUE KEY unique_constraint (column1, column2)
+                      );"
+                      "INSERT INTO mytable (id, column1, column2)
+                      VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
+          (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details) [stmt]))
+        (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (mt/with-actions-enabled
+              (testing "when creating"
+                (is (= {:type        :metabase.actions.error/violate-unique-constraint
+                        :message     "Column1 and Column2 already exist."
+                        :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
+                        :status-code 400}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :row/create (mt/$ids {:create-row {:id      3
+                                                           :column1 "A"
+                                                           :column2 "A"}
+                                              :database   (:id database)
+                                              :query      {:source-table $$mytable}
+                                              :type       :query})))))
+              (testing "when updating"
+                (is (= {:errors      {"column1" "This Column1 value already exists."
+                                      "column2" "This Column2 value already exists."}
+                        :message     "Column1 and Column2 already exist."
+                        :status-code 400
+                        :type        actions.error/violate-unique-constraint}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :row/update (mt/$ids {:update-row {:column1 "A"
+                                                           :column2 "A"}
+                                              :database   (:id database)
+                                              :query      {:source-table $$mytable
+                                                           :filter       [:= $mytable.id 2]}
+                                              :type       :query}))))))))))))

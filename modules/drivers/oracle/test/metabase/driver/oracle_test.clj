@@ -17,8 +17,8 @@
    [metabase.models.table :refer [Table]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -240,10 +240,7 @@
                                           :display_name  "Field"
                                           :database_type "char"
                                           :base_type     :type/Text}]
-      (qp.store/with-store
-        (qp.store/store-database! db)
-        (qp.store/store-table! table)
-        (qp.store/store-field! field)
+      (qp.store/with-metadata-provider (u/the-id db)
         (let [hsql (sql.qp/mbql->honeysql :oracle
                                           {:query {:source-table (:id table)
                                                    :expressions  {"s" [:substring [:field (:id field) nil] 2]}
@@ -291,7 +288,7 @@
                                    Field _        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]
             (is (= [[1M "Hello"]
                     [2M nil]]
-                   (qp.test/rows
+                   (mt/rows
                     (qp/process-query
                      {:database (mt/id)
                       :type     :query

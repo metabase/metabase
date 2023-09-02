@@ -1,7 +1,8 @@
 import { useCallback, useState, useMemo } from "react";
 import { t } from "ttag";
 
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select from "metabase/core/components/Select";
 import EmptyState from "metabase/components/EmptyState";
 
 import { setParameterMapping } from "metabase/dashboard/actions";

@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -11,7 +11,7 @@ import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import {
+import type {
   Card,
   DatabaseId,
   NativeDatasetQuery,
@@ -35,7 +35,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockEntitiesState } from "__support__/store";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 

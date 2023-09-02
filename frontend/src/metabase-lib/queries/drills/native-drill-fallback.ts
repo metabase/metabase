@@ -1,4 +1,4 @@
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 interface FallbackNativeDrillProps {
   question: Question;

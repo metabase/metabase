@@ -808,7 +808,7 @@
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
-(defn upsert-sensitive-fields
+(defn- upsert-sensitive-fields
   "Replace any sensitive values not overriden in the PUT with the original values"
   [database details]
   (when details

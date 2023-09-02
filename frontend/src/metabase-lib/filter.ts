@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import type { FieldFilter, FieldReference } from "metabase-types/api";
 import type {
   ColumnMetadata,
   ColumnWithOperators,
@@ -7,6 +8,7 @@ import type {
   ExternalOp,
   FilterOperator,
   FilterClause,
+  FilterParts,
   Query,
 } from "./types";
 
@@ -49,4 +51,39 @@ export function filterOperator(
   filterClause: FilterClause,
 ) {
   return ML.filter_operator(query, stageIndex, filterClause);
+}
+
+export function filterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): FilterParts {
+  return ML.filter_parts(query, stageIndex, filterClause);
+}
+
+export function findFilterForLegacyFilter(
+  query: Query,
+  stageIndex: number,
+  legacyFilterClause: FieldFilter,
+): FilterClause {
+  return ML.find_filter_for_legacy_filter(
+    query,
+    stageIndex,
+    legacyFilterClause,
+  );
+}
+
+/**
+ * Given a legacy ["field" ...] reference, return the filterable `ColumnWithOperators` that best fits it.
+ */
+export function findFilterableColumnForLegacyRef(
+  query: Query,
+  stageIndex: number,
+  legacyFieldRef: FieldReference,
+): ColumnWithOperators | null {
+  return ML.find_filterable_column_for_legacy_ref(
+    query,
+    stageIndex,
+    legacyFieldRef,
+  );
 }

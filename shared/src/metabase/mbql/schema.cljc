@@ -419,12 +419,12 @@
   aggregation-clause-index :int
   options                  (optional :map))
 
-(mr/def ::FieldOrAggregationReference
+(mr/def ::Reference
   (one-of aggregation expression field))
 
-(def FieldOrAggregationReference
+(def Reference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
-  [:ref ::FieldOrAggregationReference])
+  [:ref ::Reference])
 
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
@@ -1046,8 +1046,8 @@
 ;;
 ;; Field ID is implicit in these clauses
 
-(defclause asc,  field FieldOrAggregationReference)
-(defclause desc, field FieldOrAggregationReference)
+(defclause asc,  field Reference)
+(defclause desc, field Reference)
 
 (def OrderBy
   "Schema for an `order-by` clause subclause."
