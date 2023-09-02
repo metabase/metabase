@@ -444,6 +444,9 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is Corbin Mertz");
+
+        // TODO: send test email and verify content has default params
+        // TODO: change dashboard defaults and re-verify all steps above
       });
     });
   });
@@ -495,8 +498,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+        cy.get("[aria-label='Pulse Card']").within(() => {
+          cy.findByText("Text is Corbin Mertz").click();
+        });
+        sendEmailAndAssert(email => {
+          // expect(email.html).to.include(TEXT_CARD);
+          // TODO: instead of this, try to create a different helper to visit email page so we can verify contents in a way we can visually debug
+        });
+
+        // TODO: change dashboard default and verify “Text is <new default>”
       });
 
       it("should allow for setting parameters in subscription", () => {
