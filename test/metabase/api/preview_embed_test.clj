@@ -37,7 +37,7 @@
                      (mt/user-http-request :crowberto :get 400 (card-url card)))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (card-url card))))))
 
         (testing "Check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
@@ -87,7 +87,7 @@
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (card-query-url card))))))))))
 
 (deftest query-locked-params-test
@@ -238,7 +238,7 @@
                    (mt/user-http-request :crowberto :get 400 (dashboard-url dash))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (dashboard-url dash))))))))))
 
 (deftest only-enabled-params-not-in-jwt-test
@@ -283,7 +283,7 @@
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (dashcard-url dashcard))))))))))
 
 (deftest dashcard-locked-params-test
@@ -457,7 +457,7 @@
                        (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
 
         (testing "should fail if embedding is enabled and the wrong key is used"
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (embed-test/with-embedding-enabled-and-new-secret-key
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
@@ -496,7 +496,7 @@
                          (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
 
             (testing "should fail if embedding is enabled and the wrong key is used"
-              (is (= "Message seems corrupt or manipulated."
+              (is (= "Message seems corrupt or manipulated"
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-dashcard-url dashcard))))))))))))
 
 (deftest handle-single-params-for-operator-filters-test
