@@ -12,7 +12,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -20,16 +19,10 @@
 (defn- check-perms [query]
   (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
 
-(defn- do-with-rasta
-  "Call `f` with Rasta as the current user."
-  [f]
-  (mt/with-test-user :rasta
-    (f)))
-
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."
   [query]
-  (do-with-rasta (fn [] (check-perms query))))
+  (mt/with-test-user :rasta (check-perms query)))
 
 (def ^:private perms-error-msg #"You do not have permissions to run this query\.")
 
@@ -252,20 +245,18 @@
                 "are used to permissions check queries")
     (binding [api/*current-user-id*              (mt/user->id :rasta)
               api/*current-user-permissions-set* (delay #{})]
-      (is (schema= {:status   (s/eq :failed)
-                    :class    (s/eq clojure.lang.ExceptionInfo)
-                    :error    (s/eq "You do not have permissions to run this query.")
-                    :ex-data  {:required-permissions (s/eq #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))})
-                               :actual-permissions   (s/eq #{})
-                               :permissions-error?   (s/eq true)
-                               :type                 (s/eq qp.error-type/missing-required-permissions)
-                               s/Keyword             s/Any}
-                    s/Keyword s/Any}
-                   (qp/process-userland-query
-                    {:database (mt/id)
-                     :type     :query
-                     :query    {:source-table (mt/id :venues)
-                                :limit        1}}))))))
+      (is (=? {:status   :failed
+               :class    (partial = clojure.lang.ExceptionInfo)
+               :error    "You do not have permissions to run this query."
+               :ex-data  {:required-permissions #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
+                          :actual-permissions   #{}
+                          :permissions-error?   true
+                          :type                 qp.error-type/missing-required-permissions}}
+              (qp/process-userland-query
+               {:database (mt/id)
+                :type     :query
+                :query    {:source-table (mt/id :venues)
+                           :limit        1}}))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"

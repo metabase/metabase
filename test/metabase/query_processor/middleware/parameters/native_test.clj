@@ -28,7 +28,7 @@
                                          :type         :card
                                          :card-id      (u/the-id card)}}}]
           (mt/with-driver :h2
-            (mt/with-everything-store
+            (mt/with-metadata-provider (mt/id)
               (is (schema= {:native   su/NonBlankString
                             :params   (s/eq ["G%"])
                             s/Keyword s/Any}

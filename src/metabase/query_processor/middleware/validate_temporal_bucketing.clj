@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing
   (:require
    [clojure.set :as set]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -33,7 +34,7 @@
   [query]
   (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match query [:field _ (_ :guard :temporal-unit)])]
     (let [base-type (if (integer? id-or-name)
-                      (:base_type (qp.store/field id-or-name))
+                      (:base-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
                       base-type)
           valid-units (valid-units-for-base-type base-type)]
       (when-not (valid-units temporal-unit)

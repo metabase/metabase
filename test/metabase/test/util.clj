@@ -379,29 +379,30 @@
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
-                       (#'setting/resolve-setting setting-k)
-                       (catch Exception e
-                         (when-not raw-setting?
-                           (throw e))))]
+                        (#'setting/resolve-setting setting-k)
+                        (catch Exception e
+                          (when-not raw-setting?
+                            (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-          (if raw-setting?
-            (upsert-raw-setting! original-value setting-k value)
-            ;; bypass the feature check when setting up mock data
-            (with-redefs [setting/has-feature? (constantly true)]
-              (setting/set! setting-k value)))
+          (try
+            (if raw-setting?
+              (upsert-raw-setting! original-value setting-k value)
+              ;; bypass the feature check when setting up mock data
+              (with-redefs [setting/has-feature? (constantly true)]
+                (setting/set! setting-k value)))
+            (catch Throwable e
+              (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                              {:setting  setting-k
+                               :location (symbol (name (:namespace setting)) (name setting-k))
+                               :value    value}
+                              e))))
           (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
             (thunk))
-          (catch Throwable e
-            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                            {:setting  setting-k
-                             :location (symbol (name (:namespace setting)) (name setting-k))
-                             :value    value}
-                            e)))
           (finally
             (try
               (if raw-setting?
