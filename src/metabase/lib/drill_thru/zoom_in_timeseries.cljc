@@ -21,6 +21,10 @@
 (def ^:private valid-current-units
   [:year :quarter :month :week :day :hour :minute])
 
+(def ^:private unit->next-unit
+  (zipmap (drop-last valid-current-units)
+          (drop 1 valid-current-units)))
+
 (defn- is-ref-for-source-column? [a-ref column]
   (and (lib.util/clause-of-type? a-ref :field)
        (let [[_field _opts id-or-name] a-ref]
@@ -46,10 +50,7 @@
   [column :- lib.metadata/ColumnMetadata]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket column)]
     (when (contains? (set valid-current-units) current-unit)
-      (loop [[unit & [next-unit :as more]] valid-current-units]
-        (cond
-          (= unit current-unit) next-unit
-          (seq more)            (recur more))))))
+      (unit->next-unit current-unit))))
 
 (mu/defn ^:private describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
@@ -89,6 +90,6 @@
    {:keys [column value next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
   (let [breakout     (matching-breakout-ref query stage-number column)
         new-breakout (lib.temporal-bucket/with-temporal-bucket breakout next-unit)]
-    (as-> query query
-      (lib.filter/filter query stage-number (lib.filter/= column value))
-      (lib.remove-replace/replace-clause query stage-number breakout new-breakout))))
+    (-> query
+      (lib.filter/filter stage-number (lib.filter/= column value))
+      (lib.remove-replace/replace-clause stage-number breakout new-breakout))))
