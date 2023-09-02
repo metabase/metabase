@@ -909,8 +909,9 @@
                                                                                            :schedule_day  nil
                                                                                            :recipients    [(mt/fetch-user :rasta)]}]
                                                                           :skip_if_empty false})))
-              (is (= (mt/email-to :rasta true {:subject "Pulse: Daily Sad Toucans"
-                                               :body    {"Daily Sad Toucans" true}})
+              (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                                          :body    {"Daily Sad Toucans" true}
+                                          :bcc?    true})
                      (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 (deftest send-test-pulse-validate-emails-test
@@ -978,8 +979,9 @@
                                                                                      :schedule_day  nil
                                                                                      :recipients    [(mt/fetch-user :rasta)]}]
                                                                     :skip_if_empty false})))
-        (is (= (mt/email-to :rasta true {:subject "Daily Sad Toucans"
-                                         :body    {"Daily Sad Toucans" true}})
+        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
+                                    :body    {"Daily Sad Toucans" true}
+                                    :bcc?    true})
                (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
@@ -1019,8 +1021,9 @@
               ;; Don't update the pulse, but test the pulse with the updated recipients
               (is (= {:ok true}
                      (mt/user-http-request :rasta :post 200 "pulse/test" (assoc result :channels [email-channel]))))
-              (is (= (mt/email-to :rasta true {:subject "Pulse: A Pulse"
-                                               :body    {"A Pulse" true}})
+              (is (= (mt/email-to :rasta {:subject "Pulse: A Pulse"
+                                          :body    {"A Pulse" true}
+                                          :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
 (deftest pulse-card-query-results-test

@@ -30,10 +30,7 @@
   "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
-  (doseq [recipient (:to email)]
-    (swap! inbox assoc recipient (-> (get @inbox recipient [])
-                                     (conj email))))
-  (doseq [recipient (:bcc email)]
+  (doseq [recipient (concat (:to email) (:bcc email))]
     (swap! inbox assoc recipient (-> (get @inbox recipient [])
                                      (conj email)))))
 
@@ -198,10 +195,7 @@
 
 (defn email-to
   "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  ([user-kwd email-map]
-   (email-to user-kwd nil email-map))
-
-  ([user-kwd bcc? & [email-map]]
+  ([user-kwd & [email-map {:keys [bcc?]}]]
    (let [{:keys [email]} (test.users/fetch-user user-kwd)
          to-type         (if bcc? :bcc :to)]
      {email [(merge {:from   (if-let [from-name (email/email-from-name)]

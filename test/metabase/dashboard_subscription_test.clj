@@ -140,9 +140,10 @@
       (do-test (merge-with merge common m)))))
 
 (defn- rasta-pulse-email [& [email]]
-  (mt/email-to :rasta true (merge {:subject "Aviary KPIs"
-                                   :body  [{"Aviary KPIs" true}
-                                           pulse.test-util/png-attachment]}
+  (mt/email-to :rasta (merge {:subject "Aviary KPIs"
+                              :body    [{"Aviary KPIs" true}
+                                        pulse.test-util/png-attachment]
+                              :bcc?    true}
                                   email)))
 
 (defn do-with-dashboard-fixture-for-dashboard
