@@ -16,8 +16,8 @@
 (deftest add-constraints-test
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:add-default-userland-constraints? true},
-            :constraints {:max-results           @#'qp.constraints/max-results
-                          :max-results-bare-rows @#'qp.constraints/max-results-bare-rows}}
+            :constraints {:max-results           (qp.constraints/max-results)
+                          :max-results-bare-rows (qp.constraints/max-results-bare-rows)}}
            (add-default-userland-constraints
             {:middleware {:add-default-userland-constraints? true}})))))
 
@@ -30,7 +30,7 @@
 (deftest dont-overwrite-existing-constraints-test
   (testing "if it already has constraints, don't overwrite those!"
     (is (= {:middleware  {:add-default-userland-constraints? true}
-            :constraints {:max-results           @#'qp.constraints/max-results
+            :constraints {:max-results           (qp.constraints/max-results)
                           :max-results-bare-rows 1}}
            (add-default-userland-constraints
             {:constraints {:max-results-bare-rows 1}
@@ -53,19 +53,11 @@
             {:constraints {:max-results 5, :max-results-bare-rows 10}
              :middleware  {:add-default-userland-constraints? true}})))))
 
-(deftest load-constraints-settings-from-config-test
-  (testing "loading user set constraint settings from config"
-    (mt/with-temporary-setting-values [max-results 10 max-results-bare-rows 5]
-      (is (= {:constraints {:max-results (setting/get :max-results)
-                            :max-results-bare-rows (setting/get :max-results-bare-rows)}}
+(deftest override-default-constraints-test
+  (testing "if max-results and max-results-bare-rows are set, they should override defaults"
+    (mt/with-temporary-setting-values [max-results 100000 max-results-bare-rows 25000]
+      (is (= {:middleware  {:add-default-userland-constraints? true},
+              :constraints {:max-results           100000
+                            :max-results-bare-rows 25000}}
              (add-default-userland-constraints
-              {:constraints {:max-results 10
-                             :max-results-bare-rows 5}}))))))
-
-(deftest default-constraints-settings-test
-  (testing "if no user set constraint settings are found, use the default values"
-     (is (= {:constraints {:max-results (setting/get :max-results)
-                         :max-results-bare-rows (setting/get :max-results-bare-rows)}}
-          (add-default-userland-constraints
-           {:constraints {:max-results 10000
-                          :max-results-bare-rows 2000}})))))
+              {:middleware {:add-default-userland-constraints? true}}))))))
