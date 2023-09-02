@@ -494,7 +494,7 @@
     com.github.seancorfield/depstar   {:mvn/version "2.1.303"}
     expound/expound                   {:mvn/version "0.9.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.1.4"}
-    io.github.clojure/tools.build     {:git/tag "v0.9.5" :git/sha "24f2894"}
+    io.github.clojure/tools.build     {:mvn/version "0.9.5"}
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha8"}
     org.clojure/tools.deps.alpha      {:mvn/version "0.15.1254"}
     org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
