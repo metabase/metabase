@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.protocols
-  #?(:clj (:require
-           [potemkin :as p])))
+  (:require
+   [metabase.util :as u]
+   #?@(:clj [[potemkin :as p]])))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) MetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
@@ -107,4 +108,4 @@
   "Convenience. Store several metadata maps at once."
   [cached-metadata-provider metadata-type metadatas]
   (doseq [metadata metadatas]
-    (store-metadata! cached-metadata-provider metadata-type (:id metadata) metadata)))
+    (store-metadata! cached-metadata-provider metadata-type (u/the-id metadata) metadata)))

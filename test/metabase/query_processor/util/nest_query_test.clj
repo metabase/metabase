@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -528,12 +527,11 @@
 (deftest ^:parallel nest-expressions-eliminate-duplicate-coercion-test
   (testing "If coercion happens in the source query, don't do it a second time in the parent query (#12430)"
     (driver/with-driver :h2
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:fields [(assoc (meta/field-metadata :venues :price)
-                                                          :coercion-strategy :Coercion/UNIXSeconds->DateTime
-                                                          :effective-type    :type/DateTime)]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                        meta/metadata-provider
+                                        {:fields [{:id                (meta/id :venues :price)
+                                                   :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                                                   :effective-type    :type/DateTime}]})
         (is (partial= (lib.tu.macros/$ids venues
                         {:source-query {:source-table $$venues
                                         :expressions  {"test" [:* 1 1]}
@@ -543,7 +541,7 @@
                                                                        ::add/desired-alias "PRICE"
                                                                        ::add/position      0}]
                                                        [:expression "test" {::add/desired-alias "test"
-                                                                            ::add/position     1}]]}
+                                                                            ::add/position      1}]]}
                          :fields       [[:field %price {:temporal-unit            :default
                                                         ::nest-query/outer-select true
                                                         ::add/source-table        ::add/source

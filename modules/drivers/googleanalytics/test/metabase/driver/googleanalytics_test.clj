@@ -8,7 +8,6 @@
    [metabase.driver.googleanalytics]
    [metabase.driver.googleanalytics.execute :as ga.execute]
    [metabase.driver.googleanalytics.query-processor :as ga.qp]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
@@ -40,12 +39,11 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                    (lib.tu/mock-metadata-provider
-                                     {:tables [{:name   "0123456"
-                                                :schema nil
-                                                :id     1}]})
-                                    meta/metadata-provider)
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:tables [{:name   "0123456"
+                                               :schema nil
+                                               :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest ^:parallel basic-compilation-test
@@ -238,10 +236,9 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
+                (fn [{:keys [db event-action-field event-label-field date-field], :as objects}]
                   (qp.store/with-metadata-provider (u/the-id db)
-                    (qp.store/fetch-and-store-tables! [(u/the-id table)])
-                    (qp.store/fetch-and-store-fields! (map u/the-id [event-action-field event-label-field date-field]))
+                    (qp.store/bulk-metadata :metadata/column (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end

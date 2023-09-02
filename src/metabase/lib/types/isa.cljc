@@ -60,9 +60,7 @@
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
 
-;; TODO -- this should probably be renamed `temporal?`, because this is also going to be true of times and datetimes,
-;; not just dates.
-(defn ^:export date?
+(defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
   (field-type? ::lib.types.constants/temporal column))

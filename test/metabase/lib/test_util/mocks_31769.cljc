@@ -54,17 +54,16 @@
 
   ([base-metadata-provider :- lib.metadata/MetadataProvider
     id-fn                  :- fn?]
-   (lib/composed-metadata-provider
-    (lib.tu/mock-metadata-provider
-     {:cards [{:id            1
-               :name          "Card 1"
-               :database-id   (id-fn)
-               :dataset-query (card-1-query base-metadata-provider id-fn)}
-              {:id            2
-               :name          "Card 2"
-               :database-id   (id-fn)
-               :dataset-query (card-2-query base-metadata-provider id-fn)}]})
-    base-metadata-provider)))
+   (lib.tu/mock-metadata-provider
+    base-metadata-provider
+    {:cards [{:id            1
+              :name          "Card 1"
+              :database-id   (id-fn)
+              :dataset-query (card-1-query base-metadata-provider id-fn)}
+             {:id            2
+              :name          "Card 2"
+              :database-id   (id-fn)
+              :dataset-query (card-2-query base-metadata-provider id-fn)}]})))
 
 (mu/defn query :- ::lib.schema/query
   "For reproducing #31769: create a query using a `:source-card` with [[card-1-query]] as its source, joining a Card
