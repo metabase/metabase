@@ -61,12 +61,3 @@
                             :max-results-bare-rows 25000}}
              (add-default-userland-constraints
               {:middleware {:add-default-userland-constraints? true}}))))))
-
-(deftest override-default-constraints-test
-  (testing "if max-results and max-results-bare-rows are set, they should override defaults"
-    (mt/with-temporary-setting-values [max-results 100000 max-results-bare-rows 25000]
-      (is (= {:middleware  {:add-default-userland-constraints? true},
-              :constraints {:max-results           100000
-                            :max-results-bare-rows 25000}}
-             (add-default-userland-constraints
-              {:middleware {:add-default-userland-constraints? true}}))))))
