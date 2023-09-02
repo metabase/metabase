@@ -12,8 +12,9 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest card-create-test
-  (t2.with-temp/with-temp [User user {}
-                           Card card {:creator_id (:id user)}]
+  (mt/with-temp [User user {}
+                 Card card {:creator_id (:id user)}]
+
     (events/publish-event! :event/card-create card)
     (is (= {:user_id  (:id user)
             :model    "card"
@@ -21,8 +22,9 @@
            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))))
 
 (deftest card-read-test
-  (t2.with-temp/with-temp [User user {}
-                           Card card {:creator_id (:id user)}]
+  (mt/with-temp [User user {}
+                 Card card {:creator_id (:id user)}]
+
     (events/publish-event! :event/card-read card)
     (is (= {:user_id  (:id user)
             :model    "card"
@@ -30,8 +32,9 @@
            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))))
 
 (deftest card-query-test
-  (t2.with-temp/with-temp [User user {}
-                           Card card {:creator_id (:id user)}]
+  (mt/with-temp [User user {}
+                 Card card {:creator_id (:id user)}]
+
     (events/publish-event! :event/card-query (assoc card :cached false :ignore_cache true))
     (is (= {:user_id  (:id user)
             :model    "card"
@@ -40,8 +43,9 @@
            (t2/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user))))))
 
 (deftest table-read-test
-  (t2.with-temp/with-temp [User  user  {}
-                           Table table {}]
+  (mt/with-temp [User  user  {}
+                 Table table {}]
+
     (events/publish-event! :event/table-read (assoc table :actor_id (:id user)))
     (is (= {:user_id  (:id user)
             :model    "table"
@@ -49,8 +53,8 @@
            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))))
 
 (deftest dashboard-read-test
-  (t2.with-temp/with-temp [User      user      {}
-                           Dashboard dashboard {:creator_id (:id user)}]
+  (mt/with-temp [User      user {}
+                 Dashboard dashboard {:creator_id (:id user)}]
     (events/publish-event! :event/dashboard-read dashboard)
     (is (= {:user_id  (:id user)
             :model    "dashboard"
@@ -58,26 +62,26 @@
            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))))
 
 (deftest user-recent-views-test
-  (t2.with-temp/with-temp [Card      card1 {:name                   "rand-name"
-                                            :creator_id             (mt/user->id :crowberto)
-                                            :display                "table"
-                                            :visualization_settings {}}
-                           Card      archived {:name                   "archived-card"
-                                               :creator_id             (mt/user->id :crowberto)
-                                               :display                "table"
-                                               :archived               true
-                                               :visualization_settings {}}
-                           Dashboard dash {:name        "rand-name2"
-                                           :description "rand-name2"
-                                           :creator_id  (mt/user->id :crowberto)}
-                           Table     table1 {:name "rand-name"}
-                           Table     hidden-table {:name            "hidden table"
-                                                   :visibility_type "hidden"}
-                           Card      dataset {:name                   "rand-name"
-                                              :dataset                true
-                                              :creator_id             (mt/user->id :crowberto)
-                                              :display                "table"
-                                              :visualization_settings {}}]
+  (mt/with-temp [Card      card1 {:name                   "rand-name"
+                                  :creator_id             (mt/user->id :crowberto)
+                                  :display                "table"
+                                  :visualization_settings {}}
+                 Card      archived  {:name                   "archived-card"
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :archived               true
+                                      :visualization_settings {}}
+                 Dashboard dash {:name        "rand-name2"
+                                 :description "rand-name2"
+                                 :creator_id  (mt/user->id :crowberto)}
+                 Table     table1 {:name "rand-name"}
+                 Table     hidden-table {:name            "hidden table"
+                                         :visibility_type "hidden"}
+                 Card      dataset {:name                   "rand-name"
+                                    :dataset                true
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
     (mt/with-model-cleanup [ViewLog]
       (testing "User's recent views are updated when card/dashboard/table-read events occur."
         (mt/with-test-user :crowberto
@@ -106,7 +110,7 @@
                   {:model "card" :model_id (u/the-id dataset)}]
                  (view-log/user-recent-views))))))))
 
-(deftest ^:parallel user-dismissed-toasts-setting-test
+(deftest user-dismissed-toasts-setting-test
   (testing "user-dismissed-toasts! updates user-dismissed-toasts"
     (binding [setting/*user-local-values* (delay (atom {}))]
       (view-log/dismissed-custom-dashboard-toast! false)

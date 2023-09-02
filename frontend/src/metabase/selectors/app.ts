@@ -1,4 +1,4 @@
-import { Location } from "history";
+import type { Location } from "history";
 import { createSelector } from "@reduxjs/toolkit";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -11,7 +11,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 export interface RouterProps {
   location: Location;

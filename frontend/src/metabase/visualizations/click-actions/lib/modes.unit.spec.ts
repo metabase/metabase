@@ -12,10 +12,10 @@ import {
   getQueryMode,
 } from "metabase/visualizations/click-actions/lib/modes";
 import { checkNotNull } from "metabase/core/utils/types";
-import { Filter } from "metabase-types/api";
+import type { Filter } from "metabase-types/api";
 import { SegmentMode } from "metabase/visualizations/click-actions/modes/SegmentMode";
 import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 describe("Mode", () => {
   const metadata = createMockMetadata({

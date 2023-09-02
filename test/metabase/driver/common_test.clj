@@ -9,7 +9,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]))
 
-(deftest base-type-inference-test
+(deftest ^:parallel base-type-inference-test
   (is (= :type/Text
          (transduce identity (driver.common/values->base-type) ["A" "B" "C"])))
   (testing "should work with just one value"

@@ -1,4 +1,4 @@
-import { FC, ReactElement } from "react";
+import type { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";

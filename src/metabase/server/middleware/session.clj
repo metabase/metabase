@@ -156,7 +156,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
+    (when (and (= config/mb-session-cookie-samesite :none) (not (request.u/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "

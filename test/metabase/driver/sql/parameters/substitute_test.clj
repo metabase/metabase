@@ -11,7 +11,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -787,7 +786,7 @@
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
 
-              (qp.test/supports-report-timezone? driver/*driver*)
+              (qp.test-util/supports-report-timezone? driver/*driver*)
               "2018-04-18T00:00:00-07:00"
 
               :else
@@ -839,9 +838,8 @@
                                 :template-tags {"x" {:name         "x"
                                                      :display-name "X"
                                                      :type         :text
-                                                     :required     true
-                                                     :default      "%Toucan%"}}}
-                   :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+                                                     :required     true}}}
+                   :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
   (testing "make sure that you can use the same parameter multiple times (#4659)"
     (is (= {:query  "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
             :params ["%Toucan%" "%Toucan%"]}
@@ -849,9 +847,8 @@
                                   :template-tags {"x" {:name         "x"
                                                        :display-name "X"
                                                        :type         :text
-                                                       :required     true
-                                                       :default      "%Toucan%"}}}
-                     :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+                                                       :required     true}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
     (is (= {:query  "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
             :params ["2" "2"]}
            (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"

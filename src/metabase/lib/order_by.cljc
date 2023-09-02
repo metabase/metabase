@@ -1,5 +1,6 @@
 (ns metabase.lib.order-by
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -149,21 +150,19 @@
        (vec columns)
 
        :else
-       (let [refs          (mapv lib.ref/ref columns)
-             ref->position (into {}
-                                 (map-indexed (fn [pos [_tag _opts expr]]
-                                                (when-let [closest-ref (lib.equality/find-closest-matching-ref
-                                                                        query
-                                                                        (lib.ref/ref expr)
-                                                                        refs)]
-                                                  [closest-ref pos])))
-                                 existing-order-bys)]
-         (mapv (fn [col a-ref]
-                 (let [pos (ref->position a-ref)]
+       (let [col-index->position (into {}
+                                       (map-indexed
+                                        (fn [pos [_tag _opts expr]]
+                                          (when-let [col-index (lib.equality/index-of-closest-matching-metadata
+                                                                (lib.ref/ref expr)
+                                                                columns)]
+                                            [col-index pos])))
+                                       existing-order-bys)]
+         (mapv (fn [[i col]]
+                 (let [pos (col-index->position i)]
                    (cond-> col
                      pos (assoc :order-by-position pos))))
-               columns
-               refs))))))
+               (m/indexed columns)))))))
 
 (def ^:private opposite-direction
   {:asc :desc

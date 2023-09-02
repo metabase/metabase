@@ -1,11 +1,11 @@
 import Databases from "metabase/entities/databases";
-import {
-  useEntityQuery,
+import type {
   UseEntityQueryProps,
   UseEntityQueryResult,
 } from "metabase/common/hooks/use-entity-query";
-import { DatabaseId, DatabaseIdFieldListQuery } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
+import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
+import type { DatabaseId, DatabaseIdFieldListQuery } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 
 export const useDatabaseIdFieldListQuery = (
   props: UseEntityQueryProps<DatabaseId, DatabaseIdFieldListQuery>,

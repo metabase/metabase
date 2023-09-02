@@ -1,6 +1,6 @@
 import { createRef, Component } from "react";
 import { t } from "ttag";
-import { ResizableBox, ResizableBoxProps } from "react-resizable";
+import type { ResizableBox, ResizableBoxProps } from "react-resizable";
 import { connect } from "react-redux";
 import _ from "underscore";
 import slugg from "slugg";
@@ -66,10 +66,8 @@ import {
   getMaxAutoSizeLines,
 } from "./utils";
 
-import {
-  NativeQueryEditorSidebar,
-  Features as SidebarFeatures,
-} from "./NativeQueryEditorSidebar";
+import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
+import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { VisibilityToggler } from "./VisibilityToggler";
 import { RightClickPopover } from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";

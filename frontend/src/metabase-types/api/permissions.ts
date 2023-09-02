@@ -1,6 +1,6 @@
 import type { DatabaseId, TableId, SchemaName } from "metabase-types/api";
-import { GroupId } from "./group";
-import { UserAttribute } from "./user";
+import type { GroupId } from "./group";
+import type { UserAttribute } from "./user";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;

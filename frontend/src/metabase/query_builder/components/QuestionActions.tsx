@@ -20,7 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import {
   checkCanBeModel,

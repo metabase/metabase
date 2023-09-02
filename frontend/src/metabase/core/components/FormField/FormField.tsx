@@ -1,7 +1,8 @@
-import { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
-import { FieldAlignment, FieldOrientation } from "./types";
+import type { FieldAlignment, FieldOrientation } from "./types";
 import {
   FieldCaption,
   FieldDescription,

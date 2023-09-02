@@ -294,8 +294,8 @@
           (testing "Should be able to run the query via a Card that All Users has perms for"
             ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
             ;; Collection inherits Root Collection perms when created
-            (mt/with-temp* [Collection [collection]
-                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
+            (mt/with-temp [Collection collection {}
+                           Card       card {:collection_id (u/the-id collection), :dataset_query query}]
               (is (schema= {:status   (s/eq "completed")
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
@@ -307,7 +307,7 @@
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
-(deftest pivot-with-order-by-test
+(deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query products

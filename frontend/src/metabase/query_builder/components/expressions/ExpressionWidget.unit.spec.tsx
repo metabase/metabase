@@ -10,7 +10,8 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import { ExpressionWidget, ExpressionWidgetProps } from "./ExpressionWidget";
+import type { ExpressionWidgetProps } from "./ExpressionWidget";
+import { ExpressionWidget } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {

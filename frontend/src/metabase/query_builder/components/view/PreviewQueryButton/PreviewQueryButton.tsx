@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { PreviewButton, PreviewButtonIcon } from "./PreviewQueryButton.styled";
 

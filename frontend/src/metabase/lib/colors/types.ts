@@ -1,4 +1,4 @@
-import { colors } from "./palette";
+import type { colors } from "./palette";
 
 export type ColorPalette = Partial<Record<keyof typeof colors, string>>;
 

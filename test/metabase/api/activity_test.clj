@@ -21,20 +21,20 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest most-recently-viewed-dashboard-views-test
-  (mt/with-temp* [Card      [card-1  {:name       "rand-name"
-                                      :creator_id (mt/user->id :crowberto)
-                                      :display    "table"}]
-                  Dashboard [dash-1  {:name        "rand-name2"
-                                      :description "rand-name2"
-                                      :creator_id  (mt/user->id :crowberto)}]
-                  Dashboard [dash-2  {:name        "rand-name2"
-                                      :description "rand-name2"
-                                      :creator_id  (mt/user->id :crowberto)}]
-                  Dashboard [dash-3  {:name        "rand-name2"
-                                      :description "rand-name2"
-                                      :archived    true
-                                      :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table-1 {:name "rand-name"}]]
+  (mt/with-temp [Card      card-1  {:name       "rand-name"
+                                    :creator_id (mt/user->id :crowberto)
+                                    :display    "table"}
+                 Dashboard dash-1  {:name        "rand-name2"
+                                    :description "rand-name2"
+                                    :creator_id  (mt/user->id :crowberto)}
+                 Dashboard dash-2  {:name        "rand-name2"
+                                    :description "rand-name2"
+                                    :creator_id  (mt/user->id :crowberto)}
+                 Dashboard dash-3  {:name        "rand-name2"
+                                    :description "rand-name2"
+                                    :archived    true
+                                    :creator_id  (mt/user->id :crowberto)}
+                 Table     table-1 {:name "rand-name"}]
     (mt/with-model-cleanup [ViewLog]
       (mt/with-test-user :crowberto
         (mt/with-temporary-setting-values [user-recent-views []]
@@ -70,26 +70,26 @@
                                               "activity/most_recently_viewed_dashboard"))))))))))
 
 (deftest recent-views-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+  (mt/with-temp [Card      card1 {:name                   "rand-name"
+                                  :creator_id             (mt/user->id :crowberto)
+                                  :display                "table"
+                                  :visualization_settings {}}
+                 Card      archived  {:name                   "archived-card"
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :archived               true
+                                      :visualization_settings {}}
+                 Dashboard dash {:name        "rand-name2"
+                                 :description "rand-name2"
+                                 :creator_id  (mt/user->id :crowberto)}
+                 Table     table1 {:name "rand-name"}
+                 Table     hidden-table {:name            "hidden table"
+                                         :visibility_type "hidden"}
+                 Card      dataset {:name                   "rand-name"
+                                    :dataset                true
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
-                  Card      [archived  {:name                   "archived-card"
-                                        :creator_id             (mt/user->id :crowberto)
-                                        :display                "table"
-                                        :archived               true
-                                        :visualization_settings {}}]
-                  Dashboard [dash {:name        "rand-name2"
-                                   :description "rand-name2"
-                                   :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table1 {:name "rand-name"}]
-                  Table     [hidden-table {:name            "hidden table"
-                                           :visibility_type "hidden"}]
-                  Card      [dataset {:name                   "rand-name"
-                                      :dataset                true
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
@@ -149,70 +149,66 @@
     (t2/insert! QueryExecution (:card views))))
 
 (deftest popular-items-test
-  ;; HACK ! Clear out the ViewLog so other stuff in it doesn't mess up the results here.
-  (t2/delete! :model/ViewLog)
-  (t2.with-temp/with-temp [Card      card1        {:name                   "rand-name"
-                                                   :creator_id             (mt/user->id :crowberto)
-                                                   :display                "table"
-                                                   :visualization_settings {}}
-                           Card      archived     {:name                   "archived-card"
-                                                   :creator_id             (mt/user->id :crowberto)
-                                                   :display                "table"
-                                                   :archived               true
-                                                   :visualization_settings {}}
-                           Dashboard dash1        {:name        "rand-name"
-                                                   :description "rand-name"
-                                                   :creator_id  (mt/user->id :crowberto)}
-                           Dashboard dash2        {:name        "other-dashboard"
-                                                   :description "just another dashboard"
-                                                   :creator_id  (mt/user->id :crowberto)}
-                           Table     table1       {:name "rand-name"}
-                           Table     hidden-table {:name            "hidden table"
-                                                   :visibility_type "hidden"}
-                           Card      dataset      {:name                   "rand-name"
-                                                   :dataset                true
-                                                   :creator_id             (mt/user->id :crowberto)
-                                                   :display                "table"
-                                                   :visualization_settings {}}]
-    (let [object-ids (into #{} (map u/the-id) [card1 archived dash1 dash2 table1 hidden-table dataset])]
-      (testing "Items viewed by multiple users are not duplicated in the popular items list."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
-          (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
-                          [(mt/user->id :crowberto) "dashboard" (:id dash1)]
-                          [(mt/user->id :rasta)     "card"      (:id card1)]
-                          [(mt/user->id :crowberto) "card"      (:id card1)]])
-          (is (=? [{:model "dashboard", :model_id (:id dash1)}
-                   {:model "card", :model_id (:id card1)}]
-                  ;; all views are from :rasta, but :crowberto can still see popular items
-                  (filter (comp object-ids :model_id)
-                          (mt/user-http-request :crowberto :get 200 "activity/popular_items"))))))
-      (testing "Items viewed by other users can still show up in popular items."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
-          (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
-                          [(mt/user->id :rasta) "card"      (:id card1)]
-                          [(mt/user->id :rasta) "table"     (:id table1)]
-                          [(mt/user->id :rasta) "card"      (:id dataset)]])
-          (is (=? [{:model "dashboard", :model_id (:id dash1)}
-                   {:model "card", :model_id (:id card1)}
-                   {:model "dataset", :model_id (:id dataset)}
-                   {:model "table", :model_id (:id table1)}]
-                  ;; all views are from :rasta, but :crowberto can still see popular items
-                  (filter (comp object-ids :model_id)
-                          (mt/user-http-request :crowberto :get 200 "activity/popular_items"))))))
-      (testing "Items with more views show up sooner in popular items."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
-          (create-views! (concat
-                          ;; one item with many views is considered more popular
-                          (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
-                          [[(mt/user->id :rasta) "dashboard" (:id dash2)]
-                           [(mt/user->id :rasta) "card"      (:id dataset)]
-                           [(mt/user->id :rasta) "table"     (:id table1)]
-                           [(mt/user->id :rasta) "card"      (:id card1)]]))
-          (is (=? [{:model "dashboard" :model_id (:id dash1)}
-                   {:model "dashboard" :model_id (:id dash2)}
-                   {:model "card" :model_id (:id card1)}
-                   {:model "dataset" :model_id (:id dataset)}
-                   {:model "table" :model_id (:id table1)}]
-                  ;; all views are from :rasta, but :crowberto can still see popular items
-                  (filter (comp object-ids :model_id)
-                          (mt/user-http-request :crowberto :get 200 "activity/popular_items")))))))))
+  (mt/with-temp [Card      card1 {:name                   "rand-name"
+                                  :creator_id             (mt/user->id :crowberto)
+                                  :display                "table"
+                                  :visualization_settings {}}
+                 Card      _archived  {:name                   "archived-card"
+                                       :creator_id             (mt/user->id :crowberto)
+                                       :display                "table"
+                                       :archived               true
+                                       :visualization_settings {}}
+                 Dashboard dash1 {:name        "rand-name"
+                                  :description "rand-name"
+                                  :creator_id  (mt/user->id :crowberto)}
+                 Dashboard dash2 {:name        "other-dashboard"
+                                  :description "just another dashboard"
+                                  :creator_id  (mt/user->id :crowberto)}
+                 Table     table1 {:name "rand-name"}
+                 Table     _hidden-table {:name            "hidden table"
+                                          :visibility_type "hidden"}
+                 Card      dataset {:name                   "rand-name"
+                                    :dataset                true
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+    (testing "Items viewed by multiple users are not duplicated in the popular items list."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
+                        [(mt/user->id :crowberto) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta)     "card"      (:id card1)]
+                        [(mt/user->id :crowberto) "card"      (:id card1)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items viewed by other users can still show up in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta) "card"      (:id card1)]
+                        [(mt/user->id :rasta) "table"     (:id table1)]
+                        [(mt/user->id :rasta) "card"      (:id dataset)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items with more views show up sooner in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! (concat
+                        ;; one item with many views is considered more popular
+                        (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
+                        [[(mt/user->id :rasta) "dashboard" (:id dash2)]
+                         [(mt/user->id :rasta) "card"      (:id dataset)]
+                         [(mt/user->id :rasta) "table"     (:id table1)]
+                         [(mt/user->id :rasta) "card"      (:id card1)]]))
+        (is (partial= [{:model "dashboard" :model_id (:id dash1)}
+                       {:model "dashboard" :model_id (:id dash2)}
+                       {:model "card"      :model_id (:id card1)}
+                       {:model "dataset"   :model_id (:id dataset)}
+                       {:model "table"     :model_id (:id table1)}]
+                      ;; all views are from :rasta, but :crowberto can still see popular items
+                      (mt/user-http-request :crowberto :get 200 "activity/popular_items")))))))

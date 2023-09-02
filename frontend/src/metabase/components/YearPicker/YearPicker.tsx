@@ -1,4 +1,4 @@
-import { ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 
 import _ from "underscore";
 import Select from "metabase/core/components/Select";

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.permissions.parse :as perms-parse]))
 
-(deftest permissions->graph
+(deftest ^:parallel permissions->graph
   (testing "Parses each permission string to the correct graph"
     (are [x y] (= y (perms-parse/->graph [x]))
       "/db/3/"                                        {:db {3 {:data {:native :write :schemas :all}}}}
@@ -47,7 +47,7 @@
       "/query/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:query {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
       "/query/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:query {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}})))
 
-(deftest combines-permissions-for-graph
+(deftest ^:parallel combines-permissions-for-graph
   (testing "When given multiple permission hierarchies, chooses the one with the most permission"
     ;; This works by creating progressively smaller groups of permissions and asserting the constructed graph
     ;; expresses the most permissions
@@ -82,14 +82,14 @@
       (is (= (get-in group [0 1])
              (perms-parse/->graph (map first group)))))))
 
-(deftest permissions->graph-collections
+(deftest ^:parallel permissions->graph-collections
   (are [x y] (= y (perms-parse/->graph [x]))
     "/collection/root/"      {:collection {:root :write}}
     "/collection/root/read/" {:collection {:root :read}}
     "/collection/1/"         {:collection {1 :write}}
     "/collection/1/read/"    {:collection {1 :read}}))
 
-(deftest combines-all-permissions
+(deftest ^:parallel combines-all-permissions
   (testing "Permision graph includes broadest permissions for all dbs in permission set"
     (is (= {:db         {3 {:data {:native  :write
                                    :schemas :all}}
@@ -101,7 +101,7 @@
                                              "/collection/root/"
                                              "/collection/1/read/"})))))
 
-(deftest block-permissions-test
+(deftest ^:parallel block-permissions-test
   (testing "Should parse block permissions entries correctly"
     (is (= {:db {1 {:data {:schemas :block}}
                  2 {:data {:schemas :block}}}}
@@ -126,7 +126,7 @@
                                        {:native :write}))}}}
                (perms-parse/->graph paths)))))))
 
-(deftest parser-works-for-v2-tests
+(deftest ^:parallel parser-works-for-v2-tests
   (is (= [:permission [:data-v2 "1"]]
          (#'perms-parse/parser "/data/db/1/")))
   (is (= [:permission [:query-v2 "1"]]

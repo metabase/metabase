@@ -3,12 +3,12 @@ import { connect } from "react-redux";
 
 import { getUiControls } from "metabase/query_builder/selectors";
 import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
+import type { ErrorType } from "metabase-lib/ValidationError";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
-  ErrorType,
 } from "metabase-lib/ValidationError";
 
-import { QueryValidationErrorProps } from "./QueryValidationError";
+import type { QueryValidationErrorProps } from "./QueryValidationError";
 import { QueryErrorActionButton } from "./QueryValidationError.styled";
 
 type QueryBuilderUiControls = {

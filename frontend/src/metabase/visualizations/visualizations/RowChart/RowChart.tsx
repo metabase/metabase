@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -20,10 +20,8 @@ import {
 
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import {
-  RowChart,
-  RowChartProps,
-} from "metabase/visualizations/shared/components/RowChart";
+import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
+import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
   getGroupedDataset,
   getSeries,
@@ -32,7 +30,7 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import {
+import type {
   GroupedDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
@@ -41,8 +39,8 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
   getDefaultSize,
@@ -255,6 +253,10 @@ const RowChartVisualization = ({
       });
   }, [fontFamily]);
 
+  const hasBreakout =
+    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasLegend = series.length > 1 || hasBreakout;
+
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -267,7 +269,7 @@ const RowChartVisualization = ({
         />
       )}
       <RowChartLegendLayout
-        hasLegend={series.length > 1}
+        hasLegend={hasLegend}
         labels={labels}
         colors={colors}
         actionButtons={!hasTitle ? actionButtons : undefined}

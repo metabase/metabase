@@ -13,9 +13,9 @@ import {
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import { CollectionItem, DashboardId } from "metabase-types/api";
+import type { CollectionItem, DashboardId } from "metabase-types/api";
 import { getSettingsLoading } from "metabase/selectors/settings";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getCustomHomePageDashboardId,
   getHasDismissedCustomHomePageToast,

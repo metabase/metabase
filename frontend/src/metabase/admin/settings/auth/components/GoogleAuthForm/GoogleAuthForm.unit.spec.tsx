@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
-import GoogleAuthForm, { GoogleAuthFormProps } from "./GoogleAuthForm";
+import type { GoogleAuthFormProps } from "./GoogleAuthForm";
+import GoogleAuthForm from "./GoogleAuthForm";
 
 describe("GoogleAuthForm", () => {
   it("should submit the form", async () => {

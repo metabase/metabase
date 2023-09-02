@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockTimeline } from "metabase-types/api/mocks";
-import EditTimelineModal, { EditTimelineModalProps } from "./EditTimelineModal";
+import type { EditTimelineModalProps } from "./EditTimelineModal";
+import EditTimelineModal from "./EditTimelineModal";
 
 describe("EditTimelineModal", () => {
   it("should submit modal", async () => {

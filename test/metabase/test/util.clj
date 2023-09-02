@@ -810,8 +810,10 @@
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
 
         (testing "outside macro, the changes should be reverted"
-          (is (= card (t2/select-one :model/Card card-id)))
-          (is (= dash (t2/select-one :model/Dashboard dash-id)))))
+          (is (= (dissoc card :updated_at)
+                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
+          (is (= (dissoc dash :updated_at)
+                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
 
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
@@ -1058,7 +1060,7 @@
   "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
-  something in to it.
+  something in to it. The file, if created, will be deleted in a `finally` block after `body` concludes.
 
   DOES NOT CREATE A FILE!
 

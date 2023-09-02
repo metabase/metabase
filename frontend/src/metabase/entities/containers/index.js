@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
-import EntityName from "./EntityName";
+import { EntityName } from "./EntityName";
 import EntityForm from "./EntityForm";
 import EntityLink from "./EntityLink";
 

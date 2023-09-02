@@ -7,7 +7,7 @@ import Select from "metabase/core/components/Select";
 
 import Databases from "metabase/entities/databases";
 
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 type FieldObject = {
   id: number;

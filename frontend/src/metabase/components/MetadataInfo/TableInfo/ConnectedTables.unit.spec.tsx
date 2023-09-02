@@ -1,5 +1,5 @@
 import { checkNotNull } from "metabase/core/utils/types";
-import { Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 import {
   createMockField,
   createMockForeignKey,

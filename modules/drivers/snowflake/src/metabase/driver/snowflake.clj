@@ -42,10 +42,11 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:datetime-diff            true
-                              :now                      true
-                              :convert-timezone         true
-                              :connection-impersonation true}]
+(doseq [[feature supported?] {:datetime-diff                          true
+                              :now                                    true
+                              :convert-timezone                       true
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -386,8 +387,7 @@
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
-                                   :from   [[(qp.store/with-store
-                                               (qp.store/fetch-and-store-database! (u/the-id database))
+                                   :from   [[(qp.store/with-metadata-provider (u/the-id database)
                                                (sql.qp/with-driver-honey-sql-version driver
                                                  (sql.qp/->honeysql driver table)))]]}))
 
@@ -395,8 +395,7 @@
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! (u/the-id database))
+    (qp.store/with-metadata-provider (u/the-id database)
       (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
             schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
@@ -584,10 +583,8 @@
 
 (defmethod driver.sql/set-role-statement :snowflake
   [_ role]
-  (format "USE ROLE %s;" role))
+  (format "USE ROLE \"%s\";" role))
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
-  (or
-   (-> database :details :role)
-   "ACCOUNTADMIN"))
+  (-> database :details :role))

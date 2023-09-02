@@ -3,10 +3,10 @@ name: Frontend
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -35,11 +35,11 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Run Prettier formatting linter
-      run: yarn run lint-prettier
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Run Prettier formatting linter
+        run: yarn run lint-prettier
 
   fe-linter-eslint:
     needs: files-changed
@@ -47,15 +47,15 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - name: Run ESLint linter
-      run: yarn run lint-eslint
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Run ESLint linter
+        run: yarn run lint-eslint
 
   fe-type-check:
     needs: files-changed
@@ -63,17 +63,17 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn build:cljs
-      name: Compile CLJS
-    - run: yarn type-check
-      name: Check types
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn build:cljs
+        name: Compile CLJS
+      - run: yarn type-check
+        name: Check types
 
   fe-tests-unit:
     needs: files-changed
@@ -81,25 +81,25 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2204
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - name: Run frontend unit tests and collect the code coverage information
-      if: github.ref_name == 'master'
-      run: yarn run test-unit --coverage --silent
-    - name: Run frontend unit tests
-      if: github.ref_name != 'master'
-      run: yarn run test-unit
-    - name: Upload coverage to codecov.io
-      if: github.ref_name == 'master'
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage/lcov.info
-        flags: front-end
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Run frontend unit tests and collect the code coverage information
+        if: github.ref_name == 'master'
+        run: yarn run test-unit --coverage --silent
+      - name: Run frontend unit tests
+        if: github.ref_name != 'master'
+        run: yarn run test-unit
+      - name: Upload coverage to codecov.io
+        if: github.ref_name == 'master'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: front-end
 
   fe-tests-timezones:
     needs: files-changed
@@ -107,19 +107,19 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - name: Run frontend timezones tests
-      run: yarn run test-timezones
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Run frontend timezones tests
+        run: yarn run test-timezones
 
   fe-chromatic:
     needs: files-changed
-    if: github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true'
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -131,7 +131,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'cljs'
+          m2-cache-key: "cljs"
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:

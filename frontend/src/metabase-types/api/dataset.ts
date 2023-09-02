@@ -1,11 +1,11 @@
 import type { LocalFieldReference } from "metabase-types/api";
-import { Card } from "./card";
-import { DatabaseId } from "./database";
-import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
-import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
-import { DownloadPermission } from "./permissions";
-import { ParameterOptions } from "./parameters";
-import { TableId } from "./table";
+import type { Card } from "./card";
+import type { DatabaseId } from "./database";
+import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
+import type { DownloadPermission } from "./permissions";
+import type { ParameterOptions } from "./parameters";
+import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];

@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import { Container } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {

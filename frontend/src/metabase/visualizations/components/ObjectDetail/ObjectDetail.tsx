@@ -4,7 +4,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useMount, usePrevious } from "react-use";
 
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
@@ -50,7 +50,7 @@ import { ActionsApi, MetabaseApi } from "metabase/services";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
-import ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
   ObjectDetailProps,
   ObjectId,

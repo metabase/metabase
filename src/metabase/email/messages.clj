@@ -401,8 +401,7 @@
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! database-id)
+    (qp.store/with-metadata-provider database-id
       (binding [qp.xlsx/*parse-temporal-string-values* true]
         (let [w                           (qp.si/streaming-results-writer export-format os)
               cols                        (-> results :data :cols)

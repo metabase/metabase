@@ -110,10 +110,10 @@
               (#'field-values/distinct-values {})))))))
 
 (deftest clear-field-values-for-field!-test
-  (mt/with-temp* [Database    [{database-id :id}]
-                  Table       [{table-id :id} {:db_id database-id}]
-                  Field       [{field-id :id} {:table_id table-id}]
-                  FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
+  (mt/with-temp [Database    {database-id :id} {}
+                 Table       {table-id :id} {:db_id database-id}
+                 Field       {field-id :id} {:table_id table-id}
+                 FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values FieldValues, :field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
@@ -273,19 +273,19 @@
                                                  :type :sandbox}])))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
-  (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
-                                           :type     :sandbox
-                                           :hash_key "random-hash"}]]
+  (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                         :type     :sandbox
+                                         :hash_key "random-hash"}]
     (t2/insert! FieldValues {:field_id (mt/id :venues :id)
                              :type     :full})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
-  (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
-                                           :type     :full}]
-                  FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
-                                           :type     :sandbox
-                                           :hash_key "random-hash"}]]
+  (mt/with-temp [FieldValues fv         {:field_id (mt/id :venues :id)
+                                         :type     :full}
+                 FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                         :type     :sandbox
+                                         :hash_key "random-hash"}]
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
@@ -306,10 +306,10 @@
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
-    (mt/with-temp* [Database    [db    {:name "field-db" :engine :h2}]
-                    Table       [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Field       [field {:name "sku" :table_id (:id table)}]
-                    FieldValues [fv    {:field_id (:id field)}]]
+    (mt/with-temp [Database    db    {:name "field-db" :engine :h2}
+                   Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                   Field       field {:name "sku" :table_id (:id table)}
+                   FieldValues fv    {:field_id (:id field)}]
       (is (= "6f5bb4ba"
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))

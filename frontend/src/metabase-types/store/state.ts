@@ -1,16 +1,16 @@
-import { User } from "metabase-types/api";
-import { AdminState } from "./admin";
-import { AppState } from "./app";
-import { DashboardState } from "./dashboard";
-import { EmbedState } from "./embed";
-import { EntitiesState } from "./entities";
-import { MetabotState } from "./metabot";
-import { QueryBuilderState } from "./qb";
-import { ParametersState } from "./parameters";
-import { SettingsState } from "./settings";
-import { SetupState } from "./setup";
-import { FileUploadState } from "./upload";
-import { AuthState } from "./auth";
+import type { User } from "metabase-types/api";
+import type { AdminState } from "./admin";
+import type { AppState } from "./app";
+import type { DashboardState } from "./dashboard";
+import type { EmbedState } from "./embed";
+import type { EntitiesState } from "./entities";
+import type { MetabotState } from "./metabot";
+import type { QueryBuilderState } from "./qb";
+import type { ParametersState } from "./parameters";
+import type { SettingsState } from "./settings";
+import type { SetupState } from "./setup";
+import type { FileUploadState } from "./upload";
+import type { AuthState } from "./auth";
 
 export interface State {
   admin: AdminState;
