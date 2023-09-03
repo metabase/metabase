@@ -1,4 +1,4 @@
-import "ace-builds/src-noconflict/mode-java";
+import "ace-builds/src-noconflict/mode-javascript";
 
 class ExpressionHighlight extends window.ace.acequire(
   "ace/mode/text_highlight_rules",
@@ -45,8 +45,9 @@ class ExpressionHighlight extends window.ace.acequire(
   }
 }
 
-export default class ExpressionMode extends window.ace.acequire("ace/mode/java")
-  .Mode {
+export default class ExpressionMode extends window.ace.acequire(
+  "ace/mode/javascript",
+).Mode {
   constructor() {
     super();
     this.HighlightRules = ExpressionHighlight;

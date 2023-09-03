@@ -5083,6 +5083,15 @@
   dependencies:
     which "^3.0.0"
 
+"@paoliniluis/react-ace-min@^10.1.11":
+  version "10.1.11"
+  resolved "https://registry.yarnpkg.com/@paoliniluis/react-ace-min/-/react-ace-min-10.1.11.tgz#c084a117118451a3e16aaa0d3a5c48dd782a2b6f"
+  integrity sha512-zgC5kQk8ZLUb/Gjndwt5Wyz3BGZOJY5Q75ZQF3Qk0DneqLs2YRF9wJ5rb92s0cbBlQC2j5vxcfwR16DUwfzlEQ==
+  dependencies:
+    ace-builds "^1.24.1"
+    lodash.isequal "^4.5.0"
+    prop-types "^15.7.2"
+
 "@percy/cli-app@1.23.0":
   version "1.23.0"
   resolved "https://registry.yarnpkg.com/@percy/cli-app/-/cli-app-1.23.0.tgz#70970e6fcafe0bca1b616d4dfa7bbc6df041f2cd"
@@ -6929,6 +6938,11 @@
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@trysound/sax/-/sax-0.2.0.tgz#cccaab758af56761eb7bf37af6f03f326dd798ad"
   integrity sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==
+
+"@types/ace@^0.0.48":
+  version "0.0.48"
+  resolved "https://registry.yarnpkg.com/@types/ace/-/ace-0.0.48.tgz#1cb81872a282da1b49de16976d39e767e5ca435d"
+  integrity sha512-esV6hOWiDOZ6d7w5S11iLu6LQsPGe/9RPzhri7gNNLdrK1LFpO9/m7IZhQL6dat0JHICJ7l51zvHAiCgnPLLHA==
 
 "@types/aria-query@^4.2.0":
   version "4.2.0"
@@ -8919,10 +8933,10 @@ accepts@~1.3.8:
     mime-types "~2.1.34"
     negotiator "0.6.3"
 
-ace-builds@^1.4.13:
-  version "1.22.1"
-  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.22.1.tgz#3d765d1cfffc79226e372b6353750fd997816154"
-  integrity sha512-o5RGTPBIiRxguWNors3pT6KuLqj0a2NvNLoqir7/2LLiFm34PJV3BMq4sl9kjPayo4+lmd99m6zAq+XPdhyHQA==
+ace-builds@^1.24.1:
+  version "1.24.1"
+  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.24.1.tgz#90c929d9e31bb1092aea9deb32767bf51f77b034"
+  integrity sha512-TLcxMxiTRX5Eq9bBVSd/bTJlanCBULiv/IULLohJDDaCAfcpZKJBVSd4OWfN/j2c2jCLc+jhpNWGELiJZw3wPw==
 
 acorn-import-assertions@^1.7.6:
   version "1.8.0"
@@ -12318,11 +12332,6 @@ detective@^4.3.1:
   dependencies:
     acorn "^5.2.1"
     defined "^1.0.0"
-
-diff-match-patch@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/diff-match-patch/-/diff-match-patch-1.0.5.tgz#abb584d5f10cd1196dfc55aa03701592ae3f7b37"
-  integrity sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==
 
 diff-sequences@^27.0.6:
   version "27.0.6"
@@ -17555,11 +17564,6 @@ lodash.get@^3.7.0:
     lodash._baseget "^3.0.0"
     lodash._topath "^3.0.0"
 
-lodash.get@^4.4.2:
-  version "4.4.2"
-  resolved "https://registry.yarnpkg.com/lodash.get/-/lodash.get-4.4.2.tgz#2d177f652fa31e939b4438d5341499dfa3825e99"
-  integrity sha1-LRd/ZS+jHpObRDjVNBSZ36OCXpk=
-
 lodash.isarguments@^3.0.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/lodash.isarguments/-/lodash.isarguments-3.1.0.tgz#2f573d85c6a24289ff00663b491c1d338ff3458a"
@@ -21032,17 +21036,6 @@ re-reselect@^4.0.1:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/re-reselect/-/re-reselect-4.0.1.tgz#21a2306d11bbf377ac78687aa46e1a8848974194"
   integrity sha512-xVTNGQy/dAxOolunBLmVMGZ49VUUR1s8jZUiJQb+g1sI63GAv9+a5Jas9yHvdxeUgiZkU9r3gDExDorxHzOgRA==
-
-react-ace@^9.5.0:
-  version "9.5.0"
-  resolved "https://registry.yarnpkg.com/react-ace/-/react-ace-9.5.0.tgz#b6c32b70d404dd821a7e01accc2d76da667ff1f7"
-  integrity sha512-4l5FgwGh6K7A0yWVMQlPIXDItM4Q9zzXRqOae8KkCl6MkOob7sC1CzHxZdOGvV+QioKWbX2p5HcdOVUv6cAdSg==
-  dependencies:
-    ace-builds "^1.4.13"
-    diff-match-patch "^1.0.5"
-    lodash.get "^4.4.2"
-    lodash.isequal "^4.5.0"
-    prop-types "^15.7.2"
 
 react-ansi-style@^1.0.0:
   version "1.0.0"

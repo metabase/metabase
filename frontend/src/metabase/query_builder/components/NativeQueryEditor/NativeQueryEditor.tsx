@@ -12,16 +12,7 @@ import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
 import "ace/mode-sql";
-import "ace/mode-mysql";
-import "ace/mode-pgsql";
-import "ace/mode-sqlserver";
-import "ace/mode-json";
-import "ace/snippets/text";
 import "ace/snippets/sql";
-import "ace/snippets/mysql";
-import "ace/snippets/pgsql";
-import "ace/snippets/sqlserver";
-import "ace/snippets/json";
 
 import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
