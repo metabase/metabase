@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
+import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
 import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
@@ -19,6 +20,7 @@ export function WhatsNewNotification() {
   const lastAcknowledgedVersion = useSelector(state =>
     getSetting(state, "last-acknowledged-version"),
   );
+  const isWhiteLabeling = useSelector(getIsWhiteLabeling);
 
   const url: string | undefined = useMemo(() => {
     const lastEligibleVersion = getLatestEligibleReleaseNotes({
@@ -26,10 +28,17 @@ export function WhatsNewNotification() {
       currentVersion: currentVersion.tag,
       lastAcknowledgedVersion: lastAcknowledgedVersion,
       isEmbedded,
+      isWhiteLabeling,
     });
 
     return lastEligibleVersion?.announcement_url;
-  }, [versionInfo, currentVersion.tag, lastAcknowledgedVersion, isEmbedded]);
+  }, [
+    versionInfo,
+    currentVersion.tag,
+    lastAcknowledgedVersion,
+    isEmbedded,
+    isWhiteLabeling,
+  ]);
 
   const dimiss = useCallback(() => {
     dispatch(
