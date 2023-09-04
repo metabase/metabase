@@ -8,6 +8,12 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
+     metabase-enterprise.sandbox.test-util/with-gtaps
+     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
+     metabase-enterprise.sandbox.test-util/with-user-attributes
+     metabase-enterprise.test/with-gtaps
+     metabase-enterprise.test/with-gtaps-for-user
+     metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
      metabase.actions.test-util/with-actions-enabled
@@ -16,7 +22,6 @@
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
-     metabase.query-processor-test/with-bigquery-fks!
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
@@ -43,7 +48,6 @@
      metabase.test/with-actions-test-data-and-actions-enabled
      metabase.test/with-actions-test-data-tables
      metabase.test/with-all-users-permission
-     metabase.test/with-bigquery-fks!
      metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
      metabase.test/with-env-keys-renamed-by
@@ -59,13 +63,12 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp*
+     metabase.test/with-temp
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
      metabase.test/with-user-in-groups
-     toucan.util.test/with-temp*
      toucan2.tools.with-temp/with-temp})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`

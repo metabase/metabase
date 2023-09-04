@@ -460,7 +460,7 @@
                  (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Text}]
                                       {}
                                       [[value]]))))))))
-  (mt/with-everything-store
+  (mt/with-metadata-provider (mt/id)
     (binding [driver/*driver* :h2]
       (testing "OffsetDateTime"
         (is (= [#inst "2020-03-28T13:33:06.000-00:00"]

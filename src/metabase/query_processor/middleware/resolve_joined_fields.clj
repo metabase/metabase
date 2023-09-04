@@ -3,6 +3,7 @@
   (:require
    [clojure.data :as data]
    [malli.core :as mc]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -23,7 +24,7 @@
     (complement :condition)]])
 
 (mu/defn ^:private add-join-alias
-  [{table-id :table_id, field-id :id, :as field}
+  [{:keys [table-id], field-id :id, :as field}
    {:keys [joins source-query]}   :- InnerQuery
    [_ id-or-name opts :as clause] :- mbql.s/field:id]
   (let [candidate-tables (filter (fn [join]
@@ -48,7 +49,7 @@
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [_id name]} (qp.store/table table-id)]
+          (let [{:keys [_id name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
@@ -77,9 +78,11 @@
                        ;; otherwise for any other `:field` whose table isn't the source Table, attempt to wrap it.
                        [:field
                         (field-id :guard (every-pred integer?
-                                                     #(not= (:table_id (qp.store/field %)) source-table)))
+                                                     (fn [field-id]
+                                                       (not= (:table-id (lib.metadata/field (qp.store/metadata-provider) field-id))
+                                                             source-table))))
                         _]
-                       (add-join-alias (qp.store/field field-id) form &match))
+                       (add-join-alias (lib.metadata/field (qp.store/metadata-provider) field-id) form &match))
         ;; add :joins and :source-query back which we removed above.
         form (cond-> form
                (seq joins)  (assoc :joins joins)

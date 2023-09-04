@@ -57,7 +57,7 @@
      (tru "This query has circular referencing sub-queries. ")
      (tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
 
-(defn- check-for-circular-references!
+(defn- check-for-circular-references
   [query]
   (try
    ;; `card-subquery-graph` will throw if there are circular references
@@ -72,4 +72,4 @@
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
   [query]
-  (-> query check-for-circular-references! resolve-referenced-card-resources*))
+  (-> query check-for-circular-references resolve-referenced-card-resources*))

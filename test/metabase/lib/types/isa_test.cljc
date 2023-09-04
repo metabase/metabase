@@ -147,76 +147,42 @@
               (isa? x :Semantic/*) {:semantic-type x}
               (isa? x :Relation/*) {:semantic-type x}
               :else                {:effective-type x}))]
-    (doseq [{:keys [nom pred positive negative]}
-            [{:nom "date?", :pred lib.types.isa/date?
-              :positive :type/DateTime, :negative :type/City}
-             {:nom "numeric?", :pred lib.types.isa/numeric?
-              :positive :type/Integer, :negative :type/FK}
-             {:nom "boolean?", :pred lib.types.isa/boolean?
-              :positive :type/Boolean, :negative :type/PK}
-             {:nom "string?", :pred lib.types.isa/string?
-              :positive :type/URL, :negative :tpye/Address}
-             {:nom "summable?", :pred lib.types.isa/summable?
-              :positive :type/Number, :negative :type/Address}
-             {:nom "scope?", :pred lib.types.isa/scope?
-              :positive :type/Time, :negative :type/Address}
-             {:nom "category?", :pred lib.types.isa/category?
-              :positive :type/Company, :negative :type/URL}
-             {:nom "location?", :pred lib.types.isa/location?
-              :positive :type/Address, :negative :type/Number}
-             {:nom "description?", :pred lib.types.isa/description?
-              :positive :type/Description, :negative :type/City}
-             {:nom "dimension?", :pred lib.types.isa/dimension?
-              :positive :type/City, :negative :type/Description}
-             {:nom "metric?", :pred lib.types.isa/metric?
-              :positive :type/Number, :negative :type/City}
-             {:nom "foreign-key?", :pred lib.types.isa/foreign-key?
-              :positive :type/FK, :negative :type/ZipCode}
-             {:nom "primary-key?", :pred lib.types.isa/primary-key?
-              :positive :type/PK, :negative :type/ZipCode}
-             {:nom "entity-name?", :pred lib.types.isa/entity-name?
-              :positive :type/Name, :negative :type/Number}
-             {:nom "any?", :pred lib.types.isa/any?
-              :positive :type/*}
-             {:nom "numeric-base-type?", :pred lib.types.isa/numeric-base-type?
-              :positive :type/Integer, :negative :type/String}
-             {:nom "date-without-time?", :pred lib.types.isa/date-without-time?
-              :positive :type/Date, :negative :type/Time}
-             {:nom "number?", :pred lib.types.isa/number?
-              :positive :type/Number, :negative :type/Text}
-             {:nom "time?", :pred lib.types.isa/time?
-              :positive :type/Time, :negative :type/Number}
-             {:nom "address?", :pred lib.types.isa/address?
-              :positive :type/Address, :negative :type/String}
-             {:nom "city?", :pred lib.types.isa/city?
-              :positive :type/City, :negative :type/ZipCode}
-             {:nom "state?", :pred lib.types.isa/state?
-              :positive :type/State, :negative :type/Text}
-             {:nom "zip-code?", :pred lib.types.isa/zip-code?
-              :positive :type/ZipCode, :negative :type/City}
-             {:nom "country?", :pred lib.types.isa/country?
-              :positive :type/Country, :negative :type/City}
-             {:nom "coordinate?", :pred lib.types.isa/coordinate?
-              :positive :type/Coordinate, :negative :type/Double}
-             {:nom "latitude?", :pred lib.types.isa/latitude?
-              :positive :type/Latitude, :negative :type/Double}
-             {:nom "longitude?", :pred lib.types.isa/longitude?
-              :positive :type/Longitude, :negative :type/Double}
-             {:nom "currency?", :pred lib.types.isa/currency?
-              :positive :type/Currency, :negative :type/Double}
-             {:nom "comment?", :pred lib.types.isa/comment?
-              :positive :type/Comment, :negative :type/Text}
-             {:nom "id?", :pred lib.types.isa/id?
-              :positive :type/FK, :negative :type/Integer}
-             {:nom "URL?", :pred lib.types.isa/URL?
-              :positive :type/URL, :negative :type/Text}
-             {:nom "email?", :pred lib.types.isa/email?
-              :positive :type/Email, :negative :type/String}
-             {:nom "avatar-URL?", :pred lib.types.isa/avatar-URL?
-              :positive :type/AvatarURL, :negative :type/URL}
-             {:nom "image-URL?", :pred lib.types.isa/image-URL?
-              :positive :type/ImageURL, :negative :type/URL}]]
-      (testing nom
+    (doseq [{:keys [pred positive negative]}
+            [{:pred #'lib.types.isa/temporal?,          :positive :type/DateTime,    :negative :type/City}
+             {:pred #'lib.types.isa/numeric?,           :positive :type/Integer,     :negative :type/FK}
+             {:pred #'lib.types.isa/boolean?,           :positive :type/Boolean,     :negative :type/PK}
+             {:pred #'lib.types.isa/string?,            :positive :type/URL,         :negative :tpye/Address}
+             {:pred #'lib.types.isa/summable?,          :positive :type/Number,      :negative :type/Address}
+             {:pred #'lib.types.isa/scope?,             :positive :type/Time,        :negative :type/Address}
+             {:pred #'lib.types.isa/category?,          :positive :type/Company,     :negative :type/URL}
+             {:pred #'lib.types.isa/location?,          :positive :type/Address,     :negative :type/Number}
+             {:pred #'lib.types.isa/description?,       :positive :type/Description, :negative :type/City}
+             {:pred #'lib.types.isa/dimension?,         :positive :type/City,        :negative :type/Description}
+             {:pred #'lib.types.isa/metric?,            :positive :type/Number,      :negative :type/City}
+             {:pred #'lib.types.isa/foreign-key?,       :positive :type/FK,          :negative :type/ZipCode}
+             {:pred #'lib.types.isa/primary-key?,       :positive :type/PK,          :negative :type/ZipCode}
+             {:pred #'lib.types.isa/entity-name?,       :positive :type/Name,        :negative :type/Number}
+             {:pred #'lib.types.isa/any?,               :positive :type/*}
+             {:pred #'lib.types.isa/numeric-base-type?, :positive :type/Integer,     :negative :type/String}
+             {:pred #'lib.types.isa/date-without-time?, :positive :type/Date,        :negative :type/Time}
+             {:pred #'lib.types.isa/number?,            :positive :type/Number,      :negative :type/Text}
+             {:pred #'lib.types.isa/time?,              :positive :type/Time,        :negative :type/Number}
+             {:pred #'lib.types.isa/address?,           :positive :type/Address,     :negative :type/String}
+             {:pred #'lib.types.isa/city?,              :positive :type/City,        :negative :type/ZipCode}
+             {:pred #'lib.types.isa/state?,             :positive :type/State,       :negative :type/Text}
+             {:pred #'lib.types.isa/zip-code?,          :positive :type/ZipCode,     :negative :type/City}
+             {:pred #'lib.types.isa/country?,           :positive :type/Country,     :negative :type/City}
+             {:pred #'lib.types.isa/coordinate?,        :positive :type/Coordinate   :negative :type/Double}
+             {:pred #'lib.types.isa/latitude?,          :positive :type/Latitude,    :negative :type/Double}
+             {:pred #'lib.types.isa/longitude?,         :positive :type/Longitude,   :negative :type/Double}
+             {:pred #'lib.types.isa/currency?,          :positive :type/Currency,    :negative :type/Double}
+             {:pred #'lib.types.isa/comment?,           :positive :type/Comment,     :negative :type/Text}
+             {:pred #'lib.types.isa/id?,                :positive :type/FK,          :negative :type/Integer}
+             {:pred #'lib.types.isa/URL?,               :positive :type/URL,         :negative :type/Text}
+             {:pred #'lib.types.isa/email?,             :positive :type/Email,       :negative :type/String}
+             {:pred #'lib.types.isa/avatar-URL?,        :positive :type/AvatarURL,   :negative :type/URL}
+             {:pred #'lib.types.isa/image-URL?,         :positive :type/ImageURL,    :negative :type/URL}]]
+      (testing pred
         (when positive
           (testing positive
             (is (true?  (pred (column positive))))))

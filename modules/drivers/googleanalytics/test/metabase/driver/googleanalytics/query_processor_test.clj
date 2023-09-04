@@ -131,7 +131,7 @@
                             [:!=
                              [:field (u/the-id event-action-field) nil]
                              [:value "B" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]}]
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (is (= {:filters "ga:eventLabel==A;ga:eventAction!=B"}
                  (#'ga.qp/handle-filter:filters query))))))))
 
@@ -140,7 +140,7 @@
     (ga.test/with-some-fields
       #_:clj-kondo/ignore
       [{:keys [table event-label-field]}]
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= "ga:eventLabel=~(?i)acon/manager---community-partnerships-and-population-programs"
                (-> (ga.qp/mbql->native
                     {:query {:source-table (u/the-id table)
