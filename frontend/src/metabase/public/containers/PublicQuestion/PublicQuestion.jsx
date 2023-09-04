@@ -147,7 +147,7 @@ class PublicQuestionInner extends Component {
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
-        const datasetQuery = applyParameters(card, parameters, parameterValues);
+        const datasetQuery = applyParameters({card, parameters, parameterValues});
         newResult = await maybeUsePivotEndpoint(
           PublicApi.cardQuery,
           card,

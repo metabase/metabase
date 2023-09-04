@@ -2,6 +2,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import Utils from "metabase/lib/utils";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
@@ -45,21 +46,22 @@ export function getQuery(card) {
   }
 }
 
-// NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
-// Query builder uses `Question.getResults` which contains similar logic.
-export function applyParameters(
+export function applyParameters({
   card,
   parameters,
   parameterValues = {},
   parameterMappings = [],
-) {
+  metadata,
+  dashcard,
+}) {
   const datasetQuery = Utils.copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
     datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
   }
   datasetQuery.parameters = [];
-  for (const parameter of parameters || []) {
+
+  for (const parameter of parameters ?? []) {
     const value = parameterValues[parameter.id];
 
     const cardId = card.id || card.original_card_id;
@@ -78,6 +80,14 @@ export function applyParameters(
           },
     );
 
+    const mappingOptions = getParameterMappingOptions(
+      metadata,
+      parameter,
+      card,
+      dashcard,
+    );
+    const shouldParameterBeApplied = mapping && mappingOptions.length > 0;
+
     const type = parameter.type;
     const options =
       deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
@@ -92,7 +102,7 @@ export function applyParameters(
       queryParameter.options = options;
     }
 
-    if (mapping) {
+    if (shouldParameterBeApplied) {
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
       datasetQuery.parameters.push(queryParameter);

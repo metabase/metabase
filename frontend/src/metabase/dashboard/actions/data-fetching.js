@@ -268,7 +268,7 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      // If the dataset_query was filtered then we don't have permisison to view this card, so
+      // If the dataset_query was filtered then we don't have permission to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
         return {
@@ -284,13 +284,17 @@ export const fetchCardData = createThunkAction(
         getState().dashboard;
       const dashboard = dashboards[dashboardId];
 
+      const metadata = getMetadata(getState());
+
       // if we have a parameter, apply it to the card query before we execute
-      const datasetQuery = applyParameters(
+      const datasetQuery = applyParameters({
         card,
-        dashboard.parameters,
+        parameters: dashboard.parameters,
         parameterValues,
-        dashcard && dashcard.parameter_mappings,
-      );
+        parameterMappings: dashcard && dashcard.parameter_mappings,
+        metadata,
+        dashcard
+    });
 
       if (!reload) {
         // if reload not set, check to see if the last result has the same query dict and return that
