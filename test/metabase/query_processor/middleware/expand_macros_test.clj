@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.expand-macros-test
   (:require
    [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -320,3 +321,133 @@
                    (expand-macros (mt/mbql-query nil {:source-query {:source-table $$checkins
                                                                      :joins        [{:condition    [:= 1 2]
                                                                                      :source-query before}]}}))))))))))
+
+;; (deftest metric-expand-filter-test)
+
+;; (deftest metric-breakout-test)
+
+;; (deftest metric-naming-test)
+
+;; (deftest metric-correct-order-test)
+
+;; (deftest metric-with-expression-test
+;;   (mt/test-drivers (mt/normal-drivers)
+;;     (testing "bla"
+;;       (mt/mbql-query venues))))
+
+;;;; TODO: metric-query-unexpanded-segments-test, expect exception
+
+;;;; TODO: no breakout, one breakout, multiple breakouts (join condition) -- variadic :and
+
+;;;; TODO: verify that there are enough join conditions generated
+
+;;;; TODO: filter expandsion
+
+;;;; TODO: duplicit naming
+
+;;;; TODO: proper ordering test
+
+;;;; TODO: transform-aggregation
+
+;;;; TODO: metric in nested join
+
+;;;; TODO: metric in source-query
+
+;;;; TODO: metric in saved query
+
+;;;; TODO: use of metrics with named expressions, maybe think of order by updates
+
+
+;;;; TODO: :order-by handling some aggregation would have to become fields... maybe :breakout...
+
+
+;;;; TODO is that metadata computation recursive --- not but using join metrics to generate double join alias display name
+
+
+;;;; TODO: metric in model?
+
+
+
+
+;;;; TODO: i could modify metadata
+;;;;         - name is normally used, and display name is overriden
+;;;;         - options contain
+;;;;           - source-metric for some fields (to create that map) ---- this way i could operate on metadata generated
+;;;;           - 
+
+;;;; This test sample query which I'm using during development. Test will probably be factored out later.
+;;;; TODO: Verify following test actaully checks for correct values.
+(deftest multiple-metrics-wip-test
+  ;; TODO: Consider other features that should be tested for, to support metrics expansion correctly!
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric {m1-id :id} {:name "venues, count"
+                                  :description "Metric doing count with no filtering."
+                                  :definition (mt/$ids venues {:source-table $$venues
+                                                               ;;;; Here we will be testing also correct handling 
+                                                               ;;;; of unnamed aggregation.
+                                                               :aggregation [[:count]]})}
+       :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
+                                  :description (str "This is metric doing sum of price with filter for category id "
+                                                    "less than 50.")
+                                  :definition (mt/$ids venues {:source-table $$venues
+                                                               :filter [:< $category_id 50]
+                                                               :aggregation [[:sum $price]]})}
+       ;;;; Following metric requires ids of previously defined metrics. Those ids are autogenrated, hence available
+       ;;;;   in body of `with-temp`. Because of that, definition for this metrics will be set there.
+       :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
+                                  :description (str "Metric that combines another metrics. "
+                                                    "It divides values of `m1` by values of `m2`, filtering for "
+                                                    "category ids greater than 20")}]
+      (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
+                                                            {:source-table $$venues
+                                                             :filter [:> $category_id 20]
+                                                             :aggregation
+                                                             [[:aggregation-options
+                                                               [:/ [:metric m1-id] [:metric m2-id]]
+                                                               {:name "Metric dividing metric"
+                                                                :display-name "Metric dividing metric"}]]})})
+      (let [query @(def q (mt/mbql-query venues
+                            {:aggregation [[:metric m3-id]
+                                           [:metric m2-id]
+                                           [:metric m1-id]]
+                             :breakout [$category_id]
+                             :order-by [[:asc $category_id]]
+                             ;; TODO: Change limit so non-nil col 1 is checked!
+                             :limit 5}))
+            prepr @(def pp (qp/preprocess query))]
+        (is (= [[2 nil 20 8]
+               [3 nil 4 2]
+               [4 nil 4 2]
+               [5 nil 14 7]
+               [6 nil 3 2]]
+             (mt/formatted-rows [int num int int]
+                                @(def p (qp/process-query q)))))))))
+
+(comment
+  (require '[mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/multiple-metrics-wip-test])
+
+  (def orig (t2/select :model/Metric 6))
+
+  (mt/formatted-rows [int num int int] p)
+
+  (t2/update! :model/Metric 6 {:definition (mt/$ids venues
+                                                    {:source-table $$venues
+                                                     :aggregation [[:count]]
+                                                     :filter [:> $category_id 20]})})
+
+  (t2/update! :model/Metric 6 {:definition {:source-table 9,
+                                            :aggregation
+                                            [[:aggregation-options
+                                              [:/ [:metric 4] [:metric 5]]
+                                              {:name "count div sum price", :display-name "count div sum price"}]],
+                                            :filter [:> [:field 85 nil] 20]}})
+
+  (t2/update! :model/Metric 6 (get orig :archived))
+  (keys orig)
+
+
+
+
+  )
