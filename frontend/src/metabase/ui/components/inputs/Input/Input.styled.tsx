@@ -2,7 +2,7 @@ import { getSize, rem } from "@mantine/core";
 import type { InputStylesParams, MantineThemeOverride } from "@mantine/core";
 
 const SIZES = {
-  xs: rem(28),
+  xs: rem(32),
   md: rem(40),
 };
 
