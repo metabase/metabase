@@ -33,7 +33,6 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       item: {
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
-        fontWeight: 700,
         lineHeight: theme.lineHeight,
         padding: theme.spacing.sm,
         "&:hover:not([data-disabled]), &:focus": {
@@ -60,7 +59,6 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       separatorLabel: {
         color: theme.colors.text[0],
         fontSize: theme.fontSizes.sm,
-        fontWeight: "bold",
         lineHeight: theme.lineHeight,
         marginTop: "0 !important",
         paddingTop: theme.spacing.xs,
