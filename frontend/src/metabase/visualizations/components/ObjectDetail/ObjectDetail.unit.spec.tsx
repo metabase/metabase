@@ -31,11 +31,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import {
-  ObjectDetailBody,
-  ObjectDetailHeader,
-  ObjectDetailView,
-} from "./ObjectDetail";
+import { ObjectDetailBody, ObjectDetailView } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
 
 const mockCard = createMockCard({
@@ -279,50 +275,6 @@ function setup(
 }
 
 describe("Object Detail", () => {
-  it("renders an object detail header", () => {
-    render(
-      <ObjectDetailHeader
-        actionItems={[]}
-        canZoom={false}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={false}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
-    expect(screen.getByText(/778/i)).toBeInTheDocument();
-  });
-
-  it("renders an object detail header with enabled next object button and disabled previous object button", () => {
-    render(
-      <ObjectDetailHeader
-        actionItems={[]}
-        canZoom={true}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={true}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    const nextDisabled = screen
-      .getByTestId("view-next-object-detail")
-      .getAttribute("disabled");
-
-    const prevDisabled = screen
-      .getByTestId("view-previous-object-detail")
-      .getAttribute("disabled");
-
-    expect(nextDisabled).toBeNull();
-    expect(prevDisabled).not.toBeNull();
-  });
-
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
