@@ -6,10 +6,13 @@ import {
 } from "metabase/styled-components/theme";
 import { Flex } from "metabase/ui";
 
+const SEARCH_BODY_WIDTH = "90rem";
+const SEARCH_SIDEBAR_WIDTH = "240px";
+
 export const SearchMain = styled(Flex)`
   padding: 1.5rem 1rem;
   margin: auto;
-  width: 100%;
+  width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);
 
   ${breakpointMinSmall} {
     padding: 2rem;
@@ -21,7 +24,6 @@ export const SearchMain = styled(Flex)`
 
   ${breakpointMinLarge} {
     padding: 2rem 4rem;
-    width: 80%;
   }
 `;
 
