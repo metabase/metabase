@@ -1,6 +1,7 @@
 import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { t } from "ttag";
 import type {
   SearchFilterComponentProps,
   SearchSidebarFilterComponent,
@@ -121,7 +122,7 @@ export const SidebarFilter = ({
           </Box>
           <DropdownApplyButtonDivider />
           <Group position="right" align="center" px="sm" pb="sm">
-            <Button onClick={onApplyFilter}>Apply filters</Button>
+            <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
           </Group>
         </Paper>
       </Popover>

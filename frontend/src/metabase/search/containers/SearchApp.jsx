@@ -9,7 +9,7 @@ import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Flex, Paper } from "metabase/ui";
+import { Box, Text, Group, Paper } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -104,7 +104,7 @@ function SearchApp({ location }) {
               ) : (
                 <Box>
                   <SearchResultSection items={list} />
-                  <Flex justify="flex-end" align="center" my="1rem">
+                  <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls
                       showTotal
                       pageSize={PAGE_SIZE}
@@ -114,7 +114,7 @@ function SearchApp({ location }) {
                       onNextPage={handleNextPage}
                       onPreviousPage={handlePreviousPage}
                     />
-                  </Flex>
+                  </Group>
                 </Box>
               )}
             </SearchResultContainer>
