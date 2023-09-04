@@ -15,7 +15,7 @@ export const getLatestEligibleReleaseNotes = ({
   isWhiteLabeling = false,
 }: {
   versionInfo: VersionInfo | null;
-  currentVersion?: string;
+  currentVersion: string | undefined;
   lastAcknowledgedVersion: string | null;
   isEmbedded: boolean;
   isWhiteLabeling: boolean;
