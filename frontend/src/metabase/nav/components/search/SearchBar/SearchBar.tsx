@@ -16,18 +16,17 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import { getSetting } from "metabase/selectors/settings";
-import RecentsList from "metabase/nav/components/RecentsList";
-import SearchResults from "metabase/nav/components/SearchResults";
+import RecentsList from "metabase/nav/components/search/RecentsList/RecentsList";
 
 import type { SearchAwareLocation } from "metabase/search/types";
 import { getSearchTextFromLocation } from "metabase/search/utils";
+import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown/SearchResultsDropdown";
 import {
   SearchInputContainer,
   SearchIcon,
   CloseSearchButton,
   SearchInput,
   SearchResultsFloatingContainer,
-  SearchResultsContainer,
   SearchBarRoot,
 } from "./SearchBar.styled";
 
@@ -181,13 +180,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       {isActive && isTypeaheadEnabled && (
         <SearchResultsFloatingContainer data-testid="search-results-floating-container">
           {hasSearchText ? (
-            <SearchResultsContainer data-testid="search-bar-results-container">
-              <SearchResults
-                searchText={searchText.trim()}
-                onEntitySelect={onSearchItemSelect}
-                onClickViewAll={goToSearchApp}
-              />
-            </SearchResultsContainer>
+            <SearchResultsDropdown
+              searchText={searchText}
+              onSearchItemSelect={onSearchItemSelect}
+              goToSearchApp={goToSearchApp}
+            />
           ) : (
             <RecentsList />
           )}

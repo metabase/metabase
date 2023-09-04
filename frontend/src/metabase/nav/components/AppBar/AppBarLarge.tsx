@@ -1,7 +1,7 @@
 import type { CollectionId, User } from "metabase-types/api";
+import SearchBar from "metabase/nav/components/search/SearchBar/SearchBar";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
-import SearchBar from "../SearchBar";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import AppBarLogo from "./AppBarLogo";

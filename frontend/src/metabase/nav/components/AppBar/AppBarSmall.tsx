@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { User } from "metabase-types/api";
-import SearchBar from "../SearchBar";
+import SearchBar from "metabase/nav/components/search/SearchBar/SearchBar";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
