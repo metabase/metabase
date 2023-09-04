@@ -20,6 +20,13 @@
             "--profile" aws-profile
             "cp" source dest))))
 
+(defn s3-copy-without-profile!
+  "Copies `source` to `dest`, but unlike [[s3-copy!]] above assumes that appropriate AWS credentials have been set elsewhere"
+  [source dest]
+  (steps/step (format "[S3] Copy %s -> %s" source dest)
+    (sh/sh "aws" "s3"
+           "cp" source dest)))
+
 (defn create-cloudfront-invalidation!
   ([cloudfront-distribution-id paths]
    (create-cloudfront-invalidation! (aws-profile) cloudfront-distribution-id paths))

@@ -68,11 +68,14 @@
       (spit tmpname (json/generate-string version-info)))))
 
 (defn- upload-version-info!
-  [edition]
-  (u/step "Upload version info"
-    (u/s3-copy! (format "s3://%s" (version-info-url edition)) (format "s3://%s.previous" (version-info-url edition)))
-    (u/s3-copy! (u/assert-file-exists (tmp-version-info-filename edition)) (format "s3://%s" (version-info-url edition)))
-    (u/create-cloudfront-invalidation! c/static-cloudfront-distribution-id (format "/%s" (version-info-filename edition)))))
+  ([edition]
+   (upload-version-info! edition false))
+  ([edition credentials-already-set?]
+   (u/step "Upload version info"
+     (let [copy! (if credentials-already-set? u/s3-copy-without-profile! u/s3-copy!)]
+       (copy! (format "s3://%s" (version-info-url edition)) (format "s3://%s.previous" (version-info-url edition)))
+       (copy! (u/assert-file-exists (tmp-version-info-filename edition)) (format "s3://%s" (version-info-url edition)))
+       (u/create-cloudfront-invalidation! c/static-cloudfront-distribution-id (format "/%s" (version-info-filename edition)))))))
 
 (defn- validate-version-info
   [edition]
@@ -111,7 +114,8 @@
   [{ee-or-oss-string :edition announcement-url :url}]
   (u/exit-when-finished-nonzero-on-exception
     (let [edition      (keyword ee-or-oss-string)
-          _            (assert (#{:ee :oss} edition) "The edition must be either `ee' or `oss'")
+          _chk-ed      (assert (#{:ee :oss} edition) "The edition must be either `ee' or `oss'")
+          _chk-url     (assert (re-matches #"^https://www.metabase.com/.*" announcement-url) "URL must match \"https://www.metabase.com/.*\"")
           updated-info (assoc-in (current-version-info edition) [:latest :announcement_url] announcement-url)]
       (save-version-info! edition updated-info)
-      (upload-version-info! edition))))
+      (upload-version-info! edition true))))
