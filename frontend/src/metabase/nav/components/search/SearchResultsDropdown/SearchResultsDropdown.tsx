@@ -4,8 +4,10 @@ import type { SearchResults as SearchResultsType } from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { SearchDropdownFooter } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
-import { SearchResultsContainer } from "./SearchResultsDropdown.styled";
+import {
+  SearchDropdownFooter,
+  SearchResultsContainer,
+} from "./SearchResultsDropdown.styled";
 
 export type SearchResultsDropdownProps = {
   searchText: string;
