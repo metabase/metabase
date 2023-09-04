@@ -30,7 +30,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import { ObjectDetailView } from "./ObjectDetail";
+import { ObjectDetailView } from "./ObjectDetailView";
 import type { ObjectDetailProps } from "./types";
 
 const mockCard = createMockCard({
