@@ -163,11 +163,16 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map(condition => {
-      const externalOp = Lib.externalOp(condition);
-      const [lhsColumn, rhsColumn] = externalOp.args.map(column =>
-        Lib.displayInfo(query, 0, column),
+      const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
+        query,
+        0,
+        condition,
       );
-      return { ...externalOp, lhsColumn, rhsColumn };
+      return {
+        operator: Lib.displayInfo(query, 0, operator),
+        lhsColumn: Lib.displayInfo(query, 0, lhsColumn),
+        rhsColumn: Lib.displayInfo(query, 0, rhsColumn),
+      };
     });
 
     return {
@@ -309,7 +314,7 @@ describe("Notebook Editor > Join Step", () => {
     const { conditions } = getRecentJoin();
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
-    expect(condition.operator).toBe("=");
+    expect(condition.operator.shortName).toBe("=");
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
     expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
   });
@@ -427,7 +432,7 @@ describe("Notebook Editor > Join Step", () => {
     expect(notEqualsOperator).toHaveAttribute("aria-selected", "true");
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.operator).toBe("!=");
+    expect(condition.operator.shortName).toBe("!=");
   });
 
   describe("join fields", () => {
@@ -517,7 +522,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { fields } = getRecentJoin();
-      expect(fields).toHaveLength(0);
+      expect(fields).toBe("none");
     });
 
     it("should select a few columns for an existing join", async () => {

@@ -20,9 +20,9 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   // After that, we use `displayInfo(query, stageIndex, column).selected` to determine if a column is selected
   // We use "all" instead of `joinableColumns(query, stageIndex, table)`
   // to avoid race-conditions when the table metadata is not yet loaded
-  const [selectedColumns, _setSelectedColumns] = useState<
-    Lib.ColumnMetadata[] | "all"
-  >(join ? [] : "all");
+  const [selectedColumns, _setSelectedColumns] = useState<Lib.JoinFields>(
+    join ? [] : "all",
+  );
 
   const columns = useMemo(() => {
     if (join) {
@@ -55,6 +55,9 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     if (selectedColumns === "all") {
       return true;
     }
+    if (selectedColumns === "none") {
+      return false;
+    }
     return selectedColumns.some(selectedColumn => column === selectedColumn);
   };
 
@@ -73,8 +76,6 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     if (nextSelectedColumns === "all") {
       const columns = Lib.joinableColumns(query, stageIndex, table);
       _setSelectedColumns(columns);
-    } else if (nextSelectedColumns === "none") {
-      _setSelectedColumns([]);
     } else {
       _setSelectedColumns(nextSelectedColumns);
     }

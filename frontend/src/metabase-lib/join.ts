@@ -8,7 +8,7 @@ import type {
   FilterOperator,
   Join,
   JoinConditionClause,
-  JoinConditionExternalOp,
+  JoinConditionParts,
   JoinStrategy,
   Query,
   TableMetadata,
@@ -33,7 +33,7 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: JoinConditionClause[] | JoinConditionExternalOp[],
+  conditions: JoinConditionClause[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
@@ -69,9 +69,32 @@ export function joinConditions(join: Join): JoinConditionClause[] {
   return ML.join_conditions(join);
 }
 
+export function joinConditionParts(
+  query: Query,
+  stageIndex: number,
+  condition: JoinConditionClause,
+): JoinConditionParts {
+  const {
+    operator,
+    column: lhsColumn,
+    args,
+    options,
+  } = ML.filter_parts(query, stageIndex, condition);
+
+  // Join conditions have a single arg and it's always a column
+  const rhsColumn = args[0] as ColumnMetadata;
+
+  return {
+    operator,
+    lhsColumn,
+    rhsColumn,
+    options,
+  };
+}
+
 export function withJoinConditions(
   join: Join,
-  newConditions: JoinConditionClause[] | JoinConditionExternalOp[],
+  newConditions: JoinConditionClause[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }
