@@ -1,17 +1,14 @@
 import styled from "@emotion/styled";
 import {
-  breakpointMinLarge,
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import { Flex } from "metabase/ui";
 
 const SEARCH_BODY_WIDTH = "90rem";
-const SEARCH_SIDEBAR_WIDTH = "240px";
+const SEARCH_SIDEBAR_WIDTH = "15rem";
 
 export const SearchMain = styled(Flex)`
-  padding: 1.5rem 1rem;
-  margin: auto;
   width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);
 
   ${breakpointMinSmall} {
@@ -21,17 +18,9 @@ export const SearchMain = styled(Flex)`
   ${breakpointMinMedium} {
     padding: 2rem 3rem;
   }
-
-  ${breakpointMinLarge} {
-    padding: 2rem 4rem;
-  }
 `;
 
-export const SearchBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-
+export const SearchBody = styled(Flex)`
   ${breakpointMinMedium} {
     flex-direction: row-reverse;
     gap: 2.5rem;

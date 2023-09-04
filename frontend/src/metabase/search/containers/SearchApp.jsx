@@ -9,7 +9,7 @@ import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Flex, Paper, Group } from "metabase/ui";
+import { Box, Text, Flex, Paper } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -71,13 +71,11 @@ function SearchApp({ location }) {
   return (
     <Search.ListLoader query={query} wrapped>
       {({ list, metadata }) => (
-        <SearchMain direction="column" gap="2rem">
-          <Group>
-            <Text size="xl" weight={700}>
-              {jt`Results for "${searchText}"`}
-            </Text>
-          </Group>
-          <SearchBody>
+        <SearchMain direction="column" gap="2rem" p="1.5rem 1rem" m="auto">
+          <Text size="xl" weight={700}>
+            {jt`Results for "${searchText}"`}
+          </Text>
+          <SearchBody direction="column" justify="center">
             <SearchControls>
               <SearchSidebar
                 value={searchFilters}
