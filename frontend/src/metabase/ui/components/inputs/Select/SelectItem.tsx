@@ -12,7 +12,7 @@ interface SelectItemProps extends ComponentPropsWithoutRef<"div"> {
 export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
   function SelectItem({ label, icon, ...others }: SelectItemProps, ref) {
     return (
-      <Group ref={ref} spacing="0.75rem" {...others}>
+      <Group ref={ref} spacing="0.5rem" {...others}>
         {icon && <Icon name={icon} />}
         <Text color="inherit">{label}</Text>
       </Group>

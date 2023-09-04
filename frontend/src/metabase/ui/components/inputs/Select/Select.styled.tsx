@@ -35,7 +35,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
         lineHeight: theme.lineHeight,
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         "&:hover:not([data-disabled]), &:focus": {
           color: theme.colors.brand[1],
           backgroundColor: theme.colors.bg[0],
@@ -45,14 +45,14 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
       separator: {
-        padding: `0 ${theme.spacing.md}`,
+        padding: `0 ${theme.spacing.sm}`,
 
         "&:not(:first-of-type)": {
           "&::before": {
             content: '""',
             display: "block",
-            marginTop: theme.spacing.sm,
-            marginBottom: theme.spacing.sm,
+            marginTop: rem(6),
+            marginBottom: rem(7),
             borderTop: `1px solid ${theme.colors.border[0]}`,
           },
         },
@@ -64,8 +64,8 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         lineHeight: theme.lineHeight,
         marginTop: rem(2),
         marginBottom: rem(2),
-        paddingTop: rem(4),
-        paddingBottom: rem(4),
+        paddingTop: rem(2),
+        paddingBottom: rem(2),
 
         "&::after": {
           display: "none",
