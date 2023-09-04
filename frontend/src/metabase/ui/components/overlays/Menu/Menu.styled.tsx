@@ -1,4 +1,4 @@
-import { getStylesRef } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
@@ -17,8 +17,8 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
-        lineHeight: theme.lineHeight,
-        padding: theme.spacing.md,
+        lineHeight: "1.5rem",
+        padding: theme.spacing.sm,
 
         "&:hover, &:focus": {
           color: theme.colors.brand[1],
@@ -30,7 +30,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
       itemIcon: {
-        marginRight: "0.75rem",
+        marginRight: theme.spacing.sm,
       },
       itemRightSection: {
         ref: getStylesRef("itemRightSection"),
@@ -42,13 +42,13 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.md,
         fontWeight: 700,
         lineHeight: theme.lineHeight,
-        padding: `0.375rem ${theme.spacing.md}`,
+        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
       },
       divider: {
-        marginTop: theme.spacing.sm,
-        marginBottom: theme.spacing.sm,
-        marginLeft: theme.spacing.md,
-        marginRight: theme.spacing.md,
+        marginTop: rem(7),
+        marginBottom: rem(4),
+        marginLeft: theme.spacing.sm,
+        marginRight: theme.spacing.sm,
         borderTopColor: theme.colors.border[0],
       },
     }),
