@@ -1,13 +1,17 @@
 (ns release.version-info-test
   (:require
    [clojure.data.json :as json]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabuild-common.entrypoint :as cli]
    [release.common :as c]
    [release.common.github :as github]
    [release.version-info :as v-info])
   (:import
    (java.time LocalDate)
    (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- make-version-map [version released patch highlights enterprise?]
   {:version    (format "v%d.%s" (if enterprise? 1 0) version)
@@ -30,9 +34,15 @@
                     (apply make-version-map (conj v enterprise?)))
                   (rest versions))}))
 
-(deftest build-info-test
+(defn- read-tmp-file!
+  [edition]
+  (-> (#'v-info/tmp-version-info-filename edition)
+      (slurp)
+      (json/read-str :key-fn keyword)))
+
+(deftest version-info-test
   (doseq [edition [:oss :ee]]
-    (testing (format "build-info.json file for %s edition is correct" (name edition))
+    (testing (format "version-info.json file for %s edition is correct" (name edition))
       (with-redefs [v-info/current-version-info (constantly (make-version-info edition (rest test-versions)))
                     github/milestone-issues     (constantly (mapv (fn [title]
                                                                     {:title title})
@@ -40,9 +50,22 @@
         (c/set-version! (case edition :oss "0.39.0" "1.39.0"))
         (c/set-branch!  "testing")
         (c/set-edition! edition)
-        (#'v-info/generate-version-info!)
-        (let [actual (-> (#'v-info/tmp-version-info-filename)
-                         (slurp)
-                         (json/read-str :key-fn keyword))
+        (#'v-info/save-version-info! edition (#'v-info/generate-updated-version-info edition))
+        (let [actual (read-tmp-file! edition)
               expected (make-version-info edition test-versions)]
           (is (= expected actual)))))))
+
+(deftest announcement-url-test
+  (doseq [edition ["oss" "ee"]]
+    (testing (format "version-info.json can have its announcement URL set for the %s edition" (str/upper-case edition))
+      (let [uploaded?        (atom false)
+            wrapped-safely?  (atom false)
+            announcement-url "https://metabase.com/blog/whats-new-in-40"]
+        (with-redefs [v-info/upload-version-info! (fn [_ed] (reset! uploaded? true))
+                      v-info/current-version-info (constantly (make-version-info (keyword edition) (rest test-versions)))
+                      cli/do-exit-when-finished-nonzero-on-exception (fn [thunk] (thunk) (reset! wrapped-safely? true))]
+          (v-info/update-announcement-url! {:edition edition :url announcement-url})
+          (let [result (read-tmp-file! (keyword edition))]
+            (is (= announcement-url (-> result :latest :announcement_url)))
+            (is (true? @uploaded?))
+            (is (true? @wrapped-safely?))))))))

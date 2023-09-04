@@ -596,6 +596,12 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
+  ;; Update the announcement_url in version-info. Requires an edition (oss / ee) and URL:
+  ;;
+  ;;    clojure -X:build:build/announcement-url :edition oss :url https://metabase.com/blog/whats-new-in-version-40
+  :build/announcement-url
+  {:exec-fn release.version-info/update-announcement-url!}
+
 
 ;;; Other misc convenience aliases
 
