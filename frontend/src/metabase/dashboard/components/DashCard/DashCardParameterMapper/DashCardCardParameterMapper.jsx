@@ -79,7 +79,7 @@ DashCardCardParameterMapper.propTypes = {
   card: PropTypes.object.isRequired,
   dashcard: PropTypes.object.isRequired,
   editingParameter: PropTypes.object.isRequired,
-  target: PropTypes.object,
+  target: PropTypes.array,
   mappingOptions: PropTypes.array.isRequired,
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
