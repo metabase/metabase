@@ -457,8 +457,6 @@ describe("scenarios > question > notebook", () => {
     popover().findByText("Products model").click();
     join();
     popover().findByText("Orders model").click();
-    popover().findByText("ID").click();
-    popover().findByText("Product ID").click();
 
     visualize();
   });

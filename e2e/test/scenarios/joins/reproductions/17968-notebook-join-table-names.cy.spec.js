@@ -18,14 +18,14 @@ describe("issue 17968", () => {
     popover().findByText("Reviews").click();
 
     popover().within(() => {
-      cy.findByText("Products").click();
+      cy.findByText("Product").click();
       cy.findByText("ID").click();
     });
 
     popover().findByText("Product ID").click();
 
     cy.findByTestId("step-join-0-1")
-      .findByTestId("parent-dimension")
+      .findByLabelText("Left column")
       .findByText("Products");
   });
 });

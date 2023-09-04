@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useCallback } from "react";
 import type { RefObject } from "react";
 import { t } from "ttag";
 
@@ -19,15 +19,12 @@ import {
 
 interface JoinConditionColumnPickerProps
   extends Omit<QueryColumnPickerProps, "checkIsColumnSelected"> {
+  isNewCondition: boolean;
   column?: Lib.ColumnMetadata;
   label?: string;
   isInitiallyVisible?: boolean;
   readOnly?: boolean;
   popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
-}
-
-function checkIsColumnSelected(item: ColumnListItem) {
-  return !!item.selected;
 }
 
 export type JoinConditionColumnPickerRef = TippyPopoverWithTriggerRef;
@@ -37,12 +34,23 @@ export function JoinConditionColumnPicker({
   stageIndex,
   column,
   label,
+  isNewCondition,
   isInitiallyVisible = false,
   readOnly = false,
   popoverRef,
   ...props
 }: JoinConditionColumnPickerProps) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
+
+  const checkColumnSelected = useCallback(
+    (item: ColumnListItem) => {
+      if (isNewCondition) {
+        return false;
+      }
+      return !!item.selected;
+    },
+    [isNewCondition],
+  );
 
   return (
     <TippyPopoverWithTrigger
@@ -64,7 +72,7 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           hasTemporalBucketing
-          checkIsColumnSelected={checkIsColumnSelected}
+          checkIsColumnSelected={checkColumnSelected}
           onClose={closePopover}
         />
       )}

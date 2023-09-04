@@ -143,7 +143,7 @@ describe("scenarios > question > joined questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 5 → B Column");
+    cy.findByText("Question 5 - A_COLUMN → B Column");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -203,7 +203,7 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("add_data").click();
 
     enterCustomColumnDetails({
-      formula: "[Question 5 → Sum of Rating] / [Sum of Total]",
+      formula: "[Question 5 - Product → Sum of Rating] / [Sum of Total]",
       name: "Sum Divide",
     });
 
@@ -293,8 +293,11 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("12928_Q2");
     });
 
-    cy.findAllByText(/Products? → Category/).should("have.length", 1);
-    cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
+    cy.findAllByText(/^Products? → Category/).should("have.length", 1);
+    cy.findAllByText(/^Question \d+? - Products → Category → Category/).should(
+      "have.length",
+      1,
+    );
   });
 
   it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
@@ -376,16 +379,8 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().findByText("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("15578").click();
-
-    popover().findByText("ID").click();
-    popover()
-      // Implicit assertion - test will fail for multiple strings
-      .findByText("Product ID")
-      .click();
+    popover().findByText("Saved Questions").click();
+    popover().findByText("15578").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
@@ -422,24 +417,24 @@ describe("scenarios > question > joined questions", () => {
 
     // Test join dimension infers parent dimension's temporal unit
 
-    cy.findByTestId("parent-dimension").click();
+    cy.findByLabelText("Left column").click();
     selectFromDropdown("by month", { force: true });
     selectFromDropdown("Week");
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     selectFromDropdown("Created At");
 
-    assertDimensionName("parent", "Created At: Week");
-    assertDimensionName("join", "Created At: Week");
+    assertColumnName("left", "Created At: Week");
+    assertColumnName("right", "Created At: Week");
 
     // Test changing a temporal unit on one dimension would update a second one
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     selectFromDropdown("by week", { force: true });
     selectFromDropdown("Day");
 
-    assertDimensionName("parent", "Created At: Day");
-    assertDimensionName("join", "Created At: Day");
+    assertColumnName("left", "Created At: Day");
+    assertColumnName("right", "Created At: Day");
 
     summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
@@ -467,7 +462,7 @@ describe("scenarios > question > joined questions", () => {
     selectFromDropdown("Count");
 
     cy.findByTestId("step-join-1-0")
-      .findByTestId("parent-dimension")
+      .findByLabelText("Left table")
       .findByText("Previous results");
   });
 });
@@ -478,7 +473,7 @@ function joinTable(table) {
 }
 
 function selectJoinType(strategy) {
-  cy.icon("join_left_outer").first().click();
+  cy.findByLabelText("Change join type").click();
   popover().findByText(strategy).click();
 }
 
@@ -486,8 +481,7 @@ function selectFromDropdown(option, clickOpts) {
   popover().last().findByText(option).click(clickOpts);
 }
 
-function assertDimensionName(type, name) {
-  cy.findByTestId(`${type}-dimension`).within(() => {
-    cy.findByText(name);
-  });
+function assertColumnName(side, name) {
+  const label = side === "left" ? "Left column" : "Right column";
+  cy.findByLabelText(label).findByText(name).should("exist");
 }
