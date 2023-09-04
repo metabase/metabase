@@ -13,6 +13,7 @@ const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
 // these args make should make the notification to appear
 const DEFAULTS: Parameters<typeof getLatestEligibleReleaseNotes>[0] = {
   isEmbedded: false,
+  isWhiteLabeling: false,
   lastAcknowledgedVersion: null,
   currentVersion: "v0.48.0",
   versionInfo: buildVersionInfo([
@@ -127,6 +128,7 @@ describe("getLatestEligibleReleaseNotes", () => {
   it("filters out future versions - lastAcknowledgedVersion not null", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
           mockVersion({
             version: "v0.49.0",
@@ -145,6 +147,7 @@ describe("getLatestEligibleReleaseNotes", () => {
   it("filters out future versions - lastAcknowledgedVersion  null", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
           mockVersion({
             version: "v0.49.0",
@@ -163,6 +166,7 @@ describe("getLatestEligibleReleaseNotes", () => {
   it("returns last version if more than one are eligible", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
           mockVersion({
             version: "v0.49.2",
