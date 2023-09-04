@@ -165,7 +165,7 @@
 
 (deftest honeysql-tests
   (mt/test-driver :presto-jdbc
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Complex HoneySQL conversions work as expected"
         (testing "unix-timestamp with microsecond precision"
           (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"

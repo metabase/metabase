@@ -24,6 +24,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -300,7 +301,7 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (hx/type-info expr)
         db-type     (hx/type-info->db-type type-info)]
@@ -382,13 +383,13 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))]
     (hx/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
   [_ _ expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         millis      (hx/call (u/qualified-name ::mod) expr 1000)]
     (hx/call :date_add
              (hx/literal "millisecond")
@@ -704,7 +705,7 @@
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   #_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))

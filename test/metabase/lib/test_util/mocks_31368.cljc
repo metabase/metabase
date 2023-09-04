@@ -28,14 +28,13 @@
 (defn query-with-legacy-source-card
   "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."
   [has-result-metadata?]
-  (let [metadata-provider (lib/composed-metadata-provider
-                           (lib.tu/mock-metadata-provider
-                            {:cards [(cond-> {:id            1
-                                              :database-id   (meta/id)
-                                              :name          "Card 1"
-                                              :dataset-query legacy-card-query}
-                                       has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})
-                           meta/metadata-provider)
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:cards [(cond-> {:id            1
+                                             :database-id   (meta/id)
+                                             :name          "Card 1"
+                                             :dataset-query legacy-card-query}
+                                      has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})
         legacy-query      {:database (meta/id)
                            :type     :query
                            :query    {:source-card 1}}]
