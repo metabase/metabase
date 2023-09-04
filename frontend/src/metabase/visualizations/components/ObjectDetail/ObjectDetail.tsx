@@ -8,7 +8,6 @@ import type { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
-  VisualizationSettings,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -51,11 +50,7 @@ import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDe
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import type {
-  ObjectDetailProps,
-  ObjectId,
-  OnVisualizationClickType,
-} from "./types";
+import type { ObjectDetailProps, ObjectId } from "./types";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import {
@@ -66,17 +61,15 @@ import {
   getSinglePKIndex,
   getSingleResultsRow,
 } from "./utils";
-import { DetailsTable } from "./ObjectDetailsTable";
-import { Relationships } from "./ObjectRelationships";
 import {
   CloseButton,
   ErrorWrapper,
-  ObjectDetailBodyWrapper,
   ObjectDetailContainer,
   ObjectDetailHeaderWrapper,
   ObjectDetailWrapperDiv,
   ObjectIdLabel,
 } from "./ObjectDetail.styled";
+import { ObjectDetailBody } from "./ObjectDetailBody";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   const isLoggedIn = !!getUser(state);
@@ -535,60 +528,6 @@ export function ObjectDetailHeader({
         </Flex>
       )}
     </ObjectDetailHeaderWrapper>
-  );
-}
-
-export interface ObjectDetailBodyProps {
-  data: DatasetData;
-  objectName: string;
-  zoomedRow: unknown[];
-  settings: VisualizationSettings;
-  hasRelationships: boolean;
-  onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: unknown) => boolean;
-  tableForeignKeys?: ForeignKey[];
-  tableForeignKeyReferences?: {
-    [key: number]: { status: number; value: number };
-  };
-  followForeignKey?: (fk: ForeignKey) => void;
-}
-
-export function ObjectDetailBody({
-  data,
-  objectName,
-  zoomedRow,
-  settings,
-  hasRelationships = false,
-  onVisualizationClick,
-  visualizationIsClickable,
-  tableForeignKeys,
-  tableForeignKeyReferences,
-  followForeignKey,
-}: ObjectDetailBodyProps): JSX.Element {
-  const showRelationships =
-    hasRelationships &&
-    tableForeignKeys &&
-    tableForeignKeyReferences &&
-    followForeignKey;
-
-  return (
-    <ObjectDetailBodyWrapper>
-      <DetailsTable
-        data={data}
-        zoomedRow={zoomedRow}
-        settings={settings}
-        onVisualizationClick={onVisualizationClick}
-        visualizationIsClickable={visualizationIsClickable}
-      />
-      {showRelationships && (
-        <Relationships
-          objectName={objectName}
-          tableForeignKeys={tableForeignKeys}
-          tableForeignKeyReferences={tableForeignKeyReferences}
-          foreignKeyClicked={followForeignKey}
-        />
-      )}
-    </ObjectDetailBodyWrapper>
   );
 }
 

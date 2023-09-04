@@ -3,6 +3,7 @@ import Modal from "metabase/components/Modal";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 import { color } from "metabase/lib/colors";
 import TableFooter from "../TableSimple/TableFooter";
+import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 
 interface ObjectDetailContainerProps {
   wide: boolean;
@@ -16,12 +17,6 @@ export const ObjectDetailWrapperDiv = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
-`;
-
-export const ObjectDetailBodyWrapper = styled.div`
-  font-size: 1rem;
-  flex: 1;
-  overflow-y: auto;
 `;
 
 export const ObjectDetailHeaderWrapper = styled.div`
