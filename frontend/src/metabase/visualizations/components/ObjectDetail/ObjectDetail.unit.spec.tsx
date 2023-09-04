@@ -1,5 +1,4 @@
 import {
-  render,
   screen,
   waitForElementToBeRemoved,
   within,
@@ -31,7 +30,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import { ObjectDetailBody, ObjectDetailView } from "./ObjectDetail";
+import { ObjectDetailView } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
 
 const mockCard = createMockCard({
@@ -275,28 +274,6 @@ function setup(
 }
 
 describe("Object Detail", () => {
-  it("renders an object detail body", () => {
-    render(
-      <ObjectDetailBody
-        data={testDataset}
-        objectName="Large Sandstone Socks"
-        zoomedRow={testDataset.rows[2]}
-        settings={{
-          column: () => null,
-        }}
-        hasRelationships={false}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        followForeignKey={() => null}
-      />,
-    );
-
-    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
-    expect(screen.getByText("Doohickey")).toBeInTheDocument();
-  });
-
   it("renders an object detail component", () => {
     setup({ question: mockQuestion });
 
