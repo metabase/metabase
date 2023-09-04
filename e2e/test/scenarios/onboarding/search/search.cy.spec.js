@@ -217,23 +217,49 @@ describe("scenarios > search", () => {
     });
 
     describe("search filters", () => {
-      typeFilters.forEach(({ label, filterName, resultInfoText }) => {
-        it(`should filter results by ${label}`, () => {
-          cy.visit("/");
+      describe("type filters", () => {
+        typeFilters.forEach(({ label, resultInfoText }) => {
+          it(`should filter results by ${label}`, () => {
+            cy.visit("/");
 
-          getSearchBar().clear().type("e{enter}");
+            getSearchBar().clear().type("e{enter}");
+            cy.wait("@search");
+
+            cy.findByTestId("type-search-filter").click();
+            popover().within(() => {
+              cy.findByText(label).click();
+              cy.findByText("Apply filters").click();
+            });
+
+            cy.findAllByTestId("result-link-info-text").each(result => {
+              if (resultInfoText) {
+                cy.wrap(result).should("contain.text", resultInfoText);
+              }
+            });
+          });
+        });
+
+        it("should remove type filter when `X` is clicked on search filter", () => {
+          const { filterName } = typeFilters[0];
+          cy.visit(`/search?q=orders&type=${filterName}`);
           cy.wait("@search");
 
-          cy.findByTestId("type-search-filter").click();
-          popover().within(() => {
-            cy.findByText(label).click();
-            cy.findByText("Apply filters").click();
+          cy.findByTestId("type-search-filter").within(() => {
+            cy.findByText("Question").should("exist");
+            cy.findByLabelText("close icon").click();
+            cy.findByText("Question").should("not.exist");
+            cy.findByText("Content type").should("exist");
           });
 
-          cy.findAllByTestId("result-link-info-text").each(result => {
-            if (resultInfoText) {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            }
+          cy.url().should("not.contain", "type");
+
+          // Check that we're getting elements other than Questions by checking the
+          // result text and checking if there's more than one result-link-info-text text
+          cy.findAllByTestId("result-link-info-text").then($elements => {
+            const textContent = new Set(
+              $elements.toArray().map(el => el.textContent),
+            );
+            expect(textContent.size).to.be.greaterThan(1);
           });
         });
       });

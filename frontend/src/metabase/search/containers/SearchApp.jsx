@@ -69,12 +69,18 @@ function SearchApp({ location }) {
   );
 
   return (
-    <Search.ListLoader query={query} wrapped>
-      {({ list, metadata }) => (
-        <SearchMain direction="column" gap="2rem" p="1.5rem 1rem" m="auto">
-          <Text size="xl" weight={700}>
-            {jt`Results for "${searchText}"`}
-          </Text>
+    <SearchMain
+      direction="column"
+      gap="2rem"
+      p="1.5rem 1rem"
+      m="auto"
+      data-testid="search-app"
+    >
+      <Text size="xl" weight={700}>
+        {jt`Results for "${searchText}"`}
+      </Text>
+      <Search.ListLoader query={query} wrapped>
+        {({ list, metadata }) => (
           <SearchBody direction="column" justify="center">
             <SearchControls>
               <SearchSidebar
@@ -113,9 +119,9 @@ function SearchApp({ location }) {
               )}
             </SearchResultContainer>
           </SearchBody>
-        </SearchMain>
-      )}
-    </Search.ListLoader>
+        )}
+      </Search.ListLoader>
+    </SearchMain>
   );
 }
 

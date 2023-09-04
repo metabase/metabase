@@ -28,16 +28,24 @@ export const SidebarFilter = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [popoverWidth, setPopoverWidth] = useState<string | null>(null);
 
   const fieldHasValue = !isEmpty(value);
 
-  const [popoverWidth, setPopoverWidth] = useState("100%");
+  const handleResize = () => {
+    if (dropdownRef.current) {
+      const { width } = dropdownRef.current.getBoundingClientRect();
+      setPopoverWidth(`${width}px`);
+    }
+  };
 
   useLayoutEffect(() => {
-    if (dropdownRef.current) {
-      setPopoverWidth(`${dropdownRef.current?.offsetWidth}px`);
+    if (!popoverWidth) {
+      handleResize();
     }
-  }, []);
+    window.addEventListener("resize", handleResize, false);
+    return () => window.removeEventListener("resize", handleResize, false);
+  }, [dropdownRef, popoverWidth]);
 
   const onApplyFilter = () => {
     onChange(selectedValues);
@@ -104,8 +112,8 @@ export const SidebarFilter = ({
         autoWidth
         hasBackground={false}
       >
-        <Paper shadow="md" withBorder w={popoverWidth}>
-          <Box p="md" w={popoverWidth}>
+        <Paper shadow="md" withBorder>
+          <Box p="md" w={popoverWidth ?? "100%"}>
             <ContentComponent
               value={selectedValues}
               onChange={selected => setSelectedValues(selected)}

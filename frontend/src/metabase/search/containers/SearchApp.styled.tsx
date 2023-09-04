@@ -14,10 +14,6 @@ export const SearchMain = styled(Flex)`
   ${breakpointMinSmall} {
     padding: 2rem;
   }
-
-  ${breakpointMinMedium} {
-    padding: 2rem 3rem;
-  }
 `;
 
 export const SearchBody = styled(Flex)`
@@ -29,7 +25,7 @@ export const SearchBody = styled(Flex)`
 
 export const SearchControls = styled.div`
   ${breakpointMinMedium} {
-    flex: 0 0 240px;
+    flex: 0 0 ${SEARCH_SIDEBAR_WIDTH};
   }
 `;
 
