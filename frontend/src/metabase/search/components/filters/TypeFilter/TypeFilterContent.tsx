@@ -8,6 +8,7 @@ import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Flex } from "metabase/ui";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import type { SearchModelType } from "metabase-types/api";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentComponent"] =
@@ -18,8 +19,7 @@ export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentCom
 
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
-      (model): model is EnabledSearchModelType =>
-        availableModels.includes(model),
+      model => availableModels.includes(model as SearchModelType),
     );
 
     return isLoading ? (

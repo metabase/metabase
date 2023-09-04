@@ -10,7 +10,7 @@ import type { EnabledSearchModelType } from "metabase/search/types";
 import type { SearchModelType } from "metabase-types/api";
 import { TypeFilterContent } from "./TypeFilterContent";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<EnabledSearchModelType, string> = {
+const MODEL_NAME: Record<EnabledSearchModelType, string> = {
   action: "Action",
   card: "Question",
   collection: "Collection",
@@ -103,9 +103,7 @@ describe("TypeFilterContent", () => {
   it("should display `Type` and all type labels", async () => {
     await setup();
     for (const entityType of TEST_TYPES) {
-      expect(
-        screen.getByText(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]),
-      ).toBeInTheDocument();
+      expect(screen.getByText(MODEL_NAME[entityType])).toBeInTheDocument();
     }
   });
 
