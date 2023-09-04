@@ -116,17 +116,17 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       description: {
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       error: {
         color: theme.colors.error[0],
         fontSize: theme.fontSizes.xs,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       required: {
         color: theme.colors.error[0],

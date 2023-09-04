@@ -1,4 +1,4 @@
-import { rem } from "@mantine/core";
+import { px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 import { SelectItem } from "./SelectItem";
 
@@ -51,8 +51,8 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
           "&::before": {
             content: '""',
             display: "block",
-            marginTop: rem(7),
-            marginBottom: rem(4),
+            marginTop: rem(px(theme.spacing.sm) - 1),
+            marginBottom: theme.spacing.xs,
             borderTop: `1px solid ${theme.colors.border[0]}`,
           },
         },

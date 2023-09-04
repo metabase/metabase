@@ -1,4 +1,4 @@
-import { getStylesRef, rem } from "@mantine/core";
+import { getStylesRef, px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
@@ -10,8 +10,8 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: theme => ({
       dropdown: {
-        padding: "0.75rem !important",
-        minWidth: "11.5rem",
+        padding: `${rem(12)} !important`,
+        minWidth: rem(184),
       },
       item: {
         color: theme.colors.text[2],
@@ -35,7 +35,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       itemRightSection: {
         ref: getStylesRef("itemRightSection"),
         color: theme.colors.text[0],
-        marginLeft: "0.75rem",
+        marginLeft: theme.spacing.md,
       },
       label: {
         color: theme.colors.text[0],
@@ -45,8 +45,8 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
       },
       divider: {
-        marginTop: rem(7),
-        marginBottom: rem(4),
+        marginTop: rem(px(theme.spacing.xs) - 1),
+        marginBottom: theme.spacing.xs,
         marginLeft: theme.spacing.sm,
         marginRight: theme.spacing.sm,
         borderTopColor: theme.colors.border[0],
