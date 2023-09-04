@@ -10,9 +10,12 @@ import Search from "metabase/entities/search";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import { Group, Text, Button } from "metabase/ui";
+import { Text, Button } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { EmptyStateContainer } from "./SearchResults.styled";
+import {
+  EmptyStateContainer,
+  SearchDropdownFooter,
+} from "./SearchResults.styled";
 
 const propTypes = {
   list: PropTypes.array,
@@ -54,7 +57,12 @@ const SearchResults = ({
       style={{ display: "flex", flexDirection: "column", overflowY: "hidden" }}
     >
       <div
-        style={{ display: "flex", flexDirection: "column", overflowY: "auto" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          padding: "0.5rem 0",
+        }}
       >
         <ul data-testid="search-results-list">
           {hasResults ? (
@@ -83,7 +91,7 @@ const SearchResults = ({
           )}
         </ul>
       </div>
-      <Group
+      <SearchDropdownFooter
         position="apart"
         align="center"
         px="lg"
@@ -97,7 +105,7 @@ const SearchResults = ({
         <Button variant="subtle" compact color="dark">
           <Icon name="arrow_right" />
         </Button>
-      </Group>
+      </SearchDropdownFooter>
     </div>
   );
 };
