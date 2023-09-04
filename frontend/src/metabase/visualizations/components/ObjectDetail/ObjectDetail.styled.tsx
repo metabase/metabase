@@ -19,18 +19,6 @@ export const ObjectDetailWrapperDiv = styled.div`
   flex-direction: column;
 `;
 
-export const ObjectDetailHeaderWrapper = styled.div`
-  flex-shrink: 0;
-  display: flex;
-  position: relative;
-  border-bottom: 1px solid ${color("border")};
-`;
-
-export const ObjectIdLabel = styled.span`
-  color: ${color("text-medium")};
-  margin-left: 0.5rem;
-`;
-
 export const ObjectDetailsTable = styled.div`
   overflow-y: auto;
   flex: 1;
@@ -42,13 +30,6 @@ export const ObjectRelationships = styled.div`
   flex: 0 0 100%;
   padding: 2rem;
   background-color: ${color("bg-light")};
-`;
-
-export const CloseButton = styled.div`
-  display: flex;
-  margin-left: 1rem;
-  padding-left: 1rem;
-  border-left: 1px solid ${color("border")};
 `;
 
 export const ErrorWrapper = styled.div`
