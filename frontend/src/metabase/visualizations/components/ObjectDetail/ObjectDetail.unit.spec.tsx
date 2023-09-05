@@ -1,14 +1,13 @@
 import { render, screen } from "@testing-library/react";
 
-import { testDataset } from "__support__/testDataset";
 import { setupCardDataset } from "__support__/server-mocks";
+import { testDataset } from "__support__/testDataset";
 import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
 import {
-  ObjectDetailView,
-  ObjectDetailHeader,
   ObjectDetailBody,
+  ObjectDetailView,
   ObjectDetailWrapper,
 } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
@@ -54,48 +53,6 @@ function setup(options?: Partial<ObjectDetailProps>) {
 }
 
 describe("Object Detail", () => {
-  it("renders an object detail header", () => {
-    render(
-      <ObjectDetailHeader
-        canZoom={false}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={false}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
-    expect(screen.getByText(/778/i)).toBeInTheDocument();
-  });
-
-  it("renders an object detail header with enabled next object button and disabled previous object button", () => {
-    render(
-      <ObjectDetailHeader
-        canZoom={true}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={true}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    const nextDisabled = screen
-      .getByTestId("view-next-object-detail")
-      .getAttribute("disabled");
-
-    const prevDisabled = screen
-      .getByTestId("view-previous-object-detail")
-      .getAttribute("disabled");
-
-    expect(nextDisabled).toBeNull();
-    expect(prevDisabled).not.toBeNull();
-  });
-
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
