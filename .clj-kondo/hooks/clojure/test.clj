@@ -1,4 +1,4 @@
-﻿(ns hooks.clojure.test
+(ns hooks.clojure.test
   (:require [clj-kondo.hooks-api :as hooks]
             [clojure.string :as str]))
 

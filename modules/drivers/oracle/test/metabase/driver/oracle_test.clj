@@ -1,4 +1,4 @@
-﻿(ns metabase.driver.oracle-test
+(ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require
    [clojure.java.jdbc :as jdbc]

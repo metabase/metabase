@@ -1,4 +1,4 @@
-﻿(ns metabase.driver.vertica-test
+(ns metabase.driver.vertica-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
