@@ -32,7 +32,6 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -188,15 +187,16 @@ function DashCardVisualization({
     const question = new Question(dashcard.card, metadata);
     const mainSeries = series[0] as unknown as Dataset;
 
-    const isInternalQuery = question.query() instanceof InternalQuery;
+    const shouldShowDownloadWidget = DashCardMenu.shouldRender({
+      question,
+      result: mainSeries,
+      isXray,
+      isEmbed,
+      isPublic,
+      isEditing,
+    });
 
-    const shouldShowDownloadWidget =
-      isEmbed ||
-      (!isPublic &&
-        !isEditing &&
-        DashCardMenu.shouldRender({ question, result: mainSeries, isXray }));
-
-    if (isInternalQuery || !shouldShowDownloadWidget) {
+    if (!shouldShowDownloadWidget) {
       return null;
     }
 
