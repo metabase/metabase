@@ -150,5 +150,5 @@ const getHoverColor = (theme: MantineTheme, primaryColor: string) => {
 };
 
 const getBackgroundColor = (theme: MantineTheme, primaryColor: string) => {
-  return theme.fn.rgba(primaryColor, 0.598);
+  return theme.fn.rgba(primaryColor, 0.0971);
 };

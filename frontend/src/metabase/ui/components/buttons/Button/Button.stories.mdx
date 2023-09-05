@@ -229,20 +229,6 @@ DefaultFullWidthGrid.args = {
   </Story>
 </Canvas>
 
-#### Custom color
-
-export const CustomColorFullWidthGrid = GridTemplate.bind({});
-CustomColorFullWidthGrid.args = {
-  color: "error",
-  fullWidth: true,
-};
-
-<Canvas>
-  <Story name="Default size, full width, custom color">
-    {CustomColorFullWidthGrid}
-  </Story>
-</Canvas>
-
 #### Disabled state
 
 export const DefaultDisabledFullWidthGrid = GridTemplate.bind({});
@@ -341,21 +327,6 @@ CompactFullWidthGrid.args = {
 <Canvas>
   <Story name="Compact size, full width" args={CompactFullWidthGrid.args}>
     {CompactFullWidthGrid}
-  </Story>
-</Canvas>
-
-#### Custom color
-
-export const CompactCustomColorFullWidthGrid = GridTemplate.bind({});
-CompactCustomColorFullWidthGrid.args = {
-  color: "error",
-  compact: true,
-  fullWidth: true,
-};
-
-<Canvas>
-  <Story name="Compact size, full width, custom color">
-    {CompactCustomColorFullWidthGrid}
   </Story>
 </Canvas>
 
