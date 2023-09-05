@@ -8,6 +8,7 @@ describe("utils", () => {
       ).toStrictEqual([1, 2, 0, 0, -2, 1]);
     });
   });
+
   describe("compareVersions", () => {
     it("should compare versions correctly", () => {
       const expected = [
@@ -23,10 +24,21 @@ describe("utils", () => {
         "0.10.0",
         "1.1.0",
       ];
-      const shuffled = expected.slice();
-      shuffle(shuffled);
-      shuffled.sort(MetabaseUtils.compareVersions);
-      expect(shuffled).toEqual(expected);
+
+      const unsorted = [
+        "0.0.10-rc10",
+        "0.0.10",
+        "0.0.10-alpha1",
+        "0.0.10-snapshot",
+        "0.0.9",
+        "0.1.0",
+        "0.0.10-rc1",
+        "0.0.10-rc2",
+        "0.10.0",
+        "1.1.0",
+        "0.2.0",
+      ];
+      expect(unsorted.sort(MetabaseUtils.compareVersions)).toEqual(expected);
     });
   });
 
@@ -96,10 +108,3 @@ describe("utils", () => {
     });
   });
 });
-
-function shuffle(a: string[]) {
-  for (let i = a.length; i; i--) {
-    const j = Math.floor(Math.random() * i);
-    [a[i - 1], a[j]] = [a[j], a[i - 1]];
-  }
-}

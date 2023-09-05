@@ -159,9 +159,9 @@ const MetabaseUtils = {
         .toLowerCase()
         // v1.2.3-beta1
         .replace(/^v/, "")
-        //  1.2.3-beta1
+        // 1.2.3-beta1
         .split("-")
-        //['1.2.3', 'beta1']
+        // ['1.2.3', 'beta1']
         .map(
           substring =>
             substring
@@ -169,7 +169,7 @@ const MetabaseUtils = {
               .filter(c => c)
               // [["1", "2", "3",] ["beta", "1"]]
               .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10)),
-          //     [[1, 2, 3,] [-2, 1]]
+          // [[1, 2, 3,] [-2, 1]]
         );
 
     return [...padRightWithZeros(versionNumbers), ...labels];
