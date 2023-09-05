@@ -1,10 +1,12 @@
 import { forwardRef } from "react";
-import type { Ref, SyntheticEvent } from "react";
+import type { Ref, FormHTMLAttributes, SyntheticEvent } from "react";
 import { useFormikContext } from "formik";
 import { Box } from "metabase/ui";
 import type { BoxProps } from "metabase/ui";
 
-export interface FormProps extends BoxProps {
+export interface FormProps
+  extends BoxProps,
+    FormHTMLAttributes<HTMLFormElement> {
   disabled?: boolean;
 }
 
