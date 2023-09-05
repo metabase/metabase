@@ -13,6 +13,9 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   failedTitle?: string;
 }
 
+/**
+ * @deprecated: use FormSubmitForm from "metabase/forms"
+ */
 const FormSubmitButton = forwardRef(function FormSubmitButton(
   { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,

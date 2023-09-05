@@ -8,6 +8,9 @@ export interface FormErrorMessageProps
   inline?: boolean;
 }
 
+/**
+ * @deprecated: use FormErrorMessage from "metabase/forms"
+ */
 const FormErrorMessage = forwardRef(function FormErrorMessage(
   { inline, ...props }: FormErrorMessageProps,
   ref: Ref<HTMLDivElement>,
