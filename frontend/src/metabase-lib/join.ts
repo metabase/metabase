@@ -22,9 +22,6 @@ export type Joinable = TableMetadata | CardMetadata;
 
 type JoinOrJoinable = Join | Joinable;
 
-/**
- * In this case, Clause is what you'd get back from the `args` you get when calling externalOp()
- */
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
 export function joins(query: Query, stageIndex: number): Join[] {
