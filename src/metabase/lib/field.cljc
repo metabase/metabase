@@ -132,11 +132,11 @@
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
                   (cond
-                    (integer? id-or-name) (resolve-field-id query stage-number id-or-name)
+                    (integer? id-or-name) (or (resolve-field-id query stage-number id-or-name)
+                                              {:lib/type :metadata/column, :name id-or-name})
                     join-alias            {:lib/type :metadata/column, :name id-or-name}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column
-                                               :name     id-or-name})))]
+                                              {:lib/type :metadata/column, :name id-or-name})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -225,7 +225,9 @@
                        table-id           :table-id
                        :as                field-metadata} style]
   (let [field-display-name (or field-display-name
-                               (u.humanization/name->human-readable-name :simple field-name))
+                               (if (string? field-name)
+                                 (u.humanization/name->human-readable-name :simple field-name)
+                                 (str field-name)))
         join-display-name  (when (and (= style :long)
                                       ;; don't prepend a join display name if `:display-name` already contains one!
                                       ;; Legacy result metadata might include it for joined Fields, don't want to add
@@ -739,6 +741,7 @@
                   query stage-number stage)]
      (lib.equality/closest-matching-metadata field-ref columns))))
 
+
 (mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
   "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
   only meant for use with `:field` clauses."
@@ -750,3 +753,8 @@
     legacy-ref  :- some?]
    (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
      (find-visible-column-for-ref query stage-index a-ref))))
+
+(defn json-field?
+  "Return true if field is a JSON field, false if not."
+  [field]
+  (some? (:nfc-path field)))

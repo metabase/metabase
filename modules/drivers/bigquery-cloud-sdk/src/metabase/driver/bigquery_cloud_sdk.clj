@@ -10,12 +10,10 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models :refer [Database]]
-   [metabase.models.table
-    :as table
-    :refer [Table]
-    :rename
-    {Table MetabaseTable}]
+   [metabase.models.table :as table]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -24,9 +22,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -115,12 +112,14 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(s/defn ^:private get-table :- Table
-  ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
+(mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
+  (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
-  ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString,
-    table-id :- su/NonBlankString]
+  (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
+           project-id       :- [:maybe ::lib.schema.common/non-blank-string]
+           dataset-id       :- ::lib.schema.common/non-blank-string
+           table-id         :- ::lib.schema.common/non-blank-string]
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
@@ -149,8 +148,8 @@
       "BIGNUMERIC" :type/Decimal
       :type/*)))
 
-(s/defn ^:private table-schema->metabase-field-info
-  [schema :- Schema]
+(mu/defn ^:private table-schema->metabase-field-info
+  [^Schema schema :- (ms/InstanceOfClass Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
           f-mode    (.getMode field)]
@@ -297,11 +296,11 @@
 (defn- execute-bigquery-on-db
   ^TableResult [database sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
-    (database->client database)
-    sql
-    parameters
-    cancel-chan
-    cancel-requested?))
+   (database->client database)
+   sql
+   parameters
+   cancel-chan
+   cancel-requested?))
 
 (defn- fetch-page [^TableResult response cancel-requested?]
   (when response
@@ -320,7 +319,7 @@
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [_database respond ^TableResult resp cancel-requested?]
+  [respond ^TableResult resp cancel-requested?]
   (let [^Schema schema
         (.getSchema resp)
 
@@ -337,14 +336,13 @@
      (for [^FieldValueList row (fetch-page resp cancel-requested?)]
        (map parse-field-value row parsers)))))
 
-(defn- process-native* [respond database sql parameters cancel-chan]
+(defn- ^:dynamic *process-native* [respond database sql parameters cancel-chan]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
   (let [cancel-requested? (atom false)
         thunk             (fn []
-                            (post-process-native database
-                                                 respond
+                            (post-process-native respond
                                                  (execute-bigquery-on-db
                                                   database
                                                   sql
@@ -367,13 +365,13 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_ {{sql :query, :keys [params]} :native, :as outer-query} context respond]
-  (let [database (qp.store/database)]
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
                   (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (process-native* respond database sql params (qp.context/canceled-chan context))))))
+        (*process-native* respond database sql params (qp.context/canceled-chan context))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |
@@ -415,9 +413,9 @@
   [database dataset-id]
   (let [db-id (u/the-id database)]
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
-                    db-id))
+                    (pr-str db-id)))
     (try
-      (t2/query-one {:update (t2/table-name MetabaseTable)
+      (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}
                      :where  [:and
                               [:= :db_id db-id]

@@ -19,7 +19,7 @@
     (doseq [tz ["UTC" nil]]
       (mt/with-temporary-setting-values [report-timezone tz]
         (mt/with-database-timezone-id "UTC"
-          (mt/with-everything-store
+          (mt/with-metadata-provider (mt/id)
             (is (= {:global {:distinct-count 4
                              :nil%           0.5}
                     :type   {:type/DateTime {:earliest "2013-01-01"

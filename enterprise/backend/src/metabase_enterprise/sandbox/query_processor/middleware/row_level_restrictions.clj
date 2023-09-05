@@ -11,6 +11,7 @@
     :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -53,7 +54,7 @@
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
     (when (seq ids)
-      (qp.store/fetch-and-store-tables! ids)
+      (qp.store/bulk-metadata :metadata/table ids)
       (set ids))))
 
 (defn assert-one-gtap-per-table
@@ -132,7 +133,7 @@
 (mu/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
   [source-query :- mbql.s/SourceQuery]
   (try
-    (let [query        {:database (:id (qp.store/database))
+    (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
           preprocessed (binding [*current-user-id* nil]
@@ -158,7 +159,7 @@
   [inner-query]
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-     {:database (u/the-id (qp.store/database))
+     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
       :query    inner-query})))
 
@@ -187,7 +188,7 @@
   [source-query :- {:source-query s/Any, s/Keyword s/Any}]
   (let [result (binding [*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/process-query)
-                  {:database (u/the-id (qp.store/database))
+                  {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    :query    {:source-query source-query
                               :limit        0}}))]
@@ -228,7 +229,7 @@
       (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
-      (qp.store/fetch-and-store-fields! field-ids))
+      (qp.store/bulk-metadata :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
 
 

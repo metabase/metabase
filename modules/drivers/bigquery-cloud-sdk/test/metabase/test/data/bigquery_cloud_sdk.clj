@@ -8,15 +8,15 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
                               BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
@@ -27,7 +27,7 @@
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
-(def ^:private ns-load-time (System/currentTimeMillis))
+(defonce ^:private ns-load-time (System/currentTimeMillis))
 
 ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
 ;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
@@ -36,7 +36,11 @@
 ;;
 ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
 ;; relationships for FK tables
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys] [_driver _feature _db] (not config/is-test?))
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys]
+  [_driver _feature _db]
+  (if config/is-test?
+    qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
+    true))
 
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
@@ -112,17 +116,19 @@
 
 ;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
-(def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
+(def ^:private ValidFieldName
+  [:re #"^[A-Za-z_]\w{0,127}$"])
 
-(s/defn ^:private delete-table!
-  [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+(mu/defn ^:private delete-table!
+  [dataset-id :- ::lib.schema.common/non-blank-string
+   table-id   :- ::lib.schema.common/non-blank-string]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
-(s/defn ^:private create-table!
-  [^String dataset-id :- su/NonBlankString
-   table-id           :- su/NonBlankString
-   field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
+(mu/defn ^:private create-table!
+  [^String dataset-id :- ::lib.schema.common/non-blank-string
+   ^String table-id   :- ::lib.schema.common/non-blank-string
+   field-name->type   :- [:map-of ValidFieldName (into [:enum] valid-field-types)]]
   (u/ignore-exceptions
    (delete-table! dataset-id table-id))
   (let [tbl-id (TableId/of dataset-id table-id)
@@ -143,7 +149,7 @@
                                         (ffirst rows))
         client                        (bigquery)
         ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native (test-db-details) respond query-response (atom false))))
+    (#'bigquery/post-process-native respond query-response (atom false))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
