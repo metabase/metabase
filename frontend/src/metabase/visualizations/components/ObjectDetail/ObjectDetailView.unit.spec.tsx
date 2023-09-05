@@ -5,7 +5,8 @@ import { testDataset } from "__support__/testDataset";
 import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
-import { ObjectDetailView, ObjectDetailWrapper } from "./ObjectDetail";
+import { ObjectDetailView } from "./ObjectDetailView";
+import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
 import type { ObjectDetailProps } from "./types";
 
 function setup(options?: Partial<ObjectDetailProps>) {
