@@ -22,7 +22,7 @@
              (lib.types.isa/summable? column))
     ;; There must be a date dimension available.
     (when-let [breakout-column (->> (lib.breakout/breakoutable-columns query stage-number)
-                                    (filter lib.types.isa/date?)
+                                    (filter lib.types.isa/temporal?)
                                     first)]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/summarize-column-by-time

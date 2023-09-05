@@ -248,8 +248,8 @@
            false
 
            ;; both or neither primary dimension must be dates
-           (not= (lib.types.isa/date? (first initial-dimensions))
-                 (lib.types.isa/date? (first new-dimensions)))
+           (not= (lib.types.isa/temporal? (first initial-dimensions))
+                 (lib.types.isa/temporal? (first new-dimensions)))
            false
 
            ;; both or neither primary dimension must be numeric
@@ -257,8 +257,8 @@
            (and (not= (lib.types.isa/numeric? (first initial-dimensions))
                       (lib.types.isa/numeric? (first new-dimensions)))
                 (not (and
-                      (lib.types.isa/date? (first initial-dimensions))
-                      (lib.types.isa/date? (first new-dimensions)))))
+                      (lib.types.isa/temporal? (first initial-dimensions))
+                      (lib.types.isa/temporal? (first new-dimensions)))))
            false
 
            :else true))))

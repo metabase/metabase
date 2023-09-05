@@ -156,7 +156,7 @@
                               :order-by     [[:asc $id]]})
                            qp/preprocess
                            (m/dissoc-in [:query :limit]))]
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
                              "FROM ("
                              "SELECT TOP 1048575 "

@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ->utc-instant-test
+(deftest ^:parallel ->utc-instant-test
   (doseq [t [#t "2020-03-14"
              #t "2020-03-14T00:00:00"
              #t "2020-03-13T17:00:00-07:00"
@@ -41,13 +41,13 @@
   ([field-name base-type value-type value]
    (field-filter field-name base-type value-type value nil))
   ([field-name base-type value-type value options]
-   (params/->FieldFilter (cond-> {:name (name field-name)}
-                           base-type
-                           (assoc :base_type base-type))
+   (params/->FieldFilter (merge {:lib/type  :metadata/column
+                                 :name      (name field-name)
+                                 :base-type (or base-type :type/*)})
                          (cond-> {:type value-type, :value value}
                            (map? options) (assoc :options options)))))
 
-(deftest substitute-test
+(deftest ^:parallel substitute-test
   (testing "non-parameterized strings should not be substituted"
     (is (= "wow"
            (substitute nil ["wow"]))))
@@ -146,7 +146,7 @@
 (defn- strip [s]
   (str/replace s #"\s" ""))
 
-(deftest field-filter-test
+(deftest ^:parallel field-filter-test
   (testing "Date ranges"
     (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
       (letfn [(substitute-date-range [s]
@@ -249,7 +249,7 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
-(deftest ^:parallel substitute-native-query-snippets-test
+(deftest ^:parallel ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
            (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
@@ -261,7 +261,7 @@
     (to-json [_ generator]
       (.writeRawValue ^JsonGenerator generator s))))
 
-(deftest e2e-field-filter-test
+(deftest ^:parallel e2e-field-filter-test
   (mt/test-driver :mongo
     (testing "date ranges"
       (is (= [[295 "2014-03-01T00:00:00Z" 7 97]
@@ -393,7 +393,7 @@
                                              :target [:dimension [:template-tag "price"]]
                                              :value  input}]})))))))
         (testing "variadic operators"
-          (let [run-query! (fn [operator]
+          (let [run-query (fn [operator]
                              (mt/dataset geographical-tips
                                (mt/rows
                                  (qp/process-query
@@ -415,14 +415,14 @@
                                                     :value  ["bob" "tupac"]}]})))))]
             (is (= #{"bob" "tupac"}
                    (into #{} (map second)
-                         (run-query! :string/=))))
+                         (run-query :string/=))))
             (is (= #{}
                     (set/intersection
                      #{"bob" "tupac"}
                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
                      ;; mongo. maybe they might want present but not equal semantics
                      (into #{} (map second)
-                           (run-query! :string/!=)))))))))))
+                           (run-query :string/!=)))))))))))
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
