@@ -287,15 +287,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.icon("click").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("On-click behavior for each column")
         .parent()
         .parent()
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         .within(() => cy.findByText("MY_NUMBER").click());
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Go to a custom destination").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("URL").click();
 
       modal().within(() => {
@@ -306,10 +302,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.findByText("Done").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Click behavior").click();
 
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
