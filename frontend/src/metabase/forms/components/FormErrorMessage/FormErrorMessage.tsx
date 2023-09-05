@@ -1,10 +1,10 @@
 import type { Ref } from "react";
 import { forwardRef } from "react";
-import type { BoxProps } from "metabase/ui";
-import { Box } from "metabase/ui";
+import { Text } from "metabase/ui";
+import type { TextProps } from "metabase/ui";
 import { useFormErrorMessage } from "../../hooks";
 
-export type FormErrorMessageProps = BoxProps;
+export type FormErrorMessageProps = TextProps;
 
 export const FormErrorMessage = forwardRef(function FormErrorMessage(
   props: FormErrorMessageProps,
@@ -16,8 +16,8 @@ export const FormErrorMessage = forwardRef(function FormErrorMessage(
   }
 
   return (
-    <Box {...props} ref={ref}>
+    <Text {...props} ref={ref} color="error.0">
       {message}
-    </Box>
+    </Text>
   );
 });
