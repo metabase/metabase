@@ -1,10 +1,10 @@
 import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
-import type { ButtonProps } from "metabase/core/components/Button";
-import Button from "metabase/core/components/Button";
-import { useFormSubmitButton } from "metabase/forms";
-import type { FormStatus } from "metabase/forms";
+import { Button } from "metabase/ui";
+import type { ButtonProps } from "metabase/ui";
+import type { FormStatus } from "../../contexts";
+import { useFormSubmitButton } from "../../hooks";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   title?: string;
@@ -13,27 +13,40 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   failedTitle?: string;
 }
 
-const FormSubmitButton = forwardRef(function FormSubmitButton(
-  { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
+export const FormSubmitButton = forwardRef(function FormSubmitButton(
+  { disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
   const submitTitle = getSubmitButtonTitle(status, props);
+  const submitColor = getSubmitButtonColor(status, props);
 
   return (
     <Button
       {...props}
       ref={ref}
       type="submit"
-      primary={primary && !isDisabled}
-      success={success || status === "fulfilled"}
-      danger={danger || status === "rejected"}
+      color={submitColor}
       disabled={isDisabled}
     >
       {submitTitle}
     </Button>
   );
 });
+
+const getSubmitButtonColor = (
+  status: FormStatus | undefined,
+  { color }: FormSubmitButtonProps,
+) => {
+  switch (status) {
+    case "fulfilled":
+      return "success";
+    case "rejected":
+      return "error";
+    default:
+      return color;
+  }
+};
 
 const getSubmitButtonTitle = (
   status: FormStatus | undefined,
@@ -55,8 +68,3 @@ const getSubmitButtonTitle = (
       return title;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(FormSubmitButton, {
-  Button: Button.Root,
-});

@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import type { ChangeEvent, FocusEvent } from "react";
+import { forwardRef, useCallback } from "react";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
 import { TextInput } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
@@ -9,13 +9,16 @@ export interface FormTextInputProps extends TextInputProps {
   nullable?: boolean;
 }
 
-export const FormTextInput = ({
-  name,
-  nullable,
-  onChange: onChangeProp,
-  onBlur: onBlurProp,
-  ...props
-}: FormTextInputProps) => {
+export const FormTextInput = forwardRef(function FormTextInput(
+  {
+    name,
+    nullable,
+    onChange: onChangeProp,
+    onBlur: onBlurProp,
+    ...props
+  }: FormTextInputProps,
+  ref: Ref<HTMLInputElement>,
+) {
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
   const inputValue = value ?? "";
   const inputError = touched ? error : null;
@@ -41,6 +44,7 @@ export const FormTextInput = ({
   return (
     <TextInput
       {...props}
+      ref={ref}
       name={name}
       value={inputValue}
       error={inputError}
@@ -48,4 +52,4 @@ export const FormTextInput = ({
       onBlur={handleBlur}
     />
   );
-};
+});
