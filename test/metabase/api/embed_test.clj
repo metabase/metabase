@@ -192,7 +192,7 @@
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true}]
-        (is (= "Message seems corrupt or manipulated."
+        (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key (card-url card)))))))))
 
 (deftest check-that-only-enabled-params-that-are-not-present-in-the-jwt-come-back
@@ -331,7 +331,7 @@
         (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                       "signed with the wrong key")
           (with-temp-card [card {:enable_embedding true}]
-            (is (= "Message seems corrupt or manipulated."
+            (is (= "Message seems corrupt or manipulated"
                    (client/real-client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
 
 (deftest download-formatted-without-constraints-test
@@ -526,7 +526,7 @@
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-        (is (= "Message seems corrupt or manipulated."
+        (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
@@ -616,7 +616,7 @@
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-        (is (= "Message seems corrupt or manipulated."
+        (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key (dashcard-url dashcard)))))))))
 
 (deftest dashboard-locked-params-test
@@ -1221,7 +1221,7 @@
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
             (with-temp-card [card (merge {:enable_embedding true} (api.pivots/pivot-card))]
-              (is (= "Message seems corrupt or manipulated."
+              (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key (pivot-card-query-url card ""))))))))))))
 
 (defn- pivot-dashcard-url [dashcard & [additional-token-params]]
@@ -1270,7 +1270,7 @@
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
                                        :card     (api.pivots/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
-          (is (= "Message seems corrupt or manipulated."
+          (is (= "Message seems corrupt or manipulated"
                  (client/client :get 400 (with-new-secret-key (pivot-dashcard-url dashcard))))))))))
 
 (deftest pivot-dashcard-locked-params-test

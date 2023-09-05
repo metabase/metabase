@@ -10,7 +10,9 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.adapter.jetty9 :as ring-jetty]
-   [schema.core :as s]))
+   [schema.core :as s])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -161,12 +163,12 @@
   "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
   call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
   ^java.io.Closeable []
-  (let [server (ring-jetty/run-jetty (fn silent-async-handler
-                                       [_request _respond _raise])
-                                     {:join?         false
-                                      :async?        true
-                                      :port          0
-                                      :async-timeout 60000})]
+  (let [^Server server (ring-jetty/run-jetty (fn silent-async-handler
+                                               [_request _respond _raise])
+                                             {:join?         false
+                                              :async?        true
+                                              :port          0
+                                              :async-timeout 60000})]
     (reify
       java.io.Closeable
       (close [_] (.stop server))

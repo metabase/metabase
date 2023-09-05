@@ -194,11 +194,10 @@
         time-field        (assoc (meta/field-metadata :orders :created-at)
                                  :base-type      :type/Time
                                  :effective-type :type/Time)
-        metadata-provider (lib/composed-metadata-provider
-                           (lib.tu/mock-metadata-provider
-                            {:fields [date-field
-                                      time-field]})
-                           meta/metadata-provider)
+        metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [date-field
+                                     time-field]})
         query             (lib/query metadata-provider (meta/table-metadata :venues))]
     {:fields            {:date     date-field
                          :datetime (meta/field-metadata :reviews :created-at)
@@ -483,18 +482,13 @@
 
 (deftest ^:parallel resolve-column-name-in-join-test
   (testing ":field refs with string names should work if the Field comes from a :join"
-    (let [card-1            {:name          "My Card"
-                             :id            1
-                             :database-id   (meta/id)
-                             :dataset-query {:database (meta/id)
-                                             :type     :query
-                                             :query    {:source-table (meta/id :checkins)
-                                                        :aggregation  [[:count]]
-                                                        :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-          metadata-provider (lib/composed-metadata-provider
+    (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
-                             (lib.tu/mock-metadata-provider
-                              {:cards [card-1]}))
+                             [{:database (meta/id)
+                               :type     :query
+                               :query    {:source-table (meta/id :checkins)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
           query             {:lib/type     :mbql/query
                              :lib/metadata metadata-provider
                              :database     (meta/id)
@@ -1243,3 +1237,40 @@
                :lib/desired-column-alias "USER_ID"
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-field-test
+  (are [legacy-ref] (=? {:id   (meta/id :venues :name)
+                         :name "NAME"}
+                        (lib/find-visible-column-for-legacy-ref lib.tu/venues-query legacy-ref))
+    [:field (meta/id :venues :name) nil]
+    [:field (meta/id :venues :name) {}]
+    ;; should work with refs that need normalization
+    ["field" (meta/id :venues :name) nil]
+    ["field" (meta/id :venues :name)]
+    #?@(:cljs
+        [#js ["field" (meta/id :venues :name) nil]
+         #js ["field" (meta/id :venues :name) #js {}]])))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-expression-test
+  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
+                        (lib/find-visible-column-for-legacy-ref lib.tu/query-with-expression legacy-ref))
+    [:expression "expr"]
+    ["expression" "expr"]
+    ["expression" "expr" nil]
+    ["expression" "expr" {}]
+    #?@(:cljs
+        [#js ["expression" "expr"]
+         #js ["expression" "expr" #js {}]])))
+
+(deftest ^:parallel find-visible-column-for-legacy-ref-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))]
+    (are [legacy-ref] (=? {:name "count", :lib/source :source/aggregations}
+                          (lib/find-visible-column-for-legacy-ref query legacy-ref))
+      [:aggregation 0]
+      ["aggregation" 0]
+      ["aggregation" 0 nil]
+      ["aggregation" 0 {}]
+      #?@(:cljs
+          [#js ["aggregation" 0]
+           #js ["aggregation" 0 #js {}]]))))

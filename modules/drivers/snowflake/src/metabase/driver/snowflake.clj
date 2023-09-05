@@ -22,6 +22,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -42,10 +43,11 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:datetime-diff            true
-                              :now                      true
-                              :convert-timezone         true
-                              :connection-impersonation true}]
+(doseq [[feature supported?] {:datetime-diff                          true
+                              :now                                    true
+                              :convert-timezone                       true
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -331,7 +333,7 @@
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
   ;; it won't be, *but* they should already be qualified by database name anyway
   (when (qp.store/initialized?)
-    (db-name (qp.store/database))))
+    (db-name (lib.metadata/database (qp.store/metadata-provider)))))
 
 ;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
 ;; query
@@ -582,10 +584,8 @@
 
 (defmethod driver.sql/set-role-statement :snowflake
   [_ role]
-  (format "USE ROLE %s;" role))
+  (format "USE ROLE \"%s\";" role))
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
-  (or
-   (-> database :details :role)
-   "ACCOUNTADMIN"))
+  (-> database :details :role))

@@ -106,7 +106,7 @@ function CollectionContent({
   });
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
-  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
@@ -293,7 +293,7 @@ function CollectionContent({
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {
-                      toggleAll(unselected);
+                      selectOnlyTheseItems(unpinnedItems);
                     };
 
                     const loading = loadingPinnedItems || loadingUnpinnedItems;

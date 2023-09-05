@@ -133,7 +133,6 @@ If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Met
 
 ## Upgrading Metabase on other platforms
 
-- [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase-on-elastic-beanstalk)
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
 
 ## Rolling back an upgrade
