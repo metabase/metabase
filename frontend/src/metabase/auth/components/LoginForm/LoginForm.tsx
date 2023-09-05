@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import Form from "metabase/core/components/Form";
-import { FormProvider } from "metabase/forms";
+import { Form, FormProvider } from "metabase/forms";
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";

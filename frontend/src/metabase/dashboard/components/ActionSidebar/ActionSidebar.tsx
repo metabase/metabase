@@ -9,8 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import { FormProvider } from "metabase/forms";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import Ellipsified from "metabase/core/components/Ellipsified";
