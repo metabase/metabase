@@ -21,7 +21,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
 
         "&:hover, &:focus": {
           color: theme.colors.brand[1],
-          backgroundColor: theme.colors.bg[0],
+          backgroundColor: theme.colors.brand[0],
 
           [`& .${getStylesRef("itemRightSection")}`]: {
             color: theme.colors.brand[1],

@@ -36,7 +36,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         padding: theme.spacing.sm,
         "&:hover:not([data-disabled]), &:focus": {
           color: theme.colors.brand[1],
-          backgroundColor: theme.colors.bg[0],
+          backgroundColor: theme.colors.brand[0],
         },
         "&[data-disabled]": {
           color: theme.colors.text[0],
