@@ -388,15 +388,20 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   #?(:clj
-      (if (mbql-clause? x)
-        (first x)
-        (or (models.dispatch/model x)
-            (type x)))
-      :cljs
-      (if (mbql-clause? x)
-        (first x)
-        (type x))))
+   (letfn [(clause-type [x]
+             (when (mbql-clause? x)
+               (first x)))
+           (mlv2-lib-type [x]
+             (when (map? x)
+               (:lib/type x)))
+           (model-type [#?(:clj x :cljs _x)]
+             #?(:clj (models.dispatch/model x)
+                :cljs nil))]
+     (or
+      (clause-type x)
+      (mlv2-lib-type x)
+      (model-type x)
+      (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 

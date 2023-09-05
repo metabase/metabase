@@ -66,6 +66,11 @@ export const ImpersonationModalView = ({
     }
   };
 
+  // Does the "role" field need to first be filled out on the DB details page?
+  const roleRequired =
+    database.features.includes("connection-impersonation-requires-role") &&
+    database.details["role"] == null;
+
   return (
     <ImpersonationModalViewRoot>
       <h2>{t`Map a user attribute to database roles`}</h2>
@@ -77,7 +82,21 @@ export const ImpersonationModalView = ({
         >{t`Learn More`}</ExternalLink>
       </ImpersonationDescription>
 
-      {hasAttributes ? (
+      {roleRequired ? (
+        <>
+          <Alert icon="warning" variant="warning">
+            {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
+            <Link
+              variant="brand"
+              to={`/admin/databases/${database.id}`}
+            >{t`Edit connection`}</Link>
+          </Alert>
+
+          <FormFooter hasTopBorder>
+            <Button type="button" onClick={onCancel}>{t`Close`}</Button>
+          </FormFooter>
+        </>
+      ) : hasAttributes ? (
         <FormProvider
           initialValues={initialValues}
           validationSchema={ROLE_ATTRIBUTION_MAPPING_SCHEMA}
@@ -108,7 +127,7 @@ export const ImpersonationModalView = ({
           <Alert icon="warning" variant="warning">
             {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
             <Link
-              className="link"
+              variant="brand"
               to="/admin/people"
             >{t`Edit user settings`}</Link>
           </Alert>

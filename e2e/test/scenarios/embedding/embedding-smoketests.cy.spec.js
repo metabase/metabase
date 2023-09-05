@@ -340,7 +340,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.log("Visit the embedding url generated with the old token");
         cy.visit(iframe.src);
         cy.findByTestId("embed-frame").findByText(
-          "Message seems corrupt or manipulated.",
+          "Message seems corrupt or manipulated",
         );
       });
     });

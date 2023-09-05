@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-set -euxo pipefail
+set -euo pipefail
 
 # Convenience for running clj-kondo against all the appropriate directories.
 
