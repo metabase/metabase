@@ -412,56 +412,56 @@
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks!
-      (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
-                    "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
-                    "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
-                    "4 - Order by the Venue's price to ensure a predictably ordered response")
-        (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                      :venues   nil}
-                         :attributes {"user" 5}}
+    (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
+                  "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
+                  "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
+                  "4 - Order by the Venue's price to ensure a predictably ordered response")
+      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                    :venues   nil}
+                       :attributes {"user" 5}}
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (is (= [[1 10] [2 36] [3 4] [4 5]]
                  (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-2
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks!
-      (testing (str "Test that we're able to use a GTAP for an FK related table. For this test, the user has segmented "
-                    "permissions on checkins and venues, so we need to apply a GTAP to the original table (checkins) in "
-                    "addition to the related table (venues). This test uses a GTAP question for both tables")
-        (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                      :venues   (venues-price-mbql-gtap-def)}
-                         :attributes {"user" 5, "price" 1}}
+    (testing (str "Test that we're able to use a GTAP for an FK related table. For this test, the user has segmented "
+                  "permissions on checkins and venues, so we need to apply a GTAP to the original table (checkins) in "
+                  "addition to the related table (venues). This test uses a GTAP question for both tables")
+      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                    :venues   (venues-price-mbql-gtap-def)}
+                       :attributes {"user" 5, "price" 1}}
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (is (= #{[nil 45] [1 10]}
                  (set (run-checkins-count-broken-out-by-price-query)))))))))
 
 (deftest e2e-fks-test-3
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks!
-      (testing "Test that the FK related table can be a \"default\" GTAP, i.e. a GTAP where the `card_id` is nil"
-        (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
-                         :attributes {"user" 5, "price" 1}}
+    (testing "Test that the FK related table can be a \"default\" GTAP, i.e. a GTAP where the `card_id` is nil"
+      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                    :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
+                       :attributes {"user" 5, "price" 1}}
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (is (= #{[nil 45] [1 10]}
                  (set (run-checkins-count-broken-out-by-price-query)))))))))
 
 (deftest e2e-fks-test-4
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks!
-      (testing (str "Test that we have multiple FK related, segmented tables. This test has checkins with a GTAP "
-                    "question with venues and users having the default GTAP and segmented permissions")
-        (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)
-                                      :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
-                         :attributes {"user" 5, "price" 1}}
+    (testing (str "Test that we have multiple FK related, segmented tables. This test has checkins with a GTAP "
+                  "question with venues and users having the default GTAP and segmented permissions")
+      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                    :venues   (dissoc (venues-price-mbql-gtap-def) :query)
+                                    :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
+                       :attributes {"user" 5, "price" 1}}
+        (mt/with-mock-fks-for-drivers-without-fk-constraints
           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                  (set
                   (mt/format-rows-by [#(when % (int %)) str int]
-                                     (mt/rows
-                                      (mt/run-mbql-query checkins
-                                        {:aggregation [[:count]]
-                                         :order-by    [[:asc $venue_id->venues.price]]
-                                         :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+                    (mt/rows
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]
+                        :order-by    [[:asc $venue_id->venues.price]]
+                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)

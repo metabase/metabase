@@ -6,7 +6,6 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -99,22 +98,21 @@
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:fields [(merge (meta/field-metadata :orders :total)
-                     {:id             1
-                      :database-type  "DOUBLE"
-                      :table-id       (meta/id :checkins)
-                      :semantic-type  :type/Income
-                      :name           "TOTAL"
-                      :display-name   "Total"
-                      :fingerprint    {:global {:distinct-count 10000}
-                                       :type   {:type/Number {:min 12.061602936923117
-                                                              :max 238.32732001721533
-                                                              :avg 82.96014815230829}}}
-                      :base-type      :type/Float
-                      :effective-type :type/Float})]})
-   meta/metadata-provider))
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:fields [(merge (meta/field-metadata :orders :total)
+                    {:id             1
+                     :database-type  "DOUBLE"
+                     :table-id       (meta/id :checkins)
+                     :semantic-type  :type/Income
+                     :name           "TOTAL"
+                     :display-name   "Total"
+                     :fingerprint    {:global {:distinct-count 10000}
+                                      :type   {:type/Number {:min 12.061602936923117
+                                                             :max 238.32732001721533
+                                                             :avg 82.96014815230829}}}
+                     :base-type      :type/Float
+                     :effective-type :type/Float})]}))
 
 (deftest ^:parallel update-binning-strategy-test
   (qp.store/with-metadata-provider (mock-field-metadata-provider)
@@ -154,22 +152,16 @@
                :database (meta/id)}))))))
 
 (deftest ^:parallel binning-nested-questions-test
-  (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                    (lib.tu/mock-metadata-provider
-                                     {:cards [{:id            1
-                                               :name          "Card 1"
-                                               :database-id   (mt/id)
-                                               :dataset-query {:database (mt/id)
-                                                               :type     :query
-                                                               :query    {:source-table (mt/id :venues)}}}]})
-                                    (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+  (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                    [(mt/mbql-query venues)])
     (is (= [[1 22]
             [2 59]
             [3 13]
             [4 6]]
            (->> {:source-table "card__1"
-                   :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
-                   :aggregation  [[:count]]}
+                 :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
+                 :aggregation  [[:count]]}
                 (mt/run-mbql-query nil)
                 (mt/formatted-rows [int int]))))))
 
@@ -193,15 +185,12 @@
 (deftest ^:parallel auto-bin-single-row-test
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
     (mt/dataset single-row
-      (qp.store/with-metadata-provider (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-                                         ;; add some mocked fingerprints to these Fields.
-                                         (lib/composed-metadata-provider
-                                          (lib.tu/mock-metadata-provider
-                                           {:fields [(merge (lib.metadata/field app-db-provider (mt/id :t :lat))
-                                                            {:fingerprint (single-row-fingerprints :lat)})
-                                                     (merge (lib.metadata/field app-db-provider (mt/id :t :lon))
-                                                            {:fingerprint (single-row-fingerprints :lon)})]})
-                                          app-db-provider))
+      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        {:fields [{:id          (mt/id :t :lat)
+                                                   :fingerprint (single-row-fingerprints :lat)}
+                                                  {:id          (mt/id :t :lon)
+                                                   :fingerprint (single-row-fingerprints :lon)}]})
         (let [query (mt/mbql-query t
                       {:breakout    [[:field %lat {:binning {:strategy :default}}]
                                      [:field %lon {:binning {:strategy :default}}]]
@@ -220,6 +209,7 @@
           (mt/with-native-query-testing-context query
             (is (= [[-30.00M -60.00M 1]]
                    (mt/rows (qp/process-query query))))))))))
+
 (deftest ^:parallel fuzzy-metadata-matching-test
   (testing "Make sure we use fuzzy metadata matching to update binning strategies so it works for queries generated by MLv2"
     ;; this is disabled for now, but once we stop generating broken card refs it should work again -- see #33453

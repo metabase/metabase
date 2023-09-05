@@ -15160,6 +15160,62 @@ databaseChangeLog:
                 name: action_id
 
   - changeSet:
+      id: v48.00-009
+      author: calherries
+      comment: Added 0.48.0 - Create table_privileges table
+      changes:
+        - createTable:
+            tableName: table_privileges
+            remarks: Table for user and role privileges by table
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'Table ID'
+                  constraints:
+                    foreignKeyName: fk_table_privileges_table_id
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    deleteCascade: true
+              - column:
+                  name: role
+                  type: varchar(255)
+                  remarks: 'Role name. NULL indicates the privileges are the current user''s'
+              - column:
+                  name: select
+                  type: boolean
+                  remarks: 'Privilege to select from the table'
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: update
+                  type: boolean
+                  remarks: 'Privilege to update records in the table'
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: insert
+                  type: boolean
+                  remarks: 'Privilege to insert records into the table'
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: delete
+                  type: boolean
+                  remarks: 'Privilege to delete records from the table'
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+            uniqueConstraints:
+              - unique:
+                  columnNames: table_id, role
+                  name: uq_table_privileges_table_id_role
+
+  - changeSet:
       id: v48.00-013
       author: qnkhuat
       comment: Index unindexed FKs for postgres
@@ -15201,6 +15257,36 @@ databaseChangeLog:
                   CREATE INDEX IF NOT EXISTS idx_timeline_creator_id ON timeline (creator_id);
                   CREATE INDEX IF NOT EXISTS idx_timeline_event_creator_id ON timeline_event (creator_id);
       rollback: # no need
+
+  - changeSet:
+      id: v48.00-014
+      author: calherries
+      comment: Added 0.48.0 - Create table_privileges.table_id index
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - createIndex:
+            indexName: idx_table_privileges_table_id
+            tableName: table_privileges
+            columns:
+              - column:
+                  name: table_id
+      rollback: # not needed, it will be removed with the table
+
+  - changeSet:
+      id: v48.00-015
+      author: calherries
+      comment: Added 0.48.0 - Create table_privileges.role index
+      changes:
+        - createIndex:
+            indexName: idx_table_privileges_role
+            tableName: table_privileges
+            columns:
+              - column:
+                  name: role
+      rollback: # not needed, it will be removed with the table
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
