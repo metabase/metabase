@@ -15,6 +15,7 @@ import {
   openEmailPage,
   setupSubscriptionWithRecipient,
   openPulseSubscription,
+  sendEmailAndVisitIt,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
@@ -444,9 +445,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is Corbin Mertz");
-
-        // TODO: send test email and verify content has default params
-        // TODO: change dashboard defaults and re-verify all steps above
       });
     });
   });
@@ -498,15 +496,47 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        cy.get("[aria-label='Pulse Card']").within(() => {
-          cy.findByText("Text is Corbin Mertz").click();
-        });
-        sendEmailAndAssert(email => {
-          // expect(email.html).to.include(TEXT_CARD);
-          // TODO: instead of this, try to create a different helper to visit email page so we can verify contents in a way we can visually debug
+        // verify defaults are listed correctly in UI
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Corbin Mertz")
+          .click();
+
+        // verify defaults are listed correctly in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Corbin Mertz").parent().findByText("Text");
+          cy.findByText("Text 1").should("not.exist");
         });
 
-        // TODO: change dashboard default and verify “Text is <new default>”
+        // change default text to sallie
+        cy.visit(`/dashboard/1`);
+        cy.icon("pencil").click();
+        cy.findByTestId("edit-dashboard-parameters-widget-container")
+          .findByText("Text")
+          .click();
+        cy.get("aside").findByText("Corbin Mertz").click();
+        popover()
+          .findByText("Corbin Mertz")
+          .closest("li")
+          .icon("close")
+          .click();
+        popover().find("input").type("Sallie");
+        popover().findByText("Sallie Flatley").click();
+        popover().contains("Update filter").click();
+        cy.button("Save").click();
+
+        // verify existing subscription shows new default in UI
+        openDashboardSubscriptions(1);
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Sallie Flatley")
+          .click();
+
+        // verify existing subscription show new default in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Sallie Flatley").parent().findByText("Text");
+          cy.findByText("Text 1").should("not.exist");
+        });
       });
 
       it("should allow for setting parameters in subscription", () => {
