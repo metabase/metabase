@@ -4,7 +4,6 @@ import type {
   CardMetadata,
   Clause,
   ColumnMetadata,
-  ExternalOp,
   FilterClause,
   FilterOperator,
   Join,
@@ -21,9 +20,6 @@ type Joinable = TableMetadata | CardMetadata;
 
 type JoinOrJoinable = Join | Joinable;
 
-/**
- * In this case, Clause is what you'd get back from the `args` you get when calling externalOp()
- */
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
 export function joins(query: Query, stageIndex: number): Join[] {
@@ -32,7 +28,7 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: FilterClause[] | ExternalOp[],
+  conditions: FilterClause[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
@@ -62,7 +58,7 @@ export function joinConditions(join: Join): FilterClause[] {
 
 export function withJoinConditions(
   join: Join,
-  newConditions: FilterClause[] | ExternalOp[],
+  newConditions: FilterClause[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }

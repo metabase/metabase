@@ -32,7 +32,9 @@ export type DatabaseFeature =
   | "right-join"
   | "inner-join"
   | "full-join"
-  | "nested-field-columns";
+  | "nested-field-columns"
+  | "connection-impersonation"
+  | "connection-impersonation-requires-role";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

@@ -49,16 +49,12 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
-  #?@
-   (:clj
-    [(:require
-      [clojure.set :as set]
-      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
-    :cljs
-    [(:require
-      [clojure.set :as set]
-      [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-      [metabase.util :as u])]))
+  (:require
+   [clojure.set :as set]
+   [metabase.types.coercion-hierarchies :as coercion-hierarchies]
+   [metabase.util.malli :as mu]
+   #?@(:cljs
+       [[metabase.util :as u]])))
 
 ;;; Table (entity) Types
 
@@ -325,16 +321,23 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn field-is-type?
+(def ^:private SnakeCasedField
+  "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
+  deprecated."
+  [:map
+   [:base_type :any]])
+
+(mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
-  [tyype {base-type :base_type, effective-type :effective_type}]
+  [tyype                                                  :- :keyword
+   {base-type :base_type, effective-type :effective_type} :- SnakeCasedField]
   (some #(isa? % tyype) [base-type effective-type]))
 
-(defn temporal-field?
+(mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
-  [field]
+  [field :- SnakeCasedField]
   (field-is-type? :type/Temporal field))
 
 (defn- most-specific-common-ancestor*

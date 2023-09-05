@@ -21,9 +21,9 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.filter])))
+   [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -180,7 +180,8 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ^:private ColumnWithOperators
+(def ColumnWithOperators
+  "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    lib.metadata/ColumnMetadata
    [:map
@@ -191,7 +192,8 @@
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(defn- add-column-operators
+(defn add-column-operators
+  "Extend the column metadata with the available operators if any."
   [column]
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
@@ -258,19 +260,34 @@
     legacy-filter]
    (find-filter-for-legacy-filter query -1 legacy-filter))
 
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    legacy-filter]
-   (let [query-filters (vec (filters query stage-number))
-         matching-filters (clojure.core/filter #(clojure.core/= (lib.convert/->legacy-MBQL %)
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    legacy-filter :- some?]
+   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+         query-filters    (vec (filters query stage-number))
+         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
+                                                                 [:query :filter]
+                                                                 (lib.convert/->legacy-MBQL %))
                                                                 legacy-filter)
                                                query-filters)]
      (when (seq matching-filters)
        (if (next matching-filters)
-         (throw (ex-info "Multiple matching filters found" {:legacy-filter legacy-filter
-                                                            :query-filters query-filters
+         (throw (ex-info "Multiple matching filters found" {:legacy-filter    legacy-filter
+                                                            :query-filters    query-filters
                                                             :matching-filters matching-filters}))
          (first matching-filters))))))
+
+(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
+  "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
+  ([query legacy-ref]
+   (find-filterable-column-for-legacy-ref query -1 legacy-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?]
+   (let [a-ref   (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref)
+         columns (filterable-columns query stage-number)]
+     (lib.equality/closest-matching-metadata a-ref columns))))
 
 (def ^:private FilterParts
   [:map

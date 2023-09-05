@@ -24,7 +24,7 @@ import {
   GridContainer,
   GridCell,
   FitImage,
-} from "./ObjectDetail.styled";
+} from "./ObjectDetailView.styled";
 
 export interface DetailsTableCellProps {
   column: any;

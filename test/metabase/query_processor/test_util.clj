@@ -13,12 +13,9 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
@@ -27,9 +24,9 @@
    [metabase.test.data :as data]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -96,9 +93,15 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (t2/select-one [Field :id :table_id :semantic_type :base_type :effective_type
-                   :coercion_strategy :name :display_name :fingerprint]
-     :id (data/id table-kw field-kw))
+   (if (qp.store/initialized?)
+     (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+         (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         qp.store/->legacy-metadata
+         (dissoc :lib/type))
+     (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
+                     :coercion_strategy :name :display_name :fingerprint]
+                    :id (data/id table-kw field-kw)))
    {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
@@ -187,8 +190,10 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (#'qp.add-implicit-joins/join-alias (t2/select-one-fn :name Table :id (data/id dest-table-kw))
-                                                                 (:name source-col))))))
+               :source_alias (let [table-name (if (qp.store/initialized?)
+                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
+                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
+                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
 
 (declare cols)
 
@@ -411,87 +416,57 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks! [thunk]
-  (letfn [(add-fks? [driver]
-            (= driver :bigquery-cloud-sdk))]
-    (if-not (add-fks? driver/*driver*)
-      (thunk)
-      (let [database-supports? driver/database-supports?]
-        (with-redefs [driver/database-supports? (fn [driver feature db]
-                                                  (if (and (add-fks? driver)
-                                                           (= feature :foreign-keys))
-                                                    true
-                                                    (database-supports? driver feature db)))]
-          (let [thunk (reduce
-                       (fn [thunk [source dest]]
-                         (fn []
-                           (testing (format "With FK %s -> %s" source dest)
-                             (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
-                                                                                    :semantic_type      "type/FK"}
-                               (thunk)))))
-                       thunk
-                       (if (str/includes? (:name (data/db)) "sample")
-                         {[:orders :product_id]  [:products :id]
-                          [:orders :user_id]     [:people :id]
-                          [:reviews :product_id] [:products :id]}
-                         {[:checkins :user_id]   [:users :id]
-                          [:checkins :venue_id]  [:venues :id]
-                          [:venues :category_id] [:categories :id]}))]
-            (thunk)))))))
+(defn- fk-mappings []
+  (if (str/includes? (:name (data/db)) "sample")
+    {[:orders :product_id]  [:products :id]
+     [:orders :user_id]     [:people :id]
+     [:reviews :product_id] [:products :id]}
+    {[:checkins :user_id]   [:users :id]
+     [:checkins :venue_id]  [:venues :id]
+     [:venues :category_id] [:categories :id]}))
 
-(defmacro with-bigquery-fks!
+(def ^:dynamic *enable-fk-support-for-disabled-drivers-in-tests*
+  "Whether to enable `:foreign-keys` in drivers like `:bigquery-cloud-sdk` that don't have formal FKs
+  when [[metabase.config/is-test?]] is true."
+  false)
+
+(defn mock-fks-metadata-provider
+  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
+  database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
+  formal FK constraints."
+  ([]
+   (mock-fks-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+
+  ([parent-metadata-provider]
+   (lib.tu/merged-mock-metadata-provider
+    parent-metadata-provider
+    {:fields (into []
+                   (map (fn [[[table-name field-name] [target-table-name target-field-name]]]
+                          {:id                 (data/id table-name field-name)
+                           :fk-target-field-id (data/id target-table-name target-field-name)
+                           :semantic-type      :type/FK}))
+                   (fk-mappings))})))
+
+(defn do-with-mock-fks-for-drivers-without-fk-constraints
+  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]."
+  [thunk]
+  (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true
+            *enable-fk-support-for-disabled-drivers-in-tests*       true]
+    (qp.store/with-metadata-provider (if (qp.store/initialized?)
+                                       (mock-fks-metadata-provider (qp.store/metadata-provider))
+                                       (mock-fks-metadata-provider))
+      (thunk))))
+
+(defmacro with-mock-fks-for-drivers-without-fk-constraints
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
   other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
-  when testing against BigQuery, for the BigQuery based driver `driver-or-drivers`. BigQuery does not support Foreign Key
-  constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
-  manually marked FK relationships for BigQuery."
+  when testing against BigQuery or similar drivers that do not support Foreign Key constraints. (We still let people
+  mark FKs manually.) The macro helps replicate the situation where somebody has manually marked FK relationships."
   {:style/indent 0}
   [& body]
-  `(do-with-bigquery-fks! (fn [] ~@body)))
+  `(do-with-mock-fks-for-drivers-without-fk-constraints (^:once fn* [] ~@body)))
 
-(def ^:dynamic ^:private *already-have-everything-store?* false)
-
-(defn ^:deprecated do-with-everything-store
-  "Impl for [[with-everything-store]].
-
-  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
-  [thunk]
-  (if *already-have-everything-store?*
-    (thunk)
-    (binding [*already-have-everything-store?* true]
-      (qp.store/with-metadata-provider (data/id)
-        (thunk)))))
-
-(defmacro ^:deprecated with-everything-store
-  "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
-  tedious. This macro swaps out the normal QP Store backend with one that fetches Tables and Fields from the DB
-  on-demand, making tests a lot nicer to write.
-
-  When fetching the database, this assumes you're using the 'current' database bound to `(data/db)`, so be sure to use
-  `data/with-db` if needed.
-
-  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
-  [& body]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  `(do-with-everything-store (^:once fn* [] ~@body)))
-
-(defn store-contents
-  "Fetch the names of all the objects currently in the QP Store."
-  []
-  (let [provider  (qp.store/metadata-provider)
-        table-ids (t2/select-pks-set :model/Table :db_id (data/id))]
-    {:tables (into #{}
-                   (keep (fn [table-id]
-                           (:name (lib.metadata.protocols/cached-metadata provider :metadata/table table-id))))
-                   table-ids)
-     :fields (into #{}
-                   (keep (fn [field-id]
-                           (when-let [field (lib.metadata.protocols/cached-metadata provider :metadata/column field-id)]
-                             (let [table (lib.metadata.protocols/cached-metadata provider :metadata/table (:table-id field))]
-                               [(:name table) (:name field)]))))
-                   (t2/select-pks-set :model/Field :table_id [:in table-ids]))}))
-
-(defn- query-results [query]
+(defn- actual-query-results [query]
   (let [results (qp/process-query query)]
     (or (get-in results [:data :results_metadata :columns])
         (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))))
@@ -507,28 +482,77 @@
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
   {:dataset_query   query
-   :result_metadata (query-results query)})
+   :result_metadata (actual-query-results query)})
 
-(defn metadata-provider-with-card-with-query-and-actual-result-metadata
-  "Create an MLv2 metadata provide based on the app DB metadata provider that adds a Card with ID `1` with `query` and
-  `:result-metadata` based on actually running that query."
-  ([query]
-   (metadata-provider-with-card-with-query-and-actual-result-metadata
+(mu/defn metadata-provider-with-cards-for-queries :- lib.metadata/MetadataProvider
+  "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
+  in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
+  ([queries]
+   (metadata-provider-with-cards-for-queries
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
-    query))
+    queries))
 
-  ([base-metadata-provider query]
-   (lib/composed-metadata-provider
-    (lib.tu/mock-metadata-provider
-     {:cards [{:id              1
-               :name            "Card 1"
-               :database-id     (data/id)
-               :dataset-query   query
-               ;; use the base metadata provider here to run the query to get results so it gets warmed a bit for
-               ;; subsequent usage.
-               :result-metadata (qp.store/with-metadata-provider base-metadata-provider
-                                  (query-results query))}]})
-    base-metadata-provider)))
+  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+    queries                  :- [:sequential {:min 1} :map]]
+   (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
+
+(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results of [[qp/query->expected-cols]] as
+  `:result-metadata` for each Card. The metadata provider is built up progressively, meaning metadata for previous Cards
+  is available when calculating metadata for subsequent Cards."
+  ([queries]
+   (metadata-provider-with-cards-with-metadata-for-queries
+    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    queries))
+
+  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+    queries                  :- [:sequential {:min 1} :map]]
+   (transduce
+    (map-indexed (fn [i {database-id :database, :as query}]
+                   {:id            (inc i)
+                    :database-id   (or (when (pos-int? database-id)
+                                         database-id)
+                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
+                    :name          (format "Card %d" (inc i))
+                    :dataset-query query}))
+    (completing
+     (fn [metadata-provider {query :dataset-query, :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp/query->expected-cols query)
+                                 (actual-query-results query))
+               card            (assoc card :result-metadata result-metadata)]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+    parent-metadata-provider
+    queries)))
+
+(deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test
+  (let [provider (metadata-provider-with-cards-with-metadata-for-queries
+                  [(data/mbql-query venues)])]
+    (is (partial= {:id              1
+                   :name            "Card 1"
+                   :dataset-query   {:type :query}
+                   :result-metadata [{:name "ID"}
+                                     {:name "NAME"}
+                                     {:name "CATEGORY_ID"}
+                                     {:name "LATITUDE"}
+                                     {:name "LONGITUDE"}
+                                     {:name "PRICE"}]}
+                  (lib.metadata/card provider 1)))))
+
+(deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-native-query-test
+  (let [provider (metadata-provider-with-cards-with-metadata-for-queries
+                  [(data/native-query (qp/compile (data/mbql-query venues)))])]
+    (is (partial= {:id              1
+                   :name            "Card 1"
+                   :dataset-query   {:type :native}
+                   :result-metadata [{:name "ID"}
+                                     {:name "NAME"}
+                                     {:name "CATEGORY_ID"}
+                                     {:name "LATITUDE"}
+                                     {:name "LONGITUDE"}
+                                     {:name "PRICE"}]}
+                  (lib.metadata/card provider 1)))))
 
 (defn field-values-from-def
   "Get values for a specific Field from a dataset definition, convenient for use with things
