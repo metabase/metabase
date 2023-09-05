@@ -138,7 +138,8 @@
                                                                                (:source-field opts))]
                                                                     (pr-str (:display-name field)))))
                                                      {:resolving  &match
-                                                      :candidates fk-field-id->join-alias})))]
+                                                      :candidates fk-field-id->join-alias
+                                                      :form       form})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])
                 &match))
       (sequential? (:fields form)) (update :fields distinct-fields))))
@@ -284,7 +285,7 @@
   [query]
   (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys (qp.store/database))
+      (when-not (driver/database-supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))

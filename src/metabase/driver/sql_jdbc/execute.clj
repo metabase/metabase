@@ -16,6 +16,7 @@
     :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
@@ -287,7 +288,7 @@
         ;; for compatibility, make sure we pass it an actual Database instance.
         (let [database (if (integer? db-or-id-or-spec)
                          (qp.store/with-metadata-provider db-or-id-or-spec
-                           (qp.store/database))
+                           (lib.metadata/database (qp.store/metadata-provider)))
                          db-or-id-or-spec)]
           (reify DataSource
             (getConnection [_this]
@@ -345,7 +346,7 @@
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
     (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                            (qp.store/database))
+                                                                            (lib.metadata/database (qp.store/metadata-provider)))
                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
     (let [read-only? (not write?)]
       (try
@@ -671,8 +672,8 @@
   ([driver sql params max-rows context respond]
    (do-with-connection-with-options
     driver
-    (qp.store/database)
-    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+    (lib.metadata/database (qp.store/metadata-provider))
+    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
                   ^ResultSet rs (try
@@ -699,7 +700,7 @@
   (try
     (do-with-connection-with-options
      driver
-     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)

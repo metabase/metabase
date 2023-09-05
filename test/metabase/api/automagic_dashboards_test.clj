@@ -335,7 +335,7 @@
              "\nwith filter: " (-> dashcard :card :dataset_query :query :filter)
              "\nis missing one of " filters))))
 
-(deftest create-linked-dashboard-test
+(deftest create-linked-dashboard-test-no-linked
   (testing "If there are no linked-tables, create a default view explaining the situation."
     (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
                                                        :link         {:entity {:model   "dataset"
@@ -347,7 +347,9 @@
             (#'api.magic/create-linked-dashboard {:model             nil
                                                   :linked-tables     ()
                                                   :model-index       nil
-                                                  :model-index-value nil}))))
+                                                  :model-index-value nil})))))
+
+(deftest create-linked-dashboard-test-regular-queries
   (mt/dataset sample-dataset
     (testing "x-ray an mbql model"
       (with-indexed-model [{:keys [model model-index model-index-value]}
@@ -440,8 +442,10 @@
                 (let [pk-filters (expected-filters {:model             model
                                                     :model-index       model-index
                                                     :model-index-value model-index-value})]
-                  (cards-have-filters? (:ordered_cards dash) pk-filters))))))))
+                  (cards-have-filters? (:ordered_cards dash) pk-filters))))))))))
 
+(deftest create-linked-dashboard-test-single-link
+  (mt/dataset sample-dataset
     (testing "with only single linked table"
       (with-indexed-model [{:keys [model model-index model-index-value]}
                            {:query     (mt/mbql-query people)

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.visualization-settings
   (:require
    [medley.core :as m]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -18,7 +19,7 @@
   [column-viz-settings field-ids]
   (merge column-viz-settings
          (into {} (for [field-id field-ids]
-                    (let [field-settings      (:settings (qp.store/field field-id))
+                    (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
                           norm-field-settings (normalize-field-settings field-id field-settings)
                           col-settings        (get column-viz-settings {::mb.viz/field-id field-id})]
                       [{::mb.viz/field-id field-id} (merge norm-field-settings col-settings)])))))

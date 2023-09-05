@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -350,7 +351,7 @@
   [driver {{sql :query, :keys [params]} :native}]
   {:pre [(string? sql)]}
   (try
-    (let [{db-id :id} (qp.store/database)]
+    (let [{db-id :id} (lib.metadata/database (qp.store/metadata-provider))]
       (with-jdbc-transaction [conn db-id]
         (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
           {:rows-affected (if (instance? PreparedStatement stmt)
