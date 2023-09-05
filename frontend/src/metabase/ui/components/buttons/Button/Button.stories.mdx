@@ -6,6 +6,7 @@ import { Button } from "./";
 
 export const args = {
   variant: "default",
+  color: undefined,
   compact: false,
   disabled: false,
   fullWidth: false,
@@ -17,6 +18,10 @@ export const args = {
 export const argTypes = {
   variant: {
     options: ["default", "filled", "outline", "subtle"],
+    control: { type: "inline-radio" },
+  },
+  color: {
+    options: { default: undefined, success: "success.0", error: "error.0" },
     control: { type: "inline-radio" },
   },
   compact: {
@@ -174,6 +179,17 @@ export const DefaultGrid = GridTemplate.bind({});
   <Story name="Default size">{DefaultGrid}</Story>
 </Canvas>
 
+#### Custom color
+
+export const CustomColorGrid = GridTemplate.bind({});
+CustomColorGrid.args = {
+  color: "error",
+};
+
+<Canvas>
+  <Story name="Default size, custom color">{CustomColorGrid}</Story>
+</Canvas>
+
 #### Disabled state
 
 export const DefaultDisabledGrid = GridTemplate.bind({});
@@ -258,6 +274,18 @@ CompactGrid.args = {
   <Story name="Compact size" args={CompactGrid.args}>
     {CompactGrid}
   </Story>
+</Canvas>
+
+#### Custom color
+
+export const CompactCustomColorGrid = GridTemplate.bind({});
+CompactCustomColorGrid.args = {
+  color: "error",
+  compact: true,
+};
+
+<Canvas>
+  <Story name="Compact size, custom color">{CompactCustomColorGrid}</Story>
 </Canvas>
 
 #### Disabled state
