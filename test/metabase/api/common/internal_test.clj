@@ -15,7 +15,9 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as jetty]))
+   [ring.adapter.jetty9 :as jetty])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -108,7 +110,7 @@
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
 (deftest defendpoint-test
-  (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
+  (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
         port   (.. server getURI getPort)
         post!  (fn [route body]
                  (http/post (str "http://localhost:" port route)

@@ -195,10 +195,10 @@
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
    [:name     ::lib.schema.common/non-blank-string]
-   [:table-id   ::lib.schema.id/table]
+   [:table-id ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
-   [:definition :map]
+   [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def MetricMetadata
@@ -214,7 +214,7 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Metric; this may still be in legacy
    ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
-   [:definition :map]
+   [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadata
@@ -293,6 +293,12 @@
   [metadata-providerable :- MetadataProviderable
    field-id              :- ::lib.schema.id/field]
   (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+
+(mu/defn setting :- any?
+  "Get the value of a Metabase setting for the instance we're querying."
+  ([metadata-providerable :- MetadataProviderable
+    setting-key           :- [:or string? keyword?]]
+   (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
 
 ;;;; Stage metadata
 
