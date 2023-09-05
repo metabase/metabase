@@ -741,6 +741,7 @@
                   query stage-number stage)]
      (lib.equality/closest-matching-metadata field-ref columns))))
 
+
 (mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
   "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
   only meant for use with `:field` clauses."
@@ -752,3 +753,8 @@
     legacy-ref  :- some?]
    (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
      (find-visible-column-for-ref query stage-index a-ref))))
+
+(defn json-field?
+  "Return true if field is a JSON field, false if not."
+  [field]
+  (some? (:nfc-path field)))

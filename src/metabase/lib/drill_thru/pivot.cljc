@@ -30,7 +30,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    context      :- ::lib.schema.drill-thru/context]
-  (pivot-drill-pred query stage-number context lib.types.isa/date?))
+  (pivot-drill-pred query stage-number context lib.types.isa/temporal?))
 
 (mu/defn ^:private pivot-by-location-drill :- [:sequential lib.metadata/ColumnMetadata]
   "Pivots this column and value on an address dimension."
@@ -51,7 +51,7 @@
 (defn- breakout-type [query stage-number breakout]
   (let [column (lib.metadata.calculation/metadata query stage-number breakout)]
     (cond
-      (lib.types.isa/date? column) :date
+      (lib.types.isa/temporal? column) :date
       (lib.types.isa/address? column) :address
       (lib.types.isa/category? column) :category)))
 

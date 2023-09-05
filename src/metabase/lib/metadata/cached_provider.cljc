@@ -1,9 +1,12 @@
 (ns metabase.lib.metadata.cached-provider
   (:require
    [clojure.set :as set]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #?@(:clj ([pretty.core :as pretty]))))
 
 (defn- get-in-cache [cache ks]
@@ -17,13 +20,26 @@
     (when-not (= value ::nil)
       value)))
 
-(defn- store-database! [cache database-metadata]
+(mu/defn ^:private store-database!
+  [cache
+   database-metadata :- lib.metadata/DatabaseMetadata]
   (let [database-metadata (-> database-metadata
                               (update-keys u/->kebab-case-en)
                               (assoc :lib/type :metadata/database))]
     (store-in-cache! cache [:metadata/database] database-metadata)))
 
-(defn- store-metadata! [cache metadata-type id metadata]
+(mu/defn ^:private store-metadata!
+  [cache
+   metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment]
+   id            :- ::lib.schema.common/positive-int
+   metadata      :- [:multi
+                     {:dispatch :lib/type}
+                     [:metadata/database lib.metadata/DatabaseMetadata]
+                     [:metadata/table    lib.metadata/TableMetadata]
+                     [:metadata/column   lib.metadata/ColumnMetadata]
+                     [:metadata/card     lib.metadata/CardMetadata]
+                     [:metadata/metric   lib.metadata/MetricMetadata]
+                     [:metadata/segment  lib.metadata/SegmentMetadata]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]

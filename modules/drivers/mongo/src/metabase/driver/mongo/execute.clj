@@ -138,7 +138,7 @@
             (.batchSize (int 100))
             (.maxTime (int timeout-ms) TimeUnit/MILLISECONDS))))
 
-(defn- aggregate
+(defn- ^:dynamic *aggregate*
   "Execute a MongoDB aggregation query."
   ^Cursor [^DB db ^String coll stages timeout-ms]
   (let [coll     (.getCollection db coll)
@@ -181,7 +181,7 @@
   {:pre [(string? collection) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        cursor (aggregate *mongo-connection* collection query (qp.context/timeout context))]
+        cursor (*aggregate* *mongo-connection* collection query (qp.context/timeout context))]
     (a/go
       (when (a/<! (qp.context/canceled-chan context))
         ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by

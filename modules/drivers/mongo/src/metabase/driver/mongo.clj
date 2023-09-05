@@ -14,6 +14,7 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :refer [with-mongo-connection]]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -180,7 +181,7 @@
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
-  [_ database]
+  [_driver database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (let [build-info (mg/command conn {:buildInfo 1})
           version-array (get build-info "versionArray")
@@ -278,26 +279,26 @@
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
@@ -311,7 +312,7 @@
 
 (defmethod driver/execute-reducible-query :mongo
   [_ query context respond]
-  (with-mongo-connection [_ (qp.store/database)]
+  (with-mongo-connection [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
