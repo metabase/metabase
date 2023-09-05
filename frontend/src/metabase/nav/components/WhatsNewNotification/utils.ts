@@ -24,14 +24,7 @@ export const getLatestEligibleReleaseNotes = ({
 
   const versions = [versionInfo?.latest]
     .concat(versionInfo?.older)
-    .filter(isNotFalsy)
-    .filter(
-      (
-        record: VersionInfoRecord,
-      ): record is VersionInfoRecord &
-        Required<Pick<VersionInfoRecord, "version">> =>
-        typeof record.version === "string",
-    );
+    .filter(isNotFalsy);
 
   const versionInVersionInfo = versions.find(v => v.version === currentVersion);
   if (!versionInVersionInfo) {
