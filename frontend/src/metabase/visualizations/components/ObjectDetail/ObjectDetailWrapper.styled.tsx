@@ -10,8 +10,8 @@ import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import {
   ObjectDetailContainer,
   ObjectDetailsTable,
-  ObjectRelationships,
 } from "./ObjectDetailView.styled";
+import { ObjectRelationships } from "./ObjectRelationships.styled";
 
 export const RootModal = styled(Modal)`
   ${ObjectDetailContainer} {
