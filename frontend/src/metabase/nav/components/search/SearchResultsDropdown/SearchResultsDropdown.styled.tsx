@@ -29,8 +29,8 @@ export const SearchDropdownFooter = styled(Group)`
   border-top: 1px solid ${({ theme }) => theme.colors.border[0]};
 
   &:hover {
-    background-color: ${({ theme }) => theme.colors.bg[0]};
+    color: ${({ theme }) => theme.colors.brand[1]};
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    transition: color 0.2s ease-in-out;
   }
 `;

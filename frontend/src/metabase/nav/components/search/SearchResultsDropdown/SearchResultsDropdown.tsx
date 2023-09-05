@@ -20,21 +20,23 @@ export const SearchResultsDropdown = ({
   onSearchItemSelect,
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
-  const renderFooter = (metadata: Omit<SearchResultsType, "data">) => (
-    <SearchDropdownFooter
-      position="apart"
-      align="center"
-      px="lg"
-      py="sm"
-      onClick={goToSearchApp}
-    >
-      <Text
-        weight={700}
-        size="sm"
-      >{jt`View and filter all ${metadata.total} results`}</Text>
-      <Icon name="arrow_right" />
-    </SearchDropdownFooter>
-  );
+  const renderFooter = (metadata: Omit<SearchResultsType, "data">) =>
+    metadata.total > 0 ? (
+      <SearchDropdownFooter
+        position="apart"
+        align="center"
+        px="lg"
+        py="sm"
+        onClick={goToSearchApp}
+      >
+        <Text
+          weight={700}
+          size="sm"
+          c="inherit"
+        >{jt`View and filter all ${metadata.total} results`}</Text>
+        <Icon name="arrow_right" />
+      </SearchDropdownFooter>
+    ) : null;
 
   return (
     <SearchResultsContainer
