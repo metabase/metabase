@@ -16,8 +16,8 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       rightSection: {
         svg: {
           color: theme.colors.text[2],
-          width: rem(16),
-          height: rem(16),
+          width: "1rem",
+          height: "1rem",
 
           "&[data-chevron] path": {
             d: 'path("M 1.38 4.19 a 0.7 0.7 90 0 1 0.99 0 L 7.5 9.32 l 5.13 -5.13 a 0.7 0.7 90 1 1 0.99 0.99 l -5.63 5.63 a 0.7 0.7 90 0 1 -0.99 0 l -5.63 -5.63 a 0.7 0.7 90 0 1 0 -0.99 z")',
@@ -28,12 +28,11 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
       itemsWrapper: {
-        padding: rem(12),
+        padding: "0.75rem",
       },
       item: {
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
-        lineHeight: theme.lineHeight,
         padding: theme.spacing.sm,
         "&:hover:not([data-disabled]), &:focus": {
           color: theme.colors.brand[1],
@@ -58,8 +57,6 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
       separatorLabel: {
         color: theme.colors.text[0],
-        fontSize: theme.fontSizes.sm,
-        lineHeight: theme.lineHeight,
         marginTop: "0 !important",
         paddingTop: theme.spacing.xs,
         paddingBottom: theme.spacing.xs,
@@ -69,5 +66,25 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
     }),
+    sizes: {
+      xs: theme => ({
+        item: {
+          fontSize: theme.fontSizes.sm,
+          lineHeight: theme.lineHeight,
+        },
+        separatorLabel: {
+          fontSize: theme.fontSizes.xs,
+        },
+      }),
+      md: theme => ({
+        item: {
+          fontSize: theme.fontSizes.md,
+          lineHeight: "1.5rem",
+        },
+        separatorLabel: {
+          fontSize: theme.fontSizes.sm,
+        },
+      }),
+    },
   },
 });

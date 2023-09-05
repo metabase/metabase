@@ -14,7 +14,9 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     return (
       <Group ref={ref} spacing="sm" {...others}>
         {icon && <Icon name={icon} />}
-        <Text color="inherit">{label}</Text>
+        <Text color="inherit" lh="inherit">
+          {label}
+        </Text>
       </Group>
     );
   },

@@ -9,7 +9,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
     defaultProps: {
       loaderProps: {
-        size: rem(16),
+        size: "1rem",
         color: "currentColor",
       },
     },
