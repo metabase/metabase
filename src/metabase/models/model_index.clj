@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -9,6 +10,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -51,14 +53,29 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
+(mu/defn ^:private fix-expression-refs :- mbql.s/Field
+  "Convert expression ref into a field ref.
+
+Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
+don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
+`:type/Text` enforced by the endpoint to create model indexes."
+  [field-ref :- mbql.s/Field]
+  (case (first field-ref)
+    :field field-ref
+    :expression (let [[_ expression-name] field-ref]
+                  ;; api validated that this is a text field when the model-index was created. When selecting the
+                  ;; expression we treat it as a field.
+                  [:field expression-name {:base-type :type/Text}])))
+
 (defn- fetch-values
   [model-index]
-  (let [model (t2/select-one Card :id (:model_id model-index))]
+  (let [model     (t2/select-one Card :id (:model_id model-index))
+        value-ref (-> model-index :value_ref fix-expression-refs)]
     (try [nil (->> (qp/process-query
                     {:database (:database_id model)
                      :type     :query
                      :query    {:source-table (format "card__%d" (:id model))
-                                :breakout     [(:pk_ref model-index) (:value_ref model-index)]
+                                :breakout     [(:pk_ref model-index) value-ref]
                                 :limit        (inc max-indexed-values)}})
                    :data :rows (filter valid-tuples?))]
          (catch Exception e
