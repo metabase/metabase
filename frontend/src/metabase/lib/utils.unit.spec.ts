@@ -29,7 +29,7 @@ describe("compareVersions", () => {
     expect(compareVersions("v0.46.0-BETA1", "v0.46.0-BETA2")).toBe(-1);
   });
 
-  it("should consider X.BETA and  X.0-BETA equal", () => {
+  it("should consider X.BETA and X.0-BETA equal", () => {
     expect(compareVersions("v0.46.0-BETA", "v0.46-BETA")).toBe(0);
   });
 
@@ -40,7 +40,7 @@ describe("compareVersions", () => {
   });
 
   it("should consider v0.46-BETA1 < v0.46.0", () => {
-    expect(compareVersions("v0.46-BETA1 ", "v0.46.0")).toBe(-1);
+    expect(compareVersions("v0.46-BETA1", "v0.46.0")).toBe(-1);
   });
 
   it("should consider v0.46-BETA1 < v0.46.1-BETA1", () => {

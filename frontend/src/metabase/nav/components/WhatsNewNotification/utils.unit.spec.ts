@@ -173,7 +173,7 @@ describe("getLatestEligibleReleaseNotes", () => {
     ).toHaveProperty("version", "v0.49.1");
   });
 
-  it("returns last version if more than one are eligible - versions not in order", () => {
+  it("returns last version if more than one is eligible - versions not in order", () => {
     expect(
       getLatestEligibleReleaseNotes({
         versionInfo: buildVersionInfo([

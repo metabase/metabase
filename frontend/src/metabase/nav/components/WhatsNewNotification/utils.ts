@@ -29,7 +29,8 @@ export const getLatestEligibleReleaseNotes = ({
       (
         record: VersionInfoRecord,
       ): record is VersionInfoRecord &
-        Required<Pick<VersionInfoRecord, "version">> => Boolean(record.version),
+        Required<Pick<VersionInfoRecord, "version">> =>
+        typeof record.version === "string",
     );
 
   const versionInVersionInfo = versions.find(v => v.version === currentVersion);
