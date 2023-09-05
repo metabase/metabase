@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
-import type { FormState } from "metabase/forms";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import type { FormState } from "../../contexts";
 import type { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
@@ -13,7 +13,7 @@ export interface UseFormSubmitResult<T> {
   handleSubmit: (values: T, helpers: FormikHelpers<T>) => void;
 }
 
-const useFormSubmit = <T>({
+export const useFormSubmit = <T>({
   onSubmit,
 }: UseFormSubmitProps<T>): UseFormSubmitResult<T> => {
   const [state, setState] = useState<FormState>({ status: "idle" });
@@ -25,7 +25,7 @@ const useFormSubmit = <T>({
         await onSubmit(data, helpers);
         setState({ status: "fulfilled" });
       } catch (error) {
-        console.error("Form submit error: ", { error });
+        console.error(error);
         helpers.setErrors(getFormErrors(error));
         setState({ status: "rejected", message: getFormMessage(error) });
       }
@@ -58,6 +58,3 @@ const getFormMessage = (error: unknown) => {
     return getResponseErrorMessage(error);
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useFormSubmit;

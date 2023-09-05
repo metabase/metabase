@@ -14,7 +14,7 @@ export interface UseFormValidationResult<T extends FormikValues> {
   handleValidate: (values: T) => void | object | FormikErrors<T>;
 }
 
-const useFormValidation = <T extends FormikValues, C>({
+export const useFormValidation = <T extends FormikValues, C>({
   initialValues,
   validationSchema,
   validationContext,
@@ -72,6 +72,3 @@ const validateSchemaInitial = <T extends FormikValues, C>(
     return yupToFormErrors(error);
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useFormValidation;

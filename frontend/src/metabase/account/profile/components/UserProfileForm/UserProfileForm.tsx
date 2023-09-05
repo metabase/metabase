@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
 import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";

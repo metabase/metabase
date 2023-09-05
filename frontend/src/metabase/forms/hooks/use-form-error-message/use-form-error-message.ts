@@ -1,9 +1,9 @@
 import { useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
-import useFormContext from "metabase/core/hooks/use-form-context";
+import { useFormContext } from "../use-form-context";
 
-const useFormErrorMessage = (): string | undefined => {
+export const useFormErrorMessage = (): string | undefined => {
   const { values, errors } = useFormikContext();
   const { status, message } = useFormContext();
   const [isVisible, setIsVisible] = useState(false);
@@ -25,6 +25,3 @@ const useFormErrorMessage = (): string | undefined => {
     return t`An error occurred`;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useFormErrorMessage;

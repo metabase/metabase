@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import FormSelect from "metabase/core/components/FormSelect";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Form from "metabase/core/components/Form";

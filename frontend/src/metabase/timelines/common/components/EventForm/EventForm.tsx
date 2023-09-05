@@ -4,7 +4,7 @@ import * as Yup from "yup";
 import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
 import Button from "metabase/core/components/Button/Button";
 import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormDateInput from "metabase/core/components/FormDateInput";
 import FormTextArea from "metabase/core/components/FormTextArea";

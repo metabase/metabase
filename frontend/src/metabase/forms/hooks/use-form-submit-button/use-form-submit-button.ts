@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
-import type { FormStatus } from "metabase/core/hooks/use-form-context";
-import useFormContext from "metabase/core/hooks/use-form-context";
+import type { FormStatus } from "../../contexts";
+import { useFormContext } from "../use-form-context";
 
 const STATUS_TIMEOUT = 5000;
 
@@ -14,7 +14,7 @@ export interface UseFormSubmitButtonResult {
   isDisabled: boolean;
 }
 
-const useFormSubmitButton = ({
+export const useFormSubmitButton = ({
   isDisabled = false,
 }: UseFormSubmitButtonProps): UseFormSubmitButtonResult => {
   const { isValid, isSubmitting } = useFormikContext();
@@ -51,6 +51,3 @@ const getFormStatus = (status: FormStatus, isRecent: boolean): FormStatus => {
       return status;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useFormSubmitButton;

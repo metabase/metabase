@@ -1,16 +1,15 @@
 import { Formik } from "formik";
 import type { FormikConfig, FormikValues } from "formik";
 import type { AnySchema } from "yup";
-import useFormSubmit from "metabase/core/hooks/use-form-submit";
-import useFormValidation from "metabase/core/hooks/use-form-validation";
-import { FormContext } from "metabase/forms";
+import { FormContext } from "../../contexts";
+import { useFormSubmit, useFormValidation } from "../../hooks";
 
 export interface FormProviderProps<T, C> extends FormikConfig<T> {
   validationSchema?: AnySchema;
   validationContext?: C;
 }
 
-function FormProvider<T extends FormikValues, C = unknown>({
+export function FormProvider<T extends FormikValues, C = unknown>({
   initialValues,
   validationSchema,
   validationContext,
@@ -36,6 +35,3 @@ function FormProvider<T extends FormikValues, C = unknown>({
     </FormContext.Provider>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormProvider;

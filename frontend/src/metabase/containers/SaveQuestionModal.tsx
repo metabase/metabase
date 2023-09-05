@@ -4,7 +4,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import ModalContent from "metabase/components/ModalContent";
-import FormProvider from "metabase/core/components/FormProvider/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Form from "metabase/core/components/Form";

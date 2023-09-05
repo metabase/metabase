@@ -5,7 +5,7 @@ import type { FormikHelpers } from "formik";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
