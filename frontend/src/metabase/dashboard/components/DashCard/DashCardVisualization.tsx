@@ -189,13 +189,14 @@ function DashCardVisualization({
     const mainSeries = series[0] as unknown as Dataset;
 
     const isInternalQuery = question.query() instanceof InternalQuery;
+
     const shouldShowDownloadWidget =
       isEmbed ||
       (!isPublic &&
         !isEditing &&
-        DashCardMenu.shouldRender({ question, result: mainSeries }));
+        DashCardMenu.shouldRender({ question, result: mainSeries, isXray }));
 
-    if (isInternalQuery || !shouldShowDownloadWidget || isXray) {
+    if (isInternalQuery || !shouldShowDownloadWidget) {
       return null;
     }
 

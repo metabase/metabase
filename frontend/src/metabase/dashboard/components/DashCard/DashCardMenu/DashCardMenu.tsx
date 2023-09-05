@@ -123,6 +123,7 @@ const DashCardMenu = ({
 interface QueryDownloadWidgetOpts {
   question: Question;
   result?: Dataset;
+  isXray?: boolean;
 }
 
 const canEditQuestion = (question: Question) => {
@@ -137,8 +138,12 @@ const canDownloadResults = (result?: Dataset) => {
   );
 };
 
-DashCardMenu.shouldRender = ({ question, result }: QueryDownloadWidgetOpts) => {
-  return canEditQuestion(question) || canDownloadResults(result);
+DashCardMenu.shouldRender = ({
+  question,
+  result,
+  isXray,
+}: QueryDownloadWidgetOpts) => {
+  return !isXray && (canEditQuestion(question) || canDownloadResults(result));
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
