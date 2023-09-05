@@ -1,4 +1,4 @@
-(ns metabase.api.database
+﻿(ns metabase.api.database
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -821,7 +821,7 @@
 (api/defendpoint POST "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
-  {:id ms/PositiveInt}
+  {id ms/PositiveInt}
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
@@ -846,7 +846,7 @@
 (api/defendpoint POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
-  {:id ms/PositiveInt}
+  {id ms/PositiveInt}
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)

@@ -1,4 +1,4 @@
-(ns metabase.driver.vertica-test
+﻿(ns metabase.driver.vertica-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -12,7 +12,7 @@
 
 (deftest db-timezone-test
   (mt/test-driver :vertica
-    (is (= nil
+    (is (= "America/Los_Angeles"
            (driver/db-default-timezone :vertica (mt/db))))))
 
 (deftest ^:parallel additional-connection-string-options-test

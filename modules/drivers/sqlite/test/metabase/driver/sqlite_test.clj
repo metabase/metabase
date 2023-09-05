@@ -1,4 +1,4 @@
-(ns metabase.driver.sqlite-test
+﻿(ns metabase.driver.sqlite-test
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -19,7 +19,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
 
 (deftest filter-by-date-test

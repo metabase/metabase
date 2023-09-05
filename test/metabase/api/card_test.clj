@@ -1,4 +1,4 @@
-(ns metabase.api.card-test
+﻿(ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
@@ -820,7 +820,8 @@
 (defn- updating-card-updates-metadata-query []
   (mt/mbql-query venues {:fields [$id $name]}))
 
-(def ^:private ^{:arglists '([s])} norm (comp u/upper-case-en :name))
+(defn- norm [s]
+  (u/upper-case-en (:name s)))
 
 (defn- to-native [query]
   {:database (:database query)

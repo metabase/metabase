@@ -1,4 +1,4 @@
-(ns metabase.driver.oracle-test
+﻿(ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -195,7 +195,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :oracle (mt/db))))))
 
 ;;; see also [[metabase.test.data.oracle/insert-all-test]]

@@ -1,4 +1,4 @@
-(ns metabase.api.common
+﻿(ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
    [clojure.set :as set]
@@ -363,7 +363,8 @@
       the function in the generated `defroutes` form.
 
    -  Generates a super-sophisticated Markdown-formatted docstring"
-  {:arglists '([method route docstr? args schemas-map? & body])}
+  {:arglists     '([method route docstr? args schemas-map? & body])
+   :style/indent :defn}
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
