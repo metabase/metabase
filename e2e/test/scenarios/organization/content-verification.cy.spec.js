@@ -4,16 +4,11 @@ import {
   visitQuestion,
   openQuestionActions,
   questionInfoButton,
-  getFullName,
   setTokenFeatures,
   popover,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
-const { admin } = USERS;
-const adminFullName = getFullName(admin);
 
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
@@ -176,7 +171,7 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         cy.findByTestId("sidebar-right")
-          .findAllByText(`${adminFullName} verified this`)
+          .findAllByText(`A moderator verified this`)
           .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");
