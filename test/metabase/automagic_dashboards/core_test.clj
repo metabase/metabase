@@ -1607,3 +1607,69 @@
                                                 {:id (mt/id :people :city)}]
                                       :score 60}}
                     bound-dimensions)))))))))
+
+(deftest binding-functions-with-all-same-names-and-types-test
+  (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
+            same name for all columns."
+    (mt/dataset sample-dataset
+      (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Card {:keys [result_metadata] :as card} {:table_id        nil
+                                                                :dataset_query   source-query
+                                                                :result_metadata (->> (result-metadata-for-query source-query)
+                                                                                      (mt/with-test-user :rasta)
+                                                                                      (mapv (fn [m]
+                                                                                              (assoc m
+                                                                                                :display_name "Frooby"
+                                                                                                :semantic_type :type/Latitude))))}]
+                      (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
+                            base-context        (#'magic/make-base-context root)
+                            dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
+                                                 {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                                 {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                                 {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                                 {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                                 {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                                 {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+                            ;; These will be matched in our tests since this is a generic table entity.
+                            bindable-dimensions (remove
+                                                  #(-> % vals first :field_type first #{:entity/UserTable})
+                                                  dimensions)
+                            candidate-bindings  (#'magic/candidate-bindings base-context dimensions)
+                            bound-dimensions    (#'magic/bind-dimensions base-context dimensions)]
+                        (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
+                          (is (= :entity/GenericTable entity_type)))
+                        (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
+                          (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
+                        (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
+                                  Note that this is a map of field id -> vector of passing candidate bindings with
+                                  the keyed field added to the dimension as a `:matches` vector with just that field.
+
+                                  Also note that the actual field names and display name are not used in candidate
+                                   selection. Ultimately, the filtering was based on entity_type and semantic_type."
+                          (is (=?
+                                (let [add-matches (fn [col-name]
+                                                    (map
+                                                      (fn [bd]
+                                                        (update-vals
+                                                          bd
+                                                          (fn [v]
+                                                            (assoc v
+                                                              :matches [{:name col-name :display_name "Frooby"}]))))
+                                                      bindable-dimensions))]
+                                  {"L1" (add-matches "L1")
+                                   "L2" (add-matches "L2")
+                                   "L3" (add-matches "L3")})
+                                candidate-bindings)))
+                        (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
+                                  to latitude."
+                          (is (= ["Lat"] (keys bound-dimensions))))
+                        (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
+                                  being bound to the Lat dimension."
+                          (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
+                                          :score      100
+                                          :matches    [{:name "L1" :display_name "Frooby"}
+                                                       {:name "L2" :display_name "Frooby"}
+                                                       {:name "L3" :display_name "Frooby"}]}}
+                                  bound-dimensions)))))))))
