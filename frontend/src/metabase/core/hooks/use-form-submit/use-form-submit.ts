@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
-import type { FormState } from "metabase/core/context/FormContext";
+import type { FormState } from "metabase/forms";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import type { FormError } from "./types";
 

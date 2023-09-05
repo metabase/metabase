@@ -3,7 +3,7 @@ import type { FormikConfig, FormikValues } from "formik";
 import type { AnySchema } from "yup";
 import useFormSubmit from "metabase/core/hooks/use-form-submit";
 import useFormValidation from "metabase/core/hooks/use-form-validation";
-import FormContext from "metabase/core/context/FormContext";
+import { FormContext } from "metabase/forms";
 
 export interface FormProviderProps<T, C> extends FormikConfig<T> {
   validationSchema?: AnySchema;

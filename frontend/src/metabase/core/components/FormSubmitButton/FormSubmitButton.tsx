@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { ButtonProps } from "metabase/core/components/Button";
 import Button from "metabase/core/components/Button";
 import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
-import type { FormStatus } from "metabase/core/context/FormContext";
+import type { FormStatus } from "metabase/forms";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   title?: string;

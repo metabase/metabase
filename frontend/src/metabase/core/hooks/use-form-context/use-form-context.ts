@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import type { FormState } from "metabase/core/context/FormContext";
-import FormContext from "metabase/core/context/FormContext";
+import { FormContext } from "metabase/forms";
+import type { FormState } from "metabase/forms";
 
 const useFormContext = (): FormState => {
   return useContext(FormContext);

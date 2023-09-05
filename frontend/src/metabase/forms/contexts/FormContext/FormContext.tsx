@@ -7,9 +7,6 @@ export interface FormState {
   message?: string;
 }
 
-const FormContext = createContext<FormState>({
+export const FormContext = createContext<FormState>({
   status: "idle",
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormContext;
