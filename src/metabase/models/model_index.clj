@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -66,18 +65,12 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
     :expression (let [[_ expression-name] field-ref]
                   ;; api validated that this is a text field when the model-index was created. When selecting the
                   ;; expression we treat it as a field.
-                  [:field expression-name {:base-type :type/Text}])
-    (throw (ex-info (trs "Invalid field ref for indexing: {0}" field-ref)
-                    {:field-ref field-ref
-                     :valid-clauses [:field :expression]}))))
+                  [:field expression-name {:base-type :type/Text}])))
 
 (defn- fetch-values
   [model-index]
   (let [model     (t2/select-one Card :id (:model_id model-index))
-        value-ref (-> model-index
-                      :value_ref
-                      mbql.normalize/normalize-field-ref
-                      fix-expression-refs)]
+        value-ref (-> model-index :value_ref fix-expression-refs)]
     (try [nil (->> (qp/process-query
                     {:database (:database_id model)
                      :type     :query
