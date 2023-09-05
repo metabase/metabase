@@ -19,15 +19,13 @@ import { getSetting } from "metabase/selectors/settings";
 import RecentsList from "metabase/nav/components/RecentsList";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
 
-import type { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/search/utils";
 import { SearchResults } from "metabase/nav/components/SearchResults";
-import type { SearchResult } from "metabase-types/api";
-import Search from "metabase/entities/search";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -92,14 +90,13 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    (result: SearchResult) => {
+    (result: WrappedResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
         zoomInRow({ objectId: result.id })(dispatch);
       } else {
-        const url = Search.wrapEntity(result, dispatch).getUrl();
-        onChangeLocation(url);
+        onChangeLocation(result.getUrl());
       }
     },
     [dispatch, onChangeLocation, location?.state?.cardId],
