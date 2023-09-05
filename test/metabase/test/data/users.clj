@@ -176,19 +176,18 @@
         (apply the-client session-id args)))))
 
 (def user-http-request
-  ^{:doc
-    "A version of our test client that issues the request with credentials for a given User. User may be either a
-    redefined test User name, e.g. `:rasta`, or any User or User ID.
-    The request will be executed with a temporary session id.
+  "A version of our test client that issues the request with credentials for a given User. User may be either a
+  redefined test User name, e.g. `:rasta`, or any User or User ID.
+  The request will be executed with a temporary session id.
 
-    Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
-    :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+  Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
+  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
 (def user-real-request
-  ^{:doc "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
-    :arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+  "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
+  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
 
