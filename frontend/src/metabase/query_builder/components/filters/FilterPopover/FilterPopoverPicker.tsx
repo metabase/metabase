@@ -64,6 +64,7 @@ export class FilterPopoverPicker extends Component<Props> {
       />
     ) : field?.isBoolean() ? (
       <BooleanPickerRadio
+        filter={filter}
         className={className}
         onFilterChange={onFilterChange}
       />

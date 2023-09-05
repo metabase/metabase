@@ -12,6 +12,8 @@ import type {
   Query,
 } from "./types";
 
+const isDefined = (value: any) => value !== undefined;
+
 export function filterableColumns(
   query: Query,
   stageIndex: number,
@@ -27,11 +29,17 @@ export function filterableColumnOperators(
 
 export function filterClause(
   filterOperator: FilterOperator,
-  column: ColumnMetadata,
-  ...args: (ExpressionArg | undefined)[]
+  column: ColumnMetadata | ColumnWithOperators,
+  args?: ExpressionArg[],
+  options?: { [key: string]: any },
 ): FilterClause {
-  if (args.some(arg => arg !== undefined)) {
-    return ML.filter_clause(filterOperator, column, ...args);
+  const validOptions = Object.values(options ?? {}).some(isDefined)
+    ? options
+    : undefined;
+  const mbqlArgs = [...(args ?? []), validOptions].filter(isDefined);
+
+  if (mbqlArgs.some(isDefined)) {
+    return ML.filter_clause(filterOperator, column, ...mbqlArgs);
   }
 
   return ML.filter_clause(filterOperator, column);
@@ -60,9 +68,16 @@ export function filterOperator(
 export function filterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause?: FilterClause,
 ): FilterParts {
-  return ML.filter_parts(query, stageIndex, filterClause);
+  return filterClause
+    ? ML.filter_parts(query, stageIndex, filterClause)
+    : {
+        args: [],
+        column: undefined,
+        operator: undefined,
+        options: {},
+      };
 }
 
 export function findFilterForLegacyFilter(

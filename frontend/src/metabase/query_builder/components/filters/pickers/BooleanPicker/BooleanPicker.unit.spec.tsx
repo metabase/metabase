@@ -7,7 +7,6 @@ import { checkNotNull } from "metabase/core/utils/types";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
-import { FilterContext } from "metabase/common/context";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -19,48 +18,25 @@ const mockOnFilterChange = jest.fn();
 function setup(filter: Filter, stageIndex = -1) {
   mockOnFilterChange.mockReset();
 
-  const {
-    filterClause,
-    query: mlv2Query,
-    column,
-  } = filter.getMlv2FilterClause({ stageIndex });
-
   return renderWithProviders(
-    <FilterContext.Provider
-      value={{
-        filter: filterClause,
-        query: mlv2Query,
-        legacyQuery: filter.query(),
-        column: column,
-        stageIndex,
-      }}
-    >
-      <BooleanPickerRadio onFilterChange={mockOnFilterChange} />
-    </FilterContext.Provider>,
+    <BooleanPickerRadio filter={filter} onFilterChange={mockOnFilterChange} />,
   );
 }
 
+const mockField = createMockField({
+  field_ref: ["field", 1, { "base-type": "type/Boolean" }],
+  id: 1,
+  base_type: "type/Boolean",
+  table_id: 2,
+});
+
 describe("BooleanPicker", () => {
   const metadata = createMockMetadata({
-    fields: [
-      createMockField({
-        id: 1,
-        base_type: "type/Boolean",
-        effective_type: "type/Boolean",
-        table_id: 2,
-      }),
-    ],
+    fields: [mockField],
     tables: [
       createMockTable({
         id: 2,
-        fields: [
-          createMockField({
-            id: 1,
-            base_type: "type/Boolean",
-            effective_type: "type/Boolean",
-            table_id: 2,
-          }),
-        ],
+        fields: [mockField],
       }),
     ],
   });

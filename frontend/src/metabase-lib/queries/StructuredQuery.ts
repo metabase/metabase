@@ -126,6 +126,10 @@ class StructuredQueryInner extends AtomicQuery {
     this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
   }
 
+  getStageIndex() {
+    return this.queries().length - 1;
+  }
+
   private getMLv2Query(): Query {
     return this.question()._getMLv2Query();
   }

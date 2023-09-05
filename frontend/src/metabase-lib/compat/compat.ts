@@ -3,15 +3,11 @@ import type { FieldFilter } from "metabase-types/api";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import LegacyFilter from "metabase-lib/queries/structured/Filter";
 
-export const getOperatorsMap = ({
-  query,
-  column,
-  stageIndex = -1,
-}: {
-  query?: ML.Query;
-  column?: ML.ColumnWithOperators;
-  stageIndex?: number;
-}) => {
+export const getOperatorsMap = (
+  query?: ML.Query,
+  stageIndex?: number,
+  column?: ML.ColumnWithOperators,
+) => {
   if (!query || !column) {
     return {};
   }
@@ -19,56 +15,63 @@ export const getOperatorsMap = ({
   const operators = ML.filterableColumnOperators(column);
   return Object.fromEntries(
     operators.map(operator => [
-      ML.displayInfo(query, stageIndex, operator).shortName,
+      ML.displayInfo(query, stageIndex ?? -1, operator).shortName,
       operator,
     ]),
   );
 };
 
-export const getMlv2FilterClause = (filter: LegacyFilter, stageIndex = -1) => {
-  const mlv2Query = filter.query().question()._getMLv2Query();
+export const getMLv2FilterClause = (filter: LegacyFilter) => {
+  const query = filter.query().rootQuery().question()._getMLv2Query();
+  const stageIndex = filter.query().getStageIndex();
 
   const appliedFilterClause = ML.findFilterForLegacyFilter(
-    mlv2Query,
+    query,
     stageIndex,
-    [...(filter as unknown as FieldFilter)],
+    filter.raw() as FieldFilter,
   );
 
+  const dimensionMBQL = filter.dimension()?.mbql();
+
+  if (!dimensionMBQL) {
+    throw new Error(`Could not find dimension for filter ${filter}`);
+  }
+
   const column = appliedFilterClause
-    ? ML.filterParts(mlv2Query, stageIndex, appliedFilterClause).column
-    : ML.findFilterableColumnForLegacyRef(mlv2Query, stageIndex, filter[1]);
+    ? ML.filterParts(query, stageIndex, appliedFilterClause).column
+    : ML.findFilterableColumnForLegacyRef(query, stageIndex, dimensionMBQL);
 
   if (!column) {
     throw new Error(`Could not find column for filter ${filter}`);
   }
 
-  const operatorsMap = getOperatorsMap({
-    query: mlv2Query,
-    column,
-    stageIndex,
-  });
+  const operatorsMap = getOperatorsMap(query, stageIndex, column);
 
   const unappliedFilterClause = ML.filterClause(
-    operatorsMap[filter[0]],
-    column as ML.ColumnMetadata,
-    ...filter.slice(2),
+    operatorsMap[filter.operatorName()],
+    column,
+    filter.arguments(),
+    filter.options(),
   );
 
   return {
     filterClause: appliedFilterClause ?? unappliedFilterClause,
     column,
-    query: mlv2Query,
+    query,
+    legacyQuery: filter.query(),
+    stageIndex,
   };
 };
 
 export function toLegacyFilter(
   query: ML.Query,
+  stageIndex: number,
   legacyQuery: StructuredQuery,
   filterClause: ML.FilterClause,
 ): LegacyFilter {
   const { operator, column, options, args } = ML.filterParts(
     query,
-    -1,
+    stageIndex,
     filterClause,
   );
 
@@ -80,7 +83,7 @@ export function toLegacyFilter(
 
   const legacyFilter = new LegacyFilter(
     [
-      ML.displayInfo(query, -1, operator).shortName,
+      ML.displayInfo(query, stageIndex, operator).shortName,
       ML.legacyFieldRef(column),
       ...args,
     ],
