@@ -7,10 +7,10 @@ import type { FormStatus } from "../../contexts";
 import { useFormSubmitButton } from "../../hooks";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
-  title?: string;
-  activeTitle?: string;
-  successTitle?: string;
-  failedTitle?: string;
+  label?: string;
+  activeLabel?: string;
+  successLabel?: string;
+  failedLabel?: string;
 }
 
 export const FormSubmitButton = forwardRef(function FormSubmitButton(
@@ -18,7 +18,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
-  const submitTitle = getSubmitButtonTitle(status, props);
+  const submitLabel = getSubmitButtonLabel(status, props);
   const submitColor = getSubmitButtonColor(status, props);
 
   return (
@@ -29,7 +29,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
       color={submitColor}
       disabled={isDisabled}
     >
-      {submitTitle}
+      {submitLabel}
     </Button>
   );
 });
@@ -48,23 +48,23 @@ const getSubmitButtonColor = (
   }
 };
 
-const getSubmitButtonTitle = (
+const getSubmitButtonLabel = (
   status: FormStatus | undefined,
   {
-    title = t`Submit`,
-    activeTitle = title,
-    successTitle = t`Success`,
-    failedTitle = t`Failed`,
+    label = t`Submit`,
+    activeLabel = label,
+    successLabel = t`Success`,
+    failedLabel = t`Failed`,
   }: FormSubmitButtonProps,
 ) => {
   switch (status) {
     case "pending":
-      return activeTitle;
+      return activeLabel;
     case "fulfilled":
-      return successTitle;
+      return successLabel;
     case "rejected":
-      return failedTitle;
+      return failedLabel;
     default:
-      return title;
+      return label;
   }
 };

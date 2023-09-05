@@ -10,7 +10,7 @@ import {
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-import { Stack } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { UserPasswordData } from "../../types";
 
@@ -86,7 +86,9 @@ export const UserPasswordForm = ({
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
-          <FormSubmitButton title={t`Save`} variant="filled" />
+          <Group>
+            <FormSubmitButton label={t`Save`} variant="filled" />
+          </Group>
           <FormErrorMessage />
         </Stack>
       </Form>
