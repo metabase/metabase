@@ -181,7 +181,16 @@ export function fixTimeseriesTicksExceedXTickCount(
         }
       });
 
-    return minLengthTicks;
+    if (minLengthTicks.length <= numTicks) {
+      return minLengthTicks;
+    }
+
+    return minLengthTicks.filter(
+      (_, index, ticks) =>
+        numTicks == null ||
+        ticks.length <= numTicks ||
+        index % Math.round((ticks.length - 1) / numTicks) === 0,
+    );
   }
 
   return defaultTicks;
