@@ -136,6 +136,46 @@ const MetabaseUtils = {
   },
 
   /**
+   * Converts a metabase version to a list of numeric components, it converts pre-release
+   * components to numbers and pads the numeric part to 4 numbers to make comparison easier
+   * @param {string} version
+   * @returns {number[]}
+   */
+  versionToNumericComponents(version) {
+    const SPECIAL_COMPONENTS = {
+      snapshot: -4,
+      alpha: -3,
+      beta: -2,
+      rc: -1,
+    };
+
+    const padRightWithZeros = (array, minLength = 4) => {
+      return Array.from({ length: minLength }).map((_, i) => array[i] || 0);
+    };
+
+    const [versionNumbers, labels = []] =
+      // v1.2.3-BETA1
+      version
+        .toLowerCase()
+        // v1.2.3-beta1
+        .replace(/^v/, "")
+        //  1.2.3-beta1
+        .split("-")
+        //['1.2.3', 'beta1']
+        .map(
+          substring =>
+            substring
+              .split(/[.-]*([0-9]+)[.-]*/)
+              .filter(c => c)
+              // [["1", "2", "3",] ["beta", "1"]]
+              .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10)),
+          //     [[1, 2, 3,] [-2, 1]]
+        );
+
+    return [...padRightWithZeros(versionNumbers), ...labels];
+  },
+
+  /**
    * this should correctly compare all version formats Metabase uses, e.g.
    * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
    * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
@@ -149,46 +189,8 @@ const MetabaseUtils = {
       return null;
     }
 
-    const SPECIAL_COMPONENTS = {
-      snapshot: -4,
-      alpha: -3,
-      beta: -2,
-      rc: -1,
-    };
-
-    const getComponents = x =>
-      // v1.2.3-BETA1
-      x
-        .toLowerCase()
-        // v1.2.3-beta1
-        .replace(/^v/, "")
-        // 1.2.3-beta1
-        .split(/[.-]*([0-9]+)[.-]*/)
-        .filter(c => c)
-        // ["1", "2", "3", "beta", "1"]
-        .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
-    // [1, 2, 3, -2, 1]
-
-    const aComponentsSplit = aVersion.split("-").map(getComponents);
-    const bComponentsSplit = bVersion.split("-").map(getComponents);
-    const minLength = Math.max(
-      aComponentsSplit[0].length,
-      bComponentsSplit[0].length,
-    );
-
-    const padWithZeros = (array, minLength) => {
-      while (array.length < minLength) {
-        array.push(0);
-      }
-    };
-
-    // pad versions to have the part on the left of the - of the same length
-    // so that we can compare v0.46 == v0.46.0
-    padWithZeros(aComponentsSplit[0], minLength);
-    padWithZeros(bComponentsSplit[0], minLength);
-
-    const aComponents = aComponentsSplit[0].concat(aComponentsSplit[1] ?? []);
-    const bComponents = bComponentsSplit[0].concat(bComponentsSplit[1] ?? []);
+    const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
+    const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
 
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];

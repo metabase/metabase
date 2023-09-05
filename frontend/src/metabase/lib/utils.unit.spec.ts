@@ -1,6 +1,13 @@
 import MetabaseUtils from "metabase/lib/utils";
 
 describe("utils", () => {
+  describe("versionToNumericComponents", () => {
+    it("should pad to 4 numeric components", () => {
+      expect(
+        MetabaseUtils.versionToNumericComponents("v1.2-BETA1"),
+      ).toStrictEqual([1, 2, 0, 0, -2, 1]);
+    });
+  });
   describe("compareVersions", () => {
     it("should compare versions correctly", () => {
       const expected = [
@@ -68,7 +75,7 @@ describe("utils", () => {
   });
 
   it("should consider v0.46-BETA1 < v0.46.1-BETA1", () => {
-    expect(MetabaseUtils.compareVersions("v0.46-BETA1 ", "v0.46.1-BETA1")).toBe(
+    expect(MetabaseUtils.compareVersions("v0.46-BETA1", "v0.46.1-BETA1")).toBe(
       -1,
     );
   });
