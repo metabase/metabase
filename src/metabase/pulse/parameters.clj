@@ -15,7 +15,9 @@
   [_pulse dashboard]
   (:parameters dashboard))
 
-(defn param-val [parameter]
+(defn param-val
+  "Returns the parameter value, falling back to :default if :value is not present."
+  [parameter]
   (get parameter :value (:default parameter)))
 
 (defn parameters

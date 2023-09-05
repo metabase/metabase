@@ -27,3 +27,10 @@
     (testing "Filters slugs and values are encoded properly for the URL"
       (is (= "https://metabase.com/dashboard/1?%26=contains%3F"
              (params/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))
+
+(deftest param-val-test
+  (testing "When the parameter’s :value key is missing, fallback to the :default key"
+    (is (= "my default value"
+           (params/param-val {:default "my default value"}))))
+  (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
+    (is (nil? (params/param-val {:value nil :default "my default value"})))))
