@@ -180,7 +180,9 @@ export function ObjectDetailView({
   }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
-    if (hasFks && prevZoomedRowId !== zoomedRowID) {
+    const hadPrevZoomedRow = typeof prevZoomedRowId !== "undefined";
+
+    if (hasFks && hadPrevZoomedRow && prevZoomedRowId !== zoomedRowID) {
       loadFKReferences();
     }
   }, [hasFks, prevZoomedRowId, zoomedRowID, loadFKReferences]);
