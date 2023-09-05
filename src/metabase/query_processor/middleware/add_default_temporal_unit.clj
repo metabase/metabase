@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-default-temporal-unit
   (:require
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]))
 
@@ -15,6 +16,6 @@
     (mbql.u/with-temporal-unit &match :default)
 
     [:field (id :guard integer?) (_ :guard (complement :temporal-unit))]
-    (let [{base-type :base_type, effective-type :effective_type} (qp.store/field id)]
+    (let [{:keys [base-type effective-type]} (lib.metadata/field (qp.store/metadata-provider) id)]
       (cond-> &match
         (isa? (or effective-type base-type) :type/Temporal) (mbql.u/with-temporal-unit :default)))))

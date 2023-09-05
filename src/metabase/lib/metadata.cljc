@@ -195,10 +195,10 @@
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
    [:name     ::lib.schema.common/non-blank-string]
-   [:table-id   ::lib.schema.id/table]
+   [:table-id ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
-   [:definition :map]
+   [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def MetricMetadata
@@ -214,7 +214,7 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Metric; this may still be in legacy
    ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
-   [:definition :map]
+   [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadata

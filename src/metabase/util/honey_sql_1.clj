@@ -97,9 +97,8 @@
     #_{:clj-kondo/ignore [:deprecated-var]}
     (if (= (set (keys this)) #{:identifier-type :components})
       (cons `identifier (cons identifier-type components))
-      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g.
-      ;; #metabase..Identifier {...}
-      (list (symbol (str \# `Identifier)) (into {} this)))))
+      ;; if there's extra info beyond the usual two keys print as (map->Identifier {...})
+      (list `map->Identifier (into {} this)))))
 
 ;;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 
