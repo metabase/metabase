@@ -68,21 +68,21 @@ export const UserPasswordForm = ({
           <FormTextInput
             name="old_password"
             type="password"
-            title={t`Current password`}
+            label={t`Current password`}
             placeholder={t`Shhh...`}
             autoComplete="current-password"
           />
           <FormTextInput
             name="password"
             type="password"
-            title={t`Create a password`}
+            label={t`Create a password`}
             placeholder={t`Shhh...`}
             autoComplete="new-password"
           />
           <FormTextInput
             name="password_confirm"
             type="password"
-            title={t`Confirm your password`}
+            label={t`Confirm your password`}
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
