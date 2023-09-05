@@ -23,6 +23,7 @@ export const SearchResultsDropdown = ({
   const renderFooter = (metadata: Omit<SearchResultsType, "data">) =>
     metadata.total > 0 ? (
       <SearchDropdownFooter
+        data-testid="search-dropdown-footer"
         position="apart"
         align="center"
         px="lg"
