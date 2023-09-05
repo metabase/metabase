@@ -7,9 +7,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -47,7 +49,8 @@
   [instance metadata-type]
   (-> instance
       (update-keys u/->kebab-case-en)
-      (assoc :lib/type metadata-type)))
+      (assoc :lib/type metadata-type)
+      u.snake-hating-map/snake-hating-map))
 
 (defmethod select :default
   [metadata-type _database-id condition]
@@ -63,20 +66,21 @@
   [_metadata-type _database-id condition]
   (into []
         (map (fn [database]
-               (merge
-                {:lib/type     :metadata/database
-                 :id           (:id database)
-                 :engine       (:engine database)
-                 :name         (:name database)
-                 :dbms-version (:dbms_version database)
-                 :settings     (:settings database)
-                 :is-audit     (:is_audit database)
-                 :features     (:features database)}
-                (when-let [details (:details database)]
-                  ;; ignore encrypted details that we cannot decrypt, because that breaks schema
-                  ;; validation
-                  (when (map? details)
-                    {:details details})))))
+               (u.snake-hating-map/snake-hating-map
+                (merge
+                 {:lib/type     :metadata/database
+                  :id           (:id database)
+                  :engine       (:engine database)
+                  :name         (:name database)
+                  :dbms-version (:dbms_version database)
+                  :settings     (:settings database)
+                  :is-audit     (:is_audit database)
+                  :features     (:features database)}
+                 (when-let [details (:details database)]
+                   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
+                   ;; validation
+                   (when (map? details)
+                     {:details details}))))))
         (t2/reducible-select :model/Database
                              {:select [:id :engine :name :dbms_version :details :settings :is_audit]
                               :from   [[(t2/table-name :model/Database) :model]]
@@ -88,11 +92,12 @@
    condition]
   (into []
         (map (fn [table]
-               {:lib/type     :metadata/table
-                :id           (:id table)
-                :name         (:name table)
-                :display-name (:display_name table)
-                :schema       (:schema table)}))
+               (u.snake-hating-map/snake-hating-map
+                {:lib/type     :metadata/table
+                 :id           (:id table)
+                 :name         (:name table)
+                 :display-name (:display_name table)
+                 :schema       (:schema table)})))
         (t2/reducible-select :model/Table
                              {:select [:id :name :display_name :schema]
                               :from   [[(t2/table-name :model/Table) :model]]
@@ -114,41 +119,42 @@
   (into []
         (map (fn [field]
                (let [dimension-type (some-> (:dimension/type field) keyword)]
-                 (merge
-                  {:lib/type           :metadata/column
-                   :base-type          (:base_type field)
-                   :coercion-strategy  (:coercion_strategy field)
-                   :database-type      (:database_type field)
-                   :description        (:description field)
-                   :display-name       (:display_name field)
-                   :effective-type     (:effective_type field)
-                   :fingerprint        (:fingerprint field)
-                   :fk-target-field-id (:fk_target_field_id field)
-                   :id                 (:id field)
-                   :name               (:name field)
-                   :nfc-path           (:nfc_path field)
-                   :parent-id          (:parent_id field)
-                   :position           (:position field)
-                   :semantic-type      (:semantic_type field)
-                   :settings           (:settings field)
-                   :table-id           (:table_id field)
-                   :visibility-type    (:visibility_type field)}
-                  (when (and (= dimension-type :external)
-                             (:dimension/human_readable_field_id field))
-                    {:lib/external-remap {:lib/type :metadata.column.remapping/external
-                                          :id       (:dimension/id field)
-                                          :name     (:dimension/name field)
-                                          :field-id (:dimension/human_readable_field_id field)}})
-                  (when (and (= dimension-type :internal)
-                             (:values/values field)
-                             (:values/human_readable_values field))
-                    {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
-                                          :id                    (:dimension/id field)
-                                          :name                  (:dimension/name field)
-                                          :values                (mi/json-out-with-keywordization
-                                                                  (:values/values field))
-                                          :human-readable-values (mi/json-out-without-keywordization
-                                                                  (:values/human_readable_values field))}})))))
+                 (u.snake-hating-map/snake-hating-map
+                  (merge
+                   {:lib/type           :metadata/column
+                    :base-type          (:base_type field)
+                    :coercion-strategy  (:coercion_strategy field)
+                    :database-type      (:database_type field)
+                    :description        (:description field)
+                    :display-name       (:display_name field)
+                    :effective-type     (:effective_type field)
+                    :fingerprint        (:fingerprint field)
+                    :fk-target-field-id (:fk_target_field_id field)
+                    :id                 (:id field)
+                    :name               (:name field)
+                    :nfc-path           (:nfc_path field)
+                    :parent-id          (:parent_id field)
+                    :position           (:position field)
+                    :semantic-type      (:semantic_type field)
+                    :settings           (:settings field)
+                    :table-id           (:table_id field)
+                    :visibility-type    (:visibility_type field)}
+                   (when (and (= dimension-type :external)
+                              (:dimension/human_readable_field_id field))
+                     {:lib/external-remap {:lib/type :metadata.column.remapping/external
+                                           :id       (:dimension/id field)
+                                           :name     (:dimension/name field)
+                                           :field-id (:dimension/human_readable_field_id field)}})
+                   (when (and (= dimension-type :internal)
+                              (:values/values field)
+                              (:values/human_readable_values field))
+                     {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
+                                           :id                    (:dimension/id field)
+                                           :name                  (:dimension/name field)
+                                           :values                (mi/json-out-with-keywordization
+                                                                   (:values/values field))
+                                           :human-readable-values (mi/json-out-without-keywordization
+                                                                   (:values/human_readable_values field))}}))))))
         (t2/reducible-select ::Field
                              {:select    [:model.base_type
                                           :model.coercion_strategy
@@ -203,23 +209,24 @@
    condition]
   (into []
         (map (fn [card]
-               (merge
-                {:lib/type               :metadata/card
-                 :collection-id          (:collection_id card)
-                 :database-id            (:database_id card)
-                 :dataset                (:dataset card)
-                 :dataset-query          (:dataset_query card)
-                 :id                     (:id card)
-                 :name                   (:name card)
-                 :result-metadata        (:result_metadata card)
-                 :table-id               (:table_id card)
-                 :visualization-settings (:visualization_settings card)}
-                (when (:persisted/definition card)
-                  {:lib/persisted-info {:active     (:persisted/active card)
-                                        :state      (:persisted/state card)
-                                        :definition (parse-persisted-info-definition (:persisted/definition card))
-                                        :query-hash (:persisted/query_hash card)
-                                        :table-name (:persisted/table_name card)}}))))
+               (u.snake-hating-map/snake-hating-map
+                (merge
+                 {:lib/type               :metadata/card
+                  :collection-id          (:collection_id card)
+                  :database-id            (:database_id card)
+                  :dataset                (:dataset card)
+                  :dataset-query          (:dataset_query card)
+                  :id                     (:id card)
+                  :name                   (:name card)
+                  :result-metadata        (:result_metadata card)
+                  :table-id               (:table_id card)
+                  :visualization-settings (:visualization_settings card)}
+                 (when (:persisted/definition card)
+                   {:lib/persisted-info {:active     (:persisted/active card)
+                                         :state      (:persisted/state card)
+                                         :definition (parse-persisted-info-definition (:persisted/definition card))
+                                         :query-hash (:persisted/query_hash card)
+                                         :table-name (:persisted/table_name card)}})))))
         (t2/reducible-select ::Card
                              {:select    [:model.collection_id
                                           :model.database_id
@@ -321,6 +328,9 @@
 
   (metrics [_this table-id]
     (metrics database-id table-id))
+
+  (setting [_this setting-name]
+    (setting/get setting-name))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

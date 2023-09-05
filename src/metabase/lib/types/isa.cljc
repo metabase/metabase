@@ -60,9 +60,7 @@
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
 
-;; TODO -- this should probably be renamed `temporal?`, because this is also going to be true of times and datetimes,
-;; not just dates.
-(defn ^:export date?
+(defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
   (field-type? ::lib.types.constants/temporal column))
@@ -134,6 +132,21 @@
   "Is `column` an entity name?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Name))
+
+(defn ^:export json?
+  "Is `column` a serialized JSON column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/SerializedJSON))
+
+(defn ^:export xml?
+  "Is `column` a serialized XML column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/XML))
+
+(defn ^:export structured?
+  "Is `column` serialized structured data? (eg. JSON, XML)"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Structured))
 
 (defn ^:export any?
   "Is this `_column` whatever (including nil)?"

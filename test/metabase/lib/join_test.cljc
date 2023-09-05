@@ -206,18 +206,13 @@
                 (lib/ref (first metadata))))))))
 
 (deftest ^:parallel join-against-source-card-metadata-test
-  (let [card-1            {:name          "My Card"
-                           :id            1
-                           :database-id   (meta/id)
-                           :dataset-query {:database (meta/id)
-                                           :type     :query
-                                           :query    {:source-table (meta/id :checkins)
-                                                      :aggregation  [[:count]]
-                                                      :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-        metadata-provider (lib/composed-metadata-provider
+  (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                            meta/metadata-provider
-                           (lib.tu/mock-metadata-provider
-                            {:cards [card-1]}))
+                           [{:database (meta/id)
+                             :type     :query
+                             :query    {:source-table (meta/id :checkins)
+                                        :aggregation  [[:count]]
+                                        :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
         join              {:lib/type    :mbql/join
                            :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
                            :stages      [{:lib/type    :mbql.stage/mbql
@@ -250,7 +245,7 @@
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "checkins_by_user__count"}]
             (lib/returned-columns query -1 join)))
-    (is (= (assoc card-1 :lib/type :metadata/card)
+    (is (= (lib.metadata/card metadata-provider 1)
            (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
@@ -1178,3 +1173,8 @@
                                       :alias      "Question 2 - Category"}]
                              :limit 2}]}
                   (lib.tu.mocks-31769/query))))))))
+
+(deftest ^:parallel suggested-name-include-joins-test
+  (testing "Include the names of joined tables in suggested query names (#24703)"
+    (is (= "Venues + Categories"
+           (lib/suggested-name lib.tu/query-with-join)))))

@@ -4,14 +4,15 @@
   (:require
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [schema.core :as s]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
@@ -26,7 +27,7 @@
 (defmethod ->rvalue :field
   [[_ id-or-name _options]]
   (if (integer? id-or-name)
-    (:name (qp.store/field id-or-name))
+    (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))
     id-or-name))
 
 ;; TODO - I think these next two methods are no longer used, since `->date-range` handles these clauses
@@ -71,7 +72,7 @@
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
 (defn- handle-source-table [{source-table-id :source-table}]
-  (let [{source-table-name :name} (qp.store/table source-table-id)]
+  (let [{source-table-name :name} (lib.metadata/table (qp.store/metadata-provider) source-table-id)]
     {:ids (str "ga:" source-table-name)}))
 
 
@@ -369,7 +370,7 @@
 
 ;;; ------------------------------------------- filter (built-in segments) -------------------------------------------
 
-(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankString)
+(mu/defn ^:private built-in-segment :- [:maybe ::lib.schema.common/non-blank-string]
   [{filter-clause :filter}]
   (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
     (when (> (count segments) 1)

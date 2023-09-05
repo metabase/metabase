@@ -170,9 +170,9 @@ describe("scenarios > visualizations > line chart", () => {
       cy.wait(500);
     });
     // Now do the same for the input with no value
-    openSeriesSettings("Unknown", true);
+    openSeriesSettings("(empty)", true);
     popover().within(() => {
-      cy.findAllByLabelText("series-name-input").type("cat2").blur();
+      cy.findAllByLabelText("series-name-input").clear().type("cat2").blur();
       cy.findByDisplayValue("cat2");
     });
     cy.button("Done").click();
@@ -233,6 +233,39 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+  });
+
+  it("should show label for empty value series breakout (metabase#32107)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+            select 1 id, 50 val1, null val2
+            union all select 2, 75, null
+            union all select 3, 175, null
+            union all select 4, 200, null
+            union all select 5, 280, null
+          `,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["ID", "VAL2"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["VAL1"],
+      },
+    });
+
+    cy.findByTestId("visualization-root")
+      .findByTestId("legend-item")
+      .findByText("(empty)")
+      .should("be.visible");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("(empty)");
   });
 
   describe("y-axis splitting (metabase#12939)", () => {

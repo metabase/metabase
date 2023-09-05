@@ -5,7 +5,9 @@
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.setup :as mdb.setup]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log])
   (:import
@@ -61,7 +63,15 @@
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
-      (jdbc/execute! {:connection conn} sql-args))))
+      (jdbc/execute! {:connection conn} sql-args)))
+  ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend` and a
+  ;; backend server started with `dev/start!` the snapshots are always missing columms added by DB migrations. So let's
+  ;; just check and make sure it's fully up to date in this scenario. Not doing this outside of dev because it seems to
+  ;; work fine for whatever reason normally and we don't want tests taking 5 million years to run because we're wasting
+  ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
+  ;; Cam
+  (when config/is-dev?
+    (mdb.setup/migrate! (mdb.connection/db-type) mdb.connection/*application-db* :up)))
 
 (defn- increment-app-db-unique-indentifier!
   "Increment the [[mdb.connection/unique-identifier]] for the Metabase application DB. This effectively flushes all

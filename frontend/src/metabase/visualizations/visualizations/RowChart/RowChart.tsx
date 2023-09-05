@@ -253,6 +253,10 @@ const RowChartVisualization = ({
       });
   }, [fontFamily]);
 
+  const hasBreakout =
+    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasLegend = series.length > 1 || hasBreakout;
+
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -265,7 +269,7 @@ const RowChartVisualization = ({
         />
       )}
       <RowChartLegendLayout
-        hasLegend={series.length > 1}
+        hasLegend={hasLegend}
         labels={labels}
         colors={colors}
         actionButtons={!hasTitle ? actionButtons : undefined}

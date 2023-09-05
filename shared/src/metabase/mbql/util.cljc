@@ -388,15 +388,20 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   #?(:clj
-      (if (mbql-clause? x)
-        (first x)
-        (or (models.dispatch/model x)
-            (type x)))
-      :cljs
-      (if (mbql-clause? x)
-        (first x)
-        (type x))))
+   (letfn [(clause-type [x]
+             (when (mbql-clause? x)
+               (first x)))
+           (mlv2-lib-type [x]
+             (when (map? x)
+               (:lib/type x)))
+           (model-type [#?(:clj x :cljs _x)]
+             #?(:clj (models.dispatch/model x)
+                :cljs nil))]
+     (or
+      (clause-type x)
+      (mlv2-lib-type x)
+      (model-type x)
+      (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
@@ -677,10 +682,10 @@
     :else
     x))
 
-(mu/defn update-field-options :- mbql.s/FieldOrAggregationReference
+(mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
-  [[clause-type id-or-name opts] :- mbql.s/FieldOrAggregationReference f & args]
+  [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the

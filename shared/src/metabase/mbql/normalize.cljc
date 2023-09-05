@@ -35,7 +35,8 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -894,14 +895,14 @@
                           {:query query}
                           e)))))))
 
-(defn normalize-fragment
+(mu/defn normalize-fragment
   "Normalize just a specific fragment of a query, such as just the inner MBQL part or just a filter clause. `path` is
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
     ;;-> [:= [:field-id 100] 200]"
-  {:style/indent 1}
-  [path x]
+  [path :- [:maybe [:sequential :keyword]]
+   x]
   (if-not (seq path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

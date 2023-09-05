@@ -3,7 +3,7 @@ import { Checkbox, Stack } from "metabase/ui";
 
 export const args = {
   label: "Label",
-  description: "",
+  description: undefined,
   disabled: false,
   labelPosition: "right",
 };
@@ -52,36 +52,52 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 ## Examples
 
-export const Template = args => (
+export const DefaultTemplate = args => <Checkbox {...args} />;
+
+export const CheckboxGroupTemplate = args => (
+  <Checkbox.Group
+    defaultValue={["react"]}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Checkbox {...args} value="react" label="React" />
+      <Checkbox {...args} value="svelte" label="Svelte" />
+      <Checkbox {...args} value="ng" label="Angular" />
+      <Checkbox {...args} value="vue" label="Vue" />
+    </Stack>
+  </Checkbox.Group>
+);
+
+export const StateTemplate = args => (
   <Stack>
     <Checkbox {...args} label="Default checkbox" />
     <Checkbox {...args} label="Indeterminate checkbox" indeterminate />
     <Checkbox
       {...args}
       label="Indeterminate checked checkbox"
-      checked
+      defaultChecked
       indeterminate
     />
-    <Checkbox {...args} label="Checked checkbox" checked />
+    <Checkbox {...args} label="Checked checkbox" defaultChecked />
     <Checkbox {...args} label="Disabled checkbox" disabled />
-    <Checkbox
-      {...args}
-      label="Disabled intermediate checkbox"
-      disabled
-      intermediate
-    />
     <Checkbox
       {...args}
       label="Disabled indeterminate checked checkbox"
       disabled
-      checked
+      defaultChecked
       indeterminate
     />
-    <Checkbox {...args} label="Disabled checked checkbox" disabled checked />
+    <Checkbox
+      {...args}
+      label="Disabled checked checkbox"
+      disabled
+      defaultChecked
+    />
   </Stack>
 );
 
-export const Default = args => <Checkbox {...args} />;
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
@@ -89,20 +105,7 @@ export const Default = args => <Checkbox {...args} />;
 
 ### Checkbox.Group
 
-export const CheckboxGroup = args => (
-  <Checkbox.Group
-    defaultValue={["react"]}
-    label="An array of good frameworks"
-    description="But which one to use?"
-  >
-    <Stack mt="md">
-      <Checkbox value="react" label="React" />
-      <Checkbox value="svelte" label="Svelte" />
-      <Checkbox value="ng" label="Angular" />
-      <Checkbox value="vue" label="Vue" />
-    </Stack>
-  </Checkbox.Group>
-);
+export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 <Canvas>
   <Story name="Checkbox group">{CheckboxGroup}</Story>
@@ -110,7 +113,7 @@ export const CheckboxGroup = args => (
 
 ### Label
 
-export const Label = args => <Template {...args} />;
+export const Label = StateTemplate.bind({});
 
 <Canvas>
   <Story name="Label">{Label}</Story>
@@ -118,30 +121,36 @@ export const Label = args => <Template {...args} />;
 
 #### Left label position
 
-export const LabelLeft = args => <Template {...args} labelPosition="left" />;
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
 
 <Canvas>
-  <Story name="Label, left position">{LabelLeft}</Story>
+  <Story name="Label, left position" args={LabelLeft.args}>
+    {LabelLeft}
+  </Story>
 </Canvas>
 
 ### Description
 
-export const Description = args => (
-  <Template {...args} description="Description" />
-);
+export const Description = StateTemplate.bind({});
 
 <Canvas>
   <Story name="Description">{Description}</Story>
 </Canvas>
 
-export const DescriptionLeft = args => (
-  <Template {...args} description="Description" labelPosition="left" />
-);
-
 #### Left label position
 
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  labelPosition: "left",
+};
+
 <Canvas>
-  <Story name="Description, left position">{DescriptionLeft}</Story>
+  <Story name="Description, left position" args={DescriptionLeft.args}>
+    {DescriptionLeft}
+  </Story>
 </Canvas>
 
 ## Related components
