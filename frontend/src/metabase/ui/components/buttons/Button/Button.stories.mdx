@@ -6,6 +6,7 @@ import { Button } from "./";
 
 export const args = {
   variant: "default",
+  color: undefined,
   compact: false,
   disabled: false,
   fullWidth: false,
@@ -17,6 +18,10 @@ export const args = {
 export const argTypes = {
   variant: {
     options: ["default", "filled", "outline", "subtle"],
+    control: { type: "inline-radio" },
+  },
+  color: {
+    options: { brand: "brand.1", success: "success.0", error: "error.0" },
     control: { type: "inline-radio" },
   },
   compact: {
@@ -174,6 +179,17 @@ export const DefaultGrid = GridTemplate.bind({});
   <Story name="Default size">{DefaultGrid}</Story>
 </Canvas>
 
+#### Custom color
+
+export const CustomColorGrid = GridTemplate.bind({});
+CustomColorGrid.args = {
+  color: "error",
+};
+
+<Canvas>
+  <Story name="Default size, custom color">{CustomColorGrid}</Story>
+</Canvas>
+
 #### Disabled state
 
 export const DefaultDisabledGrid = GridTemplate.bind({});
@@ -210,6 +226,20 @@ DefaultFullWidthGrid.args = {
 <Canvas>
   <Story name="Default size, full width" args={DefaultFullWidthGrid.args}>
     {DefaultFullWidthGrid}
+  </Story>
+</Canvas>
+
+#### Custom color
+
+export const CustomColorFullWidthGrid = GridTemplate.bind({});
+CustomColorFullWidthGrid.args = {
+  color: "error",
+  fullWidth: true,
+};
+
+<Canvas>
+  <Story name="Default size, full width, custom color">
+    {CustomColorFullWidthGrid}
   </Story>
 </Canvas>
 
@@ -260,6 +290,18 @@ CompactGrid.args = {
   </Story>
 </Canvas>
 
+#### Custom color
+
+export const CompactCustomColorGrid = GridTemplate.bind({});
+CompactCustomColorGrid.args = {
+  color: "error",
+  compact: true,
+};
+
+<Canvas>
+  <Story name="Compact size, custom color">{CompactCustomColorGrid}</Story>
+</Canvas>
+
 #### Disabled state
 
 export const CompactDisabledGrid = GridTemplate.bind({});
@@ -299,6 +341,21 @@ CompactFullWidthGrid.args = {
 <Canvas>
   <Story name="Compact size, full width" args={CompactFullWidthGrid.args}>
     {CompactFullWidthGrid}
+  </Story>
+</Canvas>
+
+#### Custom color
+
+export const CompactCustomColorFullWidthGrid = GridTemplate.bind({});
+CompactCustomColorFullWidthGrid.args = {
+  color: "error",
+  compact: true,
+  fullWidth: true,
+};
+
+<Canvas>
+  <Story name="Compact size, full width, custom color">
+    {CompactCustomColorFullWidthGrid}
   </Story>
 </Canvas>
 
