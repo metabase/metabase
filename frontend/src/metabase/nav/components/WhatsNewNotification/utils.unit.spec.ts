@@ -176,6 +176,7 @@ describe("getLatestEligibleReleaseNotes", () => {
   it("returns last version if more than one is eligible - versions not in order", () => {
     expect(
       getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
         versionInfo: buildVersionInfo([
           mockVersion({
             version: "v0.49.0",
