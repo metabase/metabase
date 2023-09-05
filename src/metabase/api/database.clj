@@ -1,4 +1,4 @@
-﻿(ns metabase.api.database
+(ns metabase.api.database
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
