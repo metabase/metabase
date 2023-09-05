@@ -8,7 +8,7 @@ import { getStylesRef, rem } from "@mantine/core";
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
     defaultProps: {
-      color: "brand.1",
+      color: "brand",
       loaderProps: {
         size: "1rem",
         color: "currentColor",
@@ -142,7 +142,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 });
 
 const getPrimaryColor = (theme: MantineTheme, colorName: string) => {
-  return theme.fn.themeColor(colorName, 0);
+  return theme.fn.themeColor(colorName, theme.fn.primaryShade());
 };
 
 const getHoverColor = (theme: MantineTheme, primaryColor: string) => {
