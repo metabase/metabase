@@ -12,20 +12,22 @@ import { useSearchListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import Search from "metabase/entities/search";
 import { Loader, Text, Stack } from "metabase/ui";
+import type { SearchModelType } from "metabase-types/api";
 
 type SearchResultsProps = {
-  onChangeLocation: () => void;
-  onEntitySelect?: () => void;
-  forceEntitySelect: boolean;
-  searchText: string;
-  searchFilters: SearchFilters;
+  onEntitySelect?: (result: any) => void;
+  forceEntitySelect?: boolean;
+  searchText?: string;
+  searchFilters?: SearchFilters;
+  models?: SearchModelType[];
 };
 
 export const SearchResults = ({
   onEntitySelect,
-  forceEntitySelect,
+  forceEntitySelect = false,
   searchText,
-  searchFilters,
+  searchFilters = {},
+  models,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
@@ -33,7 +35,7 @@ export const SearchResults = ({
     q: searchText,
     limit: DEFAULT_SEARCH_LIMIT,
     ...searchFilters,
-    models: searchFilters.type,
+    models: models || searchFilters.type,
   };
 
   const { data: list = [], isLoading } = useSearchListQuery({
