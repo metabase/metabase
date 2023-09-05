@@ -1,5 +1,5 @@
 import type { LegacyRef } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
@@ -7,12 +7,16 @@ import { SearchResult } from "metabase/search/components/SearchResult";
 import { EmptyStateContainer } from "metabase/nav/components/SearchResults.styled";
 import EmptyState from "metabase/components/EmptyState";
 import type { SearchFilters } from "metabase/search/types";
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import {
+  DEFAULT_SEARCH_LIMIT,
+  SEARCH_DEBOUNCE_DURATION,
+} from "metabase/lib/constants";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import Search from "metabase/entities/search";
 import { Loader, Text, Stack } from "metabase/ui";
 import type { SearchModelType } from "metabase-types/api";
+import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
@@ -31,12 +35,24 @@ export const SearchResults = ({
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
-  const query = {
-    q: searchText,
-    limit: DEFAULT_SEARCH_LIMIT,
-    ...searchFilters,
-    models: models || searchFilters.type,
-  };
+  const [debouncedSearchText, setDebouncedSearchText] = useState(searchText);
+  useDebouncedEffect(
+    () => {
+      setDebouncedSearchText(searchText);
+    },
+    SEARCH_DEBOUNCE_DURATION,
+    [searchText],
+  );
+
+  const query = useMemo(
+    () => ({
+      q: debouncedSearchText,
+      limit: DEFAULT_SEARCH_LIMIT,
+      ...searchFilters,
+      models: models || searchFilters.type,
+    }),
+    [debouncedSearchText, searchFilters, models],
+  );
 
   const { data: list = [], isLoading } = useSearchListQuery({
     query,
@@ -46,7 +62,7 @@ export const SearchResults = ({
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
     list,
     onEnter: onEntitySelect
-      ? onEntitySelect
+      ? item => onEntitySelect(Search.wrapEntity(item, dispatch))
       : item => dispatch(push(item.getUrl())),
     resetOnListChange: false,
   });
@@ -61,7 +77,7 @@ export const SearchResults = ({
     <Stack p="xl" align="center">
       <Loader size="lg" />
       <Text color="dimmed" size="xl">
-        Loading…
+        {t`Loading…`}
       </Text>
     </Stack>
   ) : (
