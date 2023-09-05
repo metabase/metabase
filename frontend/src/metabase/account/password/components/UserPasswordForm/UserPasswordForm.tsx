@@ -2,11 +2,15 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import * as Errors from "metabase/core/utils/errors";
+import {
+  Form,
+  FormProvider,
+  FormTextInput,
+  FormSubmitButton,
+  FormErrorMessage,
+} from "metabase/forms";
+import { Stack } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { UserPasswordData } from "../../types";
 
@@ -31,7 +35,7 @@ export interface UserPasswordFormProps {
   onSubmit: (user: User, data: UserPasswordData) => void;
 }
 
-const UserPasswordForm = ({
+export const UserPasswordForm = ({
   user,
   onValidatePassword,
   onSubmit,
@@ -60,33 +64,32 @@ const UserPasswordForm = ({
       onSubmit={handleSubmit}
     >
       <Form>
-        <FormInput
-          name="old_password"
-          type="password"
-          title={t`Current password`}
-          placeholder={t`Shhh...`}
-          autoComplete="current-password"
-        />
-        <FormInput
-          name="password"
-          type="password"
-          title={t`Create a password`}
-          placeholder={t`Shhh...`}
-          autoComplete="new-password"
-        />
-        <FormInput
-          name="password_confirm"
-          type="password"
-          title={t`Confirm your password`}
-          placeholder={t`Shhh... but one more time so we get it right`}
-          autoComplete="new-password"
-        />
-        <FormSubmitButton title={t`Save`} primary />
-        <FormErrorMessage />
+        <Stack>
+          <FormTextInput
+            name="old_password"
+            type="password"
+            title={t`Current password`}
+            placeholder={t`Shhh...`}
+            autoComplete="current-password"
+          />
+          <FormTextInput
+            name="password"
+            type="password"
+            title={t`Create a password`}
+            placeholder={t`Shhh...`}
+            autoComplete="new-password"
+          />
+          <FormTextInput
+            name="password_confirm"
+            type="password"
+            title={t`Confirm your password`}
+            placeholder={t`Shhh... but one more time so we get it right`}
+            autoComplete="new-password"
+          />
+          <FormSubmitButton title={t`Save`} variant="filled" />
+          <FormErrorMessage />
+        </Stack>
       </Form>
     </FormProvider>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UserPasswordForm;
