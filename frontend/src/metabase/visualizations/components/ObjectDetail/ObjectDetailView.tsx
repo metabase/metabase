@@ -120,10 +120,6 @@ export function ObjectDetailView({
     if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
       fetchTableFks(table.id as ConcreteTableId);
     }
-    // load up FK references
-    if (hasFks) {
-      loadFKReferences();
-    }
   });
 
   useEffect(() => {
