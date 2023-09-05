@@ -5,11 +5,7 @@ import { testDataset } from "__support__/testDataset";
 import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
-import {
-  ObjectDetailBody,
-  ObjectDetailView,
-  ObjectDetailWrapper,
-} from "./ObjectDetail";
+import { ObjectDetailView, ObjectDetailWrapper } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
 
 function setup(options?: Partial<ObjectDetailProps>) {
@@ -53,28 +49,6 @@ function setup(options?: Partial<ObjectDetailProps>) {
 }
 
 describe("Object Detail", () => {
-  it("renders an object detail body", () => {
-    render(
-      <ObjectDetailBody
-        data={testDataset as any}
-        objectName="Large Sandstone Socks"
-        zoomedRow={testDataset.rows[2]}
-        settings={{
-          column: () => null,
-        }}
-        hasRelationships={false}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        followForeignKey={() => null}
-      />,
-    );
-
-    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
-    expect(screen.getByText("Doohickey")).toBeInTheDocument();
-  });
-
   it("renders an object detail component", () => {
     setup();
 
