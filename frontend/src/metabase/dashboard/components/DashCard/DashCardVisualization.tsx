@@ -77,6 +77,7 @@ interface DashCardVisualizationProps {
   isMobile?: boolean;
   isNightMode?: boolean;
   isPublic?: boolean;
+  isXray?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -116,6 +117,7 @@ function DashCardVisualization({
   isPreviewing,
   isEmbed,
   isPublic,
+  isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -193,10 +195,7 @@ function DashCardVisualization({
         !isEditing &&
         DashCardMenu.shouldRender({ question, result: mainSeries }));
 
-    const isInXray =
-      typeof dashboard.id === "string" && dashboard.id.startsWith("/auto");
-
-    if (isInternalQuery || !shouldShowDownloadWidget || isInXray) {
+    if (isInternalQuery || !shouldShowDownloadWidget || isXray) {
       return null;
     }
 
@@ -211,14 +210,17 @@ function DashCardVisualization({
       />
     );
   }, [
-    series,
+    dashcard.card,
+    dashcard.id,
+    dashcard.dashboard_id,
     metadata,
+    series,
     isEmbed,
     isPublic,
     isEditing,
-    dashcard,
+    isXray,
+    dashboard.id,
     parameterValuesBySlug,
-    dashboard,
   ]);
 
   return (
