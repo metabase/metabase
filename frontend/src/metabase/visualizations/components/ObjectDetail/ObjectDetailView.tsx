@@ -24,13 +24,13 @@ import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
+import { ObjectDetailBody } from "./ObjectDetailBody";
+import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
   ErrorWrapper,
   ObjectDetailContainer,
   ObjectDetailWrapperDiv,
 } from "./ObjectDetailView.styled";
-import { ObjectDetailBody } from "./ObjectDetailBody";
-import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import type { ObjectDetailProps } from "./types";
 import {
   getActionItems,
@@ -77,6 +77,10 @@ export function ObjectDetailView({
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
 
+  const hasPk = !!data.cols.find(isPK);
+  const hasFks = !_.isEmpty(tableForeignKeys);
+  const hasRelationships = showRelations && hasFks && hasPk;
+
   const handleExecuteModalClose = () => {
     setActionId(undefined);
   };
@@ -115,10 +119,6 @@ export function ObjectDetailView({
 
     if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
       fetchTableFks(table.id as ConcreteTableId);
-    }
-    // load up FK references
-    if (!_.isEmpty(tableForeignKeys)) {
-      loadFKReferences();
     }
   });
 
@@ -176,10 +176,12 @@ export function ObjectDetailView({
   }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
-    if (!_.isEmpty(tableForeignKeys) && prevZoomedRowId !== zoomedRowID) {
+    const hadPrevZoomedRow = prevZoomedRowId != null;
+
+    if (hasFks && hadPrevZoomedRow && prevZoomedRowId !== zoomedRowID) {
       loadFKReferences();
     }
-  }, [tableForeignKeys, prevZoomedRowId, zoomedRowID, loadFKReferences]);
+  }, [hasFks, prevZoomedRowId, zoomedRowID, loadFKReferences]);
 
   useEffect(() => {
     const queryCompleted = !prevData && data;
@@ -191,18 +193,13 @@ export function ObjectDetailView({
 
   useEffect(() => {
     // if the card changed or table metadata loaded then reload fk references
-    const tableFKsJustLoaded =
-      _.isEmpty(prevTableForeignKeys) && !_.isEmpty(tableForeignKeys);
-    if (data !== prevData || tableFKsJustLoaded) {
+    const tableFKsJustLoaded = _.isEmpty(prevTableForeignKeys) && hasFks;
+    const hasCardChanged = data !== prevData;
+
+    if (hasCardChanged || tableFKsJustLoaded) {
       loadFKReferences();
     }
-  }, [
-    tableForeignKeys,
-    data,
-    prevData,
-    prevTableForeignKeys,
-    loadFKReferences,
-  ]);
+  }, [hasFks, data, prevData, prevTableForeignKeys, loadFKReferences]);
 
   const onFollowForeignKey = useCallback(
     (fk: ForeignKey) => {
@@ -281,10 +278,6 @@ export function ObjectDetailView({
     tableId: table?.id,
     settings,
   });
-
-  const hasPk = !!data.cols.find(isPK);
-  const hasRelationships =
-    showRelations && !_.isEmpty(tableForeignKeys) && hasPk;
 
   return (
     <>

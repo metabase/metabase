@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import ColumnItem from "./ColumnItem";
+import { ColumnItem } from "./ColumnItem";
 
 const displayNameForColumn = column =>
   column ? column.display_name || column.name : "[Unknown]";

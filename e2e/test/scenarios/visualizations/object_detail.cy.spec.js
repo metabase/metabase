@@ -181,6 +181,24 @@ describe("scenarios > question > object details", () => {
     cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
+  it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
+    cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
+
+    openProductsTable();
+    cy.get("@fetchDataset").should("have.callCount", 1);
+
+    drillPK({ id: 5 });
+    cy.get("@fetchDataset").should("have.callCount", 3);
+
+    cy.findByTestId("object-detail-close-button").click();
+
+    drillPK({ id: 5 });
+    cy.get("@fetchDataset").should("have.callCount", 5);
+
+    cy.wait(100);
+    cy.get("@fetchDataset").should("have.callCount", 5);
+  });
+
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     openPeopleTable({ limit: 2 });
 

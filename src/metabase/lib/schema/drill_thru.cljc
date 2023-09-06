@@ -120,13 +120,17 @@
     [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
     [:column   lib.metadata/ColumnMetadata]]])
 
+(mr/def ::drill-thru.zoom-in.timeseries.next-unit
+  [:enum :quarter :month :week :day :hour :minute])
+
 (mr/def ::drill-thru.zoom-in.timeseries
   [:merge
    ::drill-thru.common
    [:map
-    [:type       [:= :drill-thru/zoom-in.timeseries]]
-    [:row-count  number?]
-    [:table-name [:maybe string?]]]])
+    [:type      [:= :drill-thru/zoom-in.timeseries]]
+    [:column    lib.metadata/ColumnMetadata]
+    [:value     some?]
+    [:next-unit [:ref ::drill-thru.zoom-in.timeseries.next-unit]]]])
 
 (mr/def ::drill-thru
   [:and

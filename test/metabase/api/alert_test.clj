@@ -162,7 +162,7 @@
                (t2/update! Pulse (u/the-id not-archived-alert) {:name "Not Archived"})
                (t2/update! Pulse (u/the-id archived-alert)     {:name "Archived", :archived true})
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
-                 (set (map :name (mt/user-http-request :rasta :get 200 "alert?archived=true")))))))))
+                 (set (map :name (mt/user-http-request :rasta :get 200 "alert" :archived true)))))))))
 
   (testing "fetch alerts by user ID -- should return alerts created by the user,
            or alerts for which the user is a known recipient"
@@ -176,11 +176,11 @@
             (mt/with-temp [PulseChannel pulse-channel {:pulse_id (u/the-id recipient-alert)}
                            PulseChannelRecipient _ {:pulse_channel_id (u/the-id pulse-channel), :user_id (mt/user->id :lucky)}]
               (is (= #{"LuckyCreator" "LuckyRecipient"}
-                     (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :lucky)))))))
+                     (set (map :name (mt/user-http-request :rasta :get 200 "alert" :user_id (mt/user->id :lucky))))))
               (is (= #{"LuckyRecipient" "Other"}
-                     (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :rasta)))))))
+                     (set (map :name (mt/user-http-request :rasta :get 200 "alert" :user_id (mt/user->id :rasta))))))
               (is (= #{}
-                     (set (map :name (mt/user-http-request :rasta :get 200 (str "alert?user_id=" (mt/user->id :trashbird))))))))))))))
+                     (set (map :name (mt/user-http-request :rasta :get 200 "alert" :user_id (mt/user->id :trashbird)))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GET /api/alert/:id                                               |

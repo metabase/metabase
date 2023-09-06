@@ -14,6 +14,21 @@
    [metabase.util :as u]
    [schema.core :as s]))
 
+(deftest ^:parallel distinct-fields-test
+  (testing "distinct-fields should consider type information unimportant for determining whether two Fields are the same"
+    (is (= [[:field 1 {:join-alias "X"}]
+            [:field 1 {:base-type :type/Integer}]
+            [:field "bird" {:base-type :type/Integer}]]
+           (#'qp.add-implicit-joins/distinct-fields
+            [[:field 1 {:join-alias "X"}]
+             [:field 1 {:join-alias "X", ::whatever true}]
+             [:field 1 {:base-type :type/Integer}]
+             [:field 1 {}]
+             [:field 1 {:effective-type :type/Number}]
+             [:field 1 {:effective-type :type/Integer}]
+             [:field "bird" {:base-type :type/Integer}]
+             [:field "bird" {:base-type :type/Number}]])))))
+
 (deftest ^:parallel fk-ids->join-infos-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (is (= [{:source-table (meta/id :products)
