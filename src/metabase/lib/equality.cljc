@@ -19,8 +19,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #?@(:clj  ([clojure.core.memoize :as memoize]))
-   #?@(:cljs ([metabase.util.memoize :as memoize]))))
+   [metabase.util.memoize :as memoize]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule

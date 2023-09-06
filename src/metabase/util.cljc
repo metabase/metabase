@@ -13,17 +13,16 @@
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep]
-   #?@(:clj  ([clojure.core.memoize :as memoize]
-              [clojure.math.numeric-tower :as math]
+   #?@(:clj  ([clojure.math.numeric-tower :as math]
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
               [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec]))
-   #?@(:cljs ([metabase.util.memoize :as memoize])))
+              [ring.util.codec :as codec])))
   #?(:clj (:import
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
