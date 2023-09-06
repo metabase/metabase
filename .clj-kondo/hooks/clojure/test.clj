@@ -21,8 +21,12 @@
      metabase.actions.test-util/with-actions-test-data
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
+     metabase.api.card-test/with-cards-in-readable-collection
+     metabase.api.card-test/with-cards-in-writeable-collection
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
+     metabase.public-settings.premium-features-test/with-premium-features
+     metabase.public-settings.premium-features-test/with-additional-premium-features
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled

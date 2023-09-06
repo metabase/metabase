@@ -397,7 +397,7 @@
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
 
-(deftest get-series-for-card-permission-test
+(deftest ^:parallel get-series-for-card-permission-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name          "Card"
                                 :display       "line"
@@ -407,7 +407,7 @@
 
     (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
 
-(deftest get-series-for-card-type-check-test
+(deftest ^:parallel get-series-for-card-type-check-test
   (testing "400 if the card's display is not comptaible"
     (t2.with-temp/with-temp
       [:model/Card {card-id :id} {:name    "Card"
@@ -464,7 +464,7 @@
              (is (set/subset? expected returned-card-names))
              (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
 
-(deftest paging-and-filtering-works-for-series-card-test
+(deftest ^:parallel paging-and-filtering-works-for-series-card-test
   (let [simple-mbql-chart-query (fn [attrs]
                                   (merge (mt/card-with-source-metadata-for-query
                                            (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
@@ -538,7 +538,7 @@
                              :name "severity"
                              :semantic_type :type/Number}]})
 
-(deftest sereies-are-compatible-test
+(deftest ^:parallel sereies-are-compatible-test
   (mt/dataset sample-dataset
     (testing "area-line-bar charts"
       (t2.with-temp/with-temp
@@ -732,7 +732,7 @@
                                                                             :visualization_settings {}
                                                                             :enable_embedding       true})))))))))
 
-(deftest save-empty-card-test
+(deftest ^:parallel save-empty-card-test
   (testing "POST /api/card"
     (testing "Should be able to save an empty Card"
       (doseq [[query-description query] {"native query"
@@ -759,7 +759,7 @@
                                                      {:dataset_query   query
                                                       :result_metadata metadata}))))))))))))
 
-(deftest save-card-with-empty-result-metadata-test
+(deftest ^:parallel save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [:model/Card]
       (let [card        (card-with-name-and-query)]
@@ -770,7 +770,7 @@
                                       "card"
                                       (assoc card :result_metadata []))))))))
 
-(deftest cache-ttl-save
+(deftest ^:parallel cache-ttl-save
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
@@ -828,7 +828,7 @@
    :type     :native
    :native   (mt/compile query)})
 
-(deftest updating-card-updates-metadata
+(deftest ^:parallel updating-card-updates-metadata
   (let [query          (updating-card-updates-metadata-query)
         modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
     (testing "Updating query updates metadata"
@@ -874,7 +874,7 @@
                       :collection_position 1))
               (is (= @called 1)))))))))
 
-(deftest updating-card-updates-metadata-3
+(deftest ^:parallel updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
     (testing "Patching the card _without_ the query does not clear the metadata"
       ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
@@ -888,7 +888,7 @@
                                                :dataset     true})]
             (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
 
-(deftest updating-card-updates-metadata-4
+(deftest ^:parallel updating-card-updates-metadata-4
   (let [query (updating-card-updates-metadata-query)]
     (testing "You can update just the metadata"
       (mt/with-model-cleanup [:model/Card]
@@ -1088,7 +1088,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
-(deftest updating-a-card-that-doesnt-exist-should-give-a-404
+(deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
          (mt/user-http-request :crowberto :put 404 "card/12345"))))
 
@@ -1148,7 +1148,7 @@
       (is (= ""
              (t2/select-one-fn :description :model/Card :id (u/the-id card)))))))
 
-(deftest update-card-parameters-test
+(deftest ^:parallel update-card-parameters-test
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "successfully update with valid parameters"
@@ -1170,7 +1170,7 @@
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters []})))))))
 
-(deftest update-card-parameter-mappings-test
+(deftest ^:parallel update-card-parameter-mappings-test
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "successfully update with valid parameter_mappings"
@@ -1674,7 +1674,7 @@
                 (t2/select-one :model/Card :id (u/the-id card)))))))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
-(deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
+(deftest ^:parallel deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
   (is (= "Not found."
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
@@ -1702,7 +1702,7 @@
 (defn- event-names [timelines]
   (->> timelines (mapcat :events) (map :name) set))
 
-(deftest timelines-test
+(deftest ^:parallel timelines-test
   (testing "GET /api/card/:id/timelines"
     (mt/with-temp [Collection coll-a {:name "Collection A"}
                    Collection coll-b {:name "Collection B"}
@@ -1756,7 +1756,7 @@
         (is (= '()
                (->> (timelines-request card-c true) first :events)))))))
 
-(deftest timelines-range-test
+(deftest ^:parallel timelines-range-test
   (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
     (mt/with-temp [Collection collection {:name "Collection"}
                    :model/Card card {:name          "Card A"
@@ -1900,7 +1900,7 @@
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
                                                             "my_awesome_card_<timestamp>$1")))))
 
-(deftest download-response-headers-test
+(deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (t2.with-temp/with-temp [:model/Card card {:name "My Awesome Card"}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
@@ -1949,7 +1949,7 @@
                          (mt/user-http-request :rasta :post 403 "card"
                                                (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
 
-(deftest set-card-collection-id-test
+(deftest ^:parallel set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
     (mt/with-temp [:model/Card card {}
                    Collection  collection]
@@ -2020,7 +2020,7 @@
    :collections
    (collection-names cards-or-card-ids)))
 
-(deftest changed?-test
+(deftest ^:parallel changed?-test
   (letfn [(changed? [before after]
             (#'api.card/changed? api.card/card-compare-keys before after))]
    (testing "Ignores keyword/string"
@@ -2326,7 +2326,7 @@
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
                  (m/map-vals boolean (select-keys card [:name :id])))))))))
 
-(deftest test-related-recommended-entities
+(deftest ^:parallel test-related-recommended-entities
   (t2.with-temp/with-temp [:model/Card card]
     (is (schema= {:table             s/Any
                   :metrics           s/Any
@@ -2338,7 +2338,7 @@
                   :collections       s/Any}
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
-(deftest pivot-card-test
+(deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
@@ -2354,7 +2354,7 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest dataset-card
+(deftest ^:parallel dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
     (t2.with-temp/with-temp [:model/Card card {:display       :bar
                                                :dataset_query (mbql-count-query)}]
@@ -2485,7 +2485,7 @@
                             :result_metadata
                             (map :description))))))))))))
 
-(deftest dataset-card-4
+(deftest ^:parallel dataset-card-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
     (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
                                                                     {:fields [$id $name]
@@ -2532,7 +2532,7 @@
         (finally
           (qs/shutdown sched))))))
 
-(defmacro ^:private with-persistence-setup
+(defmacro ^:private with-persistence-setup!
   "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
   won't run. Just check for trigger presence."
   [db-binding & body]
@@ -2540,7 +2540,7 @@
 
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
-    (with-persistence-setup db
+    (with-persistence-setup! db
       (t2.with-temp/with-temp
         [:model/Card          model      {:dataset true :database_id (u/the-id db)}
          :model/Card          notmodel   {:dataset false :database_id (u/the-id db)}
@@ -2565,7 +2565,7 @@
               "Scheduled refresh of archived model"))))))
 
 (deftest unpersist-persist-model-test
-  (with-persistence-setup db
+  (with-persistence-setup! db
     (t2.with-temp/with-temp
       [:model/Card          model     {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
@@ -2793,7 +2793,7 @@
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
-(deftest parameters-with-field-to-field-remapping-test
+(deftest ^:parallel parameters-with-field-to-field-remapping-test
   (let [param-key "id_param_id"]
     (t2.with-temp/with-temp
       [:model/Card card {:dataset_query
@@ -2827,7 +2827,7 @@
                            :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
                           (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest parameters-with-source-is-static-list-test
+(deftest ^:parallel parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
       (is (= {:has_more_values false,

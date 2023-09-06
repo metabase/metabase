@@ -557,10 +557,10 @@
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
-   metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
+   metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
-   metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.collection-test/with-french-user-and-personal-collection!                                                    hooks.common/with-two-top-level-bindings
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
@@ -641,8 +641,8 @@
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
-   metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
-   metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
+   metabase.api.collection-test/with-collection-hierarchy!                      macros.metabase.api.collection-test/with-collection-hierarchy!
+   metabase.api.collection-test/with-some-children-of-collection!               macros.metabase.api.collection-test/with-some-children-of-collection!
    metabase.api.common/define-routes                                            macros.metabase.api.common/define-routes
    metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing

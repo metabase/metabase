@@ -75,7 +75,7 @@
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
 
-(deftest bookmarks-on-archived-items-test
+(deftest ^:parallel bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [Collection archived-collection {:name "Test Collection" :archived true}
                    Card       archived-card {:name "Test Card" :archived true}
@@ -87,7 +87,7 @@
                     (map :type)
                     set)))))))
 
-(deftest bookmarks-ordering-test
+(deftest ^:parallel bookmarks-ordering-test
   (testing "PUT /api/bookmark/ordering"
     (mt/with-temp [Collection collection {:name "Test Collection"}
                    Card       card {:name "Test Card"}

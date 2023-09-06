@@ -822,6 +822,7 @@
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
+  ;; TODO: we can probably tweak this to run in a transaction, then we could parallel this
   (try
     (do-with-discarded-collections-perms-changes
      collection
