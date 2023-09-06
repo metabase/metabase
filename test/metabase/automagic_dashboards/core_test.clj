@@ -1801,7 +1801,7 @@
 
 ;;; -------------------- make-cards and related (e.g. card-candidates) --------------------
 
-(deftest idk-test
+(deftest simple-one-field-query-card-candidates-test
   (mt/dataset sample-dataset
     (testing "A model with a single field that matches all potential bindings"
       (let [source-query {:database (mt/id)
@@ -1818,34 +1818,27 @@
                       :dataset         true}]
           (let [rule (some #(when (-> % :rule #{"GenericTable"}) %) (rules/get-rules ["table"]))
                 {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
-            (is (= #{"Lat"} (set (keys dimensions))))
-            (is (=? {"Lat" {:matches [{:id 1031, :name "LATITUDE"}]}} dimensions))
-            (is (=? {"Count" {:metric ["count"], :score 100},
-                     "CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]], :score 100},
-                     "Sum" {:metric ["sum" ["dimension" "GenericNumber"]], :score 100},
-                     "Avg" {:metric ["avg" ["dimension" "GenericNumber"]], :score 100}}
-                    metrics))
-            (is (= [["Count" {:metric ["count"], :score 100}]]
-                    (->> (seq metrics)
-                         (filter
-                           (fn [metric]
-                             (every? dimensions (rules/collect-dimensions metric)))))))
-
+            (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
+              (is (= #{"Lat"} (set (keys dimensions))))
+              (is (=? {"Lat" {:matches [{:id 1031, :name "LATITUDE"}]}} dimensions)))
+            (testing "These are the metrics that were merged without conflict. Note that not all are actually applicable
+                      in our scenario."
+              (is (=? {"Count"            {:metric ["count"], :score 100},
+                       "CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]], :score 100},
+                       "Sum"              {:metric ["sum" ["dimension" "GenericNumber"]], :score 100},
+                       "Avg"              {:metric ["avg" ["dimension" "GenericNumber"]], :score 100}}
+                      metrics)))
+            (testing "The only metric that will actually be used in our scenario is Count as it is dimensionless.
+                      Our other bound dimension is Lat, which does not satisfy the other required dimensions of either
+                      FK or GenericNumber."
+              (is (= [["Count" {:metric ["count"], :score 100}]]
+                     (->> (seq metrics)
+                          (filter
+                            (fn [metric]
+                              (every? dimensions (rules/collect-dimensions metric))))))))
             (#'magic/card-candidates
               context
               {:title      "Total transactions"
                :metrics    ["Count"]
                :dimensions [{"Lat" {}}]
-               :score      100})
-            ))))))
-
-{:dimensions    [{"Long" {}} {"Lat" {}}],
- :metrics       ["Count"],
- :visualization ["map" {}],
- :width 6,
- :title "By coordinates",
- :score 80,
- :height 8,
- :group "Geographical"}
-
-(mapcat :cards (rules/get-rules ["table"]))
+               :score      100})))))))
