@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -70,7 +71,10 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
 (defn- fetch-values
   [model-index]
   (let [model     (t2/select-one Card :id (:model_id model-index))
-        value-ref (-> model-index :value_ref fix-expression-refs)]
+        value-ref (-> model-index
+                      :value_ref
+                      mbql.normalize/normalize-field-ref
+                      fix-expression-refs)]
     (try [nil (->> (qp/process-query
                     {:database (:database_id model)
                      :type     :query
