@@ -52,6 +52,8 @@
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
+  ;; creating a test database is thread-safe even tho it has side effects.
+  #_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
   #'get-or-create-test-data-db!)
 
 (mu/defn db :- [:map [:id ::lib.schema.id/database]]
@@ -67,7 +69,10 @@
   []
   (mdb.connection/memoize-for-application-db
    (fn [driver]
-     (u/the-id (get-or-create-test-data-db! driver)))))
+     (u/the-id
+      ;; creating a test database is thread-safe even tho it has side effects.
+      #_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
+      (get-or-create-test-data-db! driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -298,7 +303,7 @@
                         [id-prop id]))))
             (keys (secret/conn-props->secret-props-by-name conn-props))))))
 
-(defn- copy-secrets [database]
+(defn- copy-secrets! [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
       (let [secrets (t2/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
@@ -316,12 +321,12 @@
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
-(defn do-with-temp-copy-of-db
+(defn do-with-temp-copy-of-db!
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        original-db (-> old-db copy-secrets! (select-keys [:details :engine :name]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
@@ -353,6 +358,7 @@
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
                              (binding [db/*disable-db-logging* true]
+                               #_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
                                  (assert (pos-int? (:id db)))

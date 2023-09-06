@@ -7,7 +7,7 @@
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
 
-(defn sync-steps-run-to-completion
+(defn- sync-steps-run-to-completion!
   "Returns the number of sync steps that run succesfully by counting entries in `TaskHistory`"
   []
   (data/with-temp-copy-of-db
@@ -23,6 +23,6 @@
 (defmacro sync-survives-crash?
   "Can sync process survive `f` crashing?"
   [f]
-  `(is (= (sync-steps-run-to-completion)
+  `(is (= (sync-steps-run-to-completion!)
           (with-redefs [~f crash-fn]
-            (sync-steps-run-to-completion)))))
+            (sync-steps-run-to-completion!)))))

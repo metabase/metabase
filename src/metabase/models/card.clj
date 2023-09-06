@@ -292,7 +292,7 @@
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_])
 
-(defn- update-parameters-using-card-as-values-source
+(defn- update-parameters-using-card-as-values-source!
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
 
   Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
@@ -353,7 +353,7 @@
                                                      :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
-(defn- pre-update [{archived? :archived, id :id, :as changes}]
+(defn- pre-update! [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
@@ -397,7 +397,7 @@
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
-      (update-parameters-using-card-as-values-source changes)
+      (update-parameters-using-card-as-values-source! changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
@@ -433,7 +433,7 @@
   (-> (into {:id (:id card)} (t2/changes card))
       maybe-normalize-query
       populate-result-metadata
-      pre-update
+      pre-update!
       populate-query-fields
       (dissoc :id)))
 

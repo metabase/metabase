@@ -144,7 +144,7 @@
 
 (def ^:private ^:dynamic *retrying-authentication*  false)
 
-(defn- client-fn [the-client username & args]
+(defn- client-fn! [the-client username & args]
   (try
     (apply the-client (username->token username) args)
     (catch ExceptionInfo e
@@ -159,15 +159,15 @@
                           {:user username}
                           e)))
         (clear-cached-session-tokens!)
-        (binding [*retrying-authentication*  true]
-          (apply client-fn the-client username args))))))
+        (binding [*retrying-authentication* true]
+          (apply client-fn! the-client username args))))))
 
-(defn- user-request
+(defn- user-request!
   [the-client user & args]
   (if (keyword? user)
     (do
      (fetch-user user)
-     (apply client-fn the-client user args))
+     (apply client-fn! the-client user args))
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
@@ -183,13 +183,13 @@
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
   ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
-  (partial user-request client/client))
+  (partial user-request! client/client))
 
 (def user-real-request
   "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
   ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                  request-options? http-body-map? & {:as query-params}])}
-  (partial user-request client/real-client))
+  (partial user-request! client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)
@@ -213,7 +213,7 @@
     (user->id test-user-name-or-user-id)
     (u/the-id test-user-name-or-user-id)))
 
-(defn do-with-group-for-user [group test-user-name-or-user-id f]
+(defn do-with-group-for-user! [group test-user-name-or-user-id f]
   (t2.with-temp/with-temp [PermissionsGroup           group group
                            PermissionsGroupMembership _     {:group_id (u/the-id group)
                                                              :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
@@ -223,9 +223,9 @@
   "Create a new PermissionsGroup, bound to `group-binding`; add test user Rasta Toucan [RIP] to the
   group, then execute `body`."
   [[group-binding group] & body]
-  `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
+  `(do-with-group-for-user! ~group :rasta (fn [~group-binding] ~@body)))
 
 (defmacro with-group-for-user
   "Like [[with-group]], but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
   [[group-binding test-user-name-or-user-id group] & body]
-  `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))
+  `(do-with-group-for-user! ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

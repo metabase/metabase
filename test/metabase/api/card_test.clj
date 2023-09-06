@@ -138,7 +138,7 @@
   `(do-with-temp-native-card! (fn [~(or db-binding '_) ~(or card-binding '_)]
                                 ~@body)))
 
-(defn do-with-cards-in-a-collection [card-or-cards-or-ids grant-perms-fn! f]
+(defn do-with-cards-in-a-collection! [card-or-cards-or-ids grant-perms-fn! f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection collection]
       ;; put all the Card(s) in our temp `collection`
@@ -155,14 +155,14 @@
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have read permissions for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
 
 (defmacro with-cards-in-writeable-collection
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have *write* permissions
   for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
 
 (defn- do-with-temp-native-card-with-params! [f]
   (mt/with-temp

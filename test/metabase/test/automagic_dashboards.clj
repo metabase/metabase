@@ -25,7 +25,7 @@
                (when (map? form)
                  (:url form))))))
 
-(defn- test-urls-are-valid
+(defn- test-urls-are-valid!
   [dashboard]
   (doseq [url (collect-urls dashboard)]
     (testing (format "\nURL = %s" (pr-str url))
@@ -41,7 +41,7 @@
         (is (malli= mbql.s/Query
                     (mbql.normalize/normalize query)))))))
 
-(defn test-dashboard-is-valid
+(defn test-dashboard-is-valid!
   "Is generated dashboard valid?
    Tests that the dashboard has (the correct number of) cards, the queries for those cards are valid,
    all related URLs are valid, and that it has correct metadata."
@@ -53,7 +53,7 @@
       (testing "Cards should have correct cardinality"
         (is (= cardinality (-> dashboard :ordered_cards count))))
       (testing "URLs should be valid"
-        (test-urls-are-valid dashboard))
+        (test-urls-are-valid! dashboard))
       (testing "Dashboard's cards should be valid"
         (doseq [card (keep :card (:ordered_cards dashboard))]
           (test-card-is-valid card)))

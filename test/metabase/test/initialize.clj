@@ -75,6 +75,7 @@
         (apply initialized? more))))
 
 (defmacro ^:private define-initialization [task-name & body]
+  #_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
   `(defmethod do-initialization! ~(keyword task-name)
      [~'_]
      ~@body))
@@ -120,6 +121,7 @@
 (defn- all-components
   "Set of all components/initialization steps that are defined."
   []
+  #_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
   (set (keys (methods do-initialization!))))
 
 ;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience. Don't do

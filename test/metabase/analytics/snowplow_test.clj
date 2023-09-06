@@ -45,7 +45,7 @@
         context                            (normalize-map (.getMap context-json))]
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
-(defn do-with-fake-snowplow-collector
+(defn do-with-fake-snowplow-collector!
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (mt/with-temporary-setting-values [snowplow-available    true
@@ -62,7 +62,7 @@
   Fetch the contents of the collector by calling [[snowplow-collector-contents]]."
   [& body]
   {:style/indent 0}
-  `(do-with-fake-snowplow-collector (fn [] ~@body)))
+  `(do-with-fake-snowplow-collector! (fn [] ~@body)))
 
 (defn- clear-snowplow-collector!
   []

@@ -73,10 +73,9 @@
   (for [[i row] (m/indexed rows)]
     (into {:id (inc i)} row)))
 
-(defn load-data-add-ids
-  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
-  insert. This function should go before `load-data-chunked` in the `make-load-data-fn`
-  args."
+(defn load-data-add-ids-fn!
+  "Middleware function intended for use with [[make-load-data-fn]]. Add IDs to each row, presumabily for doing a
+  parallel insert. This function should go before [[load-data-chunked-fn!]] in the `make-load-data-fn` args."
   [insert!]
   (fn [rows]
     (insert! (vec (add-ids rows)))))
@@ -85,13 +84,18 @@
   "Default chunk size for [[load-data-chunked]]."
   200)
 
-(defn load-data-chunked
+(defn load-data-chunked-fn!
   "Middleware function intended for use with [[make-load-data-fn]]. Insert rows in chunks, which default to 200 rows
   each. You can use [[*chunk-size*]] to adjust this."
-  ([insert!]                   (load-data-chunked map insert!))
-  ([map-fn insert!]            (load-data-chunked map-fn *chunk-size* insert!))
-  ([map-fn chunk-size insert!] (fn [rows]
-                                 (dorun (map-fn insert! (partition-all chunk-size rows))))))
+  ([insert!]
+   (load-data-chunked-fn! map insert!))
+
+  ([map-fn insert!]
+   (load-data-chunked-fn! map-fn *chunk-size* insert!))
+
+  ([map-fn chunk-size insert!]
+   (fn [rows]
+     (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
 
 ;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
@@ -114,7 +118,7 @@
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
     (partial do-insert! driver spec table-identifier)))
 
-(defn make-load-data-fn
+(defn make-load-data-fn!
   "Create an implementation of `load-data!`. This creates a function to actually insert a row or rows, wraps it with any
   `insert-middleware-fns`, the calls the resulting function with the rows to insert."
   [& insert-middleware-fns]
@@ -139,19 +143,19 @@
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-all-at-once!
   "Implementation of `load-data!`. Insert all rows at once."
-  (make-load-data-fn))
+  (make-load-data-fn!))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
-  (make-load-data-fn load-data-chunked))
+  (make-load-data-fn! load-data-chunked-fn!))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
-  (make-load-data-fn load-data-add-ids))
+  (make-load-data-fn! load-data-add-ids-fn!))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
-  (make-load-data-fn load-data-add-ids load-data-chunked))
+  (make-load-data-fn! load-data-add-ids-fn! load-data-chunked-fn!))
 
 ;; Default impl
 

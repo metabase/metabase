@@ -93,7 +93,7 @@
   [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defn- load-data [dbdef tabledef]
+(defn- load-data! [dbdef tabledef]
   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
   ;; parameters being set in a single statement; these numbers were arrived at empirically
   (let [chunk-size (case (:table-name tabledef)
@@ -108,13 +108,13 @@
                      "checkins" 25
                      "airport" 50
                      100)
-        load-fn    (load-data/make-load-data-fn load-data/load-data-add-ids
-                     (partial load-data/load-data-chunked pmap chunk-size))]
+        load-fn    (load-data/make-load-data-fn! load-data/load-data-add-ids-fn!
+                     (partial load-data/load-data-chunked-fn! pmap chunk-size))]
     (load-fn :presto-jdbc dbdef tabledef)))
 
 (defmethod load-data/load-data! :presto-jdbc
   [_ dbdef tabledef]
-  (load-data dbdef tabledef))
+  (load-data! dbdef tabledef))
 
 (defmethod load-data/do-insert! :presto-jdbc
   [driver spec table-identifier row-or-rows]

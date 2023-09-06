@@ -129,7 +129,7 @@
        (.addAppender logger appender new-level (.getFilter logger)))
      (.updateLoggers (logger-context)))))
 
-(defn do-with-log-level [a-namespace level thunk]
+(defn do-with-log-level! [a-namespace level thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-log-level")
   (ensure-unique-logger! a-namespace)
   (let [original-log-level (ns-log-level a-namespace)
@@ -170,7 +170,7 @@
         a-namespace         (if (symbol? a-namespace)
                               (list 'quote a-namespace)
                               a-namespace)]
-    `(do-with-log-level ~a-namespace ~level (fn [] ~@body))))
+    `(do-with-log-level! ~a-namespace ~level (fn [] ~@body))))
 
 
 ;;;; [[with-log-messages-for-level]]
@@ -215,7 +215,7 @@
   (appender-logs [_this]
     (:logs @state)))
 
-(defn do-with-log-messages-for-level [a-namespace level f]
+(defn do-with-log-messages-for-level! [a-namespace level f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
   (ensure-unique-logger! a-namespace)
   (let [state         (atom nil)
@@ -228,7 +228,7 @@
       (finally
         (.removeAppender logger appender-name)))))
 
-(defmacro with-log-messages-for-level-clj
+(defmacro with-log-messages-for-level-clj!
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
   higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
   to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
@@ -244,11 +244,11 @@
         a-namespace (if (symbol? a-namespace)
                       (list 'quote a-namespace)
                       a-namespace)]
-    `(do-with-log-level
+    `(do-with-log-level!
       ~a-namespace
       ~level
       (fn []
-        (do-with-log-messages-for-level
+        (do-with-log-messages-for-level!
          ~a-namespace
          ~level
          (fn [logs#]
@@ -258,11 +258,11 @@
 ;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
 (defmacro with-log-messages-for-level [ns+level & body]
   (macros/case
-    :clj  `(with-log-messages-for-level-clj ~ns+level ~@body)
+    :clj  `(with-log-messages-for-level-clj! ~ns+level ~@body)
     :cljs (let [[log-ns level] (if (sequential? ns+level)
                                  ns+level
                                  [(str (ns-name *ns*)) ns+level])]
-            `(do-with-glogi-logs ~log-ns ~level (fn [] ~@body)))))
+            `(do-with-glogi-logs! ~log-ns ~level (fn [] ~@body)))))
 
 ;;;; tests
 

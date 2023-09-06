@@ -277,7 +277,7 @@
       u/lower-case-en
       keyword))
 
-(defn do-with-temp-env-var-value
+(defn do-with-temp-env-var-value!
   "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
@@ -302,7 +302,7 @@
       ...)"
   [[env-var value & more :as bindings] & body]
   {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
+  `(do-with-temp-env-var-value!
     ~(->lisp-case-keyword env-var)
     ~value
     (fn [] ~@(if (seq more)
@@ -363,11 +363,11 @@
     (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
-(defn do-with-temporary-setting-value
+(defn do-with-temporary-setting-value!
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
+  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value!]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
@@ -375,7 +375,7 @@
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value!")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
@@ -384,7 +384,7 @@
                           (when-not raw-setting?
                             (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
-      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
+      (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -430,7 +430,7 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
          (with-temporary-setting-values ~more
            ~@body)))))
@@ -442,18 +442,18 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
          (with-temporary-raw-setting-values ~more
            ~@body))
        :raw-setting? true)))
 
-(defn do-with-discarded-setting-changes [settings thunk]
+(defn do-with-discarded-setting-changes! [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+        (do-with-temporary-setting-value! setting-k (setting/get setting-k) thunk)))
     thunk
     settings)))
 
@@ -465,9 +465,9 @@
       ...)"
   {:style/indent 1}
   [settings & body]
-  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
+  `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
 
-(defn do-with-temp-vals-in-db
+(defn do-with-temp-vals-in-db!
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
@@ -499,7 +499,7 @@
       (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
-  `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
+  `(do-with-temp-vals-in-db! ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
 (defn is-uuid-string?
   "Is string `s` a valid UUID string?"
@@ -732,7 +732,7 @@
                             (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
-(defn do-with-discarded-collections-perms-changes [collection-or-id f]
+(defn do-with-discarded-collections-perms-changes! [collection-or-id f]
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
@@ -751,11 +751,11 @@
 (defmacro with-discarded-collections-perms-changes
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
   [collection-or-id & body]
-  `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+  `(do-with-discarded-collections-perms-changes! ~collection-or-id (fn [] ~@body)))
 
 (declare with-discard-model-updates)
 
-(defn do-with-discard-model-updates
+(defn do-with-discard-model-updates!
   "Impl for `with-discard-model-changes`."
   [models thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
@@ -784,7 +784,7 @@
       `(with-discard-model-updates [~model]
          (with-discard-model-updates [~@more]
            ~@body)))
-    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+    `(do-with-discard-model-updates! ~models (fn [] ~@body))))
 
 (deftest with-discard-model-changes-test
   (t2.with-temp/with-temp
@@ -820,10 +820,10 @@
         (is (= count-aux-method-before
                (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
 
-(defn do-with-non-admin-groups-no-collection-perms [collection f]
+(defn do-with-non-admin-groups-no-collection-perms! [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
-    (do-with-discarded-collections-perms-changes
+    (do-with-discarded-collections-perms-changes!
      collection
      (fn []
        (t2/delete! Permissions
@@ -849,34 +849,15 @@
   [[with-non-admin-groups-no-root-collection-for-namespace-perms]] to do the same thing for the Root Collection of other
   namespaces."
   [& body]
-  `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
+  `(do-with-non-admin-groups-no-collection-perms! collection/root-collection (fn [] ~@body)))
 
 (defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
   "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
   [collection-namespace & body]
-  `(do-with-non-admin-groups-no-collection-perms
+  `(do-with-non-admin-groups-no-collection-perms!
     (assoc collection/root-collection
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
-
-(defn do-with-all-users-permission
-  "Call `f` without arguments in a context where the ''All Users'' group
-  is granted the permission specified by `permission-path`.
-
-  For most use cases see the macro [[with-all-users-permission]]."
-  [permission-path f]
-  (t2.with-temp/with-temp [Permissions _ {:group_id (:id (perms-group/all-users))
-                                          :object permission-path}]
-    (f)))
-
-(defmacro with-all-users-permission
-  "Run `body` with the ''All Users'' group being granted the permission
-  specified by `permission-path`.
-
-  (mt/with-all-users-permission (perms/app-root-collection-permission :read)
-    ...)"
-  [permission-path & body]
-  `(do-with-all-users-permission ~permission-path (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
@@ -910,7 +891,7 @@
   [locale-tag & body]
   `(call-with-locale ~locale-tag (fn [] ~@body)))
 
-(defn do-with-column-remappings [orig->remapped thunk]
+(defn do-with-column-remappings! [orig->remapped thunk]
   (transduce
    identity
    (fn
@@ -1004,7 +985,7 @@
       ...)"
   {:arglists '([[original-col source-col & more-remappings] & body])}
   [cols & body]
-  `(do-with-column-remappings
+  `(do-with-column-remappings!
     ~(into {} (comp (map col-remappings-arg)
                     (partition-all 2))
            cols)
@@ -1018,7 +999,7 @@
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
 
-(defn do-with-env-keys-renamed-by
+(defn do-with-env-keys-renamed-by!
   "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
   rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
   [rename-fn thunk]
@@ -1040,9 +1021,9 @@
   rename-fn."
   {:arglists '([rename-fn & body])}
   [rename-fn & body]
-  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))
+  `(do-with-env-keys-renamed-by! ~rename-fn (fn [] ~@body)))
 
-(defn do-with-temp-file
+(defn do-with-temp-file!
   "Impl for `with-temp-file` macro."
   [filename f]
   {:pre [(or (string? filename) (nil? filename))]}
@@ -1074,7 +1055,7 @@
       ...)"
   [[filename-binding filename-or-nil & more :as bindings] & body]
   {:pre [(vector? bindings) (>= (count bindings) 1)]}
-  `(do-with-temp-file
+  `(do-with-temp-file!
     ~filename-or-nil
     (fn [~(vary-meta filename-binding assoc :tag `String)]
       ~@(if (seq more)
@@ -1124,10 +1105,10 @@
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
 
-(defn do-with-temp-dir
+(defn do-with-temp-dir!
   "Impl for [[with-temp-dir]] macro."
   [temp-dir-name f]
-  (do-with-temp-file
+  (do-with-temp-file!
    temp-dir-name
    (^:once fn* [path]
     (let [file (io/file path)]
@@ -1140,16 +1121,16 @@
   "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
   it already exists."
   [[directory-binding dir-name] & body]
-  `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
+  `(do-with-temp-dir! ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
-(defn do-with-user-in-groups
+(defn do-with-user-in-groups!
   ([f groups-or-ids]
    (t2.with-temp/with-temp [User user]
-     (do-with-user-in-groups f user groups-or-ids)))
+     (do-with-user-in-groups! f user groups-or-ids)))
   ([f user [group-or-id & more]]
    (if group-or-id
      (t2.with-temp/with-temp [PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
+       (do-with-user-in-groups! f user more))
      (f user))))
 
 (defmacro with-user-in-groups
@@ -1170,7 +1151,7 @@
       `(t2.with-temp/with-temp [PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]
-      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
+      `(do-with-user-in-groups! (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

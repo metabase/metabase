@@ -41,7 +41,7 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-(defn do-with-single-admin-user
+(defn do-with-single-admin-user!
   [attributes thunk]
   (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
@@ -70,8 +70,8 @@
       (is (= \"You cannot remove the last member of the 'Admin' group!\"
              (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
   [[binding-form & [options-map]] & body]
-  `(do-with-single-admin-user ~options-map (fn [~binding-form]
-                                             ~@body)))
+  `(do-with-single-admin-user! ~options-map (fn [~binding-form]
+                                              ~@body)))
 
 ;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 

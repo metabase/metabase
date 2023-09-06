@@ -49,10 +49,10 @@
   [_ _]
   true)
 
-(defn- db-details
+(defn- db-details!
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]
-   (-> (db-details (mt/db))
+   (-> (db-details! (mt/db))
        (assoc :initial_sync_status "complete")))
 
   ([{driver :engine, :as db}]
@@ -63,19 +63,19 @@
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
 
-(defn- table-details [table]
+(defn- table-details! [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))))
 
-(defn- expected-tables [db-or-id]
-  (map table-details (t2/select Table
-                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
-                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+(defn- expected-tables! [db-or-id]
+  (map table-details! (t2/select Table
+                                 :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                 {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
-(defn- field-details [field]
+(defn- field-details! [field]
   (mt/derecordize
    (merge
     (mt/object-defaults Field)
@@ -119,12 +119,12 @@
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
-        (is (= (-> (db-details)
+        (is (= (-> (db-details!)
                    (dissoc :details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules)))))
       (testing "Superusers should see DB details"
-        (is (= (assoc (db-details) :can-manage true)
+        (is (= (assoc (db-details!) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules))))))))
 
@@ -138,19 +138,19 @@
                    Field    f2  {:name "Field 2.1" :table_id (:id t2)}
                    Field    f3  {:name "Field 2.2" :table_id (:id t2)}]
       (testing "`?include=tables` -- should be able to include Tables"
-        (is (= {:tables [(table-details t1)
-                         (table-details t2)]}
+        (is (= {:tables [(table-details! t1)
+                         (table-details! t2)]}
                (select-keys (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
                             [:tables]))))
       (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
-        (letfn [(field-details* [field]
+        (letfn [(field-details*! [field]
                   (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))
                          :base_type        "type/Text"
                          :visibility_type  "normal"
                          :has_field_values "search"))]
-          (is (= {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
-                           (assoc (table-details t2) :fields [(field-details* f2)
-                                                              (field-details* f3)])]}
+          (is (= {:tables [(assoc (table-details! t1) :fields [(field-details*! f1)])
+                           (assoc (table-details! t2) :fields [(field-details*! f2)
+                                                              (field-details*! f3)])]}
                  (select-keys (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables.fields" (:id db)))
                               [:tables]))))))))
 
@@ -455,7 +455,7 @@
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (t2/select-one Field :id (mt/id :categories :id)))
+                                                            (field-details! (t2/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -469,7 +469,7 @@
                                                              :database_required false
                                                              :database_is_auto_increment true})
                                                            (merge
-                                                            (field-details (t2/select-one Field :id (mt/id :categories :name)))
+                                                            (field-details! (t2/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -665,7 +665,7 @@
         (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
           (doseq [db (:data (get-all "database?include=tables" old-ids))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
-              (is (= (expected-tables db)
+              (is (= (expected-tables! db)
                      (:tables db))))))))))
 
 (deftest databases-list-test-4

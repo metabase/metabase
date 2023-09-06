@@ -6,7 +6,7 @@
    [metabase.test.data :as data]
    [metabase.test.util :as tu]))
 
-(defn with-persistence-enabled*
+(defn do-with-persistence-enabled!
   [f]
   (tu/with-temporary-setting-values [:persisted-models-enabled true]
     (ddl.i/check-can-persist (data/db))
@@ -30,4 +30,4 @@
         (persist-models!))
         ...))"
   [[persist-fn-binding] & body]
-  `(with-persistence-enabled* (fn [~persist-fn-binding] ~@body)))
+  `(do-with-persistence-enabled! (fn [~persist-fn-binding] ~@body)))

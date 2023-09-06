@@ -255,7 +255,7 @@
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db! (^:once fn* [] ~@body)))
 
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been

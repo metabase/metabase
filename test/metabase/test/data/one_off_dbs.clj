@@ -18,7 +18,7 @@
 
 ;;; ---------------------------------------- Generic Empty Temp In-Memory DB -----------------------------------------
 
-(defn do-with-blank-db
+(defn do-with-blank-db!
   "Impl for `with-blank-db` macro; prefer that to using this directly."
   [thunk]
   (let [details {:db (str "mem:" (tu.random/random-name) ";DB_CLOSE_DELAY=10")}]
@@ -40,12 +40,12 @@
   as needed."
   {:style/indent 0}
   [& body]
-  `(do-with-blank-db (fn [] ~@body)))
+  `(do-with-blank-db! (fn [] ~@body)))
 
 
 ;;; ------------------------------------------------- Blueberries DB -------------------------------------------------
 
-(defn do-with-blueberries-db
+(defn do-with-blueberries-db!
   "Impl for `with-blueberries-db` macro; use that instead of using this directly."
   [f]
   (with-blank-db
@@ -56,7 +56,7 @@
   "Creates a database with a single table, `blueberries_consumed`, with one column, `str`."
   {:style/indent 0}
   [& body]
-  `(do-with-blueberries-db (fn [] ~@body)))
+  `(do-with-blueberries-db! (fn [] ~@body)))
 
 
 ;;; ------------------------------------ Helper Fns for Populating Blueberries DB ------------------------------------

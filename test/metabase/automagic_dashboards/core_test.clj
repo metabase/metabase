@@ -73,13 +73,13 @@
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
-     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
+     (automagic-dashboards.test/test-dashboard-is-valid! (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
    (when (or (and (not (mi/instance-of? Query entity))
                   (not (mi/instance-of? Card entity)))
              (#'magic/table-like? entity))
      (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
        ;; 1 for the actual card returned + 1 for the visual display card = 2
-       (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2)))))
+       (automagic-dashboards.test/test-dashboard-is-valid! (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2)))))
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 

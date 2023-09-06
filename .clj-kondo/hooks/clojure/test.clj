@@ -1,131 +1,17 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common.parallel]))
 
-(def ^:private disallowed-parallel-forms
-  "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
-  in [[allowed-parallel-forms]] is not allowed."
-  '#{clojure.core/alter-var-root
-     clojure.core/with-redefs
-     clojure.core/with-redefs-fn
-     metabase-enterprise.sandbox.test-util/with-gtaps
-     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
-     metabase-enterprise.sandbox.test-util/with-user-attributes
-     metabase-enterprise.test/with-gtaps
-     metabase-enterprise.test/with-gtaps-for-user
-     metabase-enterprise.test/with-user-attributes
-     metabase.actions.test-util/with-actions
-     metabase.actions.test-util/with-actions-disabled
-     metabase.actions.test-util/with-actions-enabled
-     metabase.actions.test-util/with-actions-test-data
-     metabase.actions.test-util/with-actions-test-data-and-actions-enabled
-     metabase.actions.test-util/with-actions-test-data-tables
-     metabase.email-test/with-expected-messages
-     metabase.email-test/with-fake-inbox
-     metabase.test.data.users/with-group
-     metabase.test.data.users/with-group-for-user
-     metabase.test.persistence/with-persistence-enabled
-     metabase.test.util.log/with-log-level
-     metabase.test.util.log/with-log-messages-for-level
-     metabase.test.util.misc/with-single-admin-user
-     metabase.test.util.timezone/with-system-timezone-id
-     metabase.test.util/with-all-users-permission
-     metabase.test.util/with-column-remappings
-     metabase.test.util/with-discarded-collections-perms-changes
-     metabase.test.util/with-env-keys-renamed-by
-     metabase.test.util/with-locale
-     metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
-     metabase.test.util/with-non-admin-groups-no-root-collection-perms
-     metabase.test.util/with-temp-env-var-value
-     metabase.test.util/with-temp-vals-in-db
-     metabase.test.util/with-temporary-raw-setting-values
-     metabase.test.util/with-temporary-setting-values
-     metabase.test.util/with-user-in-groups
-     metabase.test/with-actions
-     metabase.test/with-actions-disabled
-     metabase.test/with-actions-enabled
-     metabase.test/with-actions-test-data
-     metabase.test/with-actions-test-data-and-actions-enabled
-     metabase.test/with-actions-test-data-tables
-     metabase.test/with-all-users-permission
-     metabase.test/with-column-remappings
-     metabase.test/with-discarded-collections-perms-changes
-     metabase.test/with-env-keys-renamed-by
-     metabase.test/with-expected-messages
-     metabase.test/with-fake-inbox
-     metabase.test/with-group
-     metabase.test/with-group-for-user
-     metabase.test/with-locale
-     metabase.test/with-log-level
-     metabase.test/with-log-messages-for-level
-     metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
-     metabase.test/with-non-admin-groups-no-root-collection-perms
-     metabase.test/with-persistence-enabled
-     metabase.test/with-single-admin-user
-     metabase.test/with-system-timezone-id
-     metabase.test/with-temp
-     metabase.test/with-temp-env-var-value
-     metabase.test/with-temp-vals-in-db
-     metabase.test/with-temporary-raw-setting-values
-     metabase.test/with-temporary-setting-values
-     metabase.test/with-user-in-groups
-     toucan2.tools.with-temp/with-temp})
-
-;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
-
-(def ^:private allowed-parallel-forms
-  "These fns are destructive, but are probably fine inside ^:parallel tests because it usually means you're doing
-  something to an atom or something like that."
-  '#{clojure.core/assoc!
-     clojure.core/compare-and-set!
-     clojure.core/conj!
-     clojure.core/disj!
-     clojure.core/dissoc!
-     clojure.core/persistent!
-     clojure.core/pop!
-     clojure.core/reset!
-     clojure.core/reset-vals!
-     clojure.core/run!
-     clojure.core/swap!
-     clojure.core/swap-vals!
-     clojure.core/volatile!
-     clojure.core/vreset!
-     clojure.core/vswap!
-     metabase.query-processor/process-query-and-save-execution!
-     metabase.query-processor/process-query-and-save-with-max-results-constraints!
-     metabase.query-processor.store/store-database!})
-
-(defn- node->qualified-symbol [node]
-  (try
-    (when (hooks/token-node? node)
-      (let [sexpr (hooks/sexpr node)]
-        (when (symbol? sexpr)
-          (when-let [resolved (hooks/resolve {:name sexpr})]
-            (symbol (name (:ns resolved)) (name (:name resolved)))))))
-    ;; some symbols like `*count/Integer` aren't resolvable.
-    (catch Exception _
-      nil)))
-
-(defn- warn-about-disallowed-parallel-forms [form]
-  (letfn [(error! [form message]
-            (hooks/reg-finding! (assoc (meta form)
-                                       :message message
-                                       :type :metabase/validate-deftest)))
-          (f [form]
-            (when-let [qualified-symbol (node->qualified-symbol form)]
-              (cond
-                (disallowed-parallel-forms qualified-symbol)
-                (error! form (format "%s is not allowed inside a ^:parallel test or test fixture" qualified-symbol))
-
-                (and (not (allowed-parallel-forms qualified-symbol))
-                     (str/ends-with? (name qualified-symbol) "!"))
-                (error! form (format "destructive functions like %s are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in .clj-kondo/hooks/clojure/test.clj"
-                                     qualified-symbol)))))
-          (walk [form]
-            (f form)
-            (doseq [child (:children form)]
-              (walk child)))]
-    (walk form)))
+#_{:clj-kondo/ignore [:metabase/check-for-missing-exclamation-points]}
+(defn- warn-about-disallowed-parallel-forms [node]
+  (hooks.common.parallel/find-thread-unsafe-symbols
+   node
+   (fn [symbol-node qualified-symbol]
+     (let [message (format "%s is not allowed inside a ^:parallel test or test fixture" qualified-symbol)]
+       (hooks/reg-finding! (assoc (meta symbol-node)
+                                  :message message
+                                  :type :metabase/validate-deftest))))))
 
 (defn- deftest-check-parallel
   "1. Check if test is marked ^:parallel / ^:synchronized correctly
