@@ -1,6 +1,7 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]))
 
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
@@ -63,13 +64,11 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
-     metabase.test/with-user-in-groups
-     toucan2.tools.with-temp/with-temp})
+     metabase.test/with-user-in-groups})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
 
@@ -127,6 +126,45 @@
               (walk child)))]
     (walk form)))
 
+(defn- form-can-be-paralleled?
+  [form]
+  (letfn [(can-be-paralleled? [form]
+            (let [qualified-symbol (node->qualified-symbol form)]
+              (cond
+               (or (not (hooks/token-node? form))
+                   (nil? qualified-symbol))
+               true
+
+               (contains? disallowed-parallel-forms qualified-symbol)
+               false
+
+               (and (not (allowed-parallel-forms qualified-symbol))
+                    (str/ends-with? (name qualified-symbol) "!"))
+               false
+
+               :else true)))
+          (walk [form]
+            (boolean (and (can-be-paralleled? form)
+                          (every? walk (:children form)))))]
+    (walk form)))
+
+(defn- deftest-can-be-paralleled?
+  [forms]
+  (boolean (every? form-can-be-paralleled? forms)))
+
+#_(try
+   (with-redefs [node->qualified-symbol (fn [& args]
+                                          (if (= (hooks/sexpr (first args)) 'metabase.test/with-group)
+                                            'metabase.test/with-group
+                                            nil))]
+     (deftest-check-parallel
+       (hooks/parse-string (str '(deftest user-list-authentication-test
+                                   (metabase.test/with-group
+                                     (testing "abc"
+                                       (+ 1 2 3))))))))
+   (catch Exception e
+     e))
+
 (defn- deftest-check-parallel
   "1. Check if test is marked ^:parallel / ^:synchronized correctly
    2. Make sure disallowed forms are not used in ^:parallel tests"
@@ -147,7 +185,7 @@
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
                                  :type :metabase/validate-deftest)))
-    ;; only when the custom `:metabase/deftest-not-marked-parallel` is enabled: complain if tests are not explicitly
+    ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are not explicitly
     ;; marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything `^:parallel` in
     ;; places like `metabase.lib` tests unless there is a really good reason not to.
     (when-not (or parallel? synchronized?)
@@ -157,7 +195,11 @@
               :type :metabase/deftest-not-marked-parallel-or-synchronized)))
     (when parallel?
       (doseq [form body]
-        (warn-about-disallowed-parallel-forms form)))))
+        (warn-about-disallowed-parallel-forms form)))
+    (when (and (not parallel?) (not synchronized?) (deftest-can-be-paralleled? body))
+      (hooks/reg-finding! (assoc (meta test-name)
+                                 :message "Test can be paralleled"
+                                 :type :metabase/deftest-can-be-paralleled)))))
 
 (defn deftest [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
