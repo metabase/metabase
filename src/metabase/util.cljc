@@ -15,13 +15,15 @@
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep]
-   #?@(:clj  [[clojure.math.numeric-tower :as math]
+   #?@(:clj  ([clojure.core.memoize :as memoize]
+              [clojure.math.numeric-tower :as math]
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
               [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec]]))
+              [ring.util.codec :as codec]))
+   #?@(:cljs ([metabase.util.memoize :as memoize])))
   #?(:clj (:import
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
@@ -202,22 +204,26 @@
 (def ^{:arglists '([x])} ->kebab-case-en
   "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->kebab-case-en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->snake_case_en
   "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->snake_case_en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->camelCaseEn
   "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
   with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->camelCaseEn* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
   keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->SCREAMING_SNAKE_CASE_EN* :lru/threshold 256)))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
