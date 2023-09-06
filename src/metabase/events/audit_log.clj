@@ -1,15 +1,11 @@
-(ns metabase.events.activity-feed
+(ns metabase.events.audit-log
   (:require
    [metabase.events :as events]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
-   [metabase.query-processor :as qp]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,24 +17,8 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic {query :dataset_query, dataset? :dataset :as object}]
-  (let [details-fn  #(cond-> (select-keys % [:name :description])
-                       ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
-                       ;; around
-                       dataset? (assoc :original-model "card"))
-        query       (when (seq query)
-                      (try (qp/preprocess query)
-                           (catch Throwable e
-                             (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :model       (when dataset? "dataset")
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
+  [topic object]
+  (audit-log/record-event! topic object))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)

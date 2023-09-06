@@ -1,4 +1,4 @@
-(ns metabase.events.activity-feed-test
+(ns metabase.events.audit-log-test
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+;; TODO update tests to use new AuditLog table
 
 (set! *warn-on-reflection* true)
 
