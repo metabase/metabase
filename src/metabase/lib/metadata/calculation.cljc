@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -274,9 +275,9 @@
    [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
-   ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
-   ;; directly we're returning a different property so the FE doesn't break if we change those keys in the future,
-   ;; e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
+   ;; these are derived from the `:lib/source`/`:metabase.lib.schema.metadata/column-source`, but instead of using
+   ;; that value directly we're returning a different property so the FE doesn't break if we change those keys in the
+   ;; future, e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
    [:is-from-previous-stage {:optional true} [:maybe :boolean]]
@@ -373,7 +374,7 @@
   [:merge
    lib.metadata/ColumnMetadata
    [:map
-    [:lib/source ::lib.metadata/column-source]]])
+    [:lib/source ::lib.schema.metadata/column-source]]])
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
