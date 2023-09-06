@@ -2,7 +2,7 @@ import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ListKeyboardNavigationInput<T, R> {
-  ref?: MutableRefObject<R>;
+  ref?: MutableRefObject<R | null>;
   list: T[];
   onEnter: (item: T) => void;
   resetOnListChange?: boolean;
