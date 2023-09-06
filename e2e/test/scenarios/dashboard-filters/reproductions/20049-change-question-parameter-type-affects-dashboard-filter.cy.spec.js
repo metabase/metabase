@@ -1,5 +1,10 @@
 import { produce } from "immer";
-import { restore, visitDashboard, visitQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  visitDashboard,
+  visitQuestion,
+  addOrUpdateDashboardCard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -34,12 +39,6 @@ const dashboardDetails = {
   name: "Dashboard #20049",
   parameters: [filterDetails],
 };
-const dashcardDetails = {
-  row: 0,
-  col: 0,
-  size_x: 16,
-  size_y: 8,
-};
 
 describe.skip("issue 20049", () => {
   beforeEach(() => {
@@ -51,31 +50,29 @@ describe.skip("issue 20049", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.wrap(dashboard_id).as("dashboardId");
-      cy.wrap(card_id).as("cardId");
+      cy.wrap(card_id).as("questionId");
 
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
-          {
-            id,
-            card_id,
-            ...dashcardDetails,
-            parameter_mappings: [
-              {
-                card_id,
-                parameter_id: filterDetails.id,
-                target: ["dimension", ["template-tag", filterDetails.slug]],
-              },
-            ],
-          },
-        ],
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          id,
+          parameter_mappings: [
+            {
+              card_id,
+              parameter_id: filterDetails.id,
+              target: ["dimension", ["template-tag", filterDetails.slug]],
+            },
+          ],
+        },
       });
     });
   });
 
   it("Filter should stop applying if mapped question parameter is changed (metabase#20049)", () => {
-    cy.get("@cardId").then(cardId => {
-      updateQuestion(cardId);
-      visitQuestion(cardId);
+    cy.get("@questionId").then(questionId => {
+      updateQuestion(questionId);
+      visitQuestion(questionId);
       verifyParameterType("String does not contain");
     });
 
@@ -89,7 +86,7 @@ describe.skip("issue 20049", () => {
   });
 });
 
-function updateQuestion(cardId) {
+function updateQuestion(questionId) {
   const updatedNative = produce(questionDetails.native, draft => {
     draft["template-tags"][filterDetails.slug]["widget-type"] =
       "string/does-not-contain";
@@ -111,7 +108,7 @@ function updateQuestion(cardId) {
     parameters: [updatedParameter],
   };
 
-  cy.request("PUT", `/api/card/${cardId}`, newQuestionDetails);
+  cy.request("PUT", `/api/card/${questionId}`, newQuestionDetails);
 }
 
 function verifyParameterType(type) {
