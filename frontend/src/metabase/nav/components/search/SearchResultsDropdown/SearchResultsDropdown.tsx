@@ -1,5 +1,5 @@
 import { jt } from "ttag";
-import SearchResults from "metabase/nav/components/search/SearchResults/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { SearchResults as SearchResultsType } from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";

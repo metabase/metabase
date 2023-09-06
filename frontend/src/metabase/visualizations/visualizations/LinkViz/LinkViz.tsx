@@ -3,7 +3,7 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import Input from "metabase/core/components/Input";
-import SearchResults from "metabase/nav/components/search/SearchResults/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {

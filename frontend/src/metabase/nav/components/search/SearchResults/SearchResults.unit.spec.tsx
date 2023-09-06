@@ -8,7 +8,6 @@ import type {
 } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
-
 import SearchResults from "./SearchResults";
 
 type SearchResultsSetupProps = {

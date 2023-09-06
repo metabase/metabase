@@ -16,11 +16,11 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import { getSetting } from "metabase/selectors/settings";
-import RecentsList from "metabase/nav/components/search/RecentsList/RecentsList";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
 import type { SearchAwareLocation } from "metabase/search/types";
 import { getSearchTextFromLocation } from "metabase/search/utils";
-import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown/SearchResultsDropdown";
+import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import {
   SearchInputContainer,
   SearchIcon,

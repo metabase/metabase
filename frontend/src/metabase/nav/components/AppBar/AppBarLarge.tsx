@@ -1,5 +1,5 @@
 import type { CollectionId, User } from "metabase-types/api";
-import SearchBar from "metabase/nav/components/search/SearchBar/SearchBar";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
