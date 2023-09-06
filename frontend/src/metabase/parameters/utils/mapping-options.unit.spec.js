@@ -12,7 +12,7 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { getParameterMappingOptions } from "./mapping-options";
+import { getParameterMappingOptions } from "metabase-lib/parameters/utils/mapping-options";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

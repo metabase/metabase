@@ -4,7 +4,7 @@ import { Component } from "react";
 import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";
 import { QuestionLoaderHOC } from "metabase/containers/QuestionLoader";
 
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getParameterMappingOptions } from "metabase-lib/parameters/utils/mapping-options";
 
 class QuestionParameterTargetWidget extends Component {
   render() {

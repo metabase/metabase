@@ -27,7 +27,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-export { isVirtualDashCard } from "metabase-lib/dashboard/utils";
+import { isVirtualDashCard } from "metabase-lib/dashboard/utils";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {
@@ -280,3 +280,5 @@ export const getActionIsEnabledInDatabase = (
 ): boolean => {
   return !!card.action?.database_enabled_actions;
 };
+
+export { isVirtualDashCard } from "metabase-lib/dashboard/utils";
