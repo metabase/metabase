@@ -9,7 +9,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]))
 
-(deftest humanize-error-messages-test
+(deftest ^:parallel humanize-error-messages-test
   (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
          (#'api.email/humanize-error-messages
           {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))

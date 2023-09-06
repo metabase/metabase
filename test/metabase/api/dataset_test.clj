@@ -71,7 +71,7 @@
   {:middleware {:add-default-userland-constraints? true
                 :js-int-to-string? true}})
 
-(deftest basic-query-test
+(deftest ^:parallel basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
       (let [query (mt/mbql-query checkins
@@ -170,7 +170,7 @@
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
                                                             "query_result_<timestamp>$1")))))
 
-(deftest download-response-headers-test
+(deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
             "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.csv\""
@@ -361,7 +361,7 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
-(deftest pivot-dataset-test
+(deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
@@ -411,7 +411,7 @@
 
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
-(deftest pivot-filter-dataset-test
+(deftest ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
@@ -428,7 +428,7 @@
             (is (= ["WA" nil 2 148] (nth rows 135)))
             (is (= [nil nil 3 7562] (last rows)))))))))
 
-(deftest pivot-parameter-dataset-test
+(deftest ^:parallel pivot-parameter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"

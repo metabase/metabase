@@ -119,10 +119,10 @@
         (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
-(defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
+(defmacro ^:private with-dashboards-in-readable-collection! [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-read-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
-(defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
+(defmacro ^:private with-dashboards-in-writeable-collection! [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
 (defn do-with-simple-dashboard-with-tabs
@@ -167,7 +167,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest auth-test
+(deftest ^:parallel auth-test
   (is (= (get mw.util/response-unauthentic :body)
          (client/client :get 401 "dashboard")
          (client/client :put 401 "dashboard/13"))))
@@ -177,7 +177,7 @@
 ;;; |                                              POST /api/dashboard                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest create-dashboard-validation-test
+(deftest ^:parallel create-dashboard-validation-test
   (testing "POST /api/dashboard"
     (is (= {:errors {:name "value must be a non-blank string."}}
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
@@ -335,7 +335,7 @@
                                                              :object   (revision/serialize-instance dashboard
                                                                                                     dashboard-id
                                                                                                     dashboard)}]
-        (with-dashboards-in-readable-collection [dashboard-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (=? (merge
                      dashboard-defaults
@@ -421,7 +421,7 @@
                                                        :parameter_mappings [{:card_id      1
                                                                              :parameter_id "foo"
                                                                              :target       [:dimension [:field field-id nil]]}]}]
-        (with-dashboards-in-readable-collection [dashboard-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
                           {:name                       "Test Dashboard"
@@ -468,7 +468,7 @@
       (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      Card          {card-id :id}      {:name "Dashboard Test Card"}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
-        (with-dashboards-in-readable-collection [dashboard-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (nil?
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
@@ -532,7 +532,7 @@
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
         (testing "GET before update"
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
                                             :creator_id    (mt/user->id :rasta)
@@ -597,7 +597,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
       (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
                                             :collection              false
@@ -619,7 +619,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Can we clear the description of a Dashboard? (#4738)"
       (t2.with-temp/with-temp [Dashboard dashboard {:description "What a nice Dashboard"}]
-        (with-dashboards-in-writeable-collection [dashboard]
+        (with-dashboards-in-writeable-collection! [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
                  (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
@@ -848,7 +848,7 @@
 
 (deftest delete-test
   (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
       (is (= nil
              (mt/user-http-request :rasta :delete 204 (format "dashboard/%d" dashboard-id))))
       (is (= nil
@@ -1133,7 +1133,7 @@
   [dashboard-or-id]
   (sort dashboard-card/dashcard-comparator (dashboard/ordered-cards dashboard-or-id)))
 
-(deftest copy-dashboard-with-tab-test
+(deftest ^:parallel copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
@@ -1178,7 +1178,7 @@
                    `t2.protocols/dispatch-value
                    (fn [_] ::dispatches-on-dynamic)}))
 
-(deftest cards-to-copy-test
+(deftest ^:parallel cards-to-copy-test
   (testing "Identifies all cards to be copied"
     (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                          {:card_id 3 :card (card-model{:id 3})}]]
@@ -1202,7 +1202,7 @@
                   :discard [{:id 1} {:id 2}]}
                  (#'api.dashboard/cards-to-copy ordered-cards))))))))
 
-(deftest update-cards-for-copy-test
+(deftest ^:parallel update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
@@ -1396,7 +1396,7 @@
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
 
-(deftest e2e-update-cards-and-tabs-test
+(deftest ^:parallel e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
        (t2.with-temp/with-temp
          [Dashboard               {dashboard-id :id}  {}
@@ -1481,7 +1481,7 @@
             (testing "dashcard 3 got deleted"
              (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
 
-(deftest e2e-update-cards-only-test
+(deftest ^:parallel e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
     (t2.with-temp/with-temp
       [Dashboard           {dashboard-id :id}  {}
@@ -1554,7 +1554,7 @@
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
         ;; send a request that update and create and delete some cards at the same time
         (is (some? (t2/select-one :model/DashboardTab :id dashtab-id-2)))
         (let [tabs (:ordered_tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
@@ -1575,7 +1575,7 @@
           ;; dashtab 2 is deleted
           (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-2))))))))
 
-(deftest upgrade-from-non-tab-dashboard-to-has-tabs
+(deftest ^:parallel upgrade-from-non-tab-dashboard-to-has-tabs
   (testing "we introduced tabs in 47 but there are dashboards without tabs before this
            this test check the flow to upgrade a dashboard pre-47 to have tabs"
     (t2.with-temp/with-temp
@@ -1636,7 +1636,7 @@
                                  :position     1}]}
                 (update resp :cards #(sort dashboard-card/dashcard-comparator %))))))))
 
-(deftest update-cards-error-handling-test
+(deftest ^:parallel update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id/cards"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
       (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
@@ -1693,7 +1693,7 @@
 (deftest simple-creation-with-no-additional-series-test
   (mt/with-temp [Dashboard {dashboard-id :id} {}
                  Card      {card-id :id}] {}
-    (with-dashboards-in-writeable-collection [dashboard-id]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
         (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                                  {:cards        [{:id                     -1
@@ -1741,7 +1741,7 @@
   (mt/with-temp [Dashboard {dashboard-id :id} {}
                  Card      {card-id :id} {}
                  Card      {series-id-1 :id} {:name "Series Card"}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-cards (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                                             {:cards        [{:id      -1
@@ -1850,7 +1850,7 @@
                                 "DashboardCard")]
                         (dashcards)))))))))
 
-(deftest adding-archived-cards-to-dashboard-is-not-allowed
+(deftest ^:parallel adding-archived-cards-to-dashboard-is-not-allowed
   (t2.with-temp/with-temp
     [Dashboard {dashboard-id :id} {}
      Card      {card-id :id}      {:archived true}]
@@ -1879,7 +1879,7 @@
                    DashboardCard {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    DashboardCard {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    Card          {series-id-1 :id}   {:name "Series Card"}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
         (is (= {:size_x                 4
                 :size_y                 4
                 :col                    0
@@ -1972,7 +1972,7 @@
                                                 :action_id action-id
                                                 :card_id model-id}
                      DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           ;; TODO adds test for return
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                        {:cards [(assoc action-card :card_id model-id-2)
@@ -1983,7 +1983,7 @@
                          {:card_id model-id}]
                         (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
-(deftest update-tabs-test
+(deftest ^:parallel update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
     (testing "change tab name and change the position"
       (is (=? [{:id       dashtab-id-2
@@ -2013,7 +2013,7 @@
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (= 3
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:cards [{:id     dashcard-id-3
@@ -2029,7 +2029,7 @@
                      Card          {card-id :id}      {}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (= 2
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:ordered_tabs []
@@ -2039,7 +2039,7 @@
           (is (= 0
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
 
-(deftest delete-tabs-test
+(deftest ^:parallel delete-tabs-test
   (testing "PUT /api/dashboard/id/:cards to delete"
     (testing "partial delete"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
@@ -2086,7 +2086,7 @@
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest fetch-revisions-test
+(deftest ^:parallel fetch-revisions-test
   (testing "GET /api/dashboard/:id/revisions"
     (mt/with-temp [Dashboard {dashboard-id :id} {}
                    Revision  _ {:model        "Dashboard"
@@ -2141,7 +2141,7 @@
 ;;; |                                         POST /api/dashboard/:id/revert                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest revert-dashboard-test
+(deftest ^:parallel revert-dashboard-test
   (testing "POST /api/dashboard/:id/revert"
     (testing "parameter validation"
       (is (= {:revision_id "value must be an integer greater than zero."}
@@ -2303,7 +2303,7 @@
                      form))
                  x))
 
-(deftest dashcard->query-hashes-test
+(deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
           [[{:card {:dataset_query {:database 1}}}
             ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
@@ -2322,7 +2322,7 @@
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
-(deftest dashcards->query-hashes-test
+(deftest ^:parallel dashcards->query-hashes-test
   (is (= ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
           "K6A0F7tRxQ+2xa33kigBwIvUvU+F95UUccWjGTx8kuI="
           "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
@@ -2338,7 +2338,7 @@
               :series [{:dataset_query {:database 3}}
                        {:dataset_query {:database 4}}]}])))))
 
-(deftest add-query-average-duration-to-dashcards-test
+(deftest ^:parallel add-query-average-duration-to-dashcards-test
   (is (= [{:card   {:dataset_query {:database 1}, :query_average_duration 111}
            :series []}
           {:card   {:dataset_query {:database 2}, :query_average_duration 333}
@@ -2364,7 +2364,7 @@
 ;;; |                                       Test related/recommended entities                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest related-and-recommended-entities-test
+(deftest ^:parallel related-and-recommended-entities-test
   (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
     (is (= #{:cards}
            (-> (mt/user-http-request :crowberto :get 200 (format "dashboard/%s/related" dashboard-id)) keys set)))))
@@ -2374,7 +2374,7 @@
 ;;; |                                             Chain Filter Endpoints                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest mappings->field-ids-test
+(deftest ^:parallel mappings->field-ids-test
   (testing "mappings->field-ids"
     (testing "Should extra Field IDs from parameter mappings"
       (is (= #{1 2}
@@ -2602,7 +2602,7 @@
                       (mt/user-http-request :rasta :get 200)
                       (chain-filter-test/take-n-values 3)))))))))
 
-(deftest dashboard-with-static-list-parameters-test
+(deftest ^:parallel dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "we could get the values"
@@ -2749,7 +2749,7 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :get 403 url)))))))))))
 
-(deftest chain-filter-not-found-test
+(deftest ^:parallel chain-filter-not-found-test
   (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
     (testing "GET /api/dashboard/:id/params/:param-key/values returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/values" dashboard-id)))
@@ -2789,7 +2789,7 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest chain-filter-field-to-field-remapping-test
+(deftest ^:parallel chain-filter-field-to-field-remapping-test
   (testing "Chain filtering for Fields that have a Field -> Field remapping\n"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
       (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -3112,7 +3112,7 @@
                                                               :value  4}]})))))))))
 
 ;; see also [[metabase.query-processor.dashboard-test]]
-(deftest dashboard-native-card-query-parameters-test
+(deftest ^:parallel dashboard-native-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
     (mt/dataset sample-dataset
       (let [query (mt/native-query {:query         "SELECT * FROM \"PRODUCTS\" WHERE {{cat}}"
@@ -3156,7 +3156,7 @@
   (with-open [is (java.io.ByteArrayInputStream. results)]
     (streaming.test-util/parse-result export-format is)))
 
-(deftest dashboard-card-query-export-format-test
+(deftest ^:parallel dashboard-card-query-export-format-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
       (doseq [export-format [:csv :json :xlsx]]
@@ -3175,7 +3175,7 @@
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
-(deftest dashboard-card-query-pivot-test
+(deftest ^:parallel dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (api.pivots/applicable-drivers)
       (mt/dataset sample-dataset

@@ -27,6 +27,8 @@
      metabase.email-test/with-fake-inbox
      metabase.public-settings.premium-features-test/with-premium-features
      metabase.public-settings.premium-features-test/with-additional-premium-features
+     metabase.models.params.chain-filter-test/with-human-readable-values-remapping
+     metabase.models.params.chain-filter-test/with-fk-field-to-field-remapping
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
