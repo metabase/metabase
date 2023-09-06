@@ -41,7 +41,7 @@ const TEST_PEOPLE_QUESTION = {
   },
 };
 
-describe("scenarios > question > object details", () => {
+describe("scenarios > question > object details", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
