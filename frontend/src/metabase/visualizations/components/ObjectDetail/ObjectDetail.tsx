@@ -46,9 +46,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
 
   return {
-    // FIXME: remove the non-null assertion operator
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    question: getQuestion(state)!,
+    question: getQuestion(state),
     table,
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
