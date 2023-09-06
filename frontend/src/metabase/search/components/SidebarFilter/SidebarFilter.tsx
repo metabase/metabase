@@ -6,10 +6,13 @@ import type {
   SearchFilterComponentProps,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Box, Button, Group, Paper, Text } from "metabase/ui";
+import { Box, Button, Group, Text } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
+import { useSelector } from "metabase/lib/redux";
+import { getIsNavbarOpen } from "metabase/redux/app";
+import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import {
   DropdownApplyButtonDivider,
   DropdownFilterElement,
@@ -27,6 +30,9 @@ export const SidebarFilter = ({
 }: SearchSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const isSmallScreen = useIsSmallScreen();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<string | null>(null);
@@ -47,6 +53,12 @@ export const SidebarFilter = ({
     window.addEventListener("resize", handleResize, false);
     return () => window.removeEventListener("resize", handleResize, false);
   }, [dropdownRef, popoverWidth]);
+
+  useLayoutEffect(() => {
+    if (isNavbarOpen && isSmallScreen) {
+      setIsPopoverOpen(false);
+    }
+  }, [isNavbarOpen, isSmallScreen]);
 
   const onApplyFilter = () => {
     onChange(selectedValues);
@@ -111,20 +123,17 @@ export const SidebarFilter = ({
         target={dropdownRef.current}
         ignoreTrigger
         autoWidth
-        hasBackground={false}
       >
-        <Paper shadow="md" withBorder>
-          <Box p="md" w={popoverWidth ?? "100%"}>
-            <ContentComponent
-              value={selectedValues}
-              onChange={selected => setSelectedValues(selected)}
-            />
-          </Box>
-          <DropdownApplyButtonDivider />
-          <Group position="right" align="center" px="sm" pb="sm">
-            <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
-          </Group>
-        </Paper>
+        <Box p="md" w={popoverWidth ?? "100%"}>
+          <ContentComponent
+            value={selectedValues}
+            onChange={selected => setSelectedValues(selected)}
+          />
+        </Box>
+        <DropdownApplyButtonDivider />
+        <Group position="right" align="center" px="sm" pb="sm">
+          <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
+        </Group>
       </Popover>
     </div>
   );
