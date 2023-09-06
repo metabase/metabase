@@ -87,7 +87,7 @@
                     (map :type)
                     set)))))))
 
-(deftest ^:parallel bookmarks-ordering-test
+(deftest bookmarks-ordering-test
   (testing "PUT /api/bookmark/ordering"
     (mt/with-temp [Collection collection {:name "Test Collection"}
                    Card       card {:name "Test Card"}

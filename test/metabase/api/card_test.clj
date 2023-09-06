@@ -732,7 +732,7 @@
                                                                             :visualization_settings {}
                                                                             :enable_embedding       true})))))))))
 
-(deftest ^:parallel save-empty-card-test
+(deftest save-empty-card-test
   (testing "POST /api/card"
     (testing "Should be able to save an empty Card"
       (doseq [[query-description query] {"native query"
@@ -759,7 +759,7 @@
                                                      {:dataset_query   query
                                                       :result_metadata metadata}))))))))))))
 
-(deftest ^:parallel save-card-with-empty-result-metadata-test
+(deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [:model/Card]
       (let [card        (card-with-name-and-query)]
@@ -770,7 +770,7 @@
                                       "card"
                                       (assoc card :result_metadata []))))))))
 
-(deftest ^:parallel cache-ttl-save
+(deftest cache-ttl-save
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
@@ -828,7 +828,7 @@
    :type     :native
    :native   (mt/compile query)})
 
-(deftest ^:parallel updating-card-updates-metadata
+(deftest updating-card-updates-metadata
   (let [query          (updating-card-updates-metadata-query)
         modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
     (testing "Updating query updates metadata"
@@ -874,7 +874,7 @@
                       :collection_position 1))
               (is (= @called 1)))))))))
 
-(deftest ^:parallel updating-card-updates-metadata-3
+(deftest updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
     (testing "Patching the card _without_ the query does not clear the metadata"
       ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
@@ -888,7 +888,7 @@
                                                :dataset     true})]
             (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
 
-(deftest ^:parallel updating-card-updates-metadata-4
+(deftest updating-card-updates-metadata-4
   (let [query (updating-card-updates-metadata-query)]
     (testing "You can update just the metadata"
       (mt/with-model-cleanup [:model/Card]

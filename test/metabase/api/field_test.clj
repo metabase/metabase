@@ -33,7 +33,7 @@
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :timezone      "UTC"}))
 
-(deftest get-field-test
+(deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults Field)
@@ -79,7 +79,7 @@
       (is (= (mt/id :categories :id)
              (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
 
-(deftest get-field-summary-test
+(deftest ^:parallel get-field-summary-test
   (testing "GET /api/field/:id/summary"
     ;; TODO -- why doesn't this come back as a dictionary ?
     (is (= [["count" 75]
@@ -202,7 +202,7 @@
       (t2.with-temp/with-temp [Field {field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
 
-(deftest update-field-hydrated-target-test
+(deftest ^:parallel update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
     (testing "target should be hydrated"
       (mt/with-temp [Field fk-field-1 {}
@@ -211,7 +211,7 @@
         (is (= (:id fk-field-2)
                (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
 
-(deftest remove-fk-semantic-type-test
+(deftest ^:parallel remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
     (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
       (mt/with-temp [Field {fk-field-id :id} {}
@@ -226,7 +226,7 @@
             (is (= nil
                    (t2/select-one-fn :fk_target_field_id Field, :id field-id)))))))))
 
-(deftest update-fk-target-field-id-test
+(deftest ^:parallel update-fk-target-field-id-test
   (testing "PUT /api/field/:id"
     (testing "check that you *can* set `:fk_target_field_id` if it *is* the proper base type"
       (t2.with-temp/with-temp [Field {field-id :id} {:base_type :type/Integer}]
@@ -274,7 +274,7 @@
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
-(deftest update-field-values-no-human-readable-values-test
+(deftest ^:parallel update-field-values-no-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Human readable values are optional"
       (mt/with-temp [Field       {field-id :id} list-field
@@ -293,7 +293,7 @@
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
-(deftest update-field-values-with-human-readable-values-test
+(deftest ^:parallel update-field-values-with-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
       (mt/with-temp [Field {field-id :id} list-field
@@ -312,7 +312,7 @@
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
-(deftest create-field-values-when-not-present-test
+(deftest ^:parallel create-field-values-when-not-present-test
   (testing "POST /api/field/:id/values"
     (testing "Field values should be created when not present"
       ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
@@ -333,7 +333,7 @@
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
 
-(deftest remove-field-values-test
+(deftest ^:parallel remove-field-values-test
   (testing "POST /api/field/:id/values"
     (t2.with-temp/with-temp [Field {field-id :id} list-field]
       (testing "should be able to unset FieldValues"
@@ -379,7 +379,7 @@
                            :or   {expected-status-code 200}}]
   (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
 
-(deftest update-display-name-dimension-test
+(deftest ^:parallel update-display-name-dimension-test
   (testing "Updating a field's display_name should update the dimension's name"
     (mt/with-temp
       [Database  db    {:name "field-db" :engine :h2}
@@ -435,7 +435,7 @@
               (is (= (u/the-id new-dim)
                      (u/the-id updated-dim))))))))))
 
-(deftest virtual-field-values-test
+(deftest ^:parallel virtual-field-values-test
   (testing "Check that trying to get values for a 'virtual' field just returns a blank values map"
     (is (= {:values []}
            (mt/user-http-request :rasta :get 200 (format "field/%s/values" (codec/url-encode "field,created_at,{base-type,type/Datetime}")))))))
@@ -495,7 +495,7 @@
           (is (= nil
                  (dimension-for-field field-id))))))))
 
-(deftest delete-dimension-permissions-test
+(deftest ^:parallel delete-dimension-permissions-test
   (testing "DELETE /api/field/:id/dimension"
     (testing "Non-admin users can't delete a dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name "Field Test 1"}]
@@ -552,7 +552,7 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))))
 
-(deftest remove-fk-semantic-type-test-2
+(deftest ^:parallel remove-fk-semantic-type-test-2
   (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
     (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
                    Field {field-id-2 :id} {:name               "Field Test 2"
@@ -580,7 +580,7 @@
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
-(deftest update-fk-target-field-id-test-2
+(deftest ^:parallel update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
     (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
                    Field {field-id-2 :id} {:name "Field Test 2"}
@@ -613,7 +613,7 @@
             (is (not= (:fk_target_field_id before-change)
                       (:fk_target_field_id after-change)))))))))
 
-(deftest update-fk-target-field-id-with-fk-test
+(deftest ^:parallel update-fk-target-field-id-with-fk-test
   (testing "Checking update of the fk_target_field_id along with an FK change"
     (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
                    Field {field-id-2 :id} {:name "Field Test 2"}]
@@ -641,7 +641,7 @@
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
-(deftest fk-target-field-id-shouldnt-change-test
+(deftest ^:parallel fk-target-field-id-shouldnt-change-test
   (testing "PUT /api/field/:id"
     (testing "fk_target_field_id and FK should remain unchanged on updates of other fields"
       (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
@@ -711,7 +711,7 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id))))))))))
 
-(deftest update-field-settings-test
+(deftest ^:parallel update-field-settings-test
   (testing "Can we update Field.settings, and fetch it?"
     (t2.with-temp/with-temp [Field field {:name "Crissy Field"}]
       (mt/user-http-request :crowberto :put 200 (format "field/%d" (u/the-id field)) {:settings {:field_is_cool true}})
@@ -719,7 +719,7 @@
              (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
-(deftest search-values-test
+(deftest ^:parallel search-values-test
   (testing "make sure `search-values` works on with our various drivers"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]
@@ -752,7 +752,7 @@
                                                          "Red"
                                                          1)))))))
 
-(deftest search-values-with-field-same-as-search-field-test
+(deftest ^:parallel search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Fred 62"] ["Red Medicine"]]

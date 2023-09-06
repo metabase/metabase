@@ -14,7 +14,7 @@
 (def ^:private ios-user-agent
   "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML  like Gecko) Version/10.0 Mobile/14E304 Safari/602.1")
 
-(deftest login-history-test
+(deftest ^:parallel login-history-test
   (testing "GET /api/login-history/current"
     (let [session-id (str (random-uuid))
           device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"]

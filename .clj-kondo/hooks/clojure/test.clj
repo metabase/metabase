@@ -41,6 +41,7 @@
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
      metabase.test.util/with-locale
+     metabase.test.util/with-model-cleanup
      metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test.util/with-non-admin-groups-no-root-collection-perms
      metabase.test.util/with-temp-env-var-value
@@ -65,6 +66,7 @@
      metabase.test/with-locale
      metabase.test/with-log-level
      metabase.test/with-log-messages-for-level
+     metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled

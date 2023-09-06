@@ -145,7 +145,7 @@
                               {id metabase.util.schema/IntGreaterThanZero}
                               (select-one Card :id id))))))))
 
-(deftest parse-multi-values-param-test
+(deftest ^:parallel parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
     (is (= [1] (api/parse-multi-values-param "1" parse-long))))
 

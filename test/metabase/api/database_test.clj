@@ -319,7 +319,7 @@
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
-(deftest ^:parallel disallow-creating-h2-database-test
+(deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
     (mt/with-model-cleanup [Database]
       (let [db-name (mt/random-name)

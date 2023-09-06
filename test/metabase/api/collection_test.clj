@@ -1424,7 +1424,7 @@
 ;;; |                                              POST /api/collection                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel create-collection-test
+(deftest create-collection-test
   (testing "POST /api/collection"
     (testing "\ntest that we can create a new collection"
       (mt/with-model-cleanup [Collection]
