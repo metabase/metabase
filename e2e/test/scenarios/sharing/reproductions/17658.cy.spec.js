@@ -6,6 +6,7 @@ import {
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
@@ -21,7 +22,7 @@ describe("issue 17658", { tags: "@external" }, () => {
   });
 
   it("should delete dashboard subscription from any collection (metabase#17658)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("subscription").click();
 
@@ -54,7 +55,9 @@ function moveDashboardToCollection(collectionName) {
       );
 
       // Move dashboard
-      cy.request("PUT", "/api/dashboard/1", { collection_id: id });
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        collection_id: id,
+      });
 
       // Create subscription
       cy.request("POST", "/api/pulse", {

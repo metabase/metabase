@@ -22,7 +22,7 @@
              (not (lib.types.isa/structured? column))
              ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
              (some? (:id column)))
-    (let [initial-op (when-not (lib.types.isa/date? column) ; Date fields have special handling in the FE.
+    (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
                        (-> (lib.filter.operator/filter-operators column)
                            first
                            (assoc :lib/type :operator/filter)))]

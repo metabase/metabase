@@ -597,12 +597,18 @@
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert channel]
+  [alert channel non-user-email]
   (let [{card-id :id, card-name :name} (first-card alert)]
-    {:title         card-name
-     :titleUrl      (urls/card-url card-id)
-     :alertSchedule (alert-schedule-text channel)
-     :creator       (-> alert :creator :common_name)}))
+    {:title                     card-name
+     :titleUrl                  (urls/card-url card-id)
+     :alertSchedule             (alert-schedule-text channel)
+     :notificationManagementUrl (if (nil? non-user-email)
+                                  (urls/notification-management-url)
+                                  (str (urls/unsubscribe-url)
+                                       "?hash=" (generate-pulse-unsubscribe-hash (:id alert) non-user-email)
+                                       "&email=" non-user-email
+                                       "&pulse-id=" (:id alert)))
+     :creator                   (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "This question has reached its goal of %s." goal-value)
@@ -610,10 +616,10 @@
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} channel results goal-value]
+  [timezone {:keys [alert_first_only] :as alert} channel results goal-value non-user-email]
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert channel))]
+                      (alert-context alert channel non-user-email))]
     (render-message-body alert
                          :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)

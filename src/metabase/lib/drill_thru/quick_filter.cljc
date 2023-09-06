@@ -19,20 +19,20 @@
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
-      (lib.types.isa/structured? column)  []
-      (= value :null)                     [{:name "=" :filter (operator :is-null  field-ref)}
-                                           {:name "≠" :filter (operator :not-null field-ref)}]
+      (lib.types.isa/structured? column)    []
+      (= value :null)                       [{:name "=" :filter (operator :is-null  field-ref)}
+                                             {:name "≠" :filter (operator :not-null field-ref)}]
       (or (lib.types.isa/numeric? column)
-          (lib.types.isa/date? column))   (for [[op label] [[:<  "<"]
-                                                            [:>  ">"]
-                                                            [:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)})
-      :else                               (for [[op label] [[:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)}))))
+          (lib.types.isa/temporal? column)) (for [[op label] [[:<  "<"]
+                                                              [:>  ">"]
+                                                              [:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)})
+      :else                                 (for [[op label] [[:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)}))))
 
 (mu/defn quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.quick-filter]
   "Filter the current query based on the value clicked.
