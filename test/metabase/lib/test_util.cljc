@@ -2,7 +2,7 @@
   "Misc test utils for Metabase lib."
   (:require
    [clojure.core.protocols]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -394,3 +394,42 @@
      (mock-metadata-provider
       {:fields [original']})
      metadata-provider)))
+
+(defmacro with-testing-against-standard-queries [sym & body]
+  `(let [queries#
+         '[(-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+               (lib/append-stage))
+           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+               (lib/join (meta/table-metadata :people))
+               (lib/join (meta/table-metadata :products))
+               (lib/append-stage))
+           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+               (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :people))))
+               (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :products))))
+               (lib/append-stage))
+           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+               (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
+                                            meta/metadata-provider
+                                            (lib.tu/mock-cards :people))
+                                          [(lib/= (meta/field-metadata :orders :user-id)
+                                                  (meta/field-metadata :people :id))]))
+               (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
+                                            meta/metadata-provider
+                                            (lib.tu/mock-cards :products))
+                                          [(lib/= (meta/field-metadata :orders :product-id)
+                                                  (meta/field-metadata :products :id))]))
+               (lib/append-stage))
+
+           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+               (lib/join (lib/join-clause (lib.tu/mock-cards :people)
+                                          [(lib/= (meta/field-metadata :orders :user-id)
+                                                  (meta/field-metadata :people :id))]))
+               (lib/join (lib/join-clause (lib.tu/mock-cards :products)
+                                          [(lib/= (meta/field-metadata :orders :product-id)
+                                                  (meta/field-metadata :products :id))]))
+               (lib/append-stage))]]
+     (testing "Against set of standard queries"
+       (doseq [[idx# q#] (map-indexed vector queries#)
+               :let [~(symbol sym) (eval q#)]]
+         (testing (str "Query " idx# ":\n" (u/pprint-to-str q#))
+           ~@body)))))
