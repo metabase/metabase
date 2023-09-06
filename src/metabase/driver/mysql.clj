@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require
+   [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -21,7 +22,8 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.models.field :as field]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -265,9 +267,9 @@
   [_driver unwrapped-identifier stored-field]
   {:pre [(h2x/identifier? unwrapped-identifier)]}
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [field-type            (:database_type stored-field)
+    (let [field-type            (:database-type stored-field)
           field-type            (get database-type->mysql-cast-type-name field-type field-type)
-          nfc-path              (:nfc_path stored-field)
+          nfc-path              (:nfc-path stored-field)
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
           json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
@@ -288,18 +290,22 @@
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
-  (let [stored-field (when (integer? id-or-name)
-                       (qp.store/field id-or-name))
+  (let [stored-field  (when (integer? id-or-name)
+                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        honeysql-expr    (parent-method driver mbql-clause)]
-    (if (field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
-        (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :mysql % stored-field)
-                          %)
-                       honeysql-expr))
-      honeysql-expr)))
+        honeysql-expr (parent-method driver mbql-clause)]
+    (cond
+      (not (lib.field/json-field? stored-field))
+      honeysql-expr
+
+      (::sql.qp/forced-alias opts)
+      (keyword (::add/source-alias opts))
+
+      :else
+      (walk/postwalk #(if (h2x/identifier? %)
+                        (sql.qp/json-query :mysql % stored-field)
+                        %)
+                     honeysql-expr))))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -656,14 +662,14 @@
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsv (->> values
-                       (map (partial row->tsv (count column-names)))
-                       (str/join "\n"))
-              sql (sql/format {::load   [file-path (keyword table-name)]
-                               :columns (map keyword column-names)}
-                              :quoted true
-                              :dialect (sql.qp/quote-style driver))]
-          (spit file-path tsv)
+        (let [tsvs (map (partial row->tsv (count column-names)) values)
+              sql  (sql/format {::load   [file-path (keyword table-name)]
+                                :columns (map keyword column-names)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver))]
+          (with-open [^java.io.Writer writer (jio/writer file-path)]
+            (doseq [value (interpose \newline tsvs)]
+              (.write writer (str value))))
           (qp.writeback/execute-write-sql! db-id sql))
         (finally
           (.delete temp-file))))))

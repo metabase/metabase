@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import {
+import type {
   Parameter,
   ParameterId,
   ValuesQueryType,

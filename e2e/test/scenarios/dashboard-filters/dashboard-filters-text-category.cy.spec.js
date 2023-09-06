@@ -1,12 +1,14 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
@@ -16,7 +18,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -42,7 +44,8 @@ describe("scenarios > dashboard > filters > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery1");
       },
     );
   });
@@ -96,7 +99,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     saveDashboard();
     cy.wait("@dashcardQuery1");
 
-    cy.location("search").should("eq", "?text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.get(".Card").within(() => {
       cy.contains("39.58");
     });
@@ -106,7 +109,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.get("fieldset .Icon-close").click();
     cy.wait("@dashcardQuery1");
 
-    cy.location("search").should("eq", "?text=");
+    cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
@@ -123,8 +126,3 @@ describe("scenarios > dashboard > filters > text/category", () => {
     filterWidget().contains("Arnold Adams");
   });
 });
-
-function clearFilter(index = 0) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}

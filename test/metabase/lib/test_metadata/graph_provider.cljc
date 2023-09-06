@@ -46,6 +46,9 @@
 (defn- graph-metrics [metadata-graph table-id]
   (:metrics (find-table metadata-graph table-id)))
 
+(defn- graph-segments [metadata-graph table-id]
+  (:segments (find-table metadata-graph table-id)))
+
 (deftype ^{:doc "A simple implementation of [[MetadataProvider]] that returns data from a complete graph
   e.g. the response provided by `GET /api/database/:id/metadata`."} SimpleGraphMetadataProvider [metadata-graph]
   lib.metadata.protocols/MetadataProvider
@@ -58,6 +61,7 @@
   (tables   [_this]            (graph-tables   metadata-graph))
   (fields   [_this table-id]   (graph-fields   metadata-graph table-id))
   (metrics  [_this table-id]   (graph-metrics  metadata-graph table-id))
+  (segments [_this table-id]   (graph-segments metadata-graph table-id))
 
   clojure.core.protocols/Datafiable
   (datafy [_this]

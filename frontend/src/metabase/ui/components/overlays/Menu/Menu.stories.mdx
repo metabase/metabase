@@ -81,7 +81,7 @@ Not to use:
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design&node-id=1-96&mode=design&t=Q0nq1hUkXN7VFjRt-0)
+- [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design&node-id=1-96&mode=design&t=vj3dPYMbYVYVuKBy-0)
 - [Mantine Menu Docs](https://mantine.dev/core/menu/)
 
 ## Caveats
@@ -97,9 +97,7 @@ Not to use:
 
 ## Examples
 
-### Default
-
-export const Default = args => (
+export const DefaultTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -117,13 +115,7 @@ export const Default = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### With a right section
-
-export const WithRightSection = args => (
+export const RightSectionTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -143,13 +135,7 @@ export const WithRightSection = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="WithRightSection">{WithRightSection}</Story>
-</Canvas>
-
-### With icons
-
-export const WithIcon = args => (
+export const IconsTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -167,13 +153,7 @@ export const WithIcon = args => (
   </Flex>
 );
 
-<Canvas>
-  <Story name="WithIcon">{WithIcon}</Story>
-</Canvas>
-
-### With labels and dividers
-
-export const WithLabelAndDivider = args => (
+export const LabelsAndDividersTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -199,6 +179,32 @@ export const WithLabelAndDivider = args => (
   </Flex>
 );
 
+export const Default = DefaultTemplate.bind({});
+
 <Canvas>
-  <Story name="WithLabelAndDivider">{WithLabelAndDivider}</Story>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Right section
+
+export const RightSection = RightSectionTemplate.bind({});
+
+<Canvas>
+  <Story name="Right section">{RightSection}</Story>
+</Canvas>
+
+### Icons
+
+export const Icons = IconsTemplate.bind({});
+
+<Canvas>
+  <Story name="Icons">{Icons}</Story>
+</Canvas>
+
+### Labels and dividers
+
+export const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
+
+<Canvas>
+  <Story name="Labels and dividers">{LabelsAndDividers}</Story>
 </Canvas>

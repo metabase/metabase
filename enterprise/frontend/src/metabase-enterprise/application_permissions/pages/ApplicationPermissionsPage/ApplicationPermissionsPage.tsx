@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { Route } from "react-router";
+import type { Route } from "react-router";
 import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 
@@ -17,7 +17,7 @@ import {
   saveApplicationPermissions,
   updateApplicationPermission,
 } from "metabase-enterprise/application_permissions/reducer";
-import { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
+import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 
 const mapDispatchToProps = {

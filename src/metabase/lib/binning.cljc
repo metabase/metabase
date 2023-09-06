@@ -1,13 +1,13 @@
 (ns metabase.lib.binning
   (:require
-    [metabase.lib.dispatch :as lib.dispatch]
-    [metabase.lib.hierarchy :as lib.hierarchy]
-    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-    [metabase.lib.schema :as lib.schema]
-    [metabase.lib.schema.binning :as lib.schema.binning]
-    [metabase.shared.formatting.numbers :as fmt.num]
-    [metabase.shared.util.i18n :as i18n]
-    [metabase.util.malli :as mu]))
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.binning :as lib.schema.binning]
+   [metabase.shared.formatting.numbers :as fmt.num]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
@@ -49,7 +49,7 @@
 
 (defmulti available-binning-strategies-method
   "Implementation for [[available-binning-strategies]]. Return a set of binning strategies from
-  `:metabase.lib.schema.binning/binning-strategies` that are allowed to be used with `x`."
+  `:metabase.lib.schema.binning/strategy` that are allowed to be used with `x`."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -69,7 +69,11 @@
     x]
    (available-binning-strategies-method query stage-number x)))
 
-(defn- default-auto-bin []
+(defn default-auto-bin
+  "Returns the basic auto-binning strategy.
+
+  Public because it's used directly by some drill-thrus."
+  []
   {:display-name (i18n/tru "Auto bin")
    :default      true
    :mbql         {:strategy :default}})

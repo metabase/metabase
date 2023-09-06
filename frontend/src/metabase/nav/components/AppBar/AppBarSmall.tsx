@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 import SearchBar from "../SearchBar";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";

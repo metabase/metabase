@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import { DashboardOrderedCard } from "metabase-types/api";
+import type { DashboardOrderedCard } from "metabase-types/api";
 
 import {
   Root,

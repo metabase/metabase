@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 import { useDispatch } from "metabase/lib/redux";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import {
+import type {
   AdvancedPermissionsStoreState,
   ImpersonationModalParams,
   ImpersonationParams,
@@ -17,7 +17,7 @@ import { getImpersonation } from "metabase-enterprise/advanced_permissions/selec
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { ImpersonationApi } from "metabase-enterprise/advanced_permissions/services";
-import { Impersonation } from "metabase-types/api";
+import type { Impersonation } from "metabase-types/api";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";

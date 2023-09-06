@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getSetting } from "metabase/selectors/settings";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { getUser } from "metabase/selectors/user";
 
 export const getIsXrayEnabled = (state: State) => {

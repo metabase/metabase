@@ -3,7 +3,7 @@
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
@@ -11,11 +11,11 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -126,36 +127,45 @@
                                              params)]
                              (if (= (count params) 1)
                                (first params)
-                               params)))]
-    (or
-     ;; if we have matching parameter(s) that all have actual values, return those.
-     (when (and (seq matching-params)
-                (every? :value matching-params))
-       (normalize-params matching-params))
-     ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
-     (when-let [tag-default (:default tag)]
-       (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-                :value   tag-default}
-         tag-opts (assoc :options tag-opts)))
-     ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
-     ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
-     ;; the defaults specified in the template tag to take precedence if both are specified
-     (when (and (seq matching-params)
-                (every? :default matching-params))
-       (normalize-params matching-params))
-     ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
-     ;; otherwise return [[params/no-value]] to signify that
-     (if (:required tag)
-       (throw (missing-required-param-exception (:display-name tag)))
-       params/no-value))))
+                               params)))
+        nil-value?        (and (seq matching-params)
+                               (every? (fn [param]
+                                         (nil? (:value param)))
+                                       matching-params))]
+    (cond
+      ;; if we have matching parameter(s) that all have actual values, return those.
+      (and (seq matching-params) (every? :value matching-params))
+      (normalize-params matching-params)
+      ;; If a FieldFilter has value=nil, return a [[params/no-value]]
+      ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
+      (and (not (:required tag)) nil-value?)
+      params/no-value
+      ;; When a FieldFilter has value=nil and is required, throw an exception
+      (and (:required tag) nil-value?)
+      (throw (missing-required-param-exception (:display-name tag)))
+      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
+      (some? (:default tag))
+      (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+               :value   (:default tag)}
+        tag-opts (assoc :options tag-opts))
+      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
+      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
+      ;; the defaults specified in the template tag to take precedence if both are specified
+      (and (seq matching-params) (every? :default matching-params))
+      (normalize-params matching-params)
+      ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
+      (:required tag)
+      (throw (missing-required-param-exception (:display-name tag)))
+      ;; otherwise return [[params/no-value]] to signify that this filter can be substituted with "1 = 1"
+      :else
+      params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
    params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
-             (qp.store/fetch-and-store-fields! #{field-id})
-             (or (qp.store/field field-id)
+             (or (lib.metadata/field (qp.store/metadata-provider) field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (field-filter-value tag params)}))
@@ -165,10 +175,10 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (t2/select-one Card :id card-id)
+  (let [card           (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
         persisted-info (when (:dataset card)
-                         (t2/select-one PersistedInfo :card_id card-id))
-        query          (or (:dataset_query card)
+                         (:lib/persisted-info card))
+        query          (or (:dataset-query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
@@ -177,7 +187,9 @@
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
                 (or (when (qp.persistence/can-substitute? card persisted-info)
-                      {:query (qp.persistence/persisted-info-native-query persisted-info)})
+                      {:query (qp.persistence/persisted-info-native-query
+                               (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                               persisted-info)})
                     (qp/compile query)))))
       (catch ExceptionInfo e
         (throw (ex-info
@@ -190,7 +202,8 @@
                 e))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, _]
+  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag
+   _params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -218,9 +231,17 @@
                                            {:type                qp.error-type/invalid-parameter
                                             :template-tag        tag
                                             :matching-parameters params})))
-                         (first matching-params))]
-    ;; if both the tag and the Dashboard parameter specify a default value, prefer the default value from the tag.
+                         (first matching-params))
+        nil-value?       (and matching-param
+                              (nil? (:value matching-param)))]
+    ;; But if the param is present in `params` and its value is nil, don't use the default.
+    ;; If the param is not present in `params` use a default from either the tag or the Dashboard parameter.
+    ;; If both the tag and Dashboard parameter specify a default value, prefer the default value from the tag.
     (or (:value matching-param)
+        (when (and nil-value? (:required tag))
+          (throw (missing-required-param-exception (:display-name tag))))
+        (when (and nil-value? (not (:required tag)))
+          params/no-value)
         (:default tag)
         (:default matching-param)
         (if (:required tag)
@@ -287,7 +308,7 @@
   "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
   are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
   [{field :field, {value :value} :value, :as field-filter} :- FieldFilter]
-  (let [effective-type (or (:effective_type field) (:base_type field))
+  (let [effective-type ((some-fn :effective-type :base-type) field)
         new-value (cond
                     (string? value)
                     (parse-value-for-field-type effective-type value)
@@ -328,7 +349,7 @@
 
     ;; Field Filters with "special" base types
     (and (= param-type :dimension)
-         (get-in value [:field :base_type]))
+         (get-in value [:field :base-type]))
     (update-filter-for-field-type value)
 
     :else
@@ -352,20 +373,17 @@
 (mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
-    (query->params-map some-query)
+    (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters}]
+  [{tags :template-tags, params :parameters} :- :map]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag tag params)]
-                   :when   v]
-               ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
-               ;; kind of query shouldn't be possible from the frontend anyway
+                   :let    [v (value-for-tag tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 {k v})))
+                 [k v])))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)

@@ -5,9 +5,8 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import TimelineDetailsModal, {
-  TimelineDetailsModalProps,
-} from "./TimelineDetailsModal";
+import type { TimelineDetailsModalProps } from "./TimelineDetailsModal";
+import TimelineDetailsModal from "./TimelineDetailsModal";
 
 describe("TimelineDetailsModal", () => {
   it("should use the collection's name for default timelines", () => {

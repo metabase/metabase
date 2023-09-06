@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { Parameter, ValuesQueryType } from "metabase-types/api";
+import type { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import ValuesSourceSettings from "./ValuesSourceSettings";

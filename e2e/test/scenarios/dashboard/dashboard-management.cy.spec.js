@@ -13,6 +13,7 @@ import {
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -163,6 +164,55 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
             });
 
+            it("should deep duplicate a dashboard and its cards to a collection created on the go", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = originalQuestionName;
+                const newDashboardId = id + 1;
+
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
+                  cy.findByTestId("select-button").click();
+                });
+                popover().findByText("New collection").click();
+                const NEW_COLLECTION = "Foo Collection";
+                modal().within(() => {
+                  cy.findByLabelText("Name").type(NEW_COLLECTION);
+                  cy.button("Create").click();
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText(NEW_COLLECTION).click();
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", newDashboardName)
+                  .and("contain", newQuestionName);
+
+                cy.findByTestId("main-navbar-root")
+                  .findByText("Our analytics")
+                  .click();
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", originalQuestionName);
+              });
+            });
+
             it("should be able to move/undo move a dashboard (metabase#13059, metabase#25705)", () => {
               cy.get("@originalDashboardId").then(id => {
                 appBar().contains("Our analytics");
@@ -233,7 +283,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           beforeEach(() => {
             cy.signIn(user);
 
-            visitDashboard(1);
+            visitDashboard(ORDERS_DASHBOARD_ID);
 
             cy.get("main header").within(() => {
               cy.icon("ellipsis").should("be.visible").click();

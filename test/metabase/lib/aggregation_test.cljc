@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -36,10 +35,10 @@
                 (op venues-category-id-metadata)))))))
 
 (defn- aggregation-display-name [aggregation-clause]
-  (lib.metadata.calculation/display-name lib.tu/venues-query -1 aggregation-clause))
+  (lib/display-name lib.tu/venues-query -1 aggregation-clause))
 
 (defn- aggregation-column-name [aggregation-clause]
-  (lib.metadata.calculation/column-name lib.tu/venues-query -1 aggregation-clause))
+  (lib/column-name lib.tu/venues-query -1 aggregation-clause))
 
 (deftest ^:parallel aggregation-names-test
   (are [aggregation-clause expected] (= expected
@@ -103,7 +102,7 @@
 ;;; make sure that given an existing query, the expected description was generated correctly.
 
 (defn- describe-legacy-query [query]
-  (lib.metadata.calculation/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
 
 (deftest ^:parallel describe-multiple-aggregations-test
   (let [query {:database (meta/id)
@@ -132,7 +131,7 @@
    (col-info-for-aggregation-clause query -1 clause))
 
   ([query stage clause]
-   (lib.metadata.calculation/metadata query stage clause)))
+   (lib/metadata query stage clause)))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
   (are [clause expected] (=? expected
@@ -201,7 +200,7 @@
 
 (deftest ^:parallel type-of-sum-test
   (is (= :type/BigInteger
-         (lib.metadata.calculation/type-of
+         (lib/type-of
           lib.tu/venues-query
           [:sum
            {:lib/uuid (str (random-uuid))}
@@ -229,7 +228,7 @@
         (is (= (condp = (first arg)
                  :field :type/BigInteger
                  :type/Integer)
-               (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))
+               (lib/type-of lib.tu/venues-query clause)))))))
 
 (deftest ^:parallel expression-ref-inside-aggregation-type-of-test
   (let [query (-> lib.tu/venues-query
@@ -611,7 +610,7 @@
                :name           "sum"
                :display-name   "Sum of Price"
                :lib/source     :source/aggregations}
-              (lib.metadata.calculation/metadata query (first (lib/aggregations-metadata query -1))))))))
+              (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
 
 (deftest ^:parallel count-aggregation-type-test
   (testing "Count aggregation should produce numeric columns"
@@ -632,7 +631,7 @@
     (is (=? {:stages [{:aggregation [[:var {} [:field {} (meta/id :venues :price)]]]}]}
             query))
     (is (= "Venues, Variance of Price"
-           (lib.metadata.calculation/describe-query query)))))
+           (lib/describe-query query)))))
 
 (deftest ^:parallel aggregation-ref-display-info-test
   (let [query  (-> lib.tu/venues-query
@@ -640,18 +639,18 @@
         ag-uuid (:lib/source-uuid (first (lib/aggregations-metadata query)))
         ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} ag-uuid]]
     (is (= :type/Float
-           (lib.metadata.calculation/type-of query ag-ref)))
+           (lib/type-of query ag-ref)))
     (is (= "Average of Price + 1"
-           (lib.metadata.calculation/display-name query ag-ref)))
+           (lib/display-name query ag-ref)))
     (is (=? {:lib/type        :metadata/column
              :lib/source      :source/aggregations
              :display-name    "Average of Price + 1"
              :effective-type  :type/Float
              :lib/source-uuid ag-uuid}
-            (lib.metadata.calculation/metadata query ag-ref)))
+            (lib/metadata query ag-ref)))
     (is (=? {:display-name   "Average of Price + 1"
              :effective-type :type/Float}
-            (lib.metadata.calculation/display-info query ag-ref)))))
+            (lib/display-info query ag-ref)))))
 
 (deftest ^:parallel aggregate-should-drop-invalid-parts
   (let [query (-> lib.tu/venues-query
@@ -720,7 +719,7 @@
               :lib/source-uuid          string?
               :lib/source-column-alias  "sum"
               :lib/desired-column-alias "sum"}]
-            (lib.metadata.calculation/returned-columns query)))))
+            (lib/returned-columns query)))))
 
 (deftest ^:parallel count-display-name-test
   (testing "#31255"
@@ -746,7 +745,7 @@
                   "query")
               (is (= [(expected (if field? :with-field :without-field))]
                      (map (partial lib/display-name query)
-                          (lib.metadata.calculation/returned-columns query)))
+                          (lib/returned-columns query)))
                   "display name"))))))))
 
 (deftest ^:parallel aggregation-name-from-previous-stage-test

@@ -7,16 +7,18 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -172,22 +174,32 @@
 
 (def ^:private ^{:arglists '([db-id])} database->driver*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[db-id]]
-                         [(mdb.connection/unique-identifier) db-id])}
-   (fn [db-id]
-     (t2/select-one-fn :engine 'Database, :id db-id))
+   (-> (mu/fn :- :keyword
+         [db-id :- ::lib.schema.id/database]
+         (qp.store/with-metadata-provider db-id
+           (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
+       (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
+                                            [(mdb.connection/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
-(defn database->driver
+(mu/defn database->driver :- :keyword
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  [database-or-id]
+  [database-or-id :- [:or
+                      {:error/message "Database or ID"}
+                      [:map
+                       [:engine [:or :keyword :string]]]
+                      [:map
+                       [:id ::lib.schema.id/database]]
+                      ::lib.schema.id/database]]
   (if-let [driver (:engine database-or-id)]
     ;; ensure we get the driver as a keyword (sometimes it's a String)
     (keyword driver)
-    (database->driver* (u/the-id database-or-id))))
+    (if (qp.store/initialized?)
+      (:engine (lib.metadata/database (qp.store/metadata-provider)))
+      (database->driver* (u/the-id database-or-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -208,7 +220,7 @@
              :when  (driver/available? driver)]
          driver)))
 
-(s/defn semantic-version-gte
+(mu/defn semantic-version-gte :- :boolean
   "Returns true if xv is greater than or equal to yv according to semantic versioning.
    xv and yv are sequences of integers of the form `[major minor ...]`, where only
    major is obligatory.
@@ -217,7 +229,8 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [su/IntGreaterThanOrEqualToZero] yv :- [su/IntGreaterThanOrEqualToZero]] :- s/Bool
+  [xv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]
+   yv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv
@@ -470,7 +483,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "exasol" "firebolt" "ocient" "starburst"})
+  #{"clickhouse" "exasol" "firebolt" "materialize" "ocient" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

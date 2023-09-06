@@ -440,14 +440,14 @@
     (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
       ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
       ;; temp DB will cause driver/normalize-db-details to fire
-      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
-                                    :engine  :bigquery-cloud-sdk,
-                                    :details {:dataset-id "my-dataset"
-                                              :service-account-json "{}"}}]
-                      Table    [table1 {:name "Table 1"
-                                        :db_id (u/the-id db)}]
-                      Table    [table2 {:name "Table 2"
-                                        :db_id (u/the-id db)}]]
+      (mt/with-temp [Database db {:name    "Legacy BigQuery DB"
+                                  :engine  :bigquery-cloud-sdk,
+                                  :details {:dataset-id "my-dataset"
+                                            :service-account-json "{}"}}
+                     Table    table1 {:name "Table 1"
+                                      :db_id (u/the-id db)}
+                     Table    table2 {:name "Table 2"
+                                      :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]

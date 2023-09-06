@@ -36,10 +36,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(use-fixtures :each (fn [thunk]
-                      (mt/with-log-level :fatal
-                        (thunk))))
-
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."

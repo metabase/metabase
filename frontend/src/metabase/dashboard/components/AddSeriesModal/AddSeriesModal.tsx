@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
-import {
+import type {
   Card,
   CardId,
   DashCardId,

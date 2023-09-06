@@ -5,7 +5,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -294,7 +294,7 @@
                                               (-> {:query "SELECT col1, col2 FROM my_tbl;"}
                                                   (mt/native-query)
                                                   (qp/process-query)
-                                                  (qp.test/rows-and-cols)))))]
+                                                  (qp.test-util/rows-and-cols)))))]
                   ;; check that some data can be queried
                   (check-data)
                   ;; kill the ssh tunnel; fortunately, we have an existing function that can do that

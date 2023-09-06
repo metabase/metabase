@@ -3,7 +3,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "metabase/common/hooks";
-import { Collection, DashboardId } from "metabase-types/api";
+import type { Collection, DashboardId } from "metabase-types/api";
 import {
   DashboardPickerContainer,
   DashboardPickerButton,

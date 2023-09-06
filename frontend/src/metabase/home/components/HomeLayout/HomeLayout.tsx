@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";

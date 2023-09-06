@@ -1,5 +1,14 @@
-import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import { getStylesRef, getSize, rem } from "@mantine/core";
+import type {
+  CheckboxStylesParams,
+  MantineTheme,
+  MantineThemeOverride,
+} from "@mantine/core";
 import { CheckboxIcon } from "./CheckboxIcon";
+
+const SIZES = {
+  md: rem(20),
+};
 
 export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
   Checkbox: {
@@ -7,71 +16,65 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       icon: CheckboxIcon,
       size: "md",
     },
-    styles: (theme: MantineTheme, params) => {
-      return {
-        root: {
-          marginBottom: theme.spacing.md,
+    styles: (
+      theme: MantineTheme,
+      { labelPosition }: CheckboxStylesParams,
+      { size = "md" },
+    ) => ({
+      root: {
+        [`&:has(.${getStylesRef("input")}:disabled)`]: {
+          [`.${getStylesRef("label")}`]: {
+            color: theme.colors.text[0],
+          },
+          [`.${getStylesRef("description")}`]: {
+            color: theme.colors.text[0],
+          },
+          [`.${getStylesRef("icon")}`]: {
+            color: theme.colors.text[0],
+          },
         },
-        label: {
-          fontWeight: 700,
-          color: theme.colors.text[2],
-          [`padding${params.labelPosition === "left" ? "Right" : "Left"}`]:
-            theme.spacing.sm,
-        },
-        input: {
-          borderRadius: theme.radius.xs,
+      },
+      inner: {
+        width: getSize({ size, sizes: SIZES }),
+        height: getSize({ size, sizes: SIZES }),
+      },
+      input: {
+        ref: getStylesRef("input"),
+        width: getSize({ size, sizes: SIZES }),
+        height: getSize({ size, sizes: SIZES }),
+        cursor: "pointer",
+        borderRadius: theme.radius.xs,
 
-          "&:focus": {
-            outline: `2px solid ${theme.colors.brand[1]}`,
-          },
-          "&:disabled": {
-            background: theme.colors.border[0],
-            border: 0,
-            "& + svg > *": {
-              fill: theme.colors.text[0],
-            },
-          },
-          cursor: "pointer",
-          ...(params.indeterminate && {
-            background: theme.colors.brand[1],
-            border: `1px solid ${theme.colors.brand[1]}`,
-          }),
-          transform: `scale(0.75)`,
-        },
-        icon: {
-          ...(params.indeterminate && {
-            "& > *": {
-              fill: theme.white,
-            },
-          }),
-        },
-      };
-    },
-  },
-  CheckboxGroup: {
-    defaultProps: {
-      size: "md",
-    },
-    styles: (theme: MantineTheme) => {
-      /* Note: we need the ':has' selector to target the space just
-       * above the first checkbox since we don't seem to have selector
-       * or a way to use params to detect whether group label/description
-       * exists. This is a bit of a hack, but it works. */
-
-      return {
-        label: {
-          fontWeight: 700,
-          color: theme.colors.text[2],
-          "&:has(+ .mantine-Checkbox-root)": {
-            marginBottom: theme.spacing.md,
+        "&:checked": {
+          borderColor: theme.colors.brand[1],
+          backgroundColor: theme.colors.brand[1],
+          [`.${getStylesRef("icon")}`]: {
+            color: theme.white,
           },
         },
-        description: {
-          "&:has(+ .mantine-Checkbox-root)": {
-            marginBottom: theme.spacing.md,
-          },
+        "&:disabled": {
+          borderColor: theme.colors.border[0],
+          backgroundColor: theme.colors.border[0],
         },
-      };
-    },
+      },
+      label: {
+        ref: getStylesRef("label"),
+        color: theme.colors.text[2],
+        fontSize: theme.fontSizes.md,
+        fontWeight: "bold",
+        lineHeight: theme.lineHeight,
+      },
+      description: {
+        ref: getStylesRef("description"),
+        color: theme.colors.text[2],
+        fontSize: theme.fontSizes.sm,
+        lineHeight: theme.lineHeight,
+        marginTop: theme.spacing.xs,
+      },
+      icon: {
+        ref: getStylesRef("icon"),
+        color: theme.colors.text[0],
+      },
+    }),
   },
 });

@@ -8,8 +8,8 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import * as Errors from "metabase/core/utils/errors";
-import { User } from "metabase-types/api";
-import { UserPasswordData } from "../../types";
+import type { User } from "metabase-types/api";
+import type { UserPasswordData } from "../../types";
 
 const USER_PASSWORD_SCHEMA = Yup.object({
   old_password: Yup.string().default("").required(Errors.required),

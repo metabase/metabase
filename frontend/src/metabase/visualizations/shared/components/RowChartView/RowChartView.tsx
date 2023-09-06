@@ -1,15 +1,17 @@
 import * as React from "react";
 import { Group } from "@visx/group";
-import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
+import type { AxisScale } from "@visx/axis";
+import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
 import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
-import { scaleBand, StringLike, NumberLike } from "@visx/scale";
-import { HoveredData } from "metabase/visualizations/shared/types/events";
-import { Margin } from "metabase/visualizations/shared/types/layout";
+import type { StringLike, NumberLike } from "@visx/scale";
+import { scaleBand } from "@visx/scale";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
+import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 
@@ -40,8 +42,11 @@ export interface RowChartViewProps<TDatum> {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
-  onHover?: (event: React.MouseEvent, bar: BarData<TDatum> | null) => void;
-  onClick?: (event: React.MouseEvent, bar: BarData<TDatum>) => void;
+  onHover?: (
+    event: React.MouseEvent<Element>,
+    bar: BarData<TDatum> | null,
+  ) => void;
+  onClick?: (event: React.MouseEvent<Element>, bar: BarData<TDatum>) => void;
 }
 
 const RowChartView = <TDatum,>({

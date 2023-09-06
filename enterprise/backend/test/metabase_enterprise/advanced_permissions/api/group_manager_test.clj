@@ -34,9 +34,9 @@
               (delete-group [user status group-manager?]
                 (testing (format ", delete group with %s user" (mt/user-descriptor user))
                   (let [user-id (u/the-id (if (keyword? user) (mt/fetch-user user) user))]
-                    (mt/with-temp*
-                      [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
-                       PermissionsGroupMembership [_ {:group_id group-id, :user_id user-id}]]
+                    (mt/with-temp
+                      [PermissionsGroup           {group-id :id} {:name "Test delete group"}
+                       PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
                       (when group-manager?
                         (t2/update! PermissionsGroupMembership {:user_id  user-id
                                                                 :group_id group-id}

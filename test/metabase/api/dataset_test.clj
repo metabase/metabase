@@ -18,8 +18,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -80,7 +80,7 @@
         (testing "\nAPI Response"
           (is (partial=
                {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                                          :native_form      true
                                          :results_timezone "UTC"}
                 :row_count              1
@@ -180,7 +180,7 @@
            (test-download-response-headers "dataset/csv")))
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
             "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.json\""
-            "Content-Type"        "application/json;charset=utf-8"
+            "Content-Type"        "application/json; charset=utf-8"
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
            (test-download-response-headers "dataset/json")))
@@ -466,8 +466,8 @@
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
-    (mt/with-temp* [Card [{card-id :id} {:database_id (mt/id)
-                                         :dataset_query (mt/mbql-query products)}]]
+    (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
+                                       :dataset_query (mt/mbql-query products)}]
       (let [parameter {:values_query_type "list",
                        :values_source_type "card",
                        :values_source_config {:card_id card-id,

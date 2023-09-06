@@ -1,7 +1,7 @@
 import { useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { msgid, ngettext } from "ttag";
-import { DatabaseUsageInfo } from "metabase-types/api";
+import type { DatabaseUsageInfo } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import { ConfirmationCheckbox } from "./ContentRemovalConfirmation.styled";
 

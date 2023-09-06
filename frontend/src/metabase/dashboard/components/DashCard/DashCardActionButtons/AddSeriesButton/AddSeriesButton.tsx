@@ -15,12 +15,11 @@ import {
 const { ICON_SIZE } = DashCardActionButton;
 
 function getSeriesIconName(series: Series) {
-  try {
-    const display = series[0].card.display;
-    return visualizations.get(display === "scalar" ? "bar" : display).iconName;
-  } catch (e) {
-    return "bar";
-  }
+  const display = series[0]?.card.display;
+  return (
+    visualizations.get(display === "scalar" ? "bar" : display)?.iconName ??
+    "bar"
+  );
 }
 
 function AddSeriesButton({

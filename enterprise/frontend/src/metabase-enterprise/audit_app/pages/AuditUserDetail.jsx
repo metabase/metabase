@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import EntityName from "metabase/entities/containers/EntityName";
+import { t } from "ttag";
+
+import { EntityName } from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
@@ -54,24 +56,24 @@ const AuditUserDownloadsTab = ({ userId }) => (
 );
 
 AuditUserDetail.tabs = [
-  { path: "activity", title: "Activity", component: AuditUserActivityTab },
+  { path: "activity", title: t`Activity`, component: AuditUserActivityTab },
   { path: "details", title: "Account details" },
   { path: "data_permissions", title: "Data permissions" },
   { path: "collection_permissions", title: "Collection permissions" },
   { path: "made_by", title: "Made by them" },
   {
     path: "query_views",
-    title: "Query views",
+    title: t`Query views`,
     component: AuditUserQueryViewsTab,
   },
   {
     path: "dashboard_views",
-    title: "Dashboard views",
+    title: t`Dashboard views`,
     component: AuditUserDashboardViewsTab,
   },
   {
     path: "downloads",
-    title: "Downloads",
+    title: t`Downloads`,
     component: AuditUserDownloadsTab,
   },
 ];

@@ -1,18 +1,10 @@
 import type {
-  Card,
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Dimension from "metabase-lib/Dimension";
-
-type OnChangeCardAndRunOpts = {
-  previousCard?: Card;
-  nextCard: Card;
-};
-
-export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ClickActionProps = {
   question: Question;
@@ -23,17 +15,14 @@ export type ClickActionProps = {
 
 export type DrillProps = Pick<ClickActionProps, "question" | "clicked">;
 
-type ClickActionCreator = (props: ClickActionProps) => ClickAction[];
-
-export interface QueryMode {
-  name: string;
-  drills: ClickActionCreator[];
-  fallback?: ClickActionCreator;
-}
-
 export interface ClickObjectDimension {
   value: RowValue;
   column: DatasetColumn;
+}
+
+export interface ClickObjectDataRow {
+  col: DatasetColumn | null; // can be null for custom columns
+  value: RowValue;
 }
 
 export interface ClickObject {
@@ -42,7 +31,7 @@ export interface ClickObject {
   dimensions?: ClickObjectDimension[];
   dimension?: Dimension; // used in table visualization for QuickFilterDrill
   event?: MouseEvent;
-  element?: HTMLElement;
+  element?: Element;
   seriesIndex?: number;
   settings?: Record<string, unknown>;
   origin?: {
@@ -50,17 +39,5 @@ export interface ClickObject {
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;
-  data?: {
-    col: DatasetColumn;
-    value: RowValue;
-  }[];
-}
-
-export interface ClickAction {
-  name: string;
-  title?: any; // React Element
-  section?: string;
-  icon?: string;
-  buttonType?: string;
-  default?: boolean;
+  data?: ClickObjectDataRow[];
 }

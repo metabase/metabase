@@ -1,4 +1,6 @@
-import React, { SVGAttributes, forwardRef } from "react";
+import type { SVGAttributes, MouseEvent } from "react";
+
+import { forwardRef } from "react";
 import isPropValid from "@emotion/is-prop-valid";
 import cx from "classnames";
 import Tooltip from "../Tooltip";
@@ -11,7 +13,7 @@ export interface IconProps extends SVGAttributes<SVGSVGElement> {
   name: IconName;
   size?: string | number;
   tooltip?: string | null;
-  onClick?: (event: React.MouseEvent<HTMLImageElement | SVGElement>) => void;
+  onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
   className?: string;
 }
 

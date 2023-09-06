@@ -43,7 +43,7 @@
 
 (nippy/extend-thaw :flatland/ordered-map
                    [data-input]
-                   (ordered-map/ordered-map-reader (nippy/thaw-from-in! data-input)))
+                   (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
 
 (defn- freeze!
   [^OutputStream os obj]
