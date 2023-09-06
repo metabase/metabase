@@ -327,6 +327,11 @@
 
 (declare canonicalize-mbql-clauses)
 
+(defn normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  [clause]
+  (-> clause normalize-tokens canonicalize-mbql-clauses))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]

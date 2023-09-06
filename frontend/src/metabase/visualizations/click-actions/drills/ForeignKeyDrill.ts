@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import { pluralize, singularize } from "metabase/lib/formatting/strings";
-import type { Drill } from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import {
   foreignKeyDrill,
   foreignKeyDrillQuestion,
 } from "metabase-lib/queries/drills/foreign-key-drill";
 
-const ForeignKeyDrill: Drill = ({ question, clicked }) => {
+const ForeignKeyDrill: LegacyDrill = ({ question, clicked }) => {
   const drill = foreignKeyDrill({ question, clicked });
   if (!drill) {
     return [];

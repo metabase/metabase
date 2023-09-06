@@ -34,4 +34,4 @@
   [_query _stage-number drill-thru]
   ;; Several drill-thrus are rendered as a fixed label for that type, with no reference to the column or value,
   ;; so the default is simply the drill-thru type.
-  (select-keys drill-thru [:type]))
+  (select-keys drill-thru [:type :display-name]))

@@ -1334,7 +1334,7 @@
              bindings)))))
 
 (deftest bind-dimensions-select-most-specific-test
-  (testing "When multiple dimensions are selected the most specific dimension is selected."
+  (testing "When multiple dimensions are candidates the most specific dimension is selected."
     (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity],
                         :score      100,
                         :matches    [{:semantic_type  :type/Quantity,
@@ -1345,29 +1345,61 @@
                                       :link           nil,
                                       :field_type     [:entity/GenericTable :type/Quantity],
                                       :score          100}]}}
-           (#'magic/bind-dimensions
-             {:source {:entity_type :entity/GenericTable
-                       :fields      [{:semantic_type  :type/Discount,
-                                      :name           "DISCOUNT"
-                                      :effective_type :type/Float
-                                      :base_type      :type/Float}
-                                     {:semantic_type  :type/Quantity,
-                                      :name           "QUANTITY"
-                                      :effective_type :type/Integer
-                                      :base_type      :type/Integer}]}
-              :tables [{:entity_type :entity/TransactionTable
-                        :fields      [{:semantic_type  :type/Discount,
-                                       :name           "DISCOUNT"
-                                       :effective_type :type/Float,
-                                       :display_name   "Discount"
-                                       :base_type      :type/Float}
-                                      {:semantic_type  :type/Quantity,
-                                       :name           "QUANTITY"
-                                       :effective_type :type/Integer
-                                       :display_name   "Quantity"
-                                       :base_type      :type/Integer}]}]}
-             [{"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
-              {"Quantity" {:field_type [:type/Quantity], :score 100}}])))))
+           (let [context        {:source {:entity_type :entity/GenericTable
+                                          :fields      [{:semantic_type  :type/Discount,
+                                                         :name           "DISCOUNT"
+                                                         :effective_type :type/Float
+                                                         :base_type      :type/Float}
+                                                        {:semantic_type  :type/Quantity,
+                                                         :name           "QUANTITY"
+                                                         :effective_type :type/Integer
+                                                         :base_type      :type/Integer}]}
+                                 :tables [{:entity_type :entity/TransactionTable
+                                           :fields      [{:semantic_type  :type/Discount,
+                                                          :name           "DISCOUNT"
+                                                          :effective_type :type/Float,
+                                                          :display_name   "Discount"
+                                                          :base_type      :type/Float}
+                                                         {:semantic_type  :type/Quantity,
+                                                          :name           "QUANTITY"
+                                                          :effective_type :type/Integer
+                                                          :display_name   "Quantity"
+                                                          :base_type      :type/Integer}]}]}
+                 dimension-defs [{"Quantity" {:field_type [:entity/GenericTable :type/Quantity], :score 100}}
+                                 {"Quantity" {:field_type [:type/Quantity], :score 100}}]]
+             (#'magic/bind-dimensions context dimension-defs))))))
+
+(deftest bind-dimensions-single-field-binding-subtleties-test
+  (testing "Fields are always bound to one and only one dimension."
+    (let [context        {:tables [{:entity_type :entity/GenericTable
+                                    :fields      [{:name "DISCOUNT" :base_type :type/Float}
+                                                  {:name "QUANTITY" :base_type :type/Float}
+                                                  {:name "Date" :base_type :type/Date}]}]}
+          dimension-defs [{"Date" {:field_type [:entity/GenericTable :type/Date], :score 100}}
+                          {"Profit" {:field_type [:entity/GenericTable :type/Float], :score 100}}
+                          {"Revenue" {:field_type [:entity/GenericTable :type/Float], :score 100}}
+                          {"Loss" {:field_type [:entity/GenericTable :type/Float], :score 100}}]]
+      (testing "All other things being equal, the bound dimension is the last one in the list.
+              It's also important to note that we will lose 2 of the 3 Float bindings even if we have a situation like:
+              - Chart 1: Revenue vs. Date
+              - Chart 2: Profit vs. Loss
+              In this situation, we only get the last bound dimension. Note that there is still a dimension selection
+              element downstream when choosing metrics (the ordinate dimension), but at this point these potential named
+              dimensions are lost as everything is bound to only one of the three."
+        (is (=? {"Date" {:matches [{:name "Date"}]}
+                 "Loss" {:matches [{:name "DISCOUNT"}
+                                   {:name "QUANTITY"}]}}
+                (#'magic/bind-dimensions context dimension-defs)))
+        (is (=? {"Date"   {:matches [{:name "Date"}]}
+                 "Profit" {:matches [{:name "DISCOUNT"}
+                                     {:name "QUANTITY"}]}}
+                (#'magic/bind-dimensions context
+                  (->> dimension-defs cycle (drop 2) (take 4)))))
+        (is (=? {"Date"    {:matches [{:name "Date"}]}
+                 "Revenue" {:matches [{:name "DISCOUNT"}
+                                      {:name "QUANTITY"}]}}
+                (#'magic/bind-dimensions context
+                  (->> dimension-defs cycle (drop 3) (take 4)))))))))
 
 
 (deftest candidate-binding-inner-shape-test
@@ -1766,3 +1798,54 @@
                                ["sum" ["dimension" "Discount"]]
                                ["sum" ["dimension" "Income"]]] :score 2}}
               {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}])))))
+
+;;; -------------------- make-cards and related (e.g. card-candidates) --------------------
+
+(deftest idk-test
+  (mt/dataset sample-dataset
+    (testing "A model with a single field that matches all potential bindings"
+      (let [source-query {:database (mt/id)
+                          :query    {:source-table (mt/id :people)
+                                     :fields       [(mt/id :people :latitude)]}
+                          :type     :query}]
+        (mt/with-temp
+          [Card card {:table_id        (mt/id :products)
+                      :dataset_query   source-query
+                      :result_metadata (mt/with-test-user
+                                         :rasta
+                                         (result-metadata-for-query
+                                           source-query))
+                      :dataset         true}]
+          (let [rule (some #(when (-> % :rule #{"GenericTable"}) %) (rules/get-rules ["table"]))
+                {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
+            (is (= #{"Lat"} (set (keys dimensions))))
+            (is (=? {"Lat" {:matches [{:id 1031, :name "LATITUDE"}]}} dimensions))
+            (is (=? {"Count" {:metric ["count"], :score 100},
+                     "CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]], :score 100},
+                     "Sum" {:metric ["sum" ["dimension" "GenericNumber"]], :score 100},
+                     "Avg" {:metric ["avg" ["dimension" "GenericNumber"]], :score 100}}
+                    metrics))
+            (is (= [["Count" {:metric ["count"], :score 100}]]
+                    (->> (seq metrics)
+                         (filter
+                           (fn [metric]
+                             (every? dimensions (rules/collect-dimensions metric)))))))
+
+            (#'magic/card-candidates
+              context
+              {:title      "Total transactions"
+               :metrics    ["Count"]
+               :dimensions [{"Lat" {}}]
+               :score      100})
+            ))))))
+
+{:dimensions    [{"Long" {}} {"Lat" {}}],
+ :metrics       ["Count"],
+ :visualization ["map" {}],
+ :width 6,
+ :title "By coordinates",
+ :score 80,
+ :height 8,
+ :group "Geographical"}
+
+(mapcat :cards (rules/get-rules ["table"]))
