@@ -21,7 +21,10 @@ import {
   filterWidget,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -48,7 +51,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
@@ -162,7 +165,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should not preserve query results when the question changes during navigation", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
