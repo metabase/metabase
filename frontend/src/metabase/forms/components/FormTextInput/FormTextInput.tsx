@@ -11,16 +11,11 @@ export interface FormTextInputProps
 }
 
 export const FormTextInput = forwardRef(function FormTextInput(
-  {
-    name,
-    nullable,
-    onChange: onChangeProp,
-    onBlur: onBlurProp,
-    ...props
-  }: FormTextInputProps,
+  { name, nullable, onChange, onBlur, ...props }: FormTextInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+  const [{ value }, { error, touched }, { setValue, setTouched }] =
+    useField(name);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -30,17 +25,17 @@ export const FormTextInput = forwardRef(function FormTextInput(
       } else {
         setValue(newValue);
       }
-      onChangeProp?.(event);
+      onChange?.(event);
     },
-    [nullable, setValue, onChangeProp],
+    [nullable, setValue, onChange],
   );
 
   const handleBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
-      onBlur(event);
-      onBlurProp?.(event);
+      setTouched(true);
+      onBlur?.(event);
     },
-    [onBlur, onBlurProp],
+    [setTouched, onBlur],
   );
 
   return (

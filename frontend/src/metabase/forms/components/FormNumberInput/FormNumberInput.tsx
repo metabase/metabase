@@ -11,16 +11,11 @@ export interface FormNumberInputProps
 }
 
 export const FormNumberInput = forwardRef(function FormNumberInput(
-  {
-    name,
-    nullable,
-    onChange: onChangeProp,
-    onBlur: onBlurProp,
-    ...props
-  }: FormNumberInputProps,
+  { name, nullable, onChange, onBlur, ...props }: FormNumberInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+  const [{ value }, { error, touched }, { setValue, setTouched }] =
+    useField(name);
 
   const handleChange = useCallback(
     (newValue: number | "") => {
@@ -29,17 +24,17 @@ export const FormNumberInput = forwardRef(function FormNumberInput(
       } else {
         setValue(newValue);
       }
-      onChangeProp?.(newValue);
+      onChange?.(newValue);
     },
-    [nullable, setValue, onChangeProp],
+    [nullable, setValue, onChange],
   );
 
   const handleBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
-      onBlur(event);
-      onBlurProp?.(event);
+      setTouched(true);
+      onBlur?.(event);
     },
-    [onBlur, onBlurProp],
+    [setTouched, onBlur],
   );
 
   return (

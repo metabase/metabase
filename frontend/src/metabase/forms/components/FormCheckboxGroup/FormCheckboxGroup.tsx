@@ -1,25 +1,25 @@
 import { forwardRef, useCallback } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
 import { Checkbox } from "metabase/ui";
-import type { CheckboxProps } from "metabase/ui";
+import type { CheckboxGroupProps } from "metabase/ui";
 
-export interface FormCheckboxProps
-  extends Omit<CheckboxProps, "value" | "error"> {
+export interface FormCheckboxGroupProps
+  extends Omit<CheckboxGroupProps, "value" | "error"> {
   name: string;
 }
 
-export const FormCheckbox = forwardRef(function FormCheckbox(
-  { name, onChange, onBlur, ...props }: FormCheckboxProps,
-  ref: Ref<HTMLInputElement>,
+export const FormCheckboxGroup = forwardRef(function FormCheckboxGroup(
+  { name, onChange, onBlur, children, ...props }: FormCheckboxGroupProps,
+  ref: Ref<HTMLDivElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
 
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setValue(event.target.checked);
-      onChange?.(event);
+    (newValue: string[]) => {
+      setValue(newValue);
+      onChange?.(newValue);
     },
     [setValue, onChange],
   );
@@ -33,13 +33,15 @@ export const FormCheckbox = forwardRef(function FormCheckbox(
   );
 
   return (
-    <Checkbox
+    <Checkbox.Group
       {...props}
       ref={ref}
-      checked={value ?? false}
+      value={value ?? []}
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-    />
+    >
+      {children}
+    </Checkbox.Group>
   );
 });
