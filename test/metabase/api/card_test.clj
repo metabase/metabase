@@ -1823,8 +1823,9 @@
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv?parameters=%s"
-                                                               (u/the-id card) encoded-params)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
+                                                               (u/the-id card))
+                                      :parameters encoded-params))))))))
 
 (deftest json-download-test
   (testing "no parameters"
@@ -1836,8 +1837,8 @@
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json?parameters=%s"
-                                                              (u/the-id card) encoded-params))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     :parameters encoded-params)))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -1852,16 +1853,14 @@
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      {:request-options {:as :byte-array}})))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx?parameters=%s"
-                                                               (u/the-id card) encoded-params)
-                                      {:request-options {:as :byte-array}}))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      :parameters encoded-params))))))))
 
 (deftest download-default-constraints-test
   (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database   (mt/id)
@@ -1912,7 +1911,7 @@
              (test-download-response-headers (format "card/%d/query/csv" (u/the-id card)))))
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.json\""
-              "Content-Type"        "application/json;charset=utf-8"
+              "Content-Type"        "application/json; charset=utf-8"
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/json" (u/the-id card)))))
