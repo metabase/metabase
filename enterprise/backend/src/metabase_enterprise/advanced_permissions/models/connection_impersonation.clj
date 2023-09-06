@@ -47,7 +47,7 @@
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (when (not= :impersonated changes)
+  (when (and changes (not= :impersonated changes))
     (log/debugf "Group %d %s for Database %d, deleting all Connection Impersonations for this DB"
                 group-id
                 (case changes
