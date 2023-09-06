@@ -71,9 +71,9 @@ describe.skip("issue 20049", () => {
 
   it("Filter should stop applying if mapped question parameter is changed (metabase#20049)", () => {
     cy.get("@questionId").then(questionId => {
-      updateQuestion(questionId);
+      updateQuestionParameterWidgetType(questionId);
       visitQuestion(questionId);
-      verifyParameterType("String does not contain");
+      verifyQuestionParameterType("String does not contain");
     });
 
     cy.get("@dashboardId").then(dashboardId => {
@@ -86,11 +86,12 @@ describe.skip("issue 20049", () => {
   });
 });
 
-function updateQuestion(questionId) {
+function updateQuestionParameterWidgetType(questionId) {
   const updatedNative = produce(questionDetails.native, draft => {
     draft["template-tags"][filterDetails.slug]["widget-type"] =
       "string/does-not-contain";
   });
+
   const updatedParameter = produce(
     questionDetails.native["template-tags"][filterDetails.slug],
     draft => {
@@ -111,7 +112,7 @@ function updateQuestion(questionId) {
   cy.request("PUT", `/api/card/${questionId}`, newQuestionDetails);
 }
 
-function verifyParameterType(type) {
+function verifyQuestionParameterType(type) {
   cy.findByTestId("query-builder-main").findByText("Open Editor").click();
   cy.icon("variable").click();
 
