@@ -293,8 +293,8 @@ export const fetchCardData = createThunkAction(
         parameterValues,
         parameterMappings: dashcard && dashcard.parameter_mappings,
         metadata,
-        dashcard
-    });
+        dashcard,
+      });
 
       if (!reload) {
         // if reload not set, check to see if the last result has the same query dict and return that
