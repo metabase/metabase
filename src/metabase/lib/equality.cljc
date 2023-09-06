@@ -1,4 +1,4 @@
-﻿(ns metabase.lib.equality
+(ns metabase.lib.equality
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
