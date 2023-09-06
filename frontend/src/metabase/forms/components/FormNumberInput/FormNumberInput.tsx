@@ -1,36 +1,35 @@
 import { forwardRef, useCallback } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { TextInput } from "metabase/ui";
-import type { TextInputProps } from "metabase/ui";
+import { NumberInput } from "metabase/ui";
+import type { NumberInputProps } from "metabase/ui";
 
-export interface FormTextInputProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormNumberInputProps
+  extends Omit<NumberInputProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
 }
 
-export const FormTextInput = forwardRef(function FormTextInput(
+export const FormNumberInput = forwardRef(function FormNumberInput(
   {
     name,
     nullable,
     onChange: onChangeProp,
     onBlur: onBlurProp,
     ...props
-  }: FormTextInputProps,
+  }: FormNumberInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const newValue = event.target.value;
+    (newValue: number | "") => {
       if (newValue === "") {
         setValue(nullable ? null : undefined);
       } else {
         setValue(newValue);
       }
-      onChangeProp?.(event);
+      onChangeProp?.(newValue);
     },
     [nullable, setValue, onChangeProp],
   );
@@ -44,7 +43,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
   );
 
   return (
-    <TextInput
+    <NumberInput
       {...props}
       ref={ref}
       name={name}
