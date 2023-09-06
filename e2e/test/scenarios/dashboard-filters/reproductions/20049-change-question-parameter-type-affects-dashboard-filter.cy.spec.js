@@ -33,6 +33,15 @@ const questionDetails = {
       },
     },
   },
+  parameters: [
+    {
+      id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+      type: "string/contains",
+      target: ["dimension", ["template-tag", "category"]],
+      name: "Category",
+      slug: "category",
+    },
+  ],
 };
 
 const dashboardDetails = {
@@ -92,13 +101,9 @@ function updateQuestionParameterWidgetType(questionId) {
       "string/does-not-contain";
   });
 
-  const updatedParameter = produce(
-    questionDetails.native["template-tags"][filterDetails.slug],
-    draft => {
-      draft.target = ["dimension", ["template-tag", "category"]];
-      draft.type = "string/does-not-contain";
-    },
-  );
+  const updatedParameter = produce(questionDetails.parameters[0], draft => {
+    draft.type = "string/does-not-contain";
+  });
 
   const newQuestionDetails = {
     dataset_query: {
