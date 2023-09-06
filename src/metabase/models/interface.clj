@@ -194,15 +194,10 @@
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
-(def normalize-field-ref
-  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
-  (comp #'mbql.normalize/canonicalize-mbql-clauses
-        #'mbql.normalize/normalize-tokens))
-
 (def transform-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."

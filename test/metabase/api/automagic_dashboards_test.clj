@@ -393,18 +393,19 @@
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
               (cards-have-filters? (:ordered_cards dash) pk-filters))))))
-    (letfn [(l [x] (u/lower-case-en x))
-            (by-id [cols col-name] (or (some (fn [col] (when (= (l (:name col)) (l col-name))
-                                                         col))
-                                             cols)
-                                       (throw (ex-info (str "could not find column " col-name)
-                                                       {:name    col-name
-                                                        :present (map :name cols)}))))
-            (annotating [cols ref f]
-              (map (fn [{:keys [field_ref] :as col}]
-                     (if (= ref field_ref) (f col) col))
-                   cols))]
-      (testing "X-ray a native model"
+    (testing "X-ray a native model"
+      (letfn [(lower [x] (u/lower-case-en x))
+              (by-id [cols col-name] (or (some (fn [col]
+                                                 (when (= (lower (:name col)) (lower col-name))
+                                                   col))
+                                               cols)
+                                         (throw (ex-info (str "could not find column " col-name)
+                                                         {:name    col-name
+                                                          :present (map :name cols)}))))
+              (annotating [cols ref f]
+                (map (fn [{:keys [field_ref] :as col}]
+                       (if (= ref field_ref) (f col) col))
+                     cols))]
         (let [query           (mt/native-query {:query "select * from products"})
               results-meta    (->> (qp/process-userland-query query)
                                    :data :results_metadata :columns)

@@ -332,7 +332,7 @@
   [metadata]
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
+      (m/update-existing :field_ref normalize-field-ref)
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query
@@ -414,6 +414,10 @@
         (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
+
+(def normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  (comp canonicalize-mbql-clauses normalize-tokens))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
