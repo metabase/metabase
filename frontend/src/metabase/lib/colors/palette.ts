@@ -18,7 +18,7 @@ export const colors = {
   accent6: "#98D9D9",
   accent7: "#7172AD",
   "admin-navbar": "#7172AD",
-  white: "#FFFFFF",
+  white: "#FFFFFE",
   black: "#2E353B",
   success: "#84BB4C",
   danger: "#ED6E6E",
