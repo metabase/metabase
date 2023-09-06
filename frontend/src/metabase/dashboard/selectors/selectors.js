@@ -42,6 +42,8 @@ export const getIsRunning = state =>
 export const getIsLoadingComplete = state =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
+export const thisIsATest = state => !!state;
+
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getLoadingEndTime = state =>
