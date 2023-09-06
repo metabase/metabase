@@ -4,7 +4,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -30,8 +30,8 @@
        (let [[_field _opts id-or-name] a-ref]
          (if (integer? id-or-name)
            (= id-or-name (:id column))
-           (and (if-let [join-alias (lib.join/current-join-alias a-ref)]
-                  (= join-alias (lib.join/current-join-alias column))
+           (and (if-let [join-alias (lib.join.util/current-join-alias a-ref)]
+                  (= join-alias (lib.join.util/current-join-alias column))
                   true)
                 (= id-or-name (:lib/source-column-alias column)))))))
 
