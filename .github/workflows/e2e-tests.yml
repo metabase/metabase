@@ -46,7 +46,8 @@ jobs:
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.e2e_specs == 'true'
+      needs.files-changed.outputs.e2e_specs == 'true' &&
+      needs.files-changed.outputs.e2e_all != 'true'
     strategy:
       matrix:
         edition: [oss, ee]
