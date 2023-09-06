@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      static_viz: ${{ steps.static_viz.outputs.static_viz}}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
@@ -30,6 +31,12 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@v2.11.1
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
 
   be-linter-cloverage:
     needs: files-changed
@@ -54,7 +61,7 @@ jobs:
 
   be-linter-clj-kondo:
     needs: files-changed
-    if: needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
@@ -112,7 +119,7 @@ jobs:
 
   be-linter-eastwood:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -129,7 +136,7 @@ jobs:
   # test runs at all times to give them an early warning sign is something is broken.
   be-tests-java-11-ee-pre-check:
     needs: files-changed
-    if: github.event.pull_request.draft == true && needs.files-changed.outputs.backend_all == 'true'
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 60
@@ -162,7 +169,7 @@ jobs:
 
   be-tests:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 60
@@ -203,7 +210,7 @@ jobs:
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.backend_all == 'false'
+      (needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.static_viz == 'false')
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 5
@@ -220,7 +227,7 @@ jobs:
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
@@ -241,7 +248,7 @@ jobs:
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.backend_all == 'false'
+      (needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.static_viz == 'false')
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
