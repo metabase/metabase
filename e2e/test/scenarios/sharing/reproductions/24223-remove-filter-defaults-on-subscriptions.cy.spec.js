@@ -28,6 +28,9 @@ describeEE("issue 24223", () => {
       .click()
       .type(`${admin.first_name} ${admin.last_name}{enter}`)
       .blur(); // blur is needed to close the popover
+
+    cy.wait(500); // we need to wait here for some reason for CI to pass
+
     cy.findAllByText("Doohickey")
       .last()
       .closest("fieldset")
