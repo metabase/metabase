@@ -76,14 +76,18 @@ export const SearchResults = ({
 
   const hasResults = list.length > 0;
 
-  return isLoading ? (
-    <Stack p="xl" align="center">
-      <Loader size="lg" />
-      <Text size="xl" color="text.0">
-        {t`Loading…`}
-      </Text>
-    </Stack>
-  ) : (
+  if (isLoading) {
+    return (
+      <Stack p="xl" align="center">
+        <Loader size="lg" />
+        <Text size="xl" color="text.0">
+          {t`Loading…`}
+        </Text>
+      </Stack>
+    );
+  }
+
+  return (
     <ul data-testid="search-results-list">
       {hasResults ? (
         list.map((item, index) => {
