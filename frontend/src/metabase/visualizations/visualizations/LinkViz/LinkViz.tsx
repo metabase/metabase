@@ -10,7 +10,6 @@ import type {
   DashboardOrderedCard,
   LinkCardSettings,
   SearchModelType,
-  UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -75,7 +74,7 @@ function LinkVizInner({
   const handleLinkChange = (newLink: string) =>
     onUpdateVisualizationSettings({ link: { url: newLink } });
 
-  const handleEntitySelect = (entity: UnrestrictedLinkEntity) => {
+  const handleEntitySelect = (entity: WrappedUnrestrictedLinkEntity) => {
     onUpdateVisualizationSettings({
       link: {
         entity: {

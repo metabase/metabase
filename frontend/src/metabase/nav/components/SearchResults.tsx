@@ -1,7 +1,7 @@
-import type { LegacyRef } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
+import { useDebounce } from "react-use";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { EmptyStateContainer } from "metabase/nav/components/SearchResults.styled";
@@ -15,8 +15,7 @@ import { useSearchListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import Search from "metabase/entities/search";
 import { Loader, Text, Stack } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
-import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
+import type { CollectionItem, SearchModelType } from "metabase-types/api";
 
 type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
@@ -36,7 +35,8 @@ export const SearchResults = ({
   const dispatch = useDispatch();
 
   const [debouncedSearchText, setDebouncedSearchText] = useState(searchText);
-  useDebouncedEffect(
+
+  useDebounce(
     () => {
       setDebouncedSearchText(searchText);
     },
@@ -49,7 +49,7 @@ export const SearchResults = ({
       q: debouncedSearchText,
       limit: DEFAULT_SEARCH_LIMIT,
       ...searchFilters,
-      models: models || searchFilters.type,
+      models: models ?? searchFilters.type,
     }),
     [debouncedSearchText, searchFilters, models],
   );
@@ -59,7 +59,10 @@ export const SearchResults = ({
     reload: true,
   });
 
-  const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
+  const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
+    CollectionItem,
+    HTMLLIElement
+  >({
     list,
     onEnter: onEntitySelect
       ? item => onEntitySelect(Search.wrapEntity(item, dispatch))
@@ -76,7 +79,7 @@ export const SearchResults = ({
   return isLoading ? (
     <Stack p="xl" align="center">
       <Loader size="lg" />
-      <Text color="dimmed" size="xl">
+      <Text size="xl" color="text.0">
         {t`Loading…`}
       </Text>
     </Stack>
@@ -89,7 +92,7 @@ export const SearchResults = ({
             onEntitySelect && (isIndexedEntity || forceEntitySelect)
               ? onEntitySelect
               : undefined;
-          const ref = getRef(item) as LegacyRef<HTMLLIElement> | undefined;
+          const ref = getRef(item);
           const wrappedResult = Search.wrapEntity(item, dispatch);
 
           return (
