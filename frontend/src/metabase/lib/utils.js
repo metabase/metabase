@@ -149,30 +149,25 @@ const MetabaseUtils = {
       rc: -1,
     };
 
-    const padRightWithZeros = (array, minLength = 4) => {
-      return Array.from({ length: minLength }).map((_, i) => array[i] || 0);
-    };
+    const regex =
+      /v?(?<ossOrEE>\d+)\.?(?<major>\d+)\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+    const {
+      ossOrEE,
+      major = 0,
+      minor = 0,
+      patch = 0,
+      label,
+      build = 0,
+    } = regex.exec(version).groups;
 
-    const [versionNumbers, labels = []] =
-      // v1.2.3-BETA1
-      version
-        .toLowerCase()
-        // v1.2.3-beta1
-        .replace(/^v/, "")
-        // 1.2.3-beta1
-        .split("-")
-        // ['1.2.3', 'beta1']
-        .map(
-          substring =>
-            substring
-              .split(/[.-]*([0-9]+)[.-]*/)
-              .filter(c => c)
-              // [["1", "2", "3",] ["beta", "1"]]
-              .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10)),
-          // [[1, 2, 3,] [-2, 1]]
-        );
-
-    return [...padRightWithZeros(versionNumbers), ...labels];
+    return [
+      ossOrEE,
+      major,
+      minor,
+      patch,
+      SPECIAL_COMPONENTS[label?.toLowerCase()] ?? 0,
+      build,
+    ].map(part => parseInt(part, 10));
   },
 
   /**
