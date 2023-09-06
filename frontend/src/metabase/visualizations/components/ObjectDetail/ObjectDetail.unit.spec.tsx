@@ -29,9 +29,16 @@ import ObjectDetail from "./ObjectDetail";
 
 const PRODUCTS_TABLE = createProductsTable();
 const ORDERS_TABLE = createOrdersTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
+});
 const REVIEWS_TABLE = createReviewsTable();
 
-function setup() {
+interface SetupOpts {
+  hideOrdersTable?: boolean;
+}
+
+function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupDatabasesEndpoints([]);
   setupActionsEndpoints([]);
   const productsId = findField(PRODUCTS_TABLE.fields, "ID");
@@ -58,7 +65,11 @@ function setup() {
   const ROW_ID_INDEX = 0;
   const state = createMockState({
     entities: createMockEntitiesState({
-      tables: [PRODUCTS_TABLE, ORDERS_TABLE, REVIEWS_TABLE],
+      tables: [
+        PRODUCTS_TABLE,
+        hideOrdersTable ? HIDDEN_ORDERS_TABLE : ORDERS_TABLE,
+        REVIEWS_TABLE,
+      ],
     }),
     qb: createMockQueryBuilderState({
       card: createMockCard({
@@ -131,14 +142,25 @@ function findField(fields: Field[] | undefined, name: string): Field {
 }
 
 describe("ObjectDetail", () => {
-  it("should render", async () => {
+  it("should render foreign key count when no table is hidden", async () => {
     setup();
 
     expect(
+      await screen.findByText(getBrokenUpTextMatcher("8Reviews")),
+    ).toBeInTheDocument();
+    expect(
       await screen.findByText(getBrokenUpTextMatcher("93Orders")),
     ).toBeInTheDocument();
+  });
+
+  it("should render only foreign key count for foreign keys that their tables are not hidden (metabase#32654)", async () => {
+    setup({ hideOrdersTable: true });
+
     expect(
       await screen.findByText(getBrokenUpTextMatcher("8Reviews")),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(getBrokenUpTextMatcher("93Orders")),
+    ).not.toBeInTheDocument();
   });
 });
