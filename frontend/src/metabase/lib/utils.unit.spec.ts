@@ -10,7 +10,7 @@ describe("utils", () => {
   });
 
   describe("compareVersions", () => {
-    it("should compare versions correctly", () => {
+    it("should sort an array of versions when passed to `.sort`", () => {
       const expected = [
         "0.0.9",
         "0.0.10-snapshot",
