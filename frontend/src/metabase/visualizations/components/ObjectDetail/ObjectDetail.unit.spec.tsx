@@ -154,7 +154,7 @@ describe("ObjectDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render only foreign key count for foreign keys that their tables are not hidden (metabase#32654)", async () => {
+  it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
     setup({ hideOrdersTable: true });
 
     expect(
