@@ -1,7 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
-import { entityTypeForObject } from "metabase/lib/schema";
+import { entityForObject } from "metabase/lib/schema";
 
 import { ObjectUnionSchema } from "metabase/schema";
 
@@ -94,8 +94,7 @@ export default createEntity({
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
-    const entities = require("metabase/entities");
-    const entity = entities[entityTypeForObject(object)];
+    const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
     } else {
@@ -104,6 +103,72 @@ export default createEntity({
     }
   },
 
+  objectActions: {
+    setArchived: (object, archived) => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        if (entity) {
+          return dispatch(entity.actions.setArchived(object, archived));
+        } else {
+          console.warn("Couldn't find entity for object", object);
+          return object;
+        }
+      };
+    },
+
+    delete: object => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        if (entity) {
+          return dispatch(entity.actions.delete(object));
+        } else {
+          console.warn("Couldn't find entity for object", object);
+          return object;
+        }
+      };
+    },
+  },
+
+  objectSelectors: {
+    setArchived: (object, archived) => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        if (entity) {
+          return dispatch(entity.actions.setArchived(object, archived));
+        } else {
+          console.warn("Couldn't find entity for object", object);
+          return object;
+        }
+      };
+    },
+
+    delete: object => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        if (entity) {
+          return dispatch(entity.actions.delete(object));
+        } else {
+          console.warn("Couldn't find entity for object", object);
+          return object;
+        }
+      };
+    },
+
+    getName: object => {
+      const entity = entityForObject(object);
+      return entity?.objectSelectors?.getName?.(object) ?? object?.name;
+    },
+
+    getColor: object => {
+      const entity = entityForObject(object);
+      return entity?.objectSelectors?.getColor?.(object) ?? null;
+    },
+
+    getIcon: object => {
+      const entity = entityForObject(object);
+      return entity?.objectSelectors?.getIcon?.(object) ?? null;
+    },
+  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (

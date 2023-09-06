@@ -67,6 +67,7 @@ export interface CollectionItem {
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
+  type?: string;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
@@ -74,13 +75,6 @@ export interface CollectionItem {
   setCollection?: (collection: Collection) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
-
-export type EntityWrappedCollectionItem = CollectionItem & {
-  type?: string;
-  getName: () => string;
-  getColor: () => string;
-  delete?: () => void;
-};
 
 export interface CollectionListQuery {
   archived?: boolean;
