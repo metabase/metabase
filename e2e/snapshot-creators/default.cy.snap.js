@@ -288,8 +288,17 @@ function getDefaultInstanceData() {
     instanceData.questions = cards;
   });
 
-  cy.request("/api/dashboard").then(({ body: dashboards }) => {
-    instanceData.dashboards = dashboards;
+  cy.request("/api/dashboard").then(async ({ body: dashboards }) => {
+    instanceData.dashboards = [];
+    // we need to hydrate the dashcards on each dashboard
+    for (const dashboard of dashboards) {
+      // this doesn't work with Promise.all because cypress request has fake promises
+      cy.request(`/api/dashboard/${dashboard.id}`).then(
+        ({ body: fullDashboard }) => {
+          instanceData.dashboards.push(fullDashboard);
+        },
+      );
+    }
   });
 
   cy.request("/api/user").then(({ body: { data: users } }) => {
