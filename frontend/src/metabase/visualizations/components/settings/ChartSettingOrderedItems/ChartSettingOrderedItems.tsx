@@ -5,8 +5,7 @@ import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
-
-import ColumnItem from "./ColumnItem";
+import { ColumnItem } from "../ColumnItem";
 
 interface SortableItem {
   enabled: boolean;
@@ -15,7 +14,7 @@ interface SortableItem {
 
 interface SortableColumnFunctions<T> {
   onRemove?: (item: T) => void;
-  onEdit?: (item: T, targetElement?: HTMLElement) => void;
+  onEdit?: (item: T, targetElement: HTMLElement) => void;
   onClick?: (item: T) => void;
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
@@ -46,15 +45,17 @@ const SortableColumn = SortableElement(function SortableColumn<
       title={getItemName(item)}
       onEdit={
         onEdit
-          ? (targetElement?: HTMLElement) => onEdit(item, targetElement)
-          : null
+          ? (targetElement: HTMLElement) => onEdit(item, targetElement)
+          : undefined
       }
-      onRemove={onRemove && item.enabled ? () => onRemove(item) : null}
-      onClick={onClick ? () => onClick(item) : null}
-      onAdd={onAdd ? () => onAdd(item) : null}
-      onEnable={onEnable && !item.enabled ? () => onEnable(item) : null}
+      onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
+      onClick={onClick ? () => onClick(item) : undefined}
+      onAdd={onAdd ? () => onAdd(item) : undefined}
+      onEnable={onEnable && !item.enabled ? () => onEnable(item) : undefined}
       onColorChange={
-        onColorChange ? (color: string) => onColorChange(item, color) : null
+        onColorChange
+          ? (color: string) => onColorChange(item, color)
+          : undefined
       }
       color={item.color}
       draggable={!isDragDisabled}

@@ -41,6 +41,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       color("bg-medium"),
       color("bg-dark"),
     ]),
+    success: getThemeColors([color("success")]),
     error: getThemeColors([color("error")]),
   },
   primaryColor: "brand",
