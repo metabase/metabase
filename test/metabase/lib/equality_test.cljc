@@ -193,149 +193,23 @@
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
 
-(deftest ^:parallel find-closest-matches-for-refs-test
-  (are [needles haystack expected] (= expected
-                                      (lib.equality/find-closest-matches-for-refs needles haystack))
-    ;; strict matching
-    [[:field {} 3]
-     [:field {} 1]]
-    [[:field {} 1]
-     [:field {} 2]
-     [:field {} 3]]
-    {[:field {} 3] 0
-     [:field {} 1] 1}
-
-    [[:field {:base-type :type/Integer} "foo"]]
-    [[:field {:base-type :type/Number}  "foo"]
-     [:field {:base-type :type/Integer} "foo"]]
-    {[:field {:base-type :type/Integer} "foo"] 0}
-
-    [[:field {:join-alias "J"} 1]]
-    [[:field {:join-alias "I"} 1]
-     [:field {:join-alias "J"} 1]]
-    {[:field {:join-alias "J"} 1] 0}
-
-    ;; if no strict match, should ignore type info and return first match
-    ;; note that the key of the returned map is the *original* haystack value
-    [[:field {:base-type :type/Float} 1]]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 2]]
-    {[:field {:base-type :type/Number} 1] 0}
-
-    ;; if no exact match, ignore :join-alias
-    [[:field {} 1]]
-    [[:field {:join-alias "J"} 1]
-     [:field {:join-alias "J"} 2]]
-    {[:field {:join-alias "J"} 1] 0}
-
-    ;; ignore binning altogether if we need to.
-    [[:field {:base-type :type/Float
-             :binning   {:strategy :bin-width, :bin-width 20}
-             :lib/uuid  "ead5b63d-a326-4fab-bacb-69e1b08f807d"}
-     "People__LONGITUDE"]]
-    [[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
-              :base-type      :type/Float
-              :effective-type :type/Float}
-      "People__LONGITUDE"]]
-    {[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
-             :base-type      :type/Float
-             :effective-type :type/Float}
-     "People__LONGITUDE"] 0}
-
-    ;; failed to match - ran out of transformations
-    [[:field {} 1]]
-    [[:field {:join-alias "J"} 2]
-     [:field {:join-alias "J"} 3]]
-    {}))
-
-(deftest ^:parallel find-closest-matching-ref-test
-  (are [needle haystack expected] (= expected
-                                     (lib.equality/find-closest-matching-ref needle haystack))
-    ;; strict matching
-    [:field {} 3]
-    [[:field {} 1]
-     [:field {} 2]
-     [:field {} 3]]
-    [:field {} 3]
-
-    [:field {:base-type :type/Integer} 1]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
-    [:field {:base-type :type/Integer} 1]
-
-    [:field {:join-alias "J"} 1]
-    [[:field {:join-alias "I"} 1]
-     [:field {:join-alias "J"} 1]]
-    [:field {:join-alias "J"} 1]
-
-    ;; if no strict match, should ignore type info and return first match
-    ;; note that the key of the returned map is the *original* haystack value
-    [:field {:base-type :type/Float} 1]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 2]]
-    [:field {:base-type :type/Number} 1]
-
-    ;; if no exact match, ignore :join-alias
-    [:field {} 1]
-    [[:field {:join-alias "J"} 1]
-     [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]
-
-    ;; failed to match - ran out of transformations
-    [:field {} 1]
-    [[:field {:join-alias "J"} 2]
-     [:field {:join-alias "J"} 3]]
-    nil))
-
-(deftest ^:parallel find-closest-matches-for-refs-4-arity-test
-  (is (= {[:field {} "CATEGORY"] 0
-          [:field {} "ID"]       1}
-         (lib.equality/find-closest-matches-for-refs
-           (lib/query meta/metadata-provider (meta/table-metadata :products))
-           -1
-          [[:field {} (meta/id :products :category)]
-           [:field {} "ID"]
-           [:field {} "NAME"]]
-          [[:field {} "ID"]
-           [:field {} "CATEGORY"]]
-          {}))))
-
-(deftest ^:parallel find-closest-matching-ref-4-arity-test
-  (is (= [:field {} "CATEGORY"]
-         (lib.equality/find-closest-matching-ref
-          (lib/query meta/metadata-provider (meta/table-metadata :products))
-          -1
-          [:field {} (meta/id :products :category)]
-          [[:field {} "ID"]
-           [:field {} "CATEGORY"]])))
-  (is (= nil
-         (lib.equality/find-closest-matching-ref
-          (lib/query meta/metadata-provider (meta/table-metadata :products))
-          -1
-           [:field {} (meta/id :products :title)]
-           [[:field {} "ID"]
-            [:field {} "CATEGORY"]])))
-  (is (= [:field {} "ID"]
-         (lib.equality/find-closest-matching-ref
-          (lib/query meta/metadata-provider (meta/table-metadata :products))
-          -1
-          [:field {} "ID"]
-          [[:field {} "ID"]
-           [:field {} "CATEGORY"]]))))
-
-(deftest ^:parallel find-closest-matching-ref-ignore-temporal-unit-test
-  (testing "Should find a matching ref ignoring :temporal-unit if needed (#32920)"
-    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          needle   (-> (meta/field-metadata :orders :created-at)
-                       (lib/with-temporal-bucket :month)
-                       lib/ref)
-          haystack (mapv lib/ref (lib.metadata.calculation/returned-columns query))]
+(deftest ^:parallel ignore-temporal-unit-test
+  (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        column   (meta/field-metadata :orders :created-at)
+        needle   (-> column
+                     (lib/with-temporal-bucket :month)
+                     lib/ref)
+        haystack (lib.metadata.calculation/returned-columns query)]
+    (testing "Should find a matching column ignoring :temporal-unit if needed (#32920)"
+      (is (=? column
+              (lib.equality/find-matching-column needle haystack))))
+    (testing "Should find a matching ref ignoring :temporal-unit if needed (#32920)"
       (is (=? [:field
                {:lib/uuid       string?
                 :base-type      :type/DateTimeWithLocalTZ
                 :effective-type :type/DateTimeWithLocalTZ}
                (meta/id :orders :created-at)]
-              (lib.equality/find-closest-matching-ref needle haystack))))))
+              (lib.equality/find-matching-ref column (map lib/ref haystack)))))))
 
 (deftest ^:parallel mark-selected-columns-ignore-temporal-unit-test
   (testing "Mark columns selected even if they have a :temporal-unit (#32920)"
@@ -358,8 +232,8 @@
              (mapv #(select-keys % [:name :selected?])
                    (lib.equality/mark-selected-columns query -1 cols selected)))))))
 
-(deftest ^:parallel closest-matching-metadata-test
-  (testing "closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
+(deftest ^:parallel find-matching-column
+  (testing "find-matching-column should find columns based on matching ID (#31482) (#33453)"
     (let [query (lib/append-stage lib.tu/query-with-join)
           cols  (lib/returned-columns query)
           refs  (map lib.ref/ref cols)
@@ -373,26 +247,22 @@
                [:field {} "Cat__ID"]     ; 6
                [:field {} "Cat__NAME"]]  ; 7
               refs))
-      (testing "find-closest-matching-ref actually finds the wrong ref here! This is venues.name, not categories.name!!!"
-        (is (=? [:field {} "NAME"]
-                (lib.equality/find-closest-matching-ref query -1 a-ref refs))))
-      (testing "... closest-matching-metadata finds the correct metadata, categories.name!!!"
-        (is (= (nth cols 7)
-               (lib.equality/closest-matching-metadata a-ref cols)
-               (lib.equality/closest-matching-metadata query -1 a-ref cols)))))))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column a-ref cols)
+             (lib.equality/find-matching-column query -1 a-ref cols))))))
 
-(deftest ^:parallel closest-matching-metadata-aggregation-test
+(deftest ^:parallel find-matching-column-aggregation-test
   (let [query (-> lib.tu/venues-query
                   (lib/aggregate (lib/count)))
         [ag]  (lib/aggregations query)]
     (is (=? {:display-name "Count", :lib/source :source/aggregations}
-            (lib.equality/closest-matching-metadata
+            (lib.equality/find-matching-column
              [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
              (lib/returned-columns query))))))
 
-(deftest ^:parallel closest-matching-metadata-expression-test
+(deftest ^:parallel find-matching-column-expression-test
   (is (=? {:name "expr", :lib/source :source/expressions}
-          (lib.equality/closest-matching-metadata
+          (lib.equality/find-matching-column
            [:expression {:lib/uuid (str (random-uuid))} "expr"]
            (lib/visible-columns lib.tu/query-with-expression)))))
 

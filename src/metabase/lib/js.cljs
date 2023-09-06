@@ -488,8 +488,7 @@
   (let [stage          (lib.util/query-stage a-query stage-number)
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns
-                a-query stage-number vis-columns ret-columns {:keep-join? true}))))
+    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."

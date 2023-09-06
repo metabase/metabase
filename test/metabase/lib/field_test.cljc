@@ -1056,6 +1056,12 @@
           implied-query    (lib/add-field query -1 (first implicit-columns))]
       (is (= (map #(dissoc % :selected?) table-columns)
              (lib/returned-columns query)))
+
+      (testing "attaching the implicitly joined field should alter the query"
+        (is (not= query implied-query))
+        (is (nil? (lib.equality/find-matching-ref (first implicit-columns)
+                                                  (map lib/ref (lib/returned-columns query))))))
+
       (testing "with no :fields set does nothing"
         (is (=? query
                 (lib/remove-field query -1 (first implicit-columns)))))
