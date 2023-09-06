@@ -1,6 +1,4 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
-import { isActionDashCard } from "metabase/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
 import Question from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
@@ -13,6 +11,8 @@ import {
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
+import { isVirtualDashCard } from "../../dashboard/utils";
+import { isActionDashCard } from "../../actions/utils";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
@@ -66,7 +66,7 @@ export function getParameterMappingOptions(
   }
 
   if (isActionDashCard(dashcard)) {
-    const actionParams = dashcard?.action?.parameters?.map(param => ({
+    const actionParams = dashcard.action?.parameters?.map(param => ({
       icon: "variable",
       isForeign: false,
       name: param.id,

@@ -2,7 +2,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import Utils from "metabase/lib/utils";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getParameterMappingOptions } from "metabase-lib/parameters/utils/mapping-options";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy

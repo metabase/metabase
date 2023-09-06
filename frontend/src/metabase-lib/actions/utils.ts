@@ -1,4 +1,9 @@
-import type { WritebackAction } from "metabase-types/api";
+import type {
+  ActionDashboardCard,
+  BaseDashboardOrderedCard,
+  Card,
+  WritebackAction,
+} from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Database from "metabase-lib/metadata/Database";
 
@@ -25,3 +30,12 @@ export const canArchiveAction = (action: WritebackAction, model: Question) => {
 
   return action.type !== "implicit" && canEditAction(action, model);
 };
+
+export function isActionDashCard(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as Card);
+}
+
+export const isActionCard = (card: Card) => card?.display === "action";

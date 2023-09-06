@@ -4,11 +4,8 @@ import * as Yup from "yup";
 import * as Errors from "metabase/core/utils/errors";
 
 import type {
-  ActionDashboardCard,
   ActionFormOption,
   ActionFormSettings,
-  BaseDashboardOrderedCard,
-  Card,
   FieldType,
   FieldSettings,
   FieldSettingsMap,
@@ -23,6 +20,7 @@ import type {
 
 import { TYPE } from "metabase-lib/types/constants";
 import type Field from "metabase-lib/metadata/Field";
+export { isActionDashCard, isActionCard } from "metabase-lib/actions/utils";
 
 import type {
   ActionFormProps,
@@ -150,15 +148,6 @@ export function isSavedAction(
 ): action is WritebackAction {
   return action != null && action.id != null;
 }
-
-export function isActionDashCard(
-  dashCard: BaseDashboardOrderedCard,
-): dashCard is ActionDashboardCard {
-  const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as Card);
-}
-
-export const isActionCard = (card: Card) => card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;

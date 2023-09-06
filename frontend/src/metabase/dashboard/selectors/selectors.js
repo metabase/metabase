@@ -5,7 +5,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
@@ -13,6 +12,7 @@ import {
 } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase-lib/parameters/utils/mapping-options";
 
 import Question from "metabase-lib/Question";
 
