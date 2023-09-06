@@ -1678,31 +1678,34 @@
 
 (deftest has-matches-test
   (testing "has-matches? checks only the keys of the bound dimensions map against the [dimension X] vector in the
-            metric definition."
+            metric or filter definition."
     (let [dimensions {"GenericNumber" {:this :does :not :matter}
-                      "Income" {:this :does :not :matter}}]
-      (is (false?
-            (#'magic/has-matches?
-              dimensions
-              {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
-      (is (true?
-            (#'magic/has-matches?
-              dimensions
-              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}})))
+                      "Income" {:this :does :not :matter}
+                      "Day" {:this :does :not :matter}}]
+      (testing "has-matches only matches on dimension name. These have no nominal matches to our input dimension names."
+        (is (false? (#'magic/has-matches? dimensions
+                      {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
+        (is (false? (#'magic/has-matches? dimensions
+                      {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"]}}))))
+      (testing "Basic single name match will match on dimension names."
+        (is (true?
+              (#'magic/has-matches?
+                dimensions
+                {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]]}})))
+        (is (true?
+              (#'magic/has-matches?
+                dimensions
+                {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"]}}))))
       (testing "Despite one dimension matching (Income) both must match to pass."
         (is (false?
               (#'magic/has-matches?
                 dimensions
-                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]],
-                                :score  100,
-                                :name   "Average discount %"}}))))
+                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}}))))
       (testing "Once all specified dimensions are present the predicate will pass."
         (is (true?
               (#'magic/has-matches?
                 (assoc dimensions "Discount" :something)
-                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]],
-                                :score  100,
-                                :name   "Average discount %"}})))))))
+                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}})))))))
 
 (deftest resolve-overloading-no-dimensions-test
   (testing "Testing cases where no dimensions are present.
@@ -1727,13 +1730,14 @@
                    (#'magic/resolve-overloading dimensions conflicting-metrics)))))))))
 
 (deftest resolve-overloading-test
-  (testing "When there is a conflict in metric name, what matters is the ability to match to dimension name first."
+  (testing "When there is a conflict in metric or filter name,
+            what matters is the ability to match to dimension name first."
     (is (= {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}
            (#'magic/resolve-overloading
              {:dimensions {"GenericNumber" {}}}
              [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
               {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}]))))
-  (testing "When there is a conflict in metric name, we rank on score amongst the matching metrics."
+  (testing "When there is a conflict in metric or filter name, we rank on score amongst the matching metrics."
     (is (= {"Avg" {:metric ["/"
                             ["sum" ["dimension" "Discount"]]
                             ["sum" ["dimension" "Income"]]] :score 100}}
@@ -1745,7 +1749,12 @@
               {"Avg" {:metric ["/"
                                ["sum" ["dimension" "Discount"]]
                                ["sum" ["dimension" "Income"]]] :score 100}}
-              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}]))))
+              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}])))
+    (is (= {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}
+           (#'magic/resolve-overloading
+             {:dimensions {"Day" {}}}
+             [{"Last30Days" {:filter ["something-made-up" ["dimension" "Day"] -720 "hour"] :score 90}}
+              {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}]))))
   (testing "When no dimensions match, we rank on score alone"
     (is (= {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
            (#'magic/resolve-overloading
