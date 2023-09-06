@@ -4,6 +4,61 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.48.0
+
+- The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
+  [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
+  want to update your code to use Malli instead.
+  
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
+  the set of privileges the database connection's current user has. It needs to be implemented if the database 
+  supports the `:actions` feature.
+
+- The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
+
+  * `qp.store/database`
+  * `qp.store/table`
+  * `qp.store/field`
+
+  Update usages of the to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
+
+  ```clj
+  (qp.store/database)       => (lib.metadata/database (qp.store/metadata-provider))
+  (qp.store/table table-id) => (lib.metadata/table (qp.store/metadata-provider) table-id)
+  (qp.store/field field-id) => (lib.metadata/field (qp.store/metadata-provider) field-id)
+  ```
+
+  Note that the new methods return keys as `kebab-case` rather than `snake_case`.
+
+- Similarly, drivers should NOT access the application database directly (via `toucan` functions or otherwise); use
+  `lib.metadata` functions instead. This access may be blocked in a future release.
+
+- SQL drivers that implement `metabase.driver.sql.query-processor/->honeysql` for
+  `metabase.models.table/Table`/`:model/Table` should be updated to implement it for `:metadata/table` instead. As
+  with the changes above, the main difference is that the new metadata maps use `kebab-case` keys rather than
+  `snake_case` keys.
+
+* `metabase.driver.sql.query-processor/cast-field-if-needed` now expects a `kebab-case`d field as returned by
+  `lib.metadata/field`.
+
+- `metabase.query-processor.store/fetch-and-store-database!`,
+  `metabase.query-processor.store/fetch-and-store-tables!`, and
+  `metabase.query-processor.store/fetch-and-store-fields!` have been removed. Things are now fetched automatically as
+  needed and these calls are no longer necessary.
+
+- `metabase.models.field/json-field?` has been removed, use `metabase.lib.field/json-field?` instead. Note that the
+  new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
+
+- Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
+  metadata functions above and and the helper *metadata providers* in `metabase.lib`, `metabase.lib.test-util`, and
+  `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
+  `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
+
+- `metabase.query-processor.util.add-alias-info/field-reference` is now deprecated. If your driver implemented it,
+  implement `metabase.query-processor.util.add-alias-info/field-reference-mlv2` instead. The only difference between
+  the two is that the latter is passed Field metadata with `kebab-case` keys while the former is passed legacy
+  metadata with `snake_case` keys.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -11,8 +66,8 @@ title: Driver interface changelog
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
-- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports 
-  uploading CSV files to tables in the database. To support the uploads feature, implement the following new 
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new
   multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
   a table), and `metabase.driver/insert-into!` (inserts values into a table).
 
@@ -34,6 +89,9 @@ title: Driver interface changelog
   used to enable connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users
   to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
   be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
+  of a set.
 
 ## Metabase 0.46.0
 
@@ -243,6 +301,9 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
+
+- `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` has been added. This methods is used to get a set of pks
+  given a table.
 
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
   the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.

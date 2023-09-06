@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
 
+import { Mode } from "metabase/visualizations/click-actions/Mode";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -17,7 +18,7 @@ import {
 } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import { ConnectedChartClickActions } from "metabase/visualizations/components/ChartClickActions";
+import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
@@ -27,18 +28,17 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
 
-import { getMode } from "metabase/modes/lib/modes";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isRegularClickAction } from "metabase/modes/types";
+import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
-import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
-import ErrorView from "./ErrorView";
+import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
@@ -49,6 +49,7 @@ import {
 } from "./Visualization.styled";
 
 const defaultProps = {
+  errorMessageOverride: undefined,
   showTitle: false,
   isDashboard: false,
   isEditing: false,
@@ -322,6 +323,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
+      errorMessageOverride,
       showTitle,
       isDashboard,
       width,
@@ -454,7 +456,11 @@ class Visualization extends PureComponent {
 
     return (
       <ErrorBoundary>
-        <VisualizationRoot className={className} style={style}>
+        <VisualizationRoot
+          className={className}
+          style={style}
+          data-testid="visualization-root"
+        >
           {!!hasHeader && (
             <VisualizationHeader>
               <ChartCaption
@@ -476,7 +482,7 @@ class Visualization extends PureComponent {
             <NoResultsView isSmall={small} />
           ) : error ? (
             <ErrorView
-              error={error}
+              error={errorMessageOverride ?? error}
               icon={errorIcon}
               isSmall={small}
               isDashboard={isDashboard}
@@ -518,7 +524,7 @@ class Visualization extends PureComponent {
           )}
           <ChartTooltip series={series} hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
-            <ConnectedChartClickActions
+            <ConnectedClickActionsPopover
               clicked={clicked}
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
@@ -538,7 +544,7 @@ Visualization.defaultProps = defaultProps;
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounce"),
+    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
   connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),

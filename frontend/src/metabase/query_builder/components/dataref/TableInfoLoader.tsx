@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
-import Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
   table: Table;

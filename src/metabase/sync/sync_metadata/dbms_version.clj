@@ -4,18 +4,18 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def DBMSVersion
-  "Schema for the expected output of `describe-table-fks`."
-  {:version  su/NonBlankString
-   s/Keyword s/Any})
+  "Schema for the expected output of [[sync-dbms-version!]]."
+  [:map
+   [:version ms/NonBlankString]])
 
-(s/defn sync-dbms-version!
+(mu/defn sync-dbms-version! :- [:maybe DBMSVersion]
   "Get the DBMS version as provided by the driver and save it in the Database."
-  [database :- i/DatabaseInstance] :- (s/maybe DBMSVersion)
+  [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))

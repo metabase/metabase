@@ -151,7 +151,7 @@ jobs:
 
   run-sanity-check:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     needs: check-uberjar-health
     strategy:
       matrix:
@@ -159,7 +159,8 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
     services:

@@ -12,8 +12,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -21,11 +21,12 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [pretty.core :refer [PrettyPrintable]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [pretty.core :refer [PrettyPrintable]])
   (:import
    (com.google.cloud.bigquery Field$Mode FieldValue)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -43,14 +44,16 @@
                     (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
 
 (def ^:private ProjectIdentifierString
-  (s/pred valid-project-identifier? "Valid BigQuery project-id"))
+  [:fn
+   {:error/message "Valid BigQuery project-id"}
+   valid-project-identifier?])
 
-(s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+(mu/defn ^:private project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
   (when (qp.store/initialized?)
-    (when-let [{:keys [details] :as database} (qp.store/database)]
+    (when-let [{:keys [details] :as database} (lib.metadata/database (qp.store/metadata-provider))]
       (let [project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
@@ -187,8 +190,8 @@
     "TIME"      :time
     nil))
 
-(defmethod temporal-type Field
-  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
+(defmethod temporal-type :metadata/column
+  [{:keys [base-type effective-type database-type]}]
   (or (database-type->temporal-type database-type)
       (base-type->temporal-type (or effective-type base-type))))
 
@@ -222,7 +225,7 @@
     nil
 
     (integer? id-or-name)
-    (temporal-type (qp.store/field id-or-name))
+    (temporal-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
 
     base-type
     (base-type->temporal-type base-type)))
@@ -231,7 +234,7 @@
   [x]
   (:bigquery-cloud-sdk/temporal-type (meta x)))
 
-(defn- with-temporal-type {:style/indent 0} [x new-type]
+(defn- with-temporal-type [x new-type]
   (if (= (temporal-type x) new-type)
     x
     (vary-meta x assoc :bigquery-cloud-sdk/temporal-type new-type)))
@@ -245,7 +248,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-           {:type qp.error-type/invalid-query})))
+                  {:type qp.error-type/invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -305,7 +308,7 @@
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
           (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
             (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
-                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
               (with-temporal-type (hx/call bigquery-type expr (hx/literal report-zone)) target-type)
               (with-temporal-type (hx/call bigquery-type expr) target-type))))
 
@@ -342,7 +345,7 @@
               :time      :time_trunc
               :datetime  :datetime_trunc
               :timestamp :timestamp_trunc)]
-      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider))))]
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit)) (hx/literal report-zone)))
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit))))))))
 
@@ -395,7 +398,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database))]
+      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (lib.metadata/database (qp.store/metadata-provider)))]
         (with-temporal-type (hx/call :extract unit (->AtTimeZone expr report-zone)) nil)
         (with-temporal-type (hx/call :extract unit expr) nil)))
 
@@ -537,7 +540,7 @@
   (hx/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
-  [_ identifier]
+  [_driver identifier]
   (letfn [(prefix-components [[dataset-id table & more]]
             (cons (str (when-let [proj-id (project-id-for-current-query)]
                          (str proj-id \.))
@@ -550,7 +553,7 @@
       true                                    (assoc ::do-not-qualify? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_ _ {::add/keys [source-table]} :as field-clause]]
+  [driver [_field _id-or-name {::add/keys [source-table]} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -789,7 +792,8 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (some-> (get-in outer-query [:query :source-table]) qp.store/table :name)
+           :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
+                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))
 
@@ -801,7 +805,9 @@
               :date      :current_date
               :datetime  :current_datetime
               :timestamp :current_timestamp),
-          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported
+                                                         :bigquery-cloud-sdk
+                                                         (lib.metadata/database (qp.store/metadata-provider))))]
       (hformat/to-sql
         (if report-zone
           (hx/call f (hx/literal report-zone))
@@ -833,8 +839,10 @@
   [driver t]
   (driver.sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
 
-(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
-  [driver {:keys [field], :as field-filter}]
+(mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
+  [driver                            :- :keyword
+   {:keys [field], :as field-filter} :- [:map
+                                         [:field lib.metadata/ColumnMetadata]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]

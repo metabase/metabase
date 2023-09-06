@@ -31,6 +31,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -235,21 +237,21 @@
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(s/defn hydrate-notification :- (mi/InstanceOf Pulse)
+(mu/defn hydrate-notification :- (mi/InstanceOf Pulse)
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- (mi/InstanceOf Pulse)]
   (-> notification
       (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(s/defn ^:private hydrate-notifications :- [(mi/InstanceOf Pulse)]
+(mu/defn ^:private hydrate-notifications :- [:sequential (mi/InstanceOf Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
-  [notifications :- [(mi/InstanceOf Pulse)]]
+  [notifications :- [:sequential (mi/InstanceOf Pulse)]]
   (as-> notifications <>
     (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
-(s/defn ^:private notification->pulse :- (mi/InstanceOf Pulse)
+(mu/defn ^:private notification->pulse :- (mi/InstanceOf Pulse)
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
   [notification :- (mi/InstanceOf Pulse)]
@@ -257,7 +259,7 @@
 
 ;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
 ;; else?
-(s/defn retrieve-pulse :- (s/maybe (mi/InstanceOf Pulse))
+(mu/defn retrieve-pulse :- [:maybe (mi/InstanceOf Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
@@ -265,7 +267,7 @@
           hydrate-notification
           notification->pulse))
 
-(s/defn retrieve-notification :- (s/maybe (mi/InstanceOf Pulse))
+(mu/defn retrieve-notification :- [:maybe (mi/InstanceOf Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
@@ -273,7 +275,7 @@
   (some-> (apply t2/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
-(s/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
+(mu/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
   [notification :- (mi/InstanceOf Pulse)]
@@ -281,7 +283,7 @@
       (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
-(s/defn retrieve-alert :- (s/maybe (mi/InstanceOf Pulse))
+(mu/defn retrieve-alert :- [:maybe (mi/InstanceOf Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
   (some-> (t2/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
@@ -291,7 +293,7 @@
 (defn- query-as [model query]
   (t2/select model query))
 
-(s/defn retrieve-alerts :- [(mi/InstanceOf Pulse)]
+(mu/defn retrieve-alerts :- [:sequential (mi/InstanceOf Pulse)]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
@@ -320,7 +322,7 @@
            :when (:card alert)]
        alert))))
 
-(s/defn retrieve-pulses :- [(mi/InstanceOf Pulse)]
+(mu/defn retrieve-pulses :- [:sequential (mi/InstanceOf Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]

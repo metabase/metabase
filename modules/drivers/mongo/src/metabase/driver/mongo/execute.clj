@@ -10,9 +10,9 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [monger.conversion :as m.conversion]
-   [monger.util :as m.util]
-   [schema.core :as s])
+   [monger.util :as m.util])
   (:import
    (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
    (java.util.concurrent TimeUnit)
@@ -23,7 +23,7 @@
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 
 ;; projections will be something like `[:_id :date~~~default :user_id :venue_id]`
-(s/defn ^:private result-columns-unescape-map :- {s/Str s/Str}
+(mu/defn ^:private result-columns-unescape-map :- [:map-of :string :string]
   "Returns a map of column name in result row -> unescaped column name to return in metadata e.g.
 
     {\"date_field~~~month\" \"date_field\"}"
@@ -70,10 +70,14 @@
                              (cons "_id")))]
     (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
-(s/defn ^:private result-col-names :- {:row [s/Str], :unescaped [s/Str]}
+(mu/defn ^:private result-col-names :- [:map
+                                        [:row [:maybe [:sequential :string]]]
+                                        [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} query first-row-col-names]
+  [{:keys [mbql? projections]} :- :map
+   query
+   first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? projections)
@@ -92,8 +96,9 @@
                            (get unescape-map k k))))})))
 
 (defn- result-metadata [unescaped-col-names]
-  {:cols (vec (for [col-name unescaped-col-names]
-                {:name col-name}))})
+  {:cols (mapv (fn [col-name]
+                 {:name col-name})
+               unescaped-col-names)})
 
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
@@ -133,7 +138,7 @@
             (.batchSize (int 100))
             (.maxTime (int timeout-ms) TimeUnit/MILLISECONDS))))
 
-(defn- aggregate
+(defn- ^:dynamic *aggregate*
   "Execute a MongoDB aggregation query."
   ^Cursor [^DB db ^String coll stages timeout-ms]
   (let [coll     (.getCollection db coll)
@@ -176,7 +181,7 @@
   {:pre [(string? collection) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        cursor (aggregate *mongo-connection* collection query (qp.context/timeout context))]
+        cursor (*aggregate* *mongo-connection* collection query (qp.context/timeout context))]
     (a/go
       (when (a/<! (qp.context/canceled-chan context))
         ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by

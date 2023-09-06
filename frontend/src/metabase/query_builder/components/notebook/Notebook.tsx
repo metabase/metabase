@@ -2,8 +2,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { State } from "metabase-types/store";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
@@ -44,10 +45,16 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     setQueryBuilderMode,
   } = props;
 
-  // When switching out of the notebook editor, cleanupQuestion accounts for
-  // post aggregation filters and otherwise nested queries with duplicate column names.
   async function cleanupQuestion() {
-    let cleanQuestion = question.setQuery(question.query().clean());
+    // Converting a query to MLv2 and back performs a clean-up
+    let cleanQuestion = question.setDatasetQuery(
+      Lib.toLegacyQuery(question._getMLv2Query()),
+    );
+
+    // MLv2 doesn't clean up redundant stages, so we do it with MLv1 for now
+    const query = cleanQuestion.query() as StructuredQuery;
+    cleanQuestion = cleanQuestion.setQuery(query.clean());
+
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
     }

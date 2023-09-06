@@ -52,10 +52,10 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept(
           "GET",
           "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("executePrefetch");
+        ).as("prefetchValues");
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-          "executeAPI",
+          "executeAction",
         );
       });
 
@@ -137,7 +137,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button(ACTION_NAME).click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -173,7 +173,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Save").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
@@ -209,7 +209,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: actionName }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
           // let's check that the existing values are pre-filled correctly
           modal().within(() => {
             cy.findByPlaceholderText("Team Name")
@@ -225,7 +225,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
@@ -268,7 +268,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Delete").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
@@ -302,7 +302,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button("Save").click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
@@ -390,7 +390,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button(ACTION_NAME).click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -449,7 +449,7 @@ const MODEL_NAME = "Test Action Model";
               cy.button(ACTION_NAME).click();
             });
 
-            cy.wait("@executeAPI");
+            cy.wait("@executeAction");
 
             queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
@@ -495,7 +495,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update" }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
 
           const oldRow = many_data_types_rows[0];
 
@@ -547,7 +547,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
@@ -618,7 +618,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Save").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
@@ -704,7 +704,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update" }).click();
 
-          cy.wait("@executePrefetch");
+          cy.wait("@prefetchValues");
 
           const oldRow = many_data_types_rows[0];
           const newTime = "2020-01-10T01:35:55";
@@ -774,7 +774,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          cy.wait("@executeAPI");
+          cy.wait("@executeAction");
 
           queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
@@ -944,7 +944,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });
 
-          cy.wait("@executeAPI").then(interception => {
+          cy.wait("@executeAction").then(interception => {
             expect(
               Object.values(interception.request.body.parameters)
                 .sort()
@@ -961,6 +961,56 @@ const MODEL_NAME = "Test Action Model";
   );
 });
 
+describe("action error handling", { tags: ["@external", "@actions"] }, () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: TEST_TABLE });
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    createModelFromTableName({
+      tableName: TEST_TABLE,
+      modelName: MODEL_NAME,
+    });
+
+    cy.intercept("GET", "/api/action").as("getActions");
+    cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
+      "prefetchValues",
+    );
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+      "executeAction",
+    );
+  });
+
+  it("should show detailed form errors for constraint violations when executing model actions", () => {
+    const actionName = "Update";
+
+    cy.get("@modelId").then(modelId => {
+      createImplicitAction({ kind: "update", model_id: modelId });
+    });
+
+    createDashboardWithActionButton({ actionName, idFilter: true });
+
+    filterWidget().click();
+    addWidgetStringFilter("5");
+    cy.button(actionName).click();
+
+    cy.wait("@prefetchValues");
+
+    modal().within(() => {
+      cy.findByLabelText("Team Name").clear().type("Kind Koalas");
+      cy.button(actionName).click();
+      cy.wait("@executeAction");
+
+      cy.findByLabelText("Team Name").should("not.exist");
+      cy.findByLabelText(
+        "Team Name: This Team_name value already exists.",
+      ).should("exist");
+
+      cy.findByText("Team_name already exists.").should("exist");
+    });
+  });
+});
+
 describe(
   "Action Parameters Mapping",
   { tags: ["@external", "@actions"] },
@@ -973,6 +1023,11 @@ describe(
       cy.intercept("GET", "/api/action").as("getActions");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+
+      cy.intercept(
+        "GET",
+        "/api/dashboard/*/dashcard/*/execute?parameters=*",
+      ).as("executePrefetch");
     });
 
     describe("Inline action edit", () => {
@@ -984,6 +1039,55 @@ describe(
         createModelFromTableName({
           tableName: TEST_TABLE,
           modelName: MODEL_NAME,
+        });
+      });
+
+      it("refetches form values when id changes (metabase#33084)", () => {
+        const actionName = "Update";
+
+        cy.get("@modelId").then(id => {
+          createImplicitAction({
+            kind: "update",
+            model_id: id,
+          });
+        });
+
+        createDashboardWithActionButton({
+          actionName,
+          idFilter: true,
+        });
+
+        filterWidget().click();
+        addWidgetStringFilter("5");
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+
+        modal().within(() => {
+          cy.findByPlaceholderText("Team Name").should(
+            "have.value",
+            "Energetic Elephants",
+          );
+          cy.findByPlaceholderText("Score").should("have.value", "30");
+
+          cy.icon("close").click();
+        });
+
+        filterWidget().click();
+        popover().find("input").first().type("{backspace}10");
+        cy.button("Update filter").click();
+
+        cy.button(actionName).click();
+
+        cy.wait("@executePrefetch");
+
+        modal().within(() => {
+          cy.findByPlaceholderText("Team Name").should(
+            "have.value",
+            "Jolly Jellyfish",
+          );
+          cy.findByPlaceholderText("Score").should("have.value", "60");
         });
       });
 
@@ -1033,7 +1137,7 @@ describe(
           cy.button("Pick an action").click();
         });
 
-        cy.wait("@getActions");
+        waitForValidActions();
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(MODEL_NAME).click();
@@ -1095,7 +1199,7 @@ function createDashboardWithActionButton({
     cy.button("Pick an action").click();
   });
 
-  cy.wait("@getActions");
+  waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
     cy.findByText(modelName).click();
@@ -1181,4 +1285,14 @@ function actionEditorModal() {
 
 function getActionParametersInputModal() {
   return cy.findByTestId("action-parameters-input-modal");
+}
+
+function waitForValidActions() {
+  cy.wait("@getActions").then(({ response }) => {
+    const { body: actions } = response;
+
+    actions.forEach(action => {
+      expect(action.parameters).to.have.length.gt(0);
+    });
+  });
 }

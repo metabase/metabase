@@ -1,21 +1,27 @@
 (ns metabase.api.action-test
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
    [metabase.models :refer [Action Card Database]]
+   [metabase.models.collection :as collection]
    [metabase.models.user :as user]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :db :web-server))
 
 (comment api.action/keep-me)
 
@@ -75,7 +81,7 @@
                                     :template          {:method "GET"
                                                         :url "https://example.com/{{x}}"}
                                     :parameters        [{:id "x" :type "text"}]
-                                    :public_uuid       (str (UUID/randomUUID))
+                                    :public_uuid       (str (random-uuid))
                                     :made_public_by_id (mt/user->id :crowberto)
                                     :response_handle   ".body"
                                     :error_handle      ".status >= 400"}
@@ -182,10 +188,10 @@
             (mt/dataset test-data
               (mt/with-actions-enabled
                 (is (not= (mt/id) sample-dataset-id))
-                (mt/with-temp* [Card [model {:dataset true
-                                             :dataset_query
-                                             (mt/native-query
-                                              {:query "select * from checkins limit 1"})}]]
+                (mt/with-temp [Card model {:dataset true
+                                           :dataset_query
+                                           (mt/native-query
+                                            {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) sample-dataset-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -341,7 +347,7 @@
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
-    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+    (mt/with-temp [Card {card-id :id} {:dataset true}]
       (mt/with-model-cleanup [Action]
         (let [initial-action {:name "Get example"
                               :type "http"
@@ -396,7 +402,7 @@
    :made_public_by_id nil})
 
 (defn- shared-action-opts []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (deftest fetch-public-actions-test
@@ -590,3 +596,61 @@
             (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                 {:parameters {:name "Darth Vader"}})))))))))
+
+(deftest fetch-implicit-action-default-values-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-enabled
+      (mt/with-actions [_                             {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})
+                                                       :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                        {create-action-id :action-id} {:type :implicit :kind "row/create"}
+                        {update-action-id :action-id} {:type :implicit :kind "row/update"}
+                        {delete-action-id :action-id} {:type :implicit :kind "row/delete"}
+                        {http-action-id :action-id}   {:type :http}
+                        {query-action-id :action-id}  {:type :query}]
+        (testing "403 if user does not have permission to view the action"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "404 if id does not exist"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
+
+        (testing "returns empty map for actions that are not implicit"
+          (is (= {}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" http-action-id) :parameters (json/encode {:id 1}))))
+
+          (is (= {}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "Can't fetch for create action"
+          (is (= "Values can only be fetched for actions that require a Primary Key."
+                 (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "fetch for update action return name and id"
+          (is (= {:id 1 :name "Red Medicine"}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "fetch for delete action returns the id only"
+          (is (= {:id 1}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+
+        (mt/with-actions-disabled
+          (testing "error if actions is disabled"
+            (is (= "Actions are not enabled."
+                 (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+
+;; This is just to test the flow, a comprehensive tests for error type ares in
+;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest action-error-handling-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-enabled
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query checkins) :dataset true}
+                          {update-action :action-id} {:type :implicit
+                                                      :kind "row/update"}]
+          (testing "an error in SQL will be caught and parsed to a readable erorr message"
+
+            (is (= {:message "Unable to update the record."
+                    :errors {:user_id "This User_id does not exist."}}
+                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
+                                         {:parameters {"id" 1 "user_id" 99999}})))))))))

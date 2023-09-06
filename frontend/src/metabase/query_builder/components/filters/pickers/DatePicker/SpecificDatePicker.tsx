@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import moment, { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone";
+import moment from "moment-timezone";
 import { getDateStyleFromSettings } from "metabase/lib/time";
-import Calendar, { SelectAll } from "metabase/components/Calendar";
+import type { SelectAll } from "metabase/components/Calendar";
+import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import {

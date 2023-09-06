@@ -1,9 +1,9 @@
 import { Component } from "react";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import TimePicker from "../pickers/TimePicker";
 import BooleanPicker from "../pickers/BooleanPicker";
-import DefaultPicker from "../pickers/DefaultPicker";
+import { DefaultPicker } from "../pickers/DefaultPicker";
 
 type Props = {
   className?: string;
@@ -17,8 +17,7 @@ type Props = {
   checkedColor?: string;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class FilterPopoverPicker extends Component<Props> {
+export class FilterPopoverPicker extends Component<Props> {
   UNSAFE_componentWillMount() {
     window.addEventListener("keydown", this.handleKeyDown);
   }

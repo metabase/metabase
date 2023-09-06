@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.config :as config]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -12,6 +13,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -35,9 +37,35 @@
 
 (driver/register! :h2, :parent :sql-jdbc)
 
+(def ^:dynamic *allow-testing-h2-connections*
+  "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
+  H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
+  needed for tests."
+  ;; you can disable this flag with the env var below, please do not use it under any circumstances, it is only here so
+  ;; existing e2e tests will run without us having to update a million tests. We should get rid of this and rework those
+  ;; e2e tests to use SQLite ASAP.
+  (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
+      false))
+
+;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
+(defmethod driver/superseded-by :h2 [_driver] :deprecated)
+
 (defmethod sql.qp/honey-sql-version :h2
   [_driver]
   2)
+
+(defn- get-field
+  "Returns value of private field. This function is used to bypass field protection to instantiate
+   a low-level H2 Parser object in order to detect DDL statements in queries."
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
+          or-else))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -74,6 +102,43 @@
    (map u/one-or-many)
    (apply concat)))
 
+(defn- malicious-property-value
+  "Checks an h2 connection string for connection properties that could be malicious. Markers of this include semi-colons
+  which allow for sql injection in org.h2.engine.Engine/openSession. The others are markers for languages like
+  javascript and ruby that we want to suppress."
+  [s]
+  ;; list of strings it looks for to compile scripts:
+  ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/util/SourceCompiler.java#L178-L187 we
+  ;; can't use the static methods themselves since they expect to check the beginning of the string
+  (let [bad-markers [";"
+                     "//javascript"
+                     "#ruby"
+                     "//groovy"
+                     "@groovy"]
+        pred        (apply some-fn (map (fn [marker] (fn [s] (str/includes? s marker)))
+                                        bad-markers))]
+    (pred s)))
+
+(defmethod driver/can-connect? :h2
+  [driver {:keys [db] :as details}]
+  (when-not *allow-testing-h2-connections*
+    (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
+  (when (string? db)
+    (let [connection-str  (cond-> db
+                            (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
+                            (not (str/includes? db "jdbc:")) (str/replace-first #"^" "jdbc:"))
+          connection-info (org.h2.engine.ConnectionInfo. connection-str nil nil nil)
+          properties      (get-field connection-info "prop")
+          bad-props       (into {} (keep (fn [[k v]] (when (malicious-property-value v) [k v])))
+                                properties)]
+      (when (seq bad-props)
+        (throw (ex-info "Malicious keys detected" {:keys (keys bad-props)})))
+      ;; keys are uppercased by h2 when parsed:
+      ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
+      (when (contains? properties "INIT")
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
+  (sql-jdbc.conn/can-connect? driver details))
+
 (defmethod driver/db-start-of-week :h2
   [_]
   :monday)
@@ -103,7 +168,7 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (qp.store/database)
+      (let [{:keys [details]} (lib.metadata/database (qp.store/metadata-provider))
             user              (db-details->user details)]
         (when (or (str/blank? user)
                   (= user "sa"))        ; "sa" is the default USER
@@ -111,18 +176,6 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type qp.error-type/db})))))))
 
-(defn- get-field
-  "Returns value of private field. This function is used to bypass field protection to instantiate
-   a low-level H2 Parser object in order to detect DDL statements in queries."
-  ([obj field]
-   (.get (doto (.getDeclaredField (class obj) field)
-           (.setAccessible true))
-         obj))
-  ([obj field or-else]
-   (try (get-field obj field)
-        (catch java.lang.NoSuchFieldException _e
-          ;; when there are no fields: return or-else
-          or-else))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"

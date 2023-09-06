@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -183,7 +184,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database driver (qp.store/database) pattern)]])
+   [:raw (quote-literal-for-database driver (lib.metadata/database (qp.store/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
@@ -199,7 +200,10 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (fn [x y]
-                 [:concat x y]))))
+                 (if x
+                   [:concat x y]
+                   y))
+               nil)))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
@@ -316,7 +320,8 @@
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
-                    [(:name (qp.store/field field-id)) (:value param)]))))
+                    [(:name (lib.metadata/field (qp.store/metadata-provider) field-id))
+                     (:value param)]))))
         user-parameters))
 
 (defmethod qp.util/query->remark :redshift

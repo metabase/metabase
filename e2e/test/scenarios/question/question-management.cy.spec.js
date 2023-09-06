@@ -19,7 +19,10 @@ import {
 } from "e2e/support/helpers";
 
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -213,7 +216,7 @@ describe("managing question from the question's details sidebar", () => {
                   findSelectedItem().should("not.exist");
 
                   // before visiting the dashboard, we don't have any history
-                  visitDashboard(1);
+                  visitDashboard(ORDERS_DASHBOARD_ID);
 
                   visitQuestion(ORDERS_QUESTION_ID);
 
@@ -240,7 +243,7 @@ describe("managing question from the question's details sidebar", () => {
                   findSelectedItem().should("not.exist");
 
                   // before visiting the dashboard, we don't have any history
-                  visitDashboard(1);
+                  visitDashboard(ORDERS_DASHBOARD_ID);
                   visitQuestion(ORDERS_QUESTION_ID);
 
                   openQuestionActions();
@@ -343,7 +346,7 @@ describe("managing question from the question's details sidebar", () => {
               findSelectedItem().should("not.exist");
 
               // before visiting the dashboard, we don't have any history
-              visitDashboard(1);
+              visitDashboard(ORDERS_DASHBOARD_ID);
 
               visitQuestion(ORDERS_QUESTION_ID);
 

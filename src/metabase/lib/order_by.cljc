@@ -1,5 +1,6 @@
 (ns metabase.lib.order-by
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -133,30 +134,35 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [indexed-order-bys (map-indexed (fn [pos [_tag _opts expr]]
-                                          [pos expr])
-                                        (order-bys query stage-number))
-         order-by-pos
-         (fn [x]
-           (some (fn [[pos existing-order-by]]
-                   (let [a-ref (lib.ref/ref x)]
-                     (when (or (lib.equality/= a-ref existing-order-by)
-                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-order-by)))
-                       pos)))
-                 indexed-order-bys))
-
-         breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
+   (let [breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
                               (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
-     (some->> (not-empty columns)
-              (into [] (comp (filter orderable-column?)
-                             (map (fn [col]
-                                    (let [pos (order-by-pos col)]
-                                      (cond-> col
-                                        pos (assoc :order-by-position pos)))))))))))
+                                (lib.metadata.calculation/visible-columns query stage-number stage)))
+         columns            (filter orderable-column? columns)
+         existing-order-bys (order-bys query stage-number)]
+     (cond
+       (empty? columns)
+       nil
+
+       (empty? existing-order-bys)
+       (vec columns)
+
+       :else
+       (let [col-index->position (into {}
+                                       (map-indexed
+                                        (fn [pos [_tag _opts expr]]
+                                          (when-let [col-index (lib.equality/index-of-closest-matching-metadata
+                                                                (lib.ref/ref expr)
+                                                                columns)]
+                                            [col-index pos])))
+                                       existing-order-bys)]
+         (mapv (fn [[i col]]
+                 (let [pos (col-index->position i)]
+                   (cond-> col
+                     pos (assoc :order-by-position pos))))
+               (m/indexed columns)))))))
 
 (def ^:private opposite-direction
   {:asc :desc

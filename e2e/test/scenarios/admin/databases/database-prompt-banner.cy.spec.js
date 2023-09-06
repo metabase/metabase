@@ -8,15 +8,20 @@ import {
   restore,
   rightSidebar,
   visitDashboard,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
-describe("database prompt banner", () => {
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
+describeEE("database prompt banner", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
-  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
+  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labelled", () => {
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
 
@@ -43,7 +48,7 @@ describe("database prompt banner", () => {
     });
   });
 
-  it("should not show a database prompt banner when logged in as an admin, an instance is on a paid plan, and only have a single sample dataset, but is white labeling", () => {
+  it("should not show a database prompt banner when logged in as an admin, an instance is on a paid plan, and only have a single sample dataset, but is white labelled", () => {
     cy.request("PUT", "/api/setting/application-name", { value: "Acme Corp." });
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
@@ -63,7 +68,7 @@ describe("database prompt banner", () => {
     "should show info sidebar correctly on Firefox",
     { browser: "firefox" },
     function () {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByRole("main").findByText("Loading...").should("not.exist");
       cy.findByRole("main").icon("info").click();
 
@@ -126,6 +131,7 @@ describeWithSnowplow("database prompt banner", () => {
     restore();
     resetSnowplow();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     enableTracking();
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");

@@ -13,7 +13,6 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.password :as u.password]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -82,7 +81,7 @@
                                                     :is_qbnewb    true
                                                     :is_active    active}))))))
 
-(s/defn fetch-user :- (mi/InstanceOf User)
+(s/defn fetch-user :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -145,9 +144,9 @@
 
 (def ^:private ^:dynamic *retrying-authentication*  false)
 
-(defn- client-fn [username & args]
+(defn- client-fn [the-client username & args]
   (try
-    (apply client/client (username->token username) args)
+    (apply the-client (username->token username) args)
     (catch ExceptionInfo e
       (let [{:keys [status-code]} (ex-data e)]
         (when-not (= status-code 401)
@@ -161,36 +160,36 @@
                           e)))
         (clear-cached-session-tokens!)
         (binding [*retrying-authentication*  true]
-          (apply client-fn username args))))))
+          (apply client-fn the-client username args))))))
 
-(defn user-http-request
-  "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
-  redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
-  password, this function temporarily overrides the password for that User.)"
-  {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                request-options? http-body-map? & {:as query-params}])}
-  [user & args]
+(defn- user-request
+  [the-client user & args]
   (if (keyword? user)
     (do
-      (fetch-user user)
-      (apply client-fn user args))
-    (let [user-id             (u/the-id user)
-          user-email          (t2/select-one-fn :email User :id user-id)
-          [old-password-info] (t2/query {:select [:password :password_salt]
-                                         :from   [:core_user]
-                                         :where  [:= :id user-id]})]
-      (when-not user-email
+     (fetch-user user)
+     (apply client-fn the-client user args))
+    (let [user-id (u/the-id user)]
+      (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (try
-        (t2/query-one {:update :core_user
-                       :set    {:password      (u.password/hash-bcrypt user-email)
-                                :password_salt ""}
-                       :where  [:= :id user-id]})
-        (apply client/client {:username user-email, :password user-email} args)
-        (finally
-          (t2/query-one {:update :core_user
-                         :set    old-password-info
-                         :where  [:= :id user-id]}))))))
+      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
+                                                                :user_id user-id}]
+        (apply the-client session-id args)))))
+
+(def user-http-request
+  "A version of our test client that issues the request with credentials for a given User. User may be either a
+  redefined test User name, e.g. `:rasta`, or any User or User ID.
+  The request will be executed with a temporary session id.
+
+  Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
+  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                 request-options? http-body-map? & {:as query-params}])}
+  (partial user-request client/client))
+
+(def user-real-request
+  "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
+  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                 request-options? http-body-map? & {:as query-params}])}
+  (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)

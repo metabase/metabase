@@ -36,9 +36,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -397,6 +395,25 @@
       (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
     vs-norm))
 
+(defn- resolve-table-column-field-ref [[f-type f-str f-md]]
+  (if (names/fully-qualified-field-name? f-str)
+    [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
+    [f-type f-str f-md]))
+
+(defn- resolve-pivot-table-settings
+  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). These map entries
+  may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
+  yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
+  [vs-norm]
+  (if (:pivot_table.column_split vs-norm)
+    (letfn [(resolve-vec [pivot vec-type]
+              (update-in pivot [:pivot_table.column_split vec-type] (fn [tbl-vecs]
+                                                                      (mapv resolve-table-column-field-ref tbl-vecs))))]
+      (-> vs-norm
+          (resolve-vec :rows)
+          (resolve-vec :columns)))
+    vs-norm))
+
 (defn- resolve-table-columns
   "Resolve the :table.columns key from a :visualization_settings map, which may contain fully qualified field names.
   Such fully qualified names will be converted to the numeric field ID before being filled into the loaded card. Only
@@ -404,11 +421,7 @@
   to detect or track ::unresolved-names."
   [vs-norm]
   (if (::mb.viz/table-columns vs-norm)
-    (letfn [(resolve-table-column-field-ref [[f-type f-str f-md]]
-              (if (names/fully-qualified-field-name? f-str)
-                [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
-                [f-type f-str f-md]))
-            (resolve-field-id [tbl-col]
+    (letfn [(resolve-field-id [tbl-col]
               (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
       (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
                                                (mapv resolve-field-id tbl-cols))))
@@ -427,9 +440,17 @@
                           resolve-top-level-click-behavior
                           resolve-column-settings
                           resolve-table-columns
+                          resolve-pivot-table-settings
                           mb.viz/norm->db)]
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
+
+(defn- resolve-dashboard-parameters
+  [parameters]
+  (for [p parameters]
+    ;; Note: not using the full ::unresolved-names functionality here because this is a fix
+    ;; for a deprecated feature
+    (m/update-existing-in p [:values_source_config :card_id] fully-qualified-name->card-id)))
 
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
@@ -438,6 +459,7 @@
   (let [dashboard-ids   (maybe-upsert-many! context Dashboard
                                             (for [dashboard dashboards]
                                               (-> dashboard
+                                                  (update :parameters resolve-dashboard-parameters)
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
                                                          :creator_id    (default-user-id)))))
@@ -679,7 +701,7 @@
   "A function called on each User instance before it is inserted (via upsert)."
   [user]
   (log/infof "User with email %s is new to target DB; setting a random password" (:email user))
-  (assoc user :password (str (UUID/randomUUID))))
+  (assoc user :password (str (random-uuid))))
 
 ;; leaving comment out for now (deliberately), because this will send a password reset email to newly inserted users
 ;; when enabled in a future release; see `defmethod load "users"` below

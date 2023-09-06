@@ -177,7 +177,7 @@
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 6px;
   padding-top: 8px;
-  width: calc(100% - 2px);
+  width: 100%;
   /* Without z-index; calendar days, if selected, scroll above this component */
   z-index: 1;
 }

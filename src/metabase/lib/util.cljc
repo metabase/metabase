@@ -415,7 +415,7 @@
   [query]
   (-> query :stages first :source-table))
 
-(mu/defn source-card :- [:maybe ::lib.schema.id/card]
+(mu/defn source-card-id :- [:maybe ::lib.schema.id/card]
   "If this query has a `:source-card` ID, return it."
   [query]
   (-> query :stages first :source-card))
@@ -478,20 +478,3 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
-
-(defn with-default-effective-type
-  "Adds a default :effective-type property if it does not exist and
-  :base-type is known.
-
-  This is needed only because we have to convert queries to the Legacy
-  form.
-  The round trip conversion pMBQL -> legacy MBQL -> pMBQL loses the
-  :effective-type property, but it should be present for the frontend
-  to work. It defaults to the :base-type property."
-  [clause]
-  (let [options (lib.options/options clause)
-        default-effective-type (when-not (:effective-type options)
-                                 (:base-type options))]
-    (cond-> clause
-      default-effective-type
-      (lib.options/update-options assoc :effective-type default-effective-type))))

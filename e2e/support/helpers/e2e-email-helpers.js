@@ -1,3 +1,5 @@
+import { sidebar } from "e2e/support/helpers";
+
 import { WEBMAIL_CONFIG } from "../cypress_data";
 
 const INBOX_TIMEOUT = 5000;
@@ -66,27 +68,44 @@ export const openEmailPage = emailSubject => {
 };
 
 export const clickSend = () => {
-  cy.button("Send email now").click();
-  cy.button("Email sent", 60000);
+  cy.intercept("POST", "/api/pulse/test").as("emailSent");
+
+  cy.findByText("Send email now").click();
+  cy.wait("@emailSent");
 };
 
-export const sendSubscriptionsEmail = recipient => {
-  cy.icon("subscription").click();
+export const openAndAddEmailToSubscriptions = recipient => {
+  cy.findByLabelText("subscriptions").click();
 
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
     .type(`${recipient}{enter}`)
     .blur();
+};
 
+export const setupSubscriptionWithRecipient = recipient => {
+  openAndAddEmailToSubscriptions(recipient);
+  sidebar().findByText("Done").click();
+};
+
+export const openPulseSubscription = () => {
+  cy.findByLabelText("subscriptions").click();
+  sidebar().findByLabelText("Pulse Card").click();
+};
+
+export const emailSubscriptionRecipients = () => {
+  openPulseSubscription();
+  clickSend();
+};
+
+export const sendSubscriptionsEmail = recipient => {
+  openAndAddEmailToSubscriptions(recipient);
   clickSend();
 };
 
 export function sendEmailAndAssert(callback) {
-  cy.intercept("POST", "/api/pulse/test").as("emailSent");
-
-  cy.findByText("Send email now").click();
-  cy.wait("@emailSent");
+  clickSend();
 
   cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
     callback(body[0]);

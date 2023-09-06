@@ -10,7 +10,7 @@ If your queries are hanging or timing out, the problem could be coming from your
 - Load balancer
 - Reverse proxy server (e.g., Nginx)
 - Jetty
-- Cloud service (such as AWS’s Elastic Beanstalk, EC2, Heroku, or Google App Engine).
+- Cloud service
 
 ## Resources for common deployments
 

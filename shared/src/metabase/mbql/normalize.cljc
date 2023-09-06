@@ -35,7 +35,8 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -670,7 +671,7 @@
     [(_ :guard (every-pred keyword? (complement #{:named :+ :- :* :/})))
      (_ :guard aggregation-subclause?)
      & _]
-    (vec (reduce concat (map wrap-single-aggregations aggregations)))
+    (into [] (mapcat wrap-single-aggregations) aggregations)
 
     ;; something like {:aggregations [:sum 10]} -- MBQL 95 single aggregation
     [(_ :guard keyword?) & _]
@@ -799,10 +800,10 @@
     query
     ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
-    (let [breakout-fields (set (reduce concat (mbql.match/match breakout
-                                                [:field id-or-name opts]
-                                                [&match
-                                                 [:field id-or-name (dissoc opts :temporal-unit)]])))]
+    (let [breakout-fields (into #{} cat (mbql.match/match breakout
+                                          [:field id-or-name opts]
+                                          [&match
+                                           [:field id-or-name (dissoc opts :temporal-unit)]]))]
       ;; now remove all the Fields in `:fields` that match the ones in the set
       (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
 
@@ -894,14 +895,14 @@
                           {:query query}
                           e)))))))
 
-(defn normalize-fragment
+(mu/defn normalize-fragment
   "Normalize just a specific fragment of a query, such as just the inner MBQL part or just a filter clause. `path` is
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
     ;;-> [:= [:field-id 100] 200]"
-  {:style/indent 1}
-  [path x]
+  [path :- [:maybe [:sequential :keyword]]
+   x]
   (if-not (seq path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

@@ -3,14 +3,15 @@ import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
 
-import {
+import type {
   DashCardId,
   DashboardId,
   DashboardOrderedCard,
   DashboardOrderedTab,
   DashboardTabId,
 } from "metabase-types/api";
-import { DashboardState, TabDeletionId } from "metabase-types/store";
+import type { DashboardState, TabDeletionId } from "metabase-types/store";
+import { INITIALIZE } from "metabase/dashboard/actions/core";
 
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 
@@ -306,6 +307,16 @@ export const tabsReducer = createReducer<DashboardState>(
         state.selectedTabId = newTabs[selectedTabIndex]?.id ?? null;
       },
     );
+
+    builder.addCase<
+      string,
+      { type: string; payload?: { clearCache: boolean } }
+    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
+      if (clearCache) {
+        state.selectedTabId = INITIAL_DASHBOARD_STATE.selectedTabId;
+        state.tabDeletions = INITIAL_DASHBOARD_STATE.tabDeletions;
+      }
+    });
 
     builder.addCase(initTabs, (state, { payload: { slug } }) => {
       const { prevTabs } = getPrevDashAndTabs({ state });

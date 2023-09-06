@@ -3,7 +3,6 @@ import { keyframes } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const expandKeyframes = keyframes`
   50% {
@@ -23,9 +22,7 @@ export interface BookmarkIconProps {
   onAnimationEnd: () => void;
 }
 
-export const BookmarkIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<BookmarkIconProps>`
+export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};

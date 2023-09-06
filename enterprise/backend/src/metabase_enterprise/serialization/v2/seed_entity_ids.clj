@@ -32,7 +32,8 @@
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."

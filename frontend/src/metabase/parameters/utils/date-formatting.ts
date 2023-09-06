@@ -12,7 +12,7 @@ import {
   getStartingFrom,
 } from "metabase-lib/queries/utils/query-time";
 
-import { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
@@ -140,12 +140,12 @@ export function formatSingleWidget(value: string) {
 
 export function formatMonthYearWidget(value: string) {
   const m = moment(value, "YYYY-MM");
-  return m.isValid() ? m.format("MMMM, YYYY") : "";
+  return m.isValid() ? m.format("MMMM YYYY") : "";
 }
 
 export function formatQuarterYearWidget(value: string) {
   const m = moment(value, "[Q]Q-YYYY");
-  return m.isValid() ? m.format("[Q]Q, YYYY") : "";
+  return m.isValid() ? m.format("[Q]Q YYYY") : "";
 }
 
 export function formatRelativeWidget(value: string) {

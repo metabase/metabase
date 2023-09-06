@@ -6,7 +6,7 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
 } from "metabase-types/api/mocks";
-import { Card, GetCompatibleCardsPayload } from "metabase-types/api";
+import type { Card, GetCompatibleCardsPayload } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 
 const compatibleCardsFirstPage = _.range(50).map(index =>

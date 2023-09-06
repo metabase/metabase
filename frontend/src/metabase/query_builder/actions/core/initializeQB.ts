@@ -1,5 +1,5 @@
 import querystring from "querystring";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
@@ -15,8 +15,8 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import { Card } from "metabase-types/api";
-import {
+import type { Card } from "metabase-types/api";
+import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
@@ -26,11 +26,10 @@ import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
-import NativeQuery, {
-  updateCardTemplateTagNames,
-} from "metabase-lib/queries/NativeQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
 
@@ -304,9 +303,11 @@ async function handleQBInit(
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);
+
   if (question.isSaved()) {
-    // Don't set viz automatically for saved questions
-    question = question.lockDisplay();
+    if (!question.isDataset()) {
+      question = question.lockDisplay();
+    }
 
     const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {

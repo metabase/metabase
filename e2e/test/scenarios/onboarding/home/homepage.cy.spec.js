@@ -10,8 +10,13 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
+  main,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
@@ -98,7 +103,7 @@ describe("scenarios > home > homepage", () => {
     it("should display recent items", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -116,7 +121,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display popular items for a new user", () => {
       cy.signInAsAdmin();
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
       cy.signOut();
@@ -136,7 +141,7 @@ describe("scenarios > home > homepage", () => {
     it("should not show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -195,20 +200,44 @@ describe("scenarios > home > custom homepage", () => {
       popover().findByText("Orders in a dashboard").click();
 
       cy.findByRole("navigation").findByText("Exit admin").click();
-      cy.location("pathname").should("equal", "/dashboard/1");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
 
       // Do a page refresh and test dashboard header
       cy.visit("/");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
 
-      cy.location("pathname").should("equal", "/dashboard/1");
-
-      dashboardHeader().within(() => {
-        cy.icon("pencil").click();
-        cy.findByText(/Remember that this dashboard is set as homepage/);
-      });
+      cy.findByLabelText("Edit dashboard").click();
+      cy.findByTestId("edit-bar").findByText(
+        "You're editing this dashboard. Remember that this dashboard is set as homepage.",
+      );
     });
 
     it("should give you the option to set a custom home page using home page CTA", () => {
+      cy.request("POST", "/api/collection", {
+        name: "Personal nested Collection",
+        color: "#509ee3",
+        description: `nested 1 level`,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
+      }).then(({ body }) => {
+        cy.request("POST", "/api/collection", {
+          name: "Personal nested nested Collection",
+          color: "#509ee3",
+          description: `nested 2 levels`,
+          parent_id: body.id,
+        }).then(({ body }) => {
+          cy.createDashboard({
+            name: "nested dash",
+            collection_id: body.id,
+          });
+        });
+      });
+
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
 
@@ -217,13 +246,38 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText(/Select a dashboard/i).click();
       });
 
-      //Ensure that personal collections have been removed
-      popover().contains("Your personal collection").should("not.exist");
-      popover().contains("All personal collections").should("not.exist");
+      popover().within(() => {
+        //Ensure that personal collections have been removed
+        cy.findByText("First collection").should("exist");
+        cy.findByText("Your personal collection").should("not.exist");
+        cy.findByText("All personal collections").should("not.exist");
+        cy.findByText(/nested/i).should("not.exist");
 
-      popover().findByText("Orders in a dashboard").click();
+        //Ensure that child dashboards of personal collections do not
+        //appear in search
+        cy.findByRole("button", { name: /search/ }).click();
+        cy.findByPlaceholderText("Search").type("das{enter}");
+        cy.findByText("Orders in a dashboard").should("exist");
+        cy.findByText("nested dash").should("not.exist");
+        cy.findByRole("button", { name: /close/ }).click();
+
+        cy.findByText("Orders in a dashboard").click();
+      });
+
       modal().findByRole("button", { name: "Save" }).click();
-      cy.location("pathname").should("equal", "/dashboard/1");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
+
+      cy.findByRole("status").within(() => {
+        cy.findByText("This dashboard has been set as your homepage.").should(
+          "exist",
+        );
+        cy.findByText(
+          "You can change this in Admin > Settings > General.",
+        ).should("exist");
+      });
     });
   });
 
@@ -283,6 +337,29 @@ describe("scenarios > home > custom homepage", () => {
         cy.contains(
           /Your admin has set this dashboard as your homepage/,
         ).should("have.length", 1);
+      });
+    });
+
+    it("should show the default homepage if the dashboard was archived (#31599)", () => {
+      // Archive dashboard
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      dashboardHeader().within(() => {
+        cy.findByLabelText("dashboard-menu-button").click();
+      });
+      popover().within(() => {
+        cy.findByText("Archive").click();
+      });
+      modal().within(() => {
+        cy.findByText("Archive").click();
+      });
+
+      // Navigate to home
+      navigationSidebar().within(() => {
+        cy.findByText("Home").click();
+      });
+      main().within(() => {
+        cy.findByText("We're a little lost...").should("not.exist");
+        cy.findByText("Customize").should("be.visible");
       });
     });
   });

@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
@@ -94,7 +93,7 @@
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 changes
     (if archived?
-      (t2/delete! DashboardCard :action_id id)
+      (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))
 
 (defmethod mi/perms-objects-set :model/Action

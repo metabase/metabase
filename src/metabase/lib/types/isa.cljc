@@ -12,15 +12,19 @@
 (defn ^:export isa?
   "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
   Both effective and semantic types are taken into account."
-  [{:keys [effective-type semantic-type] :as _column} type-kw]
-  (or (clojure.core/isa? effective-type type-kw)
+  [{:keys [effective-type base-type semantic-type] :as _column} type-kw]
+  (or (clojure.core/isa? (or effective-type base-type) type-kw)
       (clojure.core/isa? semantic-type type-kw)))
 
 (defn ^:export field-type?
   "Returns if `column` is of category `category`.
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
   [category column]
-  (let [type-definition (lib.types.constants/type-hierarchies category)]
+  (let [type-definition (lib.types.constants/type-hierarchies category)
+        column          (cond-> column
+                          (and (map? column)
+                               (not (:effective-type column)))
+                          (assoc :effective-type (:base-type column)))]
     (cond
       (nil? column) false
 
@@ -56,7 +60,7 @@
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
 
-(defn ^:export date?
+(defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
   (field-type? ::lib.types.constants/temporal column))
@@ -105,13 +109,13 @@
   "Is `column` a dimension?"
   [column]
   (and column
-       (not= (:lib/source column) :source/aggregation)
+       (not= (:lib/source column) :source/aggregations)
        (not (description? column))))
 
 (defn ^:export metric?
   "Is `column` a metric?"
   [column]
-  (and (not= (:lib/source column) :source/breakout)
+  (and (not= (:lib/source column) :source/breakouts)
        (summable? column)))
 
 (defn ^:export foreign-key?
@@ -128,6 +132,21 @@
   "Is `column` an entity name?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Name))
+
+(defn ^:export json?
+  "Is `column` a serialized JSON column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/SerializedJSON))
+
+(defn ^:export xml?
+  "Is `column` a serialized XML column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/XML))
+
+(defn ^:export structured?
+  "Is `column` serialized structured data? (eg. JSON, XML)"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Structured))
 
 (defn ^:export any?
   "Is this `_column` whatever (including nil)?"

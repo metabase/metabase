@@ -16,7 +16,11 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 
-import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
+import type {
+  ActionDashboardCard,
+  ParameterTarget,
+  Database,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
@@ -31,8 +35,8 @@ import {
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { checkNotNull } from "metabase/core/utils/types";
 
-import { Database } from "metabase-types/api";
-import Action, { ActionProps } from "./Action";
+import type { ActionProps } from "./Action";
+import Action from "./Action";
 
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
@@ -128,6 +132,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
+    fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
 
     // for ActionCreator modal (action edit modal)

@@ -43,8 +43,7 @@
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
-   (java.sql Connection)
-   (java.util UUID)))
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,7 +96,7 @@
                                          :email        email
                                          :first_name   (tu.random/random-name)
                                          :last_name    (tu.random/random-name)
-                                         :password     (str (UUID/randomUUID))
+                                         :password     (str (random-uuid))
                                          :date_joined  :%now
                                          :is_active    true
                                          :is_superuser false)))
@@ -1116,3 +1115,25 @@
         ;; Only the sandbox with a corresponding `Permissions` row is present
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+(deftest fks-are-indexed-test
+  (mt/test-driver :postgres
+    (testing "all FKs should be indexed"
+     (is (= [] (t2/query
+                "SELECT
+                     conrelid::regclass AS table_name,
+                     a.attname AS column_name
+                 FROM
+                     pg_constraint AS c
+                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                 WHERE
+                     c.contype = 'f'
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM pg_index AS i
+                         WHERE i.indrelid = c.conrelid
+                           AND a.attnum = ANY(i.indkey)
+                     )
+                 ORDER BY
+                     table_name,
+                     column_name;"))))))

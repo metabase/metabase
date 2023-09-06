@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
 
 import { getCrumbs } from "metabase/lib/collections";
 
@@ -192,7 +192,7 @@ function ItemPicker<TId>({
       const collection = item.collection_id
         ? collectionsById[item.collection_id]
         : collectionsById["root"];
-      return collection.can_write;
+      return collection?.can_write;
     },
     [models, collectionsById],
   );

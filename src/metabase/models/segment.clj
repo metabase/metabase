@@ -10,6 +10,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
@@ -18,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -56,35 +58,58 @@
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
-  [metadata-provider :- lib.metadata/MetadataProvider
-   {table-id :table_id, :keys [definition], :as _segment}]
+  [metadata-provider                                      :- lib.metadata/MetadataProvider
+   {table-id :table_id, :keys [definition], :as _segment} :- (ms/InstanceOf :model/Segment)]
   (when (seq definition)
-    (when-let [{database-id :db-id} (when table-id (lib.metadata.protocols/table metadata-provider table-id))]
-      (try
-        (let [definition (merge {:source-table table-id}
-                                definition)
-              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-top-level-key query :filters))
-        (catch Throwable e
-          (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
-          nil)))))
+    (try
+      (let [definition  (merge {:source-table table-id}
+                               definition)
+            database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
+            query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-top-level-key query :filters))
+      (catch Throwable e
+        (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+        nil))))
 
-(defn- warmed-metadata-provider [segments]
-  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
-                            (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
+(mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider
+  [database-id :- ::lib.schema.id/database
+   segments    :- [:maybe [:sequential (ms/InstanceOf :model/Segment)]]]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
+                            (lib.metadata.protocols/store-metadatas!
+                             :metadata/segment
+                             (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
+                                  segments)))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
         fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
-                                (comp cat (map :table_id))
-                                [fields segments])]
+                                cat
+                                [(map :table-id fields)
+                                 (map :table_id segments)])]
     ;; this is done for side effects
     (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
+(mu/defn ^:private segments->table-id->warmed-metadata-provider :- fn?
+  [segments :- [:maybe [:sequential (ms/InstanceOf :model/Segment)]]]
+  (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id segments)))]
+                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+        db-id->metadata-provider    (memoize
+                                     (mu/fn db-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+                                       [database-id :- ::lib.schema.id/database]
+                                       (let [segments-for-db (filter (fn [segment]
+                                                                       (= (table-id->db-id (:table_id segment))
+                                                                          database-id))
+                                                                     segments)]
+                                         (warmed-metadata-provider database-id segments-for-db))))]
+    (mu/fn table-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+      [table-id :- ::lib.schema.id/table]
+      (-> table-id table-id->db-id db-id->metadata-provider))))
+
 (methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]
   [_model _key segments]
-  (let [metadata-provider (warmed-metadata-provider segments)]
-    (for [segment segments]
+  (let [table-id->warmed-metadata-provider (segments->table-id->warmed-metadata-provider segments)]
+    (for [segment segments
+          :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id segment))]]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
 
@@ -108,8 +133,8 @@
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
-            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                          :after  (get-in segment2 [:definition])})))))
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get segment1 :definition)
+                                                                          :after  (get segment2 :definition)})))))
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------

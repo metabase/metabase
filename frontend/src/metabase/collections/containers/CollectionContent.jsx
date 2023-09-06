@@ -60,9 +60,11 @@ function mapStateToProps(state, props) {
   const canAccessUploadsDb =
     uploadsEnabled &&
     uploadDbId &&
-    !!Databases.selectors.getObject(state, {
-      entityId: uploadDbId,
-    });
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadDbId,
+      })
+      ?.canWrite();
 
   return {
     isAdmin: getUserIsAdmin(state),
@@ -104,7 +106,7 @@ function CollectionContent({
   });
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
-  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
@@ -291,7 +293,7 @@ function CollectionContent({
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {
-                      toggleAll(unselected);
+                      selectOnlyTheseItems(unpinnedItems);
                     };
 
                     const loading = loadingPinnedItems || loadingUnpinnedItems;
@@ -301,7 +303,7 @@ function CollectionContent({
                     if (isEmpty && !loadingUnpinnedItems) {
                       return (
                         <CollectionEmptyContent>
-                          <CollectionEmptyState collectionId={collectionId} />
+                          <CollectionEmptyState collection={collection} />
                         </CollectionEmptyContent>
                       );
                     }

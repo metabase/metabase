@@ -84,6 +84,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   padding: 0;
   margin: 0.25rem 0;
   pointer-events: all;
+
   ${({ isEditing }) =>
     isEditing &&
     css`

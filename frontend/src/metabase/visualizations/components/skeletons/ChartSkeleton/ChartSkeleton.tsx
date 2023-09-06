@@ -1,4 +1,4 @@
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
 import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
 import LineSkeleton from "metabase/visualizations/components/skeletons/LineSkeleton";
@@ -14,7 +14,7 @@ import WaterfallSkeleton from "metabase/visualizations/components/skeletons/Wate
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
-import { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: CardDisplayType;

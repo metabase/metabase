@@ -30,11 +30,11 @@ describe("issue 11435", () => {
 
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-    clickLineDot({ index: 1 });
+    hoverLineDot({ index: 1 });
     popover().findByTextEnsureVisible("March 11, 2025, 8:45:17.010 PM");
   });
 });
 
-const clickLineDot = ({ index } = {}) => {
-  cy.get(".Visualization .dot").eq(index).click({ force: true });
+const hoverLineDot = ({ index } = {}) => {
+  cy.get(".Visualization .dot").eq(index).realHover();
 };

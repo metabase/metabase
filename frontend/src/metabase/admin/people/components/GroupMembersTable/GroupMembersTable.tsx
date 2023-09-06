@@ -9,9 +9,9 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import User from "metabase/entities/users";
 
-import { Group, Member, User as IUser } from "metabase-types/api";
+import type { Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { isNotNull } from "metabase/core/utils/types";
 import AddMemberRow from "../AddMemberRow";
 
@@ -61,7 +61,7 @@ function GroupMembersTable({
   const canRemove = (user: IUser) =>
     !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
-  const hasMembers = groupMemberships.length > 0;
+  const hasMembers = group.members.length > 0;
 
   const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
     async userIds => {

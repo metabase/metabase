@@ -17,7 +17,6 @@
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
-   [metabase.query-processor.middleware.cache.impl-test :as impl-test]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -37,10 +36,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(use-fixtures :each (fn [thunk]
-                      (mt/with-log-level :fatal
-                        (thunk))))
-
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."
@@ -49,9 +44,6 @@
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
   nil)
-
-(defprotocol ^:private CacheContents
-  (^:private contents [cache-backend]))
 
 (defn- test-backend
   "In in-memory cache backend implementation."
@@ -64,11 +56,6 @@
              (u/pprint-to-str 'blue
                (for [[hash {:keys [created]}] @store]
                  [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
-
-      CacheContents
-      (contents [_]
-        (into {} (for [[k v] store]
-                   [k (impl-test/deserialize v)])))
 
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]

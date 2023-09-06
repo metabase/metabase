@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -24,6 +23,9 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+
+import { getPulseFormInput } from "metabase/pulse/selectors";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
@@ -37,7 +39,7 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import DashboardHeaderView from "../components/DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -46,6 +48,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
+    formInput: getPulseFormInput(state, props),
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
@@ -61,6 +64,7 @@ const mapDispatchToProps = {
     Bookmark.actions.create({ id, type: "dashboard" }),
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
+  fetchPulseFormInput,
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
@@ -72,12 +76,19 @@ class DashboardHeader extends Component {
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
+  componentDidMount() {
+    this.props.fetchPulseFormInput();
+  }
+
   state = {
     modal: null,
   };
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    fetchPulseFormInput: PropTypes.func.isRequired,
+    formInput: PropTypes.object.isRequired,
+    isAdmin: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -93,7 +104,7 @@ class DashboardHeader extends Component {
     addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
@@ -122,6 +133,18 @@ class DashboardHeader extends Component {
       query: PropTypes.object,
       pathname: PropTypes.string,
     }),
+
+    createBookmark: PropTypes.func,
+    deleteBookmark: PropTypes.func,
+    isBookmarked: PropTypes.bool,
+    dashboardBeforeEditing: PropTypes.object,
+    parametersWidget: PropTypes.node,
+    isShowingDashboardInfoSidebar: PropTypes.bool,
+    isAddParameterPopoverOpen: PropTypes.bool,
+    showAddParameterPopover: PropTypes.func,
+    hideAddParameterPopover: PropTypes.func,
+    addParameter: PropTypes.func,
+    isHomepageDashboard: PropTypes.bool,
   };
 
   handleEdit(dashboard) {
@@ -178,8 +201,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave(preserveParameters) {
-    await this.props.saveDashboardAndCards(preserveParameters);
+  async onSave() {
+    await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
 
@@ -368,11 +391,11 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
+            visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
             icon="pencil"
-            className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           />
         </Tooltip>,
@@ -482,7 +505,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderView
+      <DashboardHeaderComponent
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
@@ -503,7 +526,6 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave(true)}
       />
     );
   }

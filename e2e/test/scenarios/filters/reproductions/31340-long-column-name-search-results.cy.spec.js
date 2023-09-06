@@ -12,6 +12,7 @@ const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 const LONG_COLUMN_NAME =
   "Some very very very very long column name that should have a line break";
+
 describe("issue 31340", function () {
   beforeEach(() => {
     restore();
@@ -59,26 +60,32 @@ describe("issue 31340", function () {
       )
         .should("be.visible")
         .then($container => {
-          cy.findByText(LONG_COLUMN_NAME).then($columnTextEl => {
+          cy.findByText(LONG_COLUMN_NAME).then(([columnTextEl]) => {
+            const containerEl = $container[0];
+
             // check that text block is not wider than the popover
             assertDescendantNotOverflowsContainer(
-              $container[0],
+              containerEl,
               $container.parent()[0],
               "search results message",
             );
 
             // check that column name is within the text block
             assertDescendantNotOverflowsContainer(
-              $columnTextEl[0],
-              $container[0],
+              columnTextEl,
+              containerEl,
               "search results message",
             );
-            // and it takes no more than 1 line
-            expect($columnTextEl[0].getBoundingClientRect().height).to.be.lte(
-              20,
-            ); // reasonable font size
 
-            assertIsEllipsified($columnTextEl[0]);
+            const lineHeight = parseFloat(
+              window.getComputedStyle(columnTextEl).lineHeight,
+            );
+            // and it takes no more than 1 line
+            expect(columnTextEl.getBoundingClientRect().height).to.be.lte(
+              lineHeight,
+            );
+
+            assertIsEllipsified(columnTextEl);
           });
         });
     });

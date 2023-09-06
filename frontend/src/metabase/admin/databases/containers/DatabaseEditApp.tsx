@@ -1,4 +1,5 @@
-import { ComponentType, useState } from "react";
+import type { ComponentType } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -16,15 +17,15 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/selectors/settings";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DatabaseForm from "metabase/databases/containers/DatabaseForm";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/containers/ErrorPages";
-import {
+import type {
   Database as DatabaseType,
   DatabaseData,
   DatabaseId,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Database from "metabase-lib/metadata/Database";
 

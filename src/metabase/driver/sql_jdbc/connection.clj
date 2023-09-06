@@ -7,15 +7,19 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -36,7 +40,7 @@
   WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
   CONNECTION SPEC."
   {:added "0.32.0" :arglists '([driver details-map])}
-  driver/dispatch-on-initialized-driver
+  driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
 
@@ -218,19 +222,18 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            db-or-id-or-spec) ; passed in
-                          (t2/select-one [Database :id :engine :details :is_audit] :id database-id) ; look up by ID
-                          (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                          {:status-code 404
-                                           :type        qp.error-type/invalid-query
-                                           :database-id database-id})))
+                            (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
+                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
+                            db-or-id-or-spec)
+                          (qp.store/with-metadata-provider database-id
+                            (lib.metadata/database (qp.store/metadata-provider))))
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
-                            (:is_audit db)
+                            (:is-audit db)
                             {:datasource (mdb.connection/data-source)}
 
                             (= ::not-found details)

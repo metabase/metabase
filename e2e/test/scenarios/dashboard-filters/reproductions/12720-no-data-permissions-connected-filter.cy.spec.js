@@ -5,6 +5,7 @@ import {
   updateDashboardCards,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -41,7 +42,7 @@ describe("issue 12720", () => {
     cy.signInAsAdmin();
 
     // In this test we're using already present question ("Orders") and the dashboard with that question ("Orders in a dashboard")
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [dashboardFilter],
     });
 
@@ -95,7 +96,7 @@ describe("issue 12720", () => {
 });
 
 function clickThrough(title) {
-  visitDashboard(1);
+  visitDashboard(ORDERS_DASHBOARD_ID);
   cy.get(".DashCard").contains(title).click();
 
   cy.location("search").should("contain", dashboardFilter.default);

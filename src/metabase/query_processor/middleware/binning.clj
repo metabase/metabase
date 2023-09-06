@@ -3,6 +3,12 @@
   that contain the information Query Processors will need in order to perform binning."
   (:require
    [clojure.math.numeric-tower :refer [ceil expt floor]]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.binning :as lib.schema.binning]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
@@ -10,19 +16,19 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
-(def ^:private FieldID->Filters {su/IntGreaterThanZero [mbql.s/Filter]})
+(def ^:private FieldID->Filters
+  [:map-of [:ref ::lib.schema.id/field] [:sequential mbql.s/Filter]])
 
-(s/defn ^:private filter->field-map :- FieldID->Filters
+(mu/defn ^:private filter->field-map :- FieldID->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID -> all the clauses the reference
   it."
-  [filter-clause :- (s/maybe mbql.s/Filter)]
+  [filter-clause :- [:maybe mbql.s/Filter]]
   (reduce
    (partial merge-with concat)
    {}
@@ -30,11 +36,13 @@
          field-id  (mbql.u/match subclause [:field (field-id :guard integer?) _] field-id)]
      {field-id [subclause]})))
 
-(s/defn ^:private extract-bounds :- {:min-value s/Num, :max-value s/Num}
+(mu/defn ^:private extract-bounds :- [:map [:min-value number?] [:max-value number?]]
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
-  [field-id :- (s/maybe su/IntGreaterThanZero), fingerprint :- (s/maybe su/Map), field-id->filters :- FieldID->Filters]
+  [field-id          :- [:maybe ::lib.schema.common/positive-int]
+   fingerprint       :- [:maybe :map]
+   field-id->filters :- FieldID->Filters]
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id->filters field-id)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
@@ -58,28 +66,38 @@
 
 ;;; ------------------------------------------ Calculating resolved options ------------------------------------------
 
-(s/defn ^:private calculate-bin-width :- s/Num
+(mu/defn ^:private calculate-bin-width :- number?
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
-  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
+  [min-value :- number?
+   max-value :- number?
+   num-bins  :- ::lib.schema.common/positive-int]
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
+(mu/defn ^:private calculate-num-bins :- ::lib.schema.common/positive-int
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value :- s/Num
-   max-value :- s/Num
-   bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
+  [min-value :- number?
+   max-value :- number?
+   bin-width :- [:and
+                 number?
+                 [:fn {:error/message "number >= 0"} (complement neg?)]]]
   (max (long (Math/ceil (/ (- max-value min-value)
                            bin-width)))
        1))
 
-(s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
-                                               (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
+(def ^:private ResolvedStrategy
+  [:tuple
+   [:enum :bin-width :num-bins]
+   [:map
+    [:bin-width number?]
+    [:num-bins ::lib.schema.common/positive-int]]])
+
+(mu/defn ^:private resolve-default-strategy :- ResolvedStrategy
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
-  [metadata  :- {(s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationType), s/Any s/Any}
-   min-value :- s/Num
-   max-value :- s/Num]
-  (if (isa? (:semantic_type metadata) :type/Coordinate)
+  [metadata  :- lib.metadata/ColumnMetadata
+   min-value :- number?
+   max-value :- number?]
+  (if (isa? (:semantic-type metadata) :type/Coordinate)
     (let [bin-width (public-settings/breakout-bin-width)]
       [:bin-width
        {:bin-width bin-width
@@ -104,8 +122,8 @@
 
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
-(s/defn ^:private nicer-bin-width
-  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
+(mu/defn ^:private nicer-bin-width
+  [min-value :- number?, max-value :- number?, num-bins :- ::lib.schema.common/positive-int]
   (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
         scale         (expt 10 (u/order-of-magnitude min-bin-width))]
     (->> pleasing-numbers
@@ -128,11 +146,11 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(s/defn ^:private nicer-breakout* :- su/Map
+(mu/defn ^:private nicer-breakout* :- :map
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
-  [strategy                                         :- mbql.s/BinningStrategyName
-   {:keys [min-value max-value bin-width num-bins]} :- su/Map]
+  [strategy                                         :- ::lib.schema.binning/strategy
+   {:keys [min-value max-value bin-width num-bins]} :- :map]
   (let [bin-width             (if (= strategy :num-bins)
                                 (nicer-bin-width min-value max-value num-bins)
                                 bin-width)
@@ -144,15 +162,21 @@
                   (calculate-num-bins min-value max-value bin-width))
      :bin-width bin-width}))
 
-(s/defn ^:private nicer-breakout :- (s/maybe su/Map)
-  [strategy :- mbql.s/BinningStrategyName, opts :- su/Map]
+(mu/defn ^:private nicer-breakout :- [:maybe :map]
+  [strategy :- ::lib.schema.binning/strategy
+   opts     :- :map]
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 
 
 ;;; -------------------------------------------- Adding resolved options ---------------------------------------------
 
-(defn- resolve-options [strategy strategy-param metadata min-value max-value]
+(mu/defn ^:private resolve-options :- ResolvedStrategy
+  [strategy       :- ::lib.schema.binning/strategy
+   strategy-param
+   metadata       :- lib.metadata/ColumnMetadata
+   min-value      :- number?
+   max-value      :- number?]
   (case strategy
     :num-bins
     [:num-bins
@@ -167,29 +191,45 @@
     :default
     (resolve-default-strategy metadata min-value max-value)))
 
-(s/defn ^:private matching-metadata
-  [field-id-or-name :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString) source-metadata]
+(def ^:private PossiblyLegacyColumnMetadata
+  [:map
+   [:name :string]])
+
+(mu/defn ^:private matching-metadata-from-source-metadata :- lib.metadata/ColumnMetadata
+  [field-name      :- ::lib.schema.common/non-blank-string
+   source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
+  (do
+    ;; make sure source-metadata exists
+    (when-not source-metadata
+      (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
+                      {:field field-name})))
+    ;; try to find field in source-metadata with matching name
+    (let [mlv2-metadatas (for [col source-metadata]
+                           (lib.card/->card-metadata-column (qp.store/metadata-provider) col))]
+      (or
+       (lib.equality/closest-matching-metadata
+        [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
+        mlv2-metadatas)
+       (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
+                            (pr-str field-name))
+                       {:field field-name, :resolved-metadata mlv2-metadatas}))))))
+
+(def ^:private ColumnMetadata
+  [:or
+   lib.metadata/ColumnMetadata
+   [:map
+    [:fingerprint :any]]])
+
+(mu/defn ^:private matching-metadata :- lib.metadata/ColumnMetadata
+  [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+   source-metadata  :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (if (integer? field-id-or-name)
     ;; for Field IDs, just fetch the Field from the Store
-    (qp.store/field field-id-or-name)
+    (lib.metadata/field (qp.store/metadata-provider) field-id-or-name)
     ;; for field literals, we require `source-metadata` from the source query
-    (do
-      ;; make sure source-metadata exists
-      (when-not source-metadata
-        (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
-                        {:field field-id-or-name})))
-      ;; try to find field in source-metadata with matching name
-      (or
-       (some
-        (fn [metadata]
-          (when (= (:name metadata) field-id-or-name)
-            metadata))
-        source-metadata)
-       (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-                            field-id-or-name)
-                {:field field-id-or-name, :resolved-metadata source-metadata}))))))
+    (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
 
-(s/defn ^:private update-binned-field :- mbql.s/field
+(mu/defn ^:private update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."

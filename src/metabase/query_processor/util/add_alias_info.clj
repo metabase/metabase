@@ -47,12 +47,19 @@
   column index)."
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]))
 
 (defn prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -105,7 +112,8 @@
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
-    [:field id-or-name (remove-namespaced-options (dissoc opts :source-field))]
+    [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
+                                                    (integer? id-or-name) (dissoc :base-type)))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
     [:expression expression-name opts]
@@ -157,22 +165,23 @@
 (defn- this-level-join-aliases [{:keys [joins]}]
   (into #{} (map :alias) joins))
 
-(defn- field-is-from-join-in-this-level? [inner-query [_ _ {:keys [join-alias]}]]
+(defn- field-is-from-join-in-this-level? [inner-query [_field _id-or-name {:keys [join-alias]}]]
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(defn- field-instance
-  {:arglists '([field-clause])}
-  [[_ id-or-name]]
+(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+  [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
-    (qp.store/field id-or-name)))
+    (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
 (defn- field-table-id [field-clause]
-  (:table_id (field-instance field-clause)))
+  (:table-id (field-instance field-clause)))
 
-(defn- field-source-table-alias
+(mu/defn ^:private field-source-table-alias :- [:or
+                                                ::lib.schema.common/non-blank-string
+                                                ::lib.schema.id/table
+                                                [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
-  {:arglists '([inner-query field-clause])}
   [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
@@ -196,6 +205,9 @@
             join))
         joins))
 
+(defn- fuzzify [clause]
+  (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
+
 (defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
                                                                      :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
@@ -203,31 +215,30 @@
         field-exports (filter (partial mbql.u/is-clause? :field)
                               all-exports)]
     ;; first look for an EXACT match in the `exports`
-    (or (some (fn [a-clause]
-                (when (= (normalize-fn a-clause) normalized)
-                  a-clause))
-              field-exports)
+    (or (m/find-first (fn [a-clause]
+                        (= (normalize-fn a-clause) normalized))
+                      field-exports)
         ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
-        (let [fuzzify          (fn [clause] (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
-              fuzzy-normalized (fuzzify normalized)]
-          (some (fn [a-clause]
-                  (when (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized)
-                    a-clause))
-                field-exports))
+        (let [fuzzy-normalized (fuzzify normalized)]
+          (m/find-first (fn [a-clause]
+                          (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized))
+                        field-exports))
+        ;; if still no match try looking based for a matching Field based on ID.
+        (let [[_field id-or-name _opts] field-clause]
+          (when (integer? id-or-name)
+            (m/find-first (fn [[_field an-id-or-name _opts]]
+                            (= an-id-or-name id-or-name))
+                          field-exports)))
         ;; look for a matching expression clause with the same name if still no match
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or (some
-               (fn [[_ expression-name :as expression-clause]]
-                 (when (= expression-name field-name)
-                   expression-clause))
-               (filter (partial mbql.u/is-clause? :expression) all-exports))
-              (some
-               (fn [[_ _ opts :as aggregation-options-clause]]
-                 (when (= (::source-alias opts) field-name)
-                   aggregation-options-clause))
-               (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
+          (or (m/find-first (fn [[_ expression-name :as _expression-clause]]
+                              (= expression-name field-name))
+                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+              (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
+                              (= (::source-alias opts) field-name))
+                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -261,19 +272,43 @@
 (defmulti ^String field-reference
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account."
-  {:added "0.46.0", :arglists '([driver field-inst])}
+  parent fields into account.
+
+  DEPRECATED: Implement [[field-reference-mlv2]] instead, which accepts a `kebab-case` Field metadata rather than
+  `snake_case` metadata."
+  {:added "0.46.0", :arglists '([driver field-inst]), :deprecated "0.48.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod field-reference ::driver/driver
-  [_driver field-inst]
-  (:name field-inst))
+(defmulti ^String field-reference-mlv2
+  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
+  By default this is just the name of the field, but it can be more complicated, e.g., take
+  parent fields into account."
+  {:added "0.48.0", :arglists '([driver field-inst])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(mu/defmethod field-reference-mlv2 ::driver/driver
+  [driver :- :keyword
+   field  :- lib.metadata/ColumnMetadata]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (if (get-method field-reference driver)
+    (do
+      (sql.qp.deprecated/log-deprecation-warning
+       driver
+       `field-reference
+       "0.48.0")
+      (field-reference driver
+                       #_{:clj-kondo/ignore [:deprecated-var]}
+                       (qp.store/->legacy-metadata field)))
+    (:name field)))
 
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
-  (or (some->> field-clause field-instance (field-reference driver/*driver*))
+  (or (some->> field-clause
+               field-instance
+               (field-reference-mlv2 driver/*driver*))
       (when (string? id-or-name)
         id-or-name)))
 

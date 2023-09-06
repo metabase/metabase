@@ -20,7 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import {
   checkCanBeModel,
@@ -128,14 +128,14 @@ const QuestionActions = ({
   }
 
   extraButtons.push(
-    PLUGIN_MODERATION.getMenuItems(
+    ...PLUGIN_MODERATION.getMenuItems(
       question,
       isModerator,
       dispatchSoftReloadCard,
     ),
   );
 
-  if (isDataset) {
+  if (canWrite && isDataset) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
@@ -237,12 +237,14 @@ const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>
-      <EntityMenu
-        triggerAriaLabel={t`Move, archive, and more...`}
-        items={extraButtons}
-        triggerIcon="ellipsis"
-        tooltip={t`Move, archive, and more...`}
-      />
+      {extraButtons.length > 0 && (
+        <EntityMenu
+          triggerAriaLabel={t`Move, archive, and more...`}
+          items={extraButtons}
+          triggerIcon="ellipsis"
+          tooltip={t`Move, archive, and more...`}
+        />
+      )}
     </>
   );
 };

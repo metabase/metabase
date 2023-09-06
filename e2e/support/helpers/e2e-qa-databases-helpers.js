@@ -185,7 +185,17 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body?.tables?.find(table => table.name === name)?.id;
+      const table = body?.tables?.find(table => table.name === name);
+      return table ? table.id : null;
+    });
+}
+
+export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy
+    .request("GET", `/api/database/${databaseId}/metadata`)
+    .then(({ body }) => {
+      const table = body?.tables?.find(table => table.name === name);
+      return table || null;
     });
 }
 
@@ -216,29 +226,50 @@ export function waitForSyncToFinish({
   iteration = 0,
   dbId = 2,
   tableName = "",
+  tableAlias,
 }) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
-    return;
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
   cy.wait(100);
 
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {
-      waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+      return waitForSyncToFinish({
+        iteration: ++iteration,
+        dbId,
+        tableName,
+        tableAlias,
+      });
     } else if (tableName) {
-      const hasTable = body.tables.some(table => table.name === tableName);
-      if (!hasTable) {
-        waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+      const table = body.tables.find(
+        table =>
+          table.name === tableName && table.initial_sync_status === "complete",
+      );
+
+      if (!table) {
+        return waitForSyncToFinish({
+          iteration: ++iteration,
+          dbId,
+          tableName,
+          tableAlias,
+        });
       }
+
+      if (tableAlias) {
+        cy.wrap(table).as(tableAlias);
+      }
+
+      return null;
     }
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = "" }) {
+export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({ iteration: 0, dbId, tableName });
+  waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
 }

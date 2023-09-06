@@ -1,6 +1,6 @@
-import { UserId } from "./user";
-import { CardDisplayType } from "./card";
-import { DatabaseId } from "./database";
+import type { UserId } from "./user";
+import type { CardDisplayType } from "./card";
+import type { DatabaseId } from "./database";
 
 export type RegularCollectionId = number;
 
@@ -47,6 +47,7 @@ type CollectionItemModel =
   | "dataset"
   | "dashboard"
   | "pulse"
+  | "snippet"
   | "collection";
 
 export type CollectionItemId = number;

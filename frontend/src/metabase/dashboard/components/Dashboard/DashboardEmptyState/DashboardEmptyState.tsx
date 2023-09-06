@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import { Container } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {
@@ -54,11 +54,13 @@ export function DashboardEmptyState({
   );
 }
 
-interface TabEmptyStateProps {
+interface DashboardEmptyStateWithoutAddPromptProps {
   isNightMode: boolean;
 }
 
-export function TabEmptyState({ isNightMode }: TabEmptyStateProps) {
+export function DashboardEmptyStateWithoutAddPrompt({
+  isNightMode,
+}: DashboardEmptyStateWithoutAddPromptProps) {
   return (
     <Container isNightMode={isNightMode}>
       <EmptyState title={t`There's nothing here, yet.`} />

@@ -22,7 +22,7 @@ import type {
 } from "metabase-types/api";
 
 import { TYPE } from "metabase-lib/types/constants";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import type {
   ActionFormProps,
@@ -303,7 +303,7 @@ export const getFormValidationSchema = (
 };
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
-  if (action.type === "implicit" && action.kind === "row/delete") {
+  if (isImplicitDeleteAction(action)) {
     return "danger";
   }
   return action.visualization_settings?.submitButtonColor ?? "primary";
@@ -334,3 +334,9 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
 export const isActionPublic = (action: Partial<WritebackAction>) => {
   return action.public_uuid != null;
 };
+
+export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/delete";
+
+export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/update";

@@ -160,7 +160,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalTooltipText = [
         ["Created At", "2022"],
         ["Average of Total", "56.66"],
-        ["Sum of Quantity", "3,236"],
+        ["Cumulative sum of Quantity", "3,236"],
       ];
 
       const updatedTooltipText = [
@@ -228,7 +228,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalSeriesTooltipText = [
         ["Created At", "2022"],
         ["Average of Total", "56.66"],
-        ["Sum of Quantity", "3,236"],
+        ["Cumulative sum of Quantity", "3,236"],
       ];
       const updatedOriginalSeriesTooltipText = [
         ["Created At", "2022"],
@@ -439,7 +439,6 @@ function setupDashboard(cardId, addedSeriesCardId) {
 }
 
 function showTooltipForFirstCircleInSeries(series_index) {
-  cy.findByRole("main").scrollTo("bottom");
   cy.get(`.sub._${series_index}`)
     .as("firstSeries")
     .find("circle")
@@ -448,7 +447,6 @@ function showTooltipForFirstCircleInSeries(series_index) {
 }
 
 function showTooltipForFirstBarInSeries(series_index) {
-  cy.findByRole("main").scrollTo("bottom");
   cy.get(`.sub._${series_index}`)
     .as("firstSeries")
     .find(".bar")

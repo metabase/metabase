@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
@@ -24,8 +24,8 @@ import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
   location: Location;
@@ -90,7 +90,6 @@ function ModelDetailPage({
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
-  const canRunActions = hasActionsEnabled && hasDataPermissions;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -175,7 +174,6 @@ function ModelDetailPage({
         mainTable={mainTable}
         tab={tab}
         hasDataPermissions={hasDataPermissions}
-        canRunActions={canRunActions}
         hasActionsTab={hasActionsTab}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}

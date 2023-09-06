@@ -1,8 +1,8 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
-import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import type { State } from "metabase-types/store";
+import type Database from "metabase-lib/metadata/Database";
 import DeprecationNotice from "../../components/DeprecationNotice";
 import { disableNotice } from "../../actions";
 import {

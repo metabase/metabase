@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useSelector } from "metabase/lib/redux";
 import LogoIcon from "metabase/components/LogoIcon";
 import { getHasIllustration } from "../../selectors";

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
@@ -12,6 +11,7 @@
    [metabase.models.user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
@@ -35,40 +35,79 @@
 
 (defn- disable-other-sso-types [thunk]
   (classloader/require 'metabase.api.ldap)
-  (mt/with-temporary-setting-values [ldap-enabled false
-                                     jwt-enabled  false]
-    (thunk)))
+  (let [current-features (premium-features/token-features)]
+    ;; The :sso-jwt token is needed to set the jwt-enabled setting
+    (premium-features-test/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [ldap-enabled false
+                                         jwt-enabled  false]
+        (premium-features-test/with-premium-features current-features
+          (thunk))))))
 
 (use-fixtures :each disable-other-sso-types)
-
-(defmacro with-valid-premium-features-token
-  "Stubs the `premium-features/enable-sso?` function to simulate a valid token. This needs to be included to test any of the
-  SSO features"
-  [& body]
-  `(premium-features-test/with-premium-features #{:sso}
-     ~@body))
-
-(defn client
-  "Same as `client/client` but doesn't include the `/api` in the URL prefix"
-  [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client args)))
-
-(defn client-full-response
-  "Same as `client/client-full-response` but doesn't include the `/api` in the URL prefix"
-  [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client-full-response args)))
-
-(defn successful-login?
-  "Return true if the response indicates a successful user login"
-  [resp]
-  (string? (get-in resp [:cookies @#'mw.session/metabase-session-cookie :value])))
 
 (def ^:private default-idp-uri            "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri       "http://localhost:3000/test")
 (def ^:private default-idp-uri-with-param (str default-idp-uri "?someparam=true"))
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
+
+(defmacro with-sso-saml-token
+  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-saml` feature.
+   This needs to be included to test any of the SAML features."
+  [& body]
+  `(premium-features-test/with-premium-features #{:sso-saml}
+     ~@body))
+
+(defn call-with-default-saml-config [f]
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [saml-enabled                       true
+                                         saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert
+                                         saml-keystore-path                 nil
+                                         saml-keystore-password             nil
+                                         saml-keystore-alias                nil]
+        (premium-features-test/with-premium-features current-features
+          (f))))))
+
+(defmacro with-default-saml-config [& body]
+  `(call-with-default-saml-config
+    (fn []
+      ~@body)))
+
+(defn call-with-login-attributes-cleared!
+  "If login_attributes remain after these tests run, depending on the order that the tests run, lots of tests will
+  fail as the login_attributes data from this tests is unexpected in those other tests"
+  [f]
+  (try
+    (f)
+    (finally
+      (u/ignore-exceptions (do (t2/update! User {} {:login_attributes nil})
+                               (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
+
+(defmacro with-saml-default-setup [& body]
+  `(with-sso-saml-token
+     (call-with-login-attributes-cleared!
+      (fn []
+        (call-with-default-saml-config
+         (fn []
+           ~@body))))))
+
+(defn client
+  "Same as `client/client` but doesn't include the `/api` in the URL prefix"
+  [& args]
+  (binding [client/*url-prefix* ""]
+    (apply client/real-client args)))
+
+(defn client-full-response
+  "Same as `client/client-full-response` but doesn't include the `/api` in the URL prefix"
+  [& args]
+  (binding [client/*url-prefix* ""]
+    (apply client/client-real-response args)))
+
+(defn successful-login?
+  "Return true if the response indicates a successful user login"
+  [resp]
+  (string? (get-in resp [:cookies @#'mw.session/metabase-session-cookie :value])))
 
 (defn- do-with-some-validators-disabled
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so
@@ -100,63 +139,34 @@
 (deftest require-valid-premium-features-token-test
   (testing "SSO requests fail if they don't have a valid premium-features token"
     (premium-features-test/with-premium-features #{}
-      (is (= "SSO requires a valid token"
-             (client :get 403 "/auth/sso"))))))
+      (with-default-saml-config
+        (is (= "SSO has not been enabled and/or configured"
+               (client :get 400 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
-  (testing "SSO requests fail if SAML hasn't been configured or enabled"
-    (with-valid-premium-features-token
+  (with-sso-saml-token
+    (testing "SSO requests fail if SAML hasn't been configured or enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
                                          saml-identity-provider-certificate nil]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if SAML has been configured but not enabled"
-    (with-valid-premium-features-token
+    (testing "SSO requests fail if SAML has been configured but not enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate default-idp-cert]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (with-valid-premium-features-token
+    (testing "SSO requests fail if SAML is enabled but hasn't been configured"
       (mt/with-temporary-setting-values [saml-enabled               true
                                          saml-identity-provider-uri nil]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "The IDP provider certificate must also be included for SSO to be configured"
-    (with-valid-premium-features-token
+    (testing "The IDP provider certificate must also be included for SSO to be configured"
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]
         (is (some? (client :get 400 "/auth/sso")))))))
-
-(defn call-with-default-saml-config [f]
-  (mt/with-temporary-setting-values [saml-enabled                       true
-                                     saml-identity-provider-uri         default-idp-uri
-                                     saml-identity-provider-certificate default-idp-cert
-                                     saml-keystore-path                 nil
-                                     saml-keystore-password             nil
-                                     saml-keystore-alias                nil]
-    (f)))
-
-(defn call-with-login-attributes-cleared!
-  "If login_attributes remain after these tests run, depending on the order that the tests run, lots of tests will
-  fail as the login_attributes data from this tests is unexpected in those other tests"
-  [f]
-  (try
-    (f)
-    (finally
-      (u/ignore-exceptions (do (t2/update! User {} {:login_attributes nil})
-                               (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
-
-(defmacro with-saml-default-setup [& body]
-  `(with-valid-premium-features-token
-     (call-with-login-attributes-cleared!
-      (fn []
-        (call-with-default-saml-config
-         (fn []
-           ~@body))))))
 
 ;; TODO - maybe this belongs in a util namespace?
 (defn- uri->params-map
@@ -402,7 +412,8 @@
                          ""
                          "   "
                          "/"
-                         "https://badsite.com"]]
+                         "https://badsite.com"
+                         "//badsite.com"]]
       (testing (format "\nRelayState = %s" (pr-str relay-state))
         (with-saml-default-setup
           (do-with-some-validators-disabled
@@ -414,16 +425,18 @@
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
                        (saml-login-attributes "rasta@metabase.com"))))))))))
+
   (testing "if the RelayState leads us to the wrong host, avoid the open redirect (boat#160)"
-    (let [redirect-url "https://badsite.com"]
+    (doseq [redirect-url ["https://badsite.com"
+                          "//badsite.com"]]
       (with-saml-default-setup
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (do-with-some-validators-disabled
             (fn []
-              (let [get-response (client :get 400 "/auth/sso"
-                                   {:request-options {:redirect-strategy :none}}
-                                   :redirect redirect-url)]
-                (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
+             (let [get-response (client :get 400 "/auth/sso"
+                                  {:request-options {:redirect-strategy :none}}
+                                  :redirect redirect-url)]
+               (is (= "Invalid redirect URL" (:message get-response)))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
@@ -521,8 +534,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}
@@ -544,8 +557,8 @@
       (with-saml-default-setup
         (do-with-some-validators-disabled
           (fn []
-            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temp [PermissionsGroup group-1 {:name (str ::group-1)}
+                           PermissionsGroup group-2 {:name (str ::group-2)}]
               (mt/with-temporary-setting-values [saml-group-sync      true
                                                  saml-group-mappings  {"group_1" [(u/the-id group-1)]
                                                                        "group_2" [(u/the-id group-2)]}

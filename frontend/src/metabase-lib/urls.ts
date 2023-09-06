@@ -6,13 +6,13 @@ import type {
   ParameterValue,
 } from "metabase-types/api";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import type Question from "./Question";
-import NativeQuery from "./queries/NativeQuery";
+import type NativeQuery from "./queries/NativeQuery";
 
 type UrlBuilderOpts = {
   originalQuestion?: Question;
@@ -71,7 +71,7 @@ export function getUrlWithParameters(
         clean,
         originalQuestion: question,
         includeDisplayIsLocked,
-        query: { objectId },
+        query: objectId === undefined ? {} : { objectId },
       });
     }
 

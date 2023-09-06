@@ -2,6 +2,7 @@
   "Utility functions for querying the application database."
   (:require
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -11,11 +12,7 @@
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
-  (or
-    ;; toucan 2 models
-    (isa? model :metabase/model)
-    ;; toucan 1 models
-    (isa? model :toucan1/model)))
+  (isa? model :metabase/model))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.

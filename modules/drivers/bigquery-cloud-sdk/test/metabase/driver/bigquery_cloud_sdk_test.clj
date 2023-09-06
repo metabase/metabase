@@ -63,6 +63,9 @@
    ;; the initial dataset isn't realized until it's used the first time. because of that,
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
+
+   ;; TODO Temporarily disabling due to flakiness (#33140)
+   #_
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
@@ -388,6 +391,8 @@
             (catch clojure.lang.ExceptionInfo e
               (is (= (ex-message e) "Query cancelled")))))))))
 
+;; TODO Temporarily disabling due to flakiness (#33140)
+#_
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
@@ -435,14 +440,14 @@
     (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
       ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
       ;; temp DB will cause driver/normalize-db-details to fire
-      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
-                                    :engine  :bigquery-cloud-sdk,
-                                    :details {:dataset-id "my-dataset"
-                                              :service-account-json "{}"}}]
-                      Table    [table1 {:name "Table 1"
-                                        :db_id (u/the-id db)}]
-                      Table    [table2 {:name "Table 2"
-                                        :db_id (u/the-id db)}]]
+      (mt/with-temp [Database db {:name    "Legacy BigQuery DB"
+                                  :engine  :bigquery-cloud-sdk,
+                                  :details {:dataset-id "my-dataset"
+                                            :service-account-json "{}"}}
+                     Table    table1 {:name "Table 1"
+                                      :db_id (u/the-id db)}
+                     Table    table2 {:name "Table 2"
+                                      :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]

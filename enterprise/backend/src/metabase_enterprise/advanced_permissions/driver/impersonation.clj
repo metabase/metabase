@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.driver.impersonation
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -40,12 +41,19 @@
     (filter (partial enforce-impersonation? group-id->perms-set)
             impersonations)))
 
+(defenterprise impersonation-enabled-for-db?
+  "Is impersonation enabled for the given database, for any groups?"
+  :feature :advanced-permissions
+  [db-or-id]
+  (when db-or-id
+    (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id))))
+
 (defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found."
   [database-or-id]
-  (when-not api/*is-superuser?*
+  (when (and database-or-id (not api/*is-superuser?*))
     (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
           conn-impersonations (enforced-impersonations
                                (when (seq group-ids)
@@ -61,8 +69,13 @@
       (when (not-empty role-attributes)
         (let [conn-impersonation (first conn-impersonations)
               role-attribute     (:attribute conn-impersonation)
-              user-attributes    (:login_attributes @api/*current-user*)]
-          (get user-attributes role-attribute))))))
+              user-attributes    (:login_attributes @api/*current-user*)
+              role               (get user-attributes role-attribute)]
+          (if (str/blank? role)
+            (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
+                            {:user-id api/*current-user-id*
+                             :conn-impersonations conn-impersonations}))
+            role))))))
 
 (defenterprise hash-key-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
@@ -81,9 +94,17 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [default-role       (driver.sql/default-database-role driver database)
-            impersonation-role (connection-impersonation-role database)]
-        (driver/set-role! driver conn (or impersonation-role default-role)))
+      (let [enabled?           (impersonation-enabled-for-db? database)
+            default-role       (driver.sql/default-database-role driver database)
+            impersonation-role (and enabled? (connection-impersonation-role database))]
+        (when (and enabled? (not default-role))
+          (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
+                          {:user-id api/*current-user-id*
+                           :database-id (u/the-id database)})))
+        (when-let [role (or impersonation-role default-role)]
+          ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
+          ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
+          (driver/set-role! driver conn role)))
       (catch Throwable e
         (log/debug e (tru "Error setting role on connection"))
         (throw e)))))

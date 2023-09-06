@@ -1,4 +1,5 @@
-import { Component, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import {
@@ -9,6 +10,7 @@ import {
 } from "./ModalContent.styled";
 
 export interface ModalContentProps extends CommonModalProps {
+  "data-testid"?: string;
   id?: string;
   title: string;
   footer?: ReactNode;
@@ -31,6 +33,7 @@ interface CommonModalProps {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
+    "data-testid": PropTypes.string,
     id: PropTypes.string,
     title: PropTypes.string,
     centeredTitle: PropTypes.bool,
@@ -57,6 +60,7 @@ export default class ModalContent extends Component<ModalContentProps> {
 
   render() {
     const {
+      "data-testid": dataTestId,
       title,
       centeredTitle,
       footer,
@@ -78,6 +82,7 @@ export default class ModalContent extends Component<ModalContentProps> {
           // add bottom padding if this is a standard "form modal" with no footer
           { pb4: formModal && !footer },
         )}
+        data-testid={dataTestId}
       >
         {title && (
           <ModalHeader

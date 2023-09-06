@@ -1,4 +1,4 @@
-import {
+import type {
   Engine,
   EngineField,
   EngineSource,
@@ -6,6 +6,7 @@ import {
   SettingDefinition,
   Settings,
   TokenFeatures,
+  TokenStatus,
   Version,
   VersionInfo,
   VersionInfoRecord,
@@ -84,36 +85,38 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
-export const createMockTokenStatus = () => ({
+export const createMockTokenStatus = (
+  opts?: Partial<TokenStatus>,
+): TokenStatus => ({
   status: "Token is Valid.",
   valid: true,
   trial: false,
-  features: [
-    "audit-app",
-    "advanced-permissions",
-    "embedding",
-    "whitelabel",
-    "no-upsell",
-    "advanced-config",
-    "content-management",
-    "sso",
-    "sandboxes",
-  ],
   "valid-thru": "2022-12-30T23:00:00Z",
+  ...opts,
 });
 
 export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
-  advanced_config: false,
   advanced_permissions: false,
   audit_app: false,
-  content_management: false,
+  cache_granular_controls: false,
+  disable_password_login: false,
+  content_verification: false,
   embedding: false,
   hosting: false,
+  official_collections: false,
   sandboxes: false,
-  sso: false,
+  sso_google: false,
+  sso_jwt: false,
+  sso_ldap: false,
+  sso_saml: false,
+  session_timeout_config: false,
   whitelabel: false,
+  dashboard_subscription_filters: false,
+  snippet_collections: false,
+  email_allow_list: false,
+  email_restrict_recipients: false,
   ...opts,
 });
 
@@ -207,5 +210,6 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "uploads-database-id": null,
   "uploads-table-prefix": null,
   "uploads-schema-name": null,
+  "user-visibility": null,
   ...opts,
 });

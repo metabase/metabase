@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -294,11 +295,11 @@
 (deftest collection-namespace-test
   (testing "The permissions graph should be namespace-aware.\n"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Collection [{default-a :id}   {:location "/"}]
-                      Collection [{default-ab :id}  {:location (format "/%d/" default-a)}]
-                      Collection [{currency-a :id}  {:namespace "currency", :location "/"}]
-                      Collection [{currency-ab :id} {:namespace "currency", :location (format "/%d/" currency-a)}]
-                      PermissionsGroup [{group-id :id}]]
+      (mt/with-temp [Collection {default-a :id}   {:location "/"}
+                     Collection {default-ab :id}  {:location (format "/%d/" default-a)}
+                     Collection {currency-a :id}  {:namespace "currency" :location "/"}
+                     Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     PermissionsGroup {group-id :id} {}]
         (letfn [(nice-graph [graph]
                   (let [id->alias {default-a   "Default A"
                                    default-ab  "Default A -> B"

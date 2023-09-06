@@ -1,35 +1,35 @@
 import _ from "underscore";
 import { getIn } from "icepick";
-import {
-  DatasetColumn,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import {
+import type {
   ChartColumns,
   ColumnDescriptor,
-  getColumnDescriptors,
 } from "metabase/visualizations/lib/graph/columns";
-import {
+import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
+import type {
   BarData,
   Series,
 } from "metabase/visualizations/shared/components/RowChart/types";
-import {
+import type {
   GroupedDatum,
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import {
+import type {
   DataPoint,
   StackedTooltipModel,
   TooltipRowModel,
-} from "metabase/visualizations/components/ChartTooltip/types";
+} from "metabase/visualizations/types";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { isMetric } from "metabase-lib/types/utils/isa";
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],
@@ -130,7 +130,7 @@ export const getClickData = (
   visualizationSettings: VisualizationSettings,
   chartColumns: ChartColumns,
   datasetColumns: DatasetColumn[],
-) => {
+): ClickObject => {
   const { series, datum } = bar;
   const data = getColumnsData(
     chartColumns,
@@ -143,7 +143,7 @@ export const getClickData = (
   const xValue = series.xAccessor(datum);
   const yValue = series.yAccessor(datum);
 
-  const dimensions: { column: DatasetColumn; value?: RowValue }[] = [
+  const dimensions: ClickObjectDimension[] = [
     {
       column: chartColumns.dimension.column,
       value: yValue,
@@ -153,7 +153,7 @@ export const getClickData = (
   if ("breakout" in chartColumns) {
     dimensions.push({
       column: chartColumns.breakout.column,
-      value: series.seriesInfo?.breakoutValue,
+      value: series.seriesInfo?.breakoutValue ?? null,
     });
   }
 
@@ -176,10 +176,12 @@ export const getLegendClickData = (
 
   const dimensions =
     "breakout" in chartColumns
-      ? {
-          column: chartColumns.breakout.column,
-          value: currentSeries.seriesInfo?.breakoutValue,
-        }
+      ? [
+          {
+            column: chartColumns.breakout.column,
+            value: currentSeries.seriesInfo?.breakoutValue ?? null,
+          },
+        ]
       : undefined;
 
   return {

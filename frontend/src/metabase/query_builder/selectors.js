@@ -6,6 +6,7 @@ import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
+import { Mode } from "metabase/visualizations/click-actions/Mode";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -20,7 +21,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
-import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
+import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
 import { getDashboardById } from "metabase/dashboard/selectors";
@@ -28,7 +29,7 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import ObjectMode from "metabase/modes/components/modes/ObjectMode";
+import { ObjectMode } from "metabase/visualizations/click-actions/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import * as ML from "metabase-lib/v2";
@@ -38,7 +39,6 @@ import {
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
-import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
@@ -266,20 +266,12 @@ const getLastRunParameterValues = createSelector(
   parameters => parameters.map(parameter => parameter.value),
 );
 const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters
-    .filter(
-      // parameters with an empty value get filtered out before a query run,
-      // so in order to compare current parameters to previously-used parameters we need
-      // to filter them here as well
-      parameter => parameter.value != null,
-    )
-    .map(parameter =>
-      // parameters are "normalized" immediately before a query run, so in order
-      // to compare current parameters to previously-used parameters we need
-      // to run parameters through this normalization function
-      normalizeParameterValue(parameter.type, parameter.value),
-    )
-    .filter(p => p !== undefined),
+  parameters.map(parameter =>
+    // parameters are "normalized" immediately before a query run, so in order
+    // to compare current parameters to previously-used parameters we need
+    // to run parameters through this normalization function
+    normalizeParameterValue(parameter.type, parameter.value),
+  ),
 );
 
 const getNextRunParameters = createSelector([getParameters], parameters =>
@@ -304,6 +296,12 @@ export const getDatasetEditorTab = createSelector(
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
   (metadata, card) => metadata && card && new Question(card, metadata),
+);
+
+export const getOriginalQuestionWithParameterValues = createSelector(
+  [getMetadata, getOriginalCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    metadata && card && new Question(card, metadata, parameterValues),
 );
 
 export const getLastRunQuestion = createSelector(

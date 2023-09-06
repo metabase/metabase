@@ -1,9 +1,9 @@
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { BaseBucketPickerPopoverProps } from "./BaseBucketPickerPopover";
 
 type CommonProps = Pick<
   BaseBucketPickerPopoverProps,
-  "query" | "stageIndex" | "isEditing" | "hasArrowIcon"
+  "query" | "stageIndex" | "isEditing" | "color" | "hasArrowIcon"
 >;
 
 export interface CommonBucketPickerProps extends CommonProps {

@@ -15,6 +15,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
@@ -82,7 +83,7 @@
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
            #{(perms/table-read-path table)}
-           (metabase.models.user/permissions-set (mt/user->id :rasta)))))))
+           (user/permissions-set (mt/user->id :rasta)))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 
@@ -185,7 +186,7 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (premium-features-test/with-premium-features #{:sso}
+          (premium-features-test/with-premium-features #{:sso-ldap}
             (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
@@ -193,11 +194,12 @@
                        (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                            (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
-  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-    (mt/with-temporary-setting-values [enable-password-login false]
-      (ldap.test/with-ldap-server
-        (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
+ (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+   (premium-features-test/with-premium-features #{:disable-password-login}
+     (mt/with-temporary-setting-values [enable-password-login false]
+       (ldap.test/with-ldap-server
+         (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+         (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -416,7 +418,7 @@
     (testing "should clear out all existing Sessions"
       (t2.with-temp/with-temp [User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
+          (t2/insert! Session {:id (str (random-uuid)), :user_id user-id}))
         (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -510,3 +512,15 @@
               (is (u.password/verify-password plaintext-password
                                               (salt)
                                               new-hashed-password)))))))))
+
+(deftest has-a-last-acknowledged-version
+  (testing "last-acknowledged-version can be read and set"
+    (mt/with-test-user :rasta
+      (try
+        (is (nil? (setting/get :last-acknowledged-version)))
+        (setting/set! :last-acknowledged-version "47")
+        (is (= "47" (setting/get :last-acknowledged-version)))
+        ;; Ensure it's saved on the user, not globally:
+        (is (= "47" (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+        (finally
+          (setting/set! :last-acknowledged-version nil))))))

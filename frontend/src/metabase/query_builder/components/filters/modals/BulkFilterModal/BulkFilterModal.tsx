@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -8,14 +9,16 @@ import { pluralize } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import { Icon, IconName } from "metabase/core/components/Icon";
-import Question from "metabase-lib/Question";
-import StructuredQuery, {
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import type Question from "metabase-lib/Question";
+import type {
   FilterSection,
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalBody,
@@ -47,6 +50,7 @@ const BulkFilterModal = ({
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -98,14 +102,31 @@ const BulkFilterModal = ({
     setIsChanged(true);
   };
 
+  const toggleExpandedSearchBar = (e: KeyboardEvent<HTMLDivElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      setIsSearchExpanded(true);
+    }
+  };
+
   const hasSideNav = sections.length > 1;
 
   return (
-    <ModalRoot hasSideNav={hasSideNav}>
+    <ModalRoot
+      hasSideNav={hasSideNav}
+      data-autofocus
+      tabIndex={0}
+      onKeyDown={e => toggleExpandedSearchBar(e)}
+    >
       <ModalHeader>
         <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
 
-        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+        <FieldSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          isExpanded={isSearchExpanded}
+          setIsExpanded={setIsSearchExpanded}
+        />
 
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />

@@ -76,6 +76,7 @@ class FieldInner extends Base {
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
   base_type: string | null;
+  effective_type?: string | null;
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
@@ -511,7 +512,7 @@ class FieldInner extends Base {
       }));
   };
 
-  clone(fieldMetadata) {
+  clone(fieldMetadata?: FieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }

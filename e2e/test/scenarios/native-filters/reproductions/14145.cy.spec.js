@@ -56,7 +56,7 @@ describe.skip("issue 14145", () => {
       .contains("Category");
 
     // Rerun the query and assert on the dimension (field-id) that didn't change
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset").then(xhr => {
       const { dimension } =

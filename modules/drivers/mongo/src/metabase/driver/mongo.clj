@@ -14,7 +14,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :refer [with-mongo-connection]]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Field]]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -24,8 +25,7 @@
    [monger.core :as mg]
    [monger.db :as mdb]
    [monger.json]
-   [taoensso.nippy :as nippy]
-   [toucan2.core :as t2])
+   [taoensso.nippy :as nippy])
   (:import
    (com.mongodb DB DBObject)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -181,7 +181,7 @@
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
-  [_ database]
+  [_driver database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (let [build-info (mg/command conn {:buildInfo 1})
           version-array (get build-info "versionArray")
@@ -279,26 +279,26 @@
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (-> (:dbms_version db)
+  (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
@@ -312,7 +312,7 @@
 
 (defmethod driver/execute-reducible-query :mongo
   [_ query context respond]
-  (with-mongo-connection [_ (qp.store/database)]
+  (with-mongo-connection [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
@@ -364,13 +364,17 @@
   :sunday)
 
 (defn- get-id-field-id [table]
-  (t2/select-one-pk Field :name "_id" :table_id (u/the-id table)))
+  (some (fn [field]
+          (when (= (:name field) "_id")
+            (:id field)))
+        (lib.metadata.protocols/fields (qp.store/metadata-provider) (u/the-id table))))
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
-  (let [mongo-opts {:limit metadata-queries/nested-field-sample-limit
-                    :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
-    (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts))))
+  (qp.store/with-metadata-provider (:db_id table)
+    (let [mongo-opts {:limit    metadata-queries/nested-field-sample-limit
+                      :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+      (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (comment
   (require '[clojure.java.io :as io]

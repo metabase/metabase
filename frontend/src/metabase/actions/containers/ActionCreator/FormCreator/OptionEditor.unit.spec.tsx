@@ -2,7 +2,8 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
-import { OptionPopover, OptionEditorProps } from "./OptionEditor";
+import type { OptionEditorProps } from "./OptionEditor";
+import { OptionPopover, textToOptions } from "./OptionEditor";
 
 async function baseSetup({
   fieldType = "string",
@@ -103,5 +104,45 @@ describe("OptionEditor", () => {
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
+
+    it("should omit empty lines and duplicates", async () => {
+      const { input, saveButton, onChange } = await baseSetup({
+        fieldType: "number",
+        options: [],
+      });
+
+      userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+      userEvent.click(saveButton);
+
+      expect(onChange).toHaveBeenCalledWith([1, 2]);
+    });
+
+    describe("given string field type", () => {
+      it("should omit empty lines and duplicates", async () => {
+        const { input, saveButton, onChange } = await baseSetup({
+          fieldType: "string",
+          options: [],
+        });
+
+        userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+        userEvent.click(saveButton);
+
+        expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+      });
+    });
+  });
+});
+
+describe("textToOptions", () => {
+  it("should filter duplicates", () => {
+    const input = "1\n2\n1\n1\n2";
+
+    expect(textToOptions(input)).toEqual(["1", "2"]);
+  });
+
+  it("should filter empty values and trim empty space", () => {
+    const input = " \n  1\n2 \n\n\n  ";
+
+    expect(textToOptions(input)).toEqual(["1", "2"]);
   });
 });

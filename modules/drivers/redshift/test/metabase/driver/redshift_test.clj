@@ -25,7 +25,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -148,48 +148,48 @@
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
 ;;
-(deftest test-external-table
+(deftest ^:parallel test-external-table
   (mt/test-driver :redshift
     (testing "expects spectrum schema to exist"
-      (is (= [{:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "buyerid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :buyerid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :buyerid)
-               :visibility_type :normal
-               :display_name    "Buyerid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}
-              {:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "salesid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :salesid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :salesid)
-               :visibility_type :normal
-               :display_name    "Salesid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}]
-             ;; in different Redshift instances, the fingerprint on these columns is different.
-             (map #(dissoc % :fingerprint)
-                  (get-in (qp/process-query (mt/mbql-query extsales
-                                              {:limit    1
-                                               :fields   [$buyerid $salesid]
-                                               :order-by [[:asc $buyerid]
-                                                          [:asc $salesid]]
-                                               :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                          [:data :cols])))))))
+      (is (=? [{:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "buyerid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :buyerid)
+                :visibility_type :normal
+                :display_name    "Buyerid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}
+               {:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "salesid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :salesid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :salesid)
+                :visibility_type :normal
+                :display_name    "Salesid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}]
+              ;; in different Redshift instances, the fingerprint on these columns is different.
+              (map #(dissoc % :fingerprint)
+                   (get-in (qp/process-query (mt/mbql-query extsales
+                                               {:limit    1
+                                                :fields   [$buyerid $salesid]
+                                                :order-by [[:asc $buyerid]
+                                                           [:asc $salesid]]
+                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                           [:data :cols])))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift

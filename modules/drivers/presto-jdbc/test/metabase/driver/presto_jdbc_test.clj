@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -87,7 +88,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest page-test
+(deftest ^:parallel page-test
   (testing ":page clause"
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
@@ -105,9 +106,9 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest template-tag-timezone-test
@@ -164,7 +165,7 @@
 
 (deftest honeysql-tests
   (mt/test-driver :presto-jdbc
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Complex HoneySQL conversions work as expected"
         (testing "unix-timestamp with microsecond precision"
           (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"

@@ -4,8 +4,8 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- check-all-source-table-ids-are-valid
   "Sanity check: Any non-positive-integer value of `:source-table` should have been resolved by now. The
@@ -18,7 +18,7 @@
         (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m))
         {:form m}))))
 
-(s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZero}))
+(mu/defn ^:private query->source-table-ids :- [:maybe [:set {:min 1} ms/PositiveInt]]
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
   [query]
   (some->
@@ -36,5 +36,5 @@
   corresponding Table in the Query Processor Store."
   [query]
   (check-all-source-table-ids-are-valid query)
-  (qp.store/fetch-and-store-tables! (query->source-table-ids query))
+  (qp.store/bulk-metadata :metadata/table (query->source-table-ids query))
   query)

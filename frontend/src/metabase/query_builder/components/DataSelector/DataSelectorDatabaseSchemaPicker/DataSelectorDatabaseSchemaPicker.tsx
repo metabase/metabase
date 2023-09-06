@@ -1,12 +1,13 @@
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/metadata/Database";
+import type Schema from "metabase-lib/metadata/Schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
@@ -92,7 +93,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const showSpinner = ({ active }: { active?: boolean }) => !active;
+  const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;

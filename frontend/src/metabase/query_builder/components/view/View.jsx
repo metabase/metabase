@@ -21,8 +21,8 @@ import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
-import TagEditorSidebar from "../template_tags/TagEditorSidebar";
-import SnippetSidebar from "../template_tags/SnippetSidebar";
+import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
+import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 import QueryModals from "../QueryModals";
 

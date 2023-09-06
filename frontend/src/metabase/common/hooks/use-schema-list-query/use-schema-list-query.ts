@@ -1,11 +1,11 @@
 import Schemas from "metabase/entities/schemas";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
-import { SchemaListQuery } from "metabase-types/api";
-import Schema from "metabase-lib/metadata/Schema";
+import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+import type { SchemaListQuery } from "metabase-types/api";
+import type Schema from "metabase-lib/metadata/Schema";
 
 export const useSchemaListQuery = (
   props: UseEntityListQueryProps<SchemaListQuery> = {},
@@ -16,5 +16,6 @@ export const useSchemaListQuery = (
     getLoading: Schemas.selectors.getLoading,
     getLoaded: Schemas.selectors.getLoaded,
     getError: Schemas.selectors.getError,
+    getListMetadata: Schemas.selectors.getListMetadata,
   });
 };

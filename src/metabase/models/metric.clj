@@ -11,6 +11,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
@@ -19,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -58,22 +60,26 @@
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
   [metadata-provider :- lib.metadata/MetadataProvider
-   {:keys [definition], table-id :table_id, :as _metric}]
+   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/Metric)]
   (when (seq definition)
-    (when-let [{database-id :db-id} (when table-id
-                                      (lib.metadata.protocols/table metadata-provider table-id))]
-      (try
-        (let [definition (merge {:source-table table-id}
-                                definition)
-              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-query query))
-        (catch Throwable e
-          (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
-          nil)))))
+    (try
+      (let [database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
+            definition  (merge {:source-table table-id}
+                               definition)
+            query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-query query))
+      (catch Throwable e
+        (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
+        nil))))
 
-(defn- warmed-metadata-provider [metrics]
-  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
-                            (lib.metadata.protocols/store-metadatas! :metadata/metric metrics))
+(mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider
+  [database-id :- ::lib.schema.id/database
+   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
+                            (lib.metadata.protocols/store-metadatas!
+                             :metadata/metric
+                             (map #(lib.metadata.jvm/instance->metadata % :metadata/metric)
+                                  metrics)))
         segment-ids       (into #{} (mbql.u/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
@@ -83,16 +89,35 @@
                                                              [metrics segments]))
         fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
-                                (comp cat (map :table_id))
-                                [fields segments metrics])]
+                                cat
+                                [(map :table-id fields)
+                                 (map :table-id segments)
+                                 (map :table_id metrics)])]
     ;; this is done for side-effects
     (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
+(mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
+  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+  (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id metrics)))]
+                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+        db-id->metadata-provider    (memoize
+                                     (mu/fn db-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+                                       [database-id :- ::lib.schema.id/database]
+                                       (let [metrics-for-db (filter (fn [metric]
+                                                                      (= (table-id->db-id (:table_id metric))
+                                                                         database-id))
+                                                                    metrics)]
+                                         (warmed-metadata-provider database-id metrics-for-db))))]
+    (mu/fn table-id->warmed-metadata-provider :- lib.metadata/MetadataProvider
+      [table-id :- ::lib.schema.id/table]
+      (-> table-id table-id->db-id db-id->metadata-provider))))
+
 (methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
   [_model _key metrics]
-  (let [metadata-provider (warmed-metadata-provider metrics)]
-    (for [metric metrics]
+  (let [table-id->warmed-metadata-provider (metrics->table-id->warmed-metadata-provider metrics)]
+    (for [metric metrics
+          :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id metric))]]
       (assoc metric :definition_description (definition-description metadata-provider metric)))))
 
 
@@ -116,8 +141,8 @@
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
-            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
-                                                                          :after  (get-in metric2 [:definition])})))))
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get metric1 :definition)
+                                                                          :after  (get metric2 :definition)})))))
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------

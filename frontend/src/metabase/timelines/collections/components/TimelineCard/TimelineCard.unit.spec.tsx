@@ -3,7 +3,8 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import TimelineCard, { TimelineCardProps } from "./TimelineCard";
+import type { TimelineCardProps } from "./TimelineCard";
+import TimelineCard from "./TimelineCard";
 
 describe("TimelineCard", () => {
   it("should render timeline", () => {

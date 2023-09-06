@@ -27,11 +27,17 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { addUndo } from "metabase/redux/undo";
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
+
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
-import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
+
+import { AddSeriesModal } from "./AddSeriesModal";
 import DashCard from "./DashCard";
 
 const mapDispatchToProps = { addUndo };
@@ -181,7 +187,7 @@ class DashboardGrid extends Component {
   };
 
   getLayoutForDashCard = dashcard => {
-    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
 
@@ -233,14 +239,8 @@ class DashboardGrid extends Component {
     const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
-      defaultCardHeight: 6,
-      heightByDisplayType: {
-        action: 1,
-        link: 1,
-        text: 2,
-        heading: 2,
-        scalar: 4,
-      },
+      defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
+      heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
     });
     return { desktop, mobile };
   }
@@ -265,7 +265,11 @@ class DashboardGrid extends Component {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const isOpen = this.state.addSeriesModalDashCard != null;
     return (
-      <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
+      <Modal
+        className="Modal AddSeriesModal"
+        data-testid="add-series-modal"
+        isOpen={isOpen}
+      >
         {isOpen && (
           <AddSeriesModal
             dashcard={this.state.addSeriesModalDashCard}
@@ -296,6 +300,7 @@ class DashboardGrid extends Component {
   onDashCardRemove(dc) {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
+      cardId: dc.card_id,
     });
     this.props.addUndo({
       message: t`Removed card`,

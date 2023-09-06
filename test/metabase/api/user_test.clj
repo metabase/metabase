@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -10,7 +11,10 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -58,34 +62,93 @@
 
 (deftest user-list-test
   (testing "GET /api/user"
-    (testing "Check that anyone can get a list of all active Users"
+    (testing "Check that admins can get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :crowberto)
-                 :email       "crowberto@metabase.com"
-                 :first_name  "Crowberto"
-                 :last_name   "Corv"
-                 :common_name "Crowberto Corv"}
-                {:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}
-                {:id          (mt/user->id :rasta)
-                 :email       "rasta@metabase.com"
-                 :first_name  "Rasta"
-                 :last_name   "Toucan"
-                 :common_name "Rasta Toucan"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                    (filter mt/test-user?))))))
-    (testing "Get list of users with a query"
+        (let [result (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
+                          (filter mt/test-user?))]
+          ;; since this is an admin, all keys are available on each user
+          (is (= (set (concat
+                       user/admin-or-self-visible-columns
+                       [:common_name :group_ids :personal_collection_id]))
+                 (->> result first keys set)))
+          ;; just make sure all users are there by checking the emails
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> result (map :email) set))))
+        (testing "with a query"
+          (is (= "lucky@metabase.com"
+                 (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
+    (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user" :query "lUck") :data)
-                    (filter mt/test-user?))))))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user")))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
+
+(deftest user-list-for-group-managers-test
+  (testing "Group Managers"
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (t2.with-temp/with-temp
+          [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
+           :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+           :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+        (testing "admin can get users from any group"
+          (is (= #{"lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set)))
+          (is (= #{"lucky@metabase.com"
+                   "crowberto@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set))))
+        (testing "member but non-manager cannot get users"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
+        (testing "manager of a different group cannot get users from groups they're not a member of"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+        (if config/ee-available?
+          ;; Group management is an EE feature
+          (testing "manager can get users from their groups"
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (testing "see users from all groups the user manages"
+              (is (= #{"lucky@metabase.com"
+                       "rasta@metabase.com"
+                       "crowberto@metabase.com"}
+                     (->> ((mt/user-http-request :lucky :get 200 "user") :data)
+                          (filter mt/test-user?)
+                          (map :email)
+                          set)))))
+          ;; In OSS, non-admins have no way to see users, because group management is an EE feature
+          (testing "in OSS, non-admins have no way to get users"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id1)))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "user")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "user")))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
@@ -95,38 +158,82 @@
   [group-or-ids]
   (map (fn [group-or-id] {:id (u/the-id group-or-id)}) group-or-ids))
 
-(deftest user-recipients-list-test
-  (testing "GET /api/user/recipients"
+(deftest user-recipients-list-oss-test
+  (testing "GET /api/user/recipients without :email-restrict-recipients feature"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [crowberto "crowberto@metabase.com"
             lucky     "lucky@metabase.com"
             rasta     "rasta@metabase.com"]
-        (testing "Returns all users when user-visibility is all users"
-          (mt/with-temporary-setting-values [user-visibility :all]
-            (is (= [crowberto lucky rasta]
-                   (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                        (filter mt/test-user?)
-                        (map :email)))))
-         (testing "Returns all users when admin"
-           (mt/with-temporary-setting-values [user-visibility "none"]
-             (is (= [crowberto lucky rasta]
-                    (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                         (filter mt/test-user?)
-                         (map :email)))))))
-        (testing "Returns users in the group when user-visibility is same group"
-          (mt/with-temporary-setting-values [user-visibility :group]
-            (mt/with-temp* [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
-                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta) :group_id group-id}]
-                            PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id}]]
-              (is (= [crowberto rasta]
+
+        (testing "return all users for anyone"
+          (is (= [crowberto lucky rasta]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                      (filter mt/test-user?)
+                      (map :email))))
+
+          (is (= [crowberto lucky rasta]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                      (filter mt/test-user?)
+                      (map :email)))))
+
+        (testing "not affected by the visibility setting"
+          (doseq [visibility-value [:all :group :none]]
+            (mt/with-temporary-setting-values [user-visibility visibility-value]
+              (testing "`user-visibility` setting returns the default value"
+                (is (= :all (api.user/user-visibility))))
+
+              (testing "return all user by default"
+                (is (= [crowberto lucky rasta]
+                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                            (filter mt/test-user?)
+                            (map :email))))))))))))
+
+(deftest user-recipients-list-ee-test
+  (premium-features-test/with-premium-features #{:email-restrict-recipients}
+    (testing "GET /api/user/recipients"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [crowberto "crowberto@metabase.com"
+              lucky     "lucky@metabase.com"
+              rasta     "rasta@metabase.com"]
+          (testing "Returns all users when user-visibility is all users"
+            (mt/with-temporary-setting-values [user-visibility :all]
+              (is (= [crowberto lucky rasta]
                      (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                          (filter mt/test-user?)
                           (map :email))))))
-         (testing "Returns only self when user-visibility is none"
-           (mt/with-temporary-setting-values [user-visibility :none]
-             (is (= [rasta]
-                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                         (filter mt/test-user?)
-                         (map :email)))))))))))
+
+          (testing "Returns all users when admin"
+            (mt/with-temporary-setting-values [user-visibility "none"]
+              (is (= [crowberto lucky rasta]
+                     (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
+                          (filter mt/test-user?)
+                          (map :email))))))
+
+          (testing "Returns users in the group when user-visibility is same group"
+            (mt/with-temporary-setting-values [user-visibility :group]
+              (t2.with-temp/with-temp
+                [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
+                 :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
+                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
+                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1}
+                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id2}
+                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2}]
+                (is (= [crowberto rasta]
+                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                            (map :email))))
+
+               (testing "But returns self if the user is sandboxed"
+                 (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                   (is (= [rasta]
+                          (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                               (map :email)))))))))
+
+          (testing "Returns only self when user-visibility is none"
+            (mt/with-temporary-setting-values [user-visibility :none]
+              (is (= [rasta]
+                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                          (filter mt/test-user?)
+                          (map :email)))))))))))
 
 (deftest admin-user-list-test
   (testing "GET /api/user"
@@ -187,14 +294,7 @@
       (is (= (t2/count User)
              ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
-      (is (= (->> [{:email                  "trashbird@metabase.com"
-                    :first_name             "Trash"
-                    :last_name              "Bird"
-                    :is_active              false
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Trash Bird"}
-                   {:email                  "crowberto@metabase.com"
+      (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
@@ -213,7 +313,14 @@
                     :last_name              "Toucan"
                     :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
-                    :common_name            "Rasta Toucan"}]
+                    :common_name            "Rasta Toucan"}
+                   {:email                  "trashbird@metabase.com"
+                     :first_name             "Trash"
+                     :last_name              "Bird"
+                     :is_active              false
+                     :group_ids              #{(u/the-id (perms-group/all-users))}
+                     :personal_collection_id true
+                     :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
@@ -221,14 +328,7 @@
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login)))))
-      (is (= (->> [{:email                  "trashbird@metabase.com"
-                    :first_name             "Trash"
-                    :last_name              "Bird"
-                    :is_active              false
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Trash Bird"}
-                   {:email                  "crowberto@metabase.com"
+      (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
@@ -247,7 +347,14 @@
                     :last_name              "Toucan"
                     :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
-                    :common_name            "Rasta Toucan"}]
+                    :common_name            "Rasta Toucan"}
+                   {:email                  "trashbird@metabase.com"
+                    :first_name             "Trash"
+                    :last_name              "Bird"
+                    :is_active              false
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :status "all") :data)
@@ -275,19 +382,19 @@
       (is (= (t2/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
-      (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
+      (let [first-three-users (:data (mt/user-http-request :crowberto :get 200 "user" :limit "3", :offset "0"))]
         (is (= 3
                (count first-three-users)))
         (is (= (drop 1 first-three-users)
-               (:data (mt/user-http-request :rasta :get 200 "user" :limit "2", :offset "1") :data)))))))
+               (:data (mt/user-http-request :crowberto :get 200 "user" :limit "2", :offset "1") :data)))))))
 
 (deftest get-current-user-test
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
-      (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
-                                       :device_id (str (java.util.UUID/randomUUID))
-                                       :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp [LoginHistory _ {:user_id   (mt/user->id :rasta)
+                                     :device_id (str (random-uuid))
+                                     :timestamp #t "2021-03-18T19:52:41.808482Z"}
+                     Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -303,10 +410,10 @@
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :has_question_and_dashboard))))))
+                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp [Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
+                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -331,17 +438,17 @@
       (testing "Not If enabled and set but"
         (testing "user cannot read"
           (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                            Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                       :collection_id coll-id}]]
+            (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                           Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                     :collection_id coll-id}]
               (mt/with-temporary-setting-values [custom-homepage true
                                                  custom-homepage-dashboard dash-id]
                 (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))))
         (testing "Dashboard is archived"
-          (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                          Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                     :archived      true
-                                                     :collection_id coll-id}]]
+          (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                         Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                   :archived      true
+                                                   :collection_id coll-id}]
             (mt/with-temporary-setting-values [custom-homepage true
                                                custom-homepage-dashboard dash-id]
               (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
@@ -351,9 +458,9 @@
             (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
 
       (testing "Otherwise is set"
-        (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
-                        Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
-                                                   :collection_id coll-id}]]
+        (mt/with-temp [Collection {coll-id :id} {:name "Collection"}
+                       Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
+                                                 :collection_id coll-id}]
           (mt/with-temporary-setting-values [custom-homepage true
                                              custom-homepage-dashboard dash-id]
             (is (=? {:first_name      "Rasta"
@@ -475,8 +582,8 @@
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
     (testing "we should be able to put a User in groups the same time we create them"
-      (mt/with-temp* [PermissionsGroup [group-1 {:name "Group 1"}]
-                      PermissionsGroup [group-2 {:name "Group 2"}]]
+      (mt/with-temp [PermissionsGroup group-1 {:name "Group 1"}
+                     PermissionsGroup group-2 {:name "Group 2"}]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 200 "user"
                                 {:first_name             "Cam"
@@ -570,11 +677,11 @@
 (deftest admin-update-other-user-test
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
-      (mt/with-temp* [User [{user-id :id} {:first_name   "Cam"
-                                           :last_name    "Era"
-                                           :email        "cam.era@metabase.com"
-                                           :is_superuser true}]
-                      Collection [_]]
+      (mt/with-temp [User {user-id :id} {:first_name   "Cam"
+                                         :last_name    "Era"
+                                         :email        "cam.era@metabase.com"
+                                         :is_superuser true}
+                     Collection _ {}]
         (letfn [(user [] (into {} (-> (t2/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (t2/hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]
@@ -813,8 +920,8 @@
 (deftest update-groups-test
   (testing "PUT /api/user/:id"
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
-      (mt/with-temp* [User             [user]
-                      PermissionsGroup [group {:name "Blue Man Group"}]]
+      (mt/with-temp [User             user {}
+                     PermissionsGroup group {:name "Blue Man Group"}]
         (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
                               {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
         (is (= #{"All Users" "Blue Man Group"}

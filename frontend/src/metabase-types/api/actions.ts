@@ -86,7 +86,7 @@ export type ActionFormInitialValues = ParametersForActionExecution;
 export interface ActionFormSubmitResult {
   success: boolean;
   message?: string;
-  error?: string;
+  error?: unknown;
 }
 
 export type OnSubmitActionForm = (
@@ -184,4 +184,8 @@ export interface ActionDashboardCard
     click_behavior?: ClickBehavior;
     actionDisplayType?: ActionDisplayType;
   };
+}
+
+export interface WritebackActionListQuery {
+  "model-id"?: CardId;
 }

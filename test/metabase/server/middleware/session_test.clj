@@ -25,14 +25,10 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (clojure.lang ExceptionInfo)
-   (java.util UUID)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fn [thunk]
-                      (init-status/set-complete!)
-                      (thunk)))
 
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 (def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
@@ -53,13 +49,13 @@
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
              (#'config/mb-session-cookie-samesite*))))
 
-    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_COOKIE_SAMESITE"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_SESSION_COOKIE_SAMESITE"
           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
             (#'config/mb-session-cookie-samesite*))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
-    (let [uuid (UUID/randomUUID)
+    (let [uuid (random-uuid)
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
       (testing "should unset the old SESSION_ID if it's present"
         (is (= {:value     (str uuid)
@@ -85,6 +81,24 @@
                  (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
+(deftest samesite-none-log-warning-test
+  (with-redefs [config/mb-session-cookie-samesite :none]
+    (let [session {:id   (random-uuid)
+                   :type :normal}
+          request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
+         (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
+           (is (contains? (into #{}
+                                (map (fn [[_log-level _error message]] message))
+                                (mt/with-log-messages-for-level :warn
+                                  (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
+                          "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
+         (testing "should not log a warning over a secure connection."
+           (is (not (contains? (into #{}
+                                     (map (fn [[_log-level _error message]] message))
+                                     (mt/with-log-messages-for-level :warn
+                                       (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
+                               "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
+
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
 (deftest ^:parallel secure-cookie-test
@@ -102,7 +116,7 @@
                               [{"origin" "http://mysite.com"}   false]]]
     (testing (format "With headers %s we %s set the 'secure' attribute on the session cookie"
                      (pr-str headers) (if expected "SHOULD" "SHOULD NOT"))
-      (let [session {:id   (UUID/randomUUID)
+      (let [session {:id   (random-uuid)
                      :type :normal}
             actual  (-> (mw.session/set-session-cookies {:headers headers} {} session (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))
                         (get-in [:cookies "metabase.SESSION" :secure])
@@ -110,6 +124,7 @@
         (is (= expected actual))))))
 
 (deftest session-expired-test
+  (init-status/set-complete!)
   (testing "Session expiration time = 1 minute"
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
@@ -119,12 +134,11 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (t2.with-temp/with-temp [User {user-id :id}]
-            (let [session-id (str (UUID/randomUUID))]
+            (let [session-id (str (random-uuid))]
               (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
-                  (is (= nil
-                         session))
+                  (is (nil? session))
                   (is (some? session)))))))))))
 
 
@@ -408,7 +422,7 @@
     (testing "w/ Session"
       (testing "for user with no `:locale`"
         (t2.with-temp/with-temp [User {user-id :id}]
-          (let [session-id (str (UUID/randomUUID))]
+          (let [session-id (str (random-uuid))]
             (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
                    (session-locale session-id)))
@@ -419,7 +433,7 @@
 
       (testing "for user *with* `:locale`"
         (t2.with-temp/with-temp [User {user-id :id} {:locale "es-MX"}]
-          (let [session-id (str (UUID/randomUUID))]
+          (let [session-id (str (random-uuid))]
             (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-id)))

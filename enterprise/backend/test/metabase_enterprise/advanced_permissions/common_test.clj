@@ -2,9 +2,12 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -189,10 +192,10 @@
 
 (deftest get-schema-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/:schema` endpoint"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
-                    Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    t1          {:db_id db-id :schema "schema1" :name "t1"}
+                   Table    _t2         {:db_id db-id :schema "schema2"}
+                   Table    t3          {:db_id db-id :schema "schema1" :name "t3"}]
       (testing "If a non-admin has data model perms, but no data perms"
         (with-all-users-data-perms {db-id {:data       {:schemas :block :native :none}
                                            :data-model {:schemas :all}}}
@@ -223,10 +226,10 @@
 
 (deftest get-schema-with-empty-name-and-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/` endpoint"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [t1 {:db_id db-id, :schema nil, :name "t1"}]
-                    Table    [_t2 {:db_id db-id, :schema "public"}]
-                    Table    [t3 {:db_id db-id, :schema "", :name "t3"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    t1 {:db_id db-id :schema nil :name "t1"}
+                   Table    _t2 {:db_id db-id :schema "public"}
+                   Table    t3 {:db_id db-id :schema "" :name "t3"}]
       (with-all-users-data-perms {db-id {:data       {:schemas :block :native :none}
                                          :data-model {:schemas :all}}}
         (perms/revoke-data-perms! (perms-group/all-users) db-id)
@@ -258,10 +261,10 @@
 
 (deftest get-schemas-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/:schemas` endpoint"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
-                    Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [_t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    t1 {:db_id db-id, :schema "schema1", :name "t1"}
+                   Table    _t2 {:db_id db-id, :schema "schema2"}
+                   Table    _t3 {:db_id db-id, :schema "schema1", :name "t3"}]
       (testing "If a non-admin has data model perms, but no data perms"
         (with-all-users-data-perms {db-id {:data       {:schemas :block :native :none}
                                            :data-model {:schemas :all}}}
@@ -299,13 +302,13 @@
 
 (deftest get-field-hydrated-target-with-advanced-perms-test
   (testing "GET /api/field/:id"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [table1 {:db_id db-id, :schema "schema1"}]
-                    Table    [table2 {:db_id db-id, :schema "schema2"}]
-                    Field    [fk-field {:table_id (:id table1)}]
-                    Field    [field {:table_id           (:id table2)
-                                     :semantic_type      :type/FK
-                                     :fk_target_field_id (:id fk-field)}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    table1 {:db_id db-id, :schema "schema1"}
+                   Table    table2 {:db_id db-id, :schema "schema2"}
+                   Field    fk-field {:table_id (:id table1)}
+                   Field    field {:table_id           (:id table2)
+                                   :semantic_type      :type/FK
+                                   :fk_target_field_id (:id fk-field)}]
       (let [expected-target (-> fk-field
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
@@ -331,15 +334,15 @@
 
 (deftest update-field-hydrated-target-with-advanced-perms-test
   (testing "PUT /api/field/:id"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [table1 {:db_id db-id, :schema "schema1"}]
-                    Table    [table2 {:db_id db-id, :schema "schema2"}]
-                    Table    [table3 {:db_id db-id, :schema "schema3"}]
-                    Field    [fk-field-1 {:table_id (:id table1)}]
-                    Field    [fk-field-2 {:table_id (:id table2)}]
-                    Field    [field {:table_id           (:id table3)
-                                     :semantic_type      :type/FK
-                                     :fk_target_field_id (:id fk-field-1)}]]
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    table1 {:db_id db-id, :schema "schema1"}
+                   Table    table2 {:db_id db-id, :schema "schema2"}
+                   Table    table3 {:db_id db-id, :schema "schema3"}
+                   Field    fk-field-1 {:table_id (:id table1)}
+                   Field    fk-field-2 {:table_id (:id table2)}
+                   Field    field {:table_id           (:id table3)
+                                   :semantic_type      :type/FK
+                                   :fk_target_field_id (:id fk-field-1)}]
       (let [expected-target (-> fk-field-2
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
@@ -513,8 +516,8 @@
 
     (testing "POST /api/table/:id/fields/order"
       (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
-        (mt/with-temp* [Field [{field-1-id :id} {:table_id table-id}]
-                        Field [{field-2-id :id} {:table_id table-id}]]
+        (mt/with-temp [Field {field-1-id :id} {:table_id table-id}
+                       Field {field-2-id :id} {:table_id table-id}]
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
             (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
                                   {:request-options {:body (json/encode [field-2-id field-1-id])}}))
@@ -576,15 +579,18 @@
       (testing "A non-admin cannot update database metadata if the advanced-permissions feature flag is not present"
         (with-all-users-data-perms {db-id {:details :yes}}
           (premium-features-test/with-premium-features #{}
-            (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))))
 
       (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
         (with-all-users-data-perms {db-id {:details :no}}
-          (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))))
 
       (testing "A non-admin can update database metadata if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
-          (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))
+          (is (=? {:id db-id}
+                  (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
 
 (deftest delete-database-test
   (t2.with-temp/with-temp [Database {db-id :id}]
@@ -593,11 +599,11 @@
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
-  (mt/with-temp* [Database    [{db-id :id}     {:engine "h2", :details (:details (mt/db))}]
-                  Table       [{table-id :id}  {:db_id db-id}]
-                  Field       [{field-id :id}  {:table_id table-id}]
-                  FieldValues [{values-id :id} {:field_id field-id, :values [1 2 3 4]}]]
-    (with-redefs [metabase.api.database/*rescan-values-async* false]
+  (mt/with-temp [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
+                 Table       {table-id :id}  {:db_id db-id}
+                 Field       {field-id :id}  {:table_id table-id}
+                 FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
+    (with-redefs [api.database/*rescan-values-async* false]
       (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
@@ -654,10 +660,10 @@
     (mt/with-actions-test-data
       (mt/with-actions [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :card_id model-id}]]
+          (mt/with-temp [Dashboard {dashboard-id :id} {}
+                         DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :action_id action-id
+                                                          :card_id model-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
@@ -685,16 +691,25 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (let [db-id (u/the-id (mt/db))]
-    (testing "Should be blocked without data access"
-      (perms/grant-application-permissions! (perms-group/all-users) :setting)
-      (mt/with-temporary-setting-values [uploads-enabled      true
-                                         uploads-database-id  db-id
-                                         uploads-schema-name  nil
-                                         uploads-table-prefix "uploaded_magic_"]
-        (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You don't have permissions to do that\."
-               (api.card-test/upload-example-csv! nil false)))))
-      (perms/revoke-application-permissions! (perms-group/all-users) :setting))))
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Should be blocked without data access"
+          (perms/grant-application-permissions! (perms-group/all-users) :setting)
+          ;; Create not_public schema
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                           ["CREATE SCHEMA \"not_public\";"])
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (api.card-test/upload-example-csv! nil false))))
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas ["not_public"]}}}
+                (is
+                 (api.card-test/upload-example-csv! nil false)))))
+          (perms/revoke-application-permissions! (perms-group/all-users) :setting))))))

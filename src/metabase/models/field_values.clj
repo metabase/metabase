@@ -28,37 +28,38 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
-(def ^Integer category-cardinality-threshold
+(def ^Long category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
-  (int 30))
+  30)
 
-(def ^Integer auto-list-cardinality-threshold
+(def ^Long auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
-  (int 1000))
+  1000)
 
-(def ^:private ^Integer entry-max-length
+(def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
-  (int 100))
+  100)
 
-(def ^:dynamic *total-max-length*
+(def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (int (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* auto-list-cardinality-threshold entry-max-length)))
 
-(def advanced-field-values-max-age
+(def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
 
-(def ^:private active-field-values-cutoff
+(def ^:private ^java.time.Period active-field-values-cutoff
   "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
    they are used again."
   (t/days 14))
@@ -219,10 +220,11 @@
 
 (defn take-by-length
   "Like `take` but condition by the total length of elements.
-  Returns a stateful transducer when no collection is provided.
+   Assumes the elements are 1-tuples of values with a .toString() method.
+   Returns a stateful transducer when no collection is provided.
 
-    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
-    ;; => [\"Dog\" \"Cat\"]"
+    ;; (take-by-length 6 [[\"Dog\"] [\"Cat\"] [\"Duck\"]])
+    ;; => [[\"Dog\"] [\"Cat\"]]"
   ([max-length]
    (fn [rf]
      (let [current-length (volatile! 0)]
@@ -231,7 +233,7 @@
          ([result]
           (rf result))
          ([result input]
-          (vswap! current-length + (count (str input)))
+          (vswap! current-length + (count (str (first input))))
           (if (< @current-length max-length)
             (rf result input)
             (reduced result)))))))
@@ -240,13 +242,13 @@
    (lazy-seq
      (when-let [s (seq coll)]
        (let [f          (first s)
-             new-length (- max-length (count (str f)))]
+             new-length (- max-length (count (str (first f))))]
          (when-not (neg? new-length)
            (cons f (take-by-length new-length
                                    (rest s)))))))))
 
 (defn fixup-human-readable-values
-  "Field values and human readable values are lists that are zipped together. If the field values have changes, the
+  "Field values and human readable values are lists that are zipped together. If the field values have changed, the
   human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
   `new-values`. If a new field value is found, a string version of that is used"
   [{old-values :values, old-hrv :human_readable_values} new-values]
@@ -306,7 +308,7 @@
   It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
-  ;; ->  {:values          [1, 2, 3]
+  ;; ->  {:values          [[1], [2], [3]]
           :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
@@ -341,9 +343,12 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
-        {:keys [values has_more_values]} (distinct-values field)
-        field-name                       (or (:name field) (:id field))]
+  (let [field-values              (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
+        {unwrapped-values :values
+         :keys [has_more_values]} (distinct-values field)
+        ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
+        values                    (map first unwrapped-values)
+        field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
       ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold
@@ -373,17 +378,17 @@
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
-      (and field-values values)
+      (and field-values unwrapped-values)
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values (fixup-human-readable-values field-values values))
+                                 :has_more_values       has_more_values
+                                 :values                values
+                                 :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
-      values
+      unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (t2/insert! FieldValues

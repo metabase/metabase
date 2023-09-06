@@ -21,21 +21,24 @@
           (let [impersonation {:group_id  (u/the-id group)
                                :db_id     (mt/id)
                                :attribute "Attribute Name"}
-                graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])
-                result        (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-            (is (= [(assoc impersonation :id (-> result :impersonations first :id))]
-                   (t2/select :model/ConnectionImpersonation :group_id (u/the-id group)))))
+                graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
+            (is (=? [impersonation]
+                    (t2/select :model/ConnectionImpersonation :group_id (u/the-id group)))))
 
           (testing "A connection impersonation policy can be updated via the permissions graph endpoint"
-            (let [impersonation (-> (t2/select :model/ConnectionImpersonation
-                                               :group_id (u/the-id group))
-                                    first
-                                    (assoc :attribute "New Attribute Name"))
+            (let [impersonation {:group_id  (u/the-id group)
+                                 :db_id     (mt/id)
+                                 :attribute "New Attribute Name"}
                   graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])]
               (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
-              (is (= [impersonation]
-                     (t2/select :model/ConnectionImpersonation
-                                :group_id (u/the-id group)))))))))))
+              (is (=?
+                   [{:group_id  (u/the-id group)
+                     :db_id     (mt/id)
+                     :attribute "New Attribute Name"}]
+                   (t2/select :model/ConnectionImpersonation
+                              :group_id (u/the-id group))))
+              (is (= 1 (t2/count :model/ConnectionImpersonation :group_id (u/the-id group)))))))))))
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"

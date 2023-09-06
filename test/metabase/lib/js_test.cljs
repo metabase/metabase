@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(deftest query=-test
+(deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
           q2 [nil js/undefined]]
     (is (lib.js/query= q1 q2)))
@@ -51,7 +52,7 @@
   Object
   (raw [_this] guts))
 
-(deftest query=-unwrapping-test
+(deftest ^:parallel query=-unwrapping-test
   (testing "JS wrapper types like Join get unwrapped"
     ;; This doesn't use the real Join classes, just pretends it has one.
     (let [join         #js {"alias" "Products"
@@ -60,17 +61,27 @@
           basic-query  #js {"type"  "query"
                             "query" #js {"joins" #js [join]}}
           classy-query #js {"type"  "query"
-                            "query" #js {"joins" #js [join-class]}}
-          ]
+                            "query" #js {"joins" #js [join-class]}}]
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
 
-(deftest available-join-strategies-test
+(deftest ^:parallel available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
-    (let [strategies (lib.js/available-join-strategies (lib.tu/query-with-join) -1)]
+    (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
       (is (array? strategies))
       (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
               {:lib/type :option/join.strategy, :strategy :right-join}
               {:lib/type :option/join.strategy, :strategy :inner-join}]
              (vec strategies))))))
+
+(deftest ^:parallel required-native-extras-test
+  (let [db                (update meta/database :features conj :native-requires-specified-collection)
+        metadata-provider (lib.tu/mock-metadata-provider {:database db})
+        extras            (lib.js/required-native-extras (:id db) metadata-provider)]
+    ;; apparently #js ["collection"] is not equal to #js ["collection"]
+    (is (= js/Array
+           (type extras))
+        "should be a JS array")
+    (is (= ["collection"]
+           (js->clj extras)))))

@@ -16,6 +16,7 @@
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
     "import/no-default-export": 2,
+    "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
     "import/order": [
       "error",
@@ -57,7 +58,7 @@
         ]
       }
     ],
-    "no-console": [2, {"allow": ["warn", "error"]}],
+    "no-console": [2, { "allow": ["warn", "error"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
@@ -70,7 +71,7 @@
     "react/no-unescaped-entities": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
-    "react/forbid-component-props": [2, { "forbid": ["w", "h"] }],
+    "react/forbid-component-props": [2, { "forbid": ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
       { "additionalHooks": "(useSyncedQueryString|useSafeAsyncFunction)" }
@@ -79,7 +80,25 @@
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
-      {"block": ["describe", "it", "context", "test", "tape", "fixture", "serial", "Feature", "Scenario", "Given", "And", "When", "Then", "describeWithSnowplow", "describeEE"]}
+      {
+        "block": [
+          "describe",
+          "it",
+          "context",
+          "test",
+          "tape",
+          "fixture",
+          "serial",
+          "Feature",
+          "Scenario",
+          "Given",
+          "And",
+          "When",
+          "Then",
+          "describeWithSnowplow",
+          "describeEE"
+        ]
+      }
     ],
     "complexity": ["error", { "max": 54 }]
   },
@@ -103,11 +122,16 @@
     "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
-    "plugin:import/warnings"
+    "plugin:import/warnings",
+    "plugin:import/typescript"
   ],
   "settings": {
     "import/internal-regex": "^metabase/|^metabase-lib/",
-    "import/resolver": "webpack",
+    "import/resolver": {
+      "webpack": {
+        "typescript": true
+      }
+    },
     "import/ignore": ["\\.css$"],
     "react": {
       "version": "detect"
@@ -131,6 +155,7 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
         "no-unused-vars": "off",
+        "@typescript-eslint/consistent-type-imports": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           {

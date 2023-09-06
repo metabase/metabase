@@ -1,6 +1,7 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -69,23 +70,17 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns             (let [stage (lib.util/query-stage query stage-number)]
-                               ;; pre-calculate refs for the visible columns so we can use them as keys when
-                               ;; using [[lib.equality/find-closest-matching-ref]] below. We'll remove them before
-                               ;; returning them
-                               (for [col (lib.metadata.calculation/visible-columns query stage-number stage)]
-                                 (assoc col ::ref (lib.ref/ref col))))
-         ref->existing-index (into {}
-                                   (map-indexed (fn [index breakout-ref]
-                                                  (when-let [matching-ref (lib.equality/find-closest-matching-ref
-                                                                           query
-                                                                           breakout-ref
-                                                                           (map ::ref columns))]
-                                                    [matching-ref index])))
-                                   (breakouts query stage-number))]
-     (some->> (not-empty columns)
-              (into [] (map (fn [col]
-                              (let [pos (ref->existing-index (::ref col))]
-                                (cond-> col
-                                  pos  (assoc :breakout-position pos)
-                                  true (dissoc ::ref))))))))))
+   (let [cols                      (let [stage (lib.util/query-stage query stage-number)]
+                                     (lib.metadata.calculation/visible-columns query stage-number stage))
+         col-index->breakout-index (into {}
+                                         (map-indexed
+                                          (fn [breakout-index breakout-ref]
+                                            (when-let [col-index (lib.equality/index-of-closest-matching-metadata breakout-ref cols)]
+                                              [col-index breakout-index])))
+                                         (breakouts query stage-number))]
+     (when (seq cols)
+       (mapv (fn [[i col]]
+               (let [pos (col-index->breakout-index i)]
+                 (cond-> col
+                   pos (assoc :breakout-position pos))))
+             (m/indexed cols))))))

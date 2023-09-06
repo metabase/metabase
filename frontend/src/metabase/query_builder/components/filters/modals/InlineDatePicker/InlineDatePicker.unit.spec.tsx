@@ -119,7 +119,7 @@ describe("InlineDatePicker", () => {
     );
 
     expect(
-      screen.getByText("between November 5, 1605 November 5, 2005"),
+      screen.getByText("is November 5, 1605 – November 5, 2005"),
     ).toBeInTheDocument();
   });
 
@@ -313,7 +313,7 @@ describe("InlineDatePicker", () => {
       />,
     );
 
-    const btn = screen.getByText("between November 5, 1605 November 5, 2005");
+    const btn = screen.getByText("is November 5, 1605 – November 5, 2005");
     userEvent.click(btn);
     await screen.findByDisplayValue("11/05/1605");
     const input = screen.getByDisplayValue("11/05/1605");

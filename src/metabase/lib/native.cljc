@@ -61,7 +61,7 @@
 (defn- fresh-tag [tag-name]
   {:type :text
    :name tag-name
-   :id   (str (m/random-uuid))})
+   :id   (str (random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -148,7 +148,8 @@
    [:collection {:optional true} ::common/non-blank-string]])
 
 (mu/defn required-native-extras :- set?
-  "Returns the extra keys that are required for this database's native queries."
+  "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
+  needed for MongoDB queries."
   [metadata-provider :- lib.metadata/MetadataProviderable]
   (let [db (lib.metadata/database metadata-provider)]
    (cond-> #{}

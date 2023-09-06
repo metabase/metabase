@@ -32,31 +32,40 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
 - [Download permissions](../permissions/data.md#download-results)
+- [Connection impersonation](../permissions/data.md#impersonation-access)
 - [Database management permissions](../permissions/data.md#manage-database)
-- [Data model management permissions](../permissions/data.md#manage-data-model)
+- [Table metadata management permissions](../permissions/data.md#manage-table-metadata)
 
 ## People and group management
 
 - [Group managers](../people-and-groups/managing.md#group-managers)
 
-## Embedding
+## Interactive embedding
 
 You can embed all of Metabase in your app.
 
-- [Embedding the entire Metabase app in your app](../embedding/full-app-embedding.md)
+- [Embedding the entire Metabase app in your app](../embedding/interactive-embedding.md)
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md)
 
-## Dashboard subscription customization
+## Dashboard subscription and alert customization
 
-Send different groups of people the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
+### Custom filter values
+
+Send different groups of people the contents of a dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
-## Restrict which domains people can send alerts and subscriptions to
+### Restrict which domains people can send alerts and subscriptions to
 
 As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
 
-- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
+- [Approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications)
+
+### Suggest recipients on dashboard subscriptions and alerts
+
+You can also control which recipients Metabase suggests when people create dashboard subscriptions and alert.
+
+- [Recipient suggestion controls](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts)
 
 ## Content moderation tools
 

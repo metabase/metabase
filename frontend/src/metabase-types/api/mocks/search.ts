@@ -1,4 +1,9 @@
-import { SearchResult, SearchScore } from "metabase-types/api";
+import _ from "underscore";
+import type {
+  SearchResult,
+  SearchResults,
+  SearchScore,
+} from "metabase-types/api";
 import { createMockCollection } from "./collection";
 
 export const createMockSearchResult = (
@@ -42,3 +47,24 @@ export const createMockSearchScore = (
   name: "text-total-occurrences",
   ...options,
 });
+
+export const createMockSearchResults = ({
+  items = [createMockSearchResult()],
+  options = {},
+}: {
+  items?: SearchResult[];
+  options?: Partial<SearchResults>;
+}): SearchResults => {
+  const uniqueModels = _.uniq(items.map(item => item.model));
+
+  return {
+    available_models: uniqueModels,
+    data: items,
+    limit: 10,
+    models: uniqueModels,
+    offset: 0,
+    table_db_id: null,
+    total: items.length,
+    ...options,
+  };
+};

@@ -5,7 +5,6 @@ import {
   visualize,
   startNewQuestion,
   visitQuestionAdhoc,
-  getCollectionIdFromSlug,
   saveQuestion,
   getPersonalCollectionName,
   visitCollection,
@@ -14,7 +13,11 @@ import {
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -149,11 +152,9 @@ describe("scenarios > question > new", () => {
     });
 
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
-      getCollectionIdFromSlug("second_collection", id => {
-        // Move first question in a DB snapshot ("Orders") to a "Second collection"
-        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-          collection_id: id,
-        });
+      // Move first question in a DB snapshot ("Orders") to a "Second collection"
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        collection_id: SECOND_COLLECTION_ID,
       });
 
       startNewQuestion();
@@ -260,9 +261,7 @@ describe("scenarios > question > new", () => {
   });
 
   it("should suggest the currently viewed collection when saving question", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
 
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
@@ -284,9 +283,8 @@ describe("scenarios > question > new", () => {
   });
 
   it("should be able to save a question to a collection created on the go", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
+
     cy.findByLabelText("Navigation bar").findByText("New").click();
     popover().findByText("Question").click();
     popover().within(() => {
@@ -301,6 +299,9 @@ describe("scenarios > question > new", () => {
     modal().within(() => {
       cy.findByLabelText("Name").type(NEW_COLLECTION);
       cy.findByText("Create").click();
+      cy.findByText("Save new question");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Save").click();
     });
     cy.get("header").findByText(NEW_COLLECTION);
   });

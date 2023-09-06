@@ -2,7 +2,7 @@ import { Fragment } from "react";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
-import { ITreeNodeItem, TreeNodeComponent } from "./types";
+import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 import { ListRoot } from "./TreeNodeList.styled";
 
 interface TreeNodeListProps {

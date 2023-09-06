@@ -24,7 +24,6 @@ export interface OptionsType {
   rich?: boolean;
   suffix?: string;
   time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
-  date_resolution?: "day" | "month" | "quarter" | "year";
   time_format?: string;
   time_style?: string;
   type?: string;

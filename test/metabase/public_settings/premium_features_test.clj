@@ -96,9 +96,9 @@
       (testing "Only attempt the token twice (default and fallback URLs)"
         (let [call-count (atom 0)
               token      (random-token)]
-          (binding [clj-http.client/request (fn [& _]
-                                              (swap! call-count inc)
-                                              (throw (Exception. "no internet")))]
+          (binding [http/request (fn [& _]
+                                   (swap! call-count inc)
+                                   (throw (Exception. "no internet")))]
 
             (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
               (testing "Sanity check"
@@ -110,9 +110,6 @@
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
                                     #'premium-features/enable-sandboxes?
-                                    #'premium-features/enable-sso?
-                                    #'premium-features/enable-advanced-config?
-                                    #'premium-features/enable-content-management?
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
@@ -168,23 +165,23 @@
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting :rasta))))
+      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (special-greeting :rasta)))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (special-greeting :rasta)))))
 
-     (testing "when :fallback is a function, it is run when the required token is not present"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting-or-custom :rasta))))
+      (testing "when :fallback is a function, it is run when the required token is not present"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-custom :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're an EE customer but not extra special."
-                (special-greeting-or-custom :rasta))))))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're an EE customer but not extra special."
+                 (special-greeting-or-custom :rasta))))))))
 
 (defenterprise-schema greeting-with-schema :- s/Str
   "Returns a greeting for a user."

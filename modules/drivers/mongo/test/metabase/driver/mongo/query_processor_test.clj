@@ -1,19 +1,21 @@
 (ns metabase.driver.mongo.query-processor-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.models :refer [Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test.date-time-zone-functions-test
+    :as qp.datetime-test]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
-(deftest query->collection-name-test
+(deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
     (testing "should be able to extract :collection from :source-query")
     (is (= "checkins"
@@ -25,14 +27,13 @@
              (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
                                                                         {:collection "checkins"
                                                                          :native     []}}}}))))
-
     (testing "should ignore :joins"
       (is (= nil
              (#'mongo.qp/query->collection-name {:query {:source-query
                                                          {:native []}
                                                          :joins [{:source-query "wow"}]}}))))))
 
-(deftest order-postprocessing-test
+(deftest ^:parallel order-postprocessing-test
   (is (= [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
           {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}
            "expression_2" {"$multiply" [2 "$expression_2~share"]}}]
@@ -43,7 +44,7 @@
            [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
             {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
 
-(deftest relative-datetime-test
+(deftest ^:parallel relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
@@ -60,12 +61,12 @@
                   :mbql?       true}
                  (qp/compile
                   (mt/mbql-query attempts
-                                 {:aggregation [[:count]]
-                                  :filter      [:time-interval $datetime :last :month]})))))))))
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $datetime :last :month]})))))))))
 
-(deftest absolute-datetime-test
+(deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Make sure absolute-datetime are compiled correctly"
         (doseq [[expected date]
                 [["2014-01-01"        (t/local-date "2014-01-01")]
@@ -83,7 +84,7 @@
 (defn- date-arithmetic-supported? []
   (driver/database-supports? :mongo :date-arithmetics (mt/db)))
 
-(deftest no-initial-projection-test
+(deftest ^:parallel no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"
       (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
@@ -106,13 +107,13 @@
 
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
-                    query (mt/with-everything-store
+                    query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
-                                            {:aggregation [[:count]]
-                                             :breakout    [[:field %datetime {:temporal-unit :month}]
-                                                           [:field %datetime {:temporal-unit :day}]]
-                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                               {:aggregation [[:count]]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
@@ -120,24 +121,24 @@
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
                                                            {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                             :startOfWeek "sunday"
-                                                                                             :timezone tz
-                                                                                             :unit "month"}}
+                                                                                     :startOfWeek "sunday"
+                                                                                     :timezone tz
+                                                                                     :unit "month"}}
                                                             "datetime_2" {:$dateTrunc {:date "$datetime"
-                                                                                           :startOfWeek "sunday"
-                                                                                           :timezone tz
-                                                                                           :unit "day"}}}
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone tz
+                                                                                       :unit "day"}}}
                                                            {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :timezone tz}}}}
+                                                                                                             :timezone tz}}}
+                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                       :month "$$parts.month"
+                                                                                                       :timezone tz}}}}
                                                             "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                               :month "$$parts.month"
-                                                                                                               :day   "$$parts.day"
-                                                                                                               :timezone tz}}}}})
+                                                                                                                 :timezone tz}}}
+                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                           :month "$$parts.month"
+                                                                                                           :day   "$$parts.day"
+                                                                                                           :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -153,7 +154,7 @@
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
 
-(deftest field-filter-relative-time-native-test
+(deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
     (testing "Field filters with relative temporal constraints should work with native queries (#15945)"
       (mt/with-clock #t "2014-10-03T18:08:00Z"
@@ -180,7 +181,7 @@
           (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest grouping-with-timezone-test
+(deftest ^:synchronized grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
@@ -207,11 +208,11 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))))))
 
-(deftest nested-columns-test
+(deftest ^:parallel nested-columns-test
   (mt/test-driver :mongo
     (testing "Should generate correct queries against nested columns"
       (mt/dataset geographical-tips
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (is (= {:projections ["count"]
                   :query       [{"$match" {"source.username" "tupac"}}
                                 {"$group" {"_id" nil, "count" {"$sum" 1}}}
@@ -240,9 +241,9 @@
             (let [table       (t2/select-one Table :db_id (mt/id))
                   fields      (t2/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
-                                    (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                         [:field (u/the-id f) nil])
-                                                                       fields)}))
+                                   (mt/mbql-query tips {:fields (mapv (fn [f]
+                                                                        [:field (u/the-id f) nil])
+                                                                      fields)}))
                                   :projections
                                   set)]
               ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
@@ -250,7 +251,7 @@
               ;; see docstring on mongo.qp/remove-parent-fields for full details
               (is (empty? (set/intersection projections #{"source" "url" "venue"}))))))))))
 
-(deftest multiple-distinct-count-test
+(deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
     (testing "Should generate correct queries for multiple `:distinct` count aggregations (#13097)"
       (is (= {:projections ["count" "count_2"]
@@ -270,67 +271,84 @@
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
 
-(deftest expressions-test
+(deftest ^:parallel expressions-test
   (mt/test-driver :mongo
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
       (is (= {"bob" "$latitude", "cobb" "$name"}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:field $latitude nil]
-                                               :cobb [:field $name nil]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:field $latitude nil]
+                                :cobb [:field $name nil]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-2
+  (mt/test-driver :mongo
     (testing "Should be able to deal with 1-arity functions"
       (is (= {"cobb" {"$toUpper" "$name"},
               "bob" {"$abs" "$latitude"}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:abs $latitude]
-                                               :cobb [:upper $name]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob   [:abs $latitude]
+                                :cobb [:upper $name]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-3
+  (mt/test-driver :mongo
     (testing "Should be able to deal with 2-arity functions"
       (is (= {"bob" {"$add" ["$price" 300]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:+ $price 300]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:+ $price 300]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-4
+  (mt/test-driver :mongo
     (testing "Should be able to deal with a little indirection"
       (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:abs [:- $price 300]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob   [:abs [:- $price 300]]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-5
+  (mt/test-driver :mongo
     (testing "Should be able to deal with a little indirection, with an expression in"
       (is (= {"bob" {"$abs" "$latitude"},
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob  [:abs $latitude]
-                                               :cobb [:ceil [:expression "bob"]]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:abs $latitude]
+                                :cobb [:ceil [:expression "bob"]]}
+                  :limit       5}))))))))
+
+(deftest ^:parallel expressions-test-6
+  (mt/test-driver :mongo
     (testing "Should be able to deal with coalescing"
       (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+               (mt/mbql-query venues
+                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                  :limit       5}))))))))
 
+(deftest ^:parallel expressions-test-7
+  (mt/test-driver :mongo
     (testing "Should be able to deal with group by expressions"
       (is (= {:collection "venues",
               :mbql? true,
@@ -339,12 +357,12 @@
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp/compile
-               (mt/mbql-query venues
-                              {:expressions {:asdf ["field" $price nil]},
-                               :aggregation [["count"]],
-                               :breakout [["expression" "asdf"]]})))))))
+              (mt/mbql-query venues
+                {:expressions {:asdf ["field" $price nil]},
+                 :aggregation [["count"]],
+                 :breakout [["expression" "asdf"]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (mt/test-driver :mongo
     (testing "Make sure time-intervals work the way they're supposed to."
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
@@ -378,9 +396,11 @@
                      {:filter   [:time-interval $date -4 :month]
                       :breakout [!day.date]}))))))))))
 
-(deftest temporal-arithmetic-test
+;;; TODO: I don't think MongoDB syncs its version, or at least we're not USING the synced version info. If we used it
+;;; then we could use a mock Database here and parallelize this test.
+(deftest ^:synchronized temporal-arithmetic-test
   (mt/test-driver :mongo
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
         (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
           (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
@@ -417,10 +437,10 @@
                                                            [:field "date-field"]]
                                                           [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
 
-(deftest datetime-math-tests
+(deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
     (mt/dataset qp.datetime-test/times-mixed
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         ;; date arithmetic doesn't supports until mongo 5+
         (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
           (testing "date arithmetic with date columns"
@@ -445,7 +465,7 @@
                 (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
                   (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))))))))
 
-(deftest expr-test
+(deftest ^:parallel expr-test
   (mt/test-driver
     :mongo
     (testing "Should use $expr for simple comparisons and ops for others"
@@ -469,11 +489,29 @@
         {"price" {"$lte" 100}}
         [:<= $price 100]
 
-        {"name" {"$regex" "hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" ""}}}
         [:contains $name "hello"]
 
-        {"name" {"$regex" "^hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" ""}}}
+        [:contains $name "hello" {:case-sensitive true}]
+
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" "i"}}}
+        [:contains $name "hello" {:case-sensitive false}]
+
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "^hello" "options" ""}}}
         [:starts-with $name "hello"]
+
+        {"$expr" {"$regexMatch" {"input" "$name"
+                                 "regex" {"$concat" [{"$literal" "^"}
+                                                     {"$substrCP" ["$name" {"$subtract" [1 1]} 3]}]}
+                                 "options" ""}}}
+        [:starts-with $name [:substring $name 1 3]]
+
+        {"$expr" {"$regexMatch" {"input" "$name"
+                                 "regex" {"$concat" ["$name"
+                                                     {"$literal" "$"}]}
+                                 "options" "i"}}}
+        [:ends-with $name $name {:case-sensitive false}]
 
         {"$and" [{"$expr" {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
         [:and [:= $price [:+ $price 1]] [:= $name "hello"]]

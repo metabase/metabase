@@ -15,6 +15,7 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -110,7 +111,19 @@
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
   [a-query stage-number]
-  (to-array (lib.core/orderable-columns a-query stage-number)))
+  (to-array (lib.order-by/orderable-columns a-query stage-number)))
+
+(defn- display-info-js
+  "Converts the [[metabase.lib.metadata.calculation/display-info]] maps into a JS-friendly form - `camelCase` keys,
+  namespaced keyword values as `\"foo/bar\"` strings, etc.
+  Recurses into nested sequences and maps."
+  [x]
+  (cond
+    (map? x)        (-> x
+                        (update-keys u/->camelCaseEn)
+                        (update-vals display-info-js))
+    (sequential? x) (map display-info-js x)
+    :else           x))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
@@ -120,9 +133,13 @@
   (-> a-query
       (lib.stage/ensure-previous-stages-have-metadata stage-number)
       (lib.core/display-info stage-number x)
-      (update-keys u/->camelCaseEn)
-      (update :table update-keys u/->camelCaseEn)
+      display-info-js
       (clj->js :keyword-fn u/qualified-name)))
+
+(defn ^:export field-id
+  "Find the field id for something or nil."
+  [field-metadata]
+  (lib.core/field-id field-metadata))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
@@ -367,6 +384,15 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-operator a-query stage-number a-filter-clause))
 
+(defn ^:export filter-parts
+  "Returns the parts (operator, args, and optionally, options) of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (let [{:keys [operator options column args]} (lib.core/filter-parts a-query stage-number a-filter-clause)]
+    #js {:operator operator
+         :options (clj->js (select-keys options [:case-sensitive :include-current]))
+         :column column
+         :args (to-array args)}))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -379,6 +405,19 @@
   attached to the query."
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
+
+(defn ^:export find-filter-for-legacy-filter
+  "Return the filter clause in `a-query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  [a-query stage-number legacy-filter]
+  (->> (js->clj legacy-filter :keywordize-keys true)
+       (lib.core/find-filter-for-legacy-filter a-query stage-number)))
+
+(defn ^:export find-filterable-column-for-legacy-ref
+  "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
+  [a-query stage-number legacy-ref]
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-filterable-column-for-legacy-ref a-query stage-number legacy-ref))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -395,6 +434,45 @@
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
+
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage, aggregations or breakouts:
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
+    itself should be removed from the query."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
+(defn ^:export find-visible-column-for-legacy-ref
+  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
+  only meant for use with `:field` clauses."
+  [a-query stage-number legacy-ref]
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-visible-column-for-legacy-ref a-query stage-number legacy-ref))
+
+(defn ^:export find-column-for-legacy-ref
+  "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
+  [a-query stage-number legacy-ref columns]
+  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
+  (lib.core/find-column-for-legacy-ref a-query stage-number legacy-ref columns))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
@@ -416,27 +494,40 @@
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+  we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
+  for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
+  either pass in `nil` or something joinable (Table or Card metadata) we're joining against when building a new
+  join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
+  of [[join-condition-rhs-columns]].) See #32005 for more info.
+
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  [a-query stage-number rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joinable`, which can be something like a
+  is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]].
+  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
-  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  [a-query stage-number joinable lhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joinable lhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-operators
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -587,9 +678,12 @@
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
-  "Returns whether the extra keys required by the database."
+  "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
+  needed for MongoDB queries."
   [database-id metadata]
-  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+  (to-array
+   (map u/qualified-name
+        (lib.core/required-native-extras (metadataProvider database-id metadata)))))
 
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
@@ -600,8 +694,8 @@
    (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
 
 (defn ^:export with-native-extras
-  "Updates the extras required for the db to run this query.
-   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  "Updates the extras required for the db to run this query. The first stage must be a native type. Will ignore extras
+  not in `required-native-extras`."
   [a-query native-extras]
   (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
 
@@ -609,6 +703,12 @@
   "Returns the extra keys for native queries associated with this query."
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
+
+(defn ^:export available-segments
+  "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-segments a-query)))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
@@ -621,10 +721,84 @@
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [a-query stage-number join-or-joinable]
-  (lib.core/joinable-columns a-query stage-number join-or-joinable))
+  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
 
 (defn ^:export table-or-card-metadata
   "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.
   Returns `nil` if no matching metadata is found."
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
+
+(defn ^:export join-lhs-display-name
+  "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
+  join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
+  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
+
+(defn ^:export database-id
+  "Get the Database ID (`:database`) associated with a query. If the query is using
+  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  `:source-card`)
+
+    {:database -1337}
+
+  we will attempt to resolve the correct Database ID by getting metadata for the source Card and returning its
+  `:database-id`; if this is not available for one reason or another this will return `nil`."
+  [a-query]
+  (lib.core/database-id a-query))
+
+(defn ^:export join-condition-update-temporal-bucketing
+  "Updates the provided join-condition's fields' temporal-bucketing option.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  [a-query stage-number join-condition bucketing-option]
+  (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
+
+(defn- js-cells-by
+  "Given a `col-fn`, returns a function that will extract a JS object like
+  `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like `{:column-name \"ID\", :value 12}`.
+
+  The spelling of the column key differs between multiple JS objects of this same general shape
+  (`col` on data rows, `column` on dimensions), etc., hence the abstraction."
+  [col-fn]
+  (fn [^js cell]
+    {:column-name (.-name (col-fn cell))
+     :value       (.-value cell)}))
+
+(def ^:private row-cell       (js-cells-by #(.-col ^js %)))
+(def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
+
+(defn ^:export available-drill-thrus
+  "Return an array (possibly empty) of drill-thrus given:
+  - Required column
+  - Nullable value
+  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
+  [a-query stage-number column value row dimensions]
+  (->> (merge {:column (js.metadata/parse-column column)
+               :value  (cond
+                         (undefined? value) nil   ; Missing a value, ie. a column click
+                         (nil? value)       :null ; Provided value is null, ie. database NULL
+                         :else              value)}
+              (when row                    {:row        (mapv row-cell       row)})
+              (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
+       (lib.core/available-drill-thrus a-query stage-number)
+       to-array))
+
+(defn ^:export drill-thru
+  "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
+
+  Each type of drill-thru has a different effect on the query."
+  [a-query stage-number a-drill-thru]
+  (lib.core/drill-thru a-query stage-number a-drill-thru))
+
+(defn ^:export pivot-types
+  "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
+  [a-drill-thru]
+  (to-array (lib.core/pivot-types a-drill-thru)))
+
+(defn ^:export pivot-columns-for-type
+  "Returns an array of pivotable columns of the specified type."
+  [a-drill-thru pivot-type]
+  (lib.core/pivot-columns-for-type a-drill-thru pivot-type))

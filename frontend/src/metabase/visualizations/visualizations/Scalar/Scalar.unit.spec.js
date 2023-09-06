@@ -52,7 +52,7 @@ describe("MetricForm", () => {
       />,
     );
 
-    userEvent.hover(getIcon("info_outline"));
+    userEvent.hover(getIcon("info_filled"));
 
     expect(screen.getByRole("tooltip")).toHaveTextContent(DESCRIPTION);
   });
@@ -69,7 +69,7 @@ describe("MetricForm", () => {
       />,
     );
 
-    userEvent.hover(getIcon("info_outline"));
+    userEvent.hover(getIcon("info_filled"));
 
     expect(
       within(screen.getByRole("tooltip")).getByRole("link"),

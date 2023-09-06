@@ -1,10 +1,10 @@
-import { DatabaseId, GroupId, Impersonation } from "metabase-types/api";
-import { PartialBy } from "metabase/core/types";
+import type { DatabaseId, GroupId, Impersonation } from "metabase-types/api";
+import type { PartialBy } from "metabase/core/types";
 
-import { RequestState } from "metabase-types/store/requests";
-import { EnterpriseState } from "metabase-enterprise/shared/types";
-import { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
-import { AdvancedPermissionsState } from "./reducer";
+import type { RequestState } from "metabase-types/store/requests";
+import type { EnterpriseState } from "metabase-enterprise/shared/types";
+import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
+import type { AdvancedPermissionsState } from "./reducer";
 
 export type ImpersonationParams = { groupId: GroupId; databaseId: DatabaseId };
 

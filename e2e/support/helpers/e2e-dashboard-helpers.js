@@ -62,7 +62,16 @@ export function getDashboardCardMenu(index = 0) {
 }
 
 export function showDashboardCardActions(index = 0) {
-  getDashboardCard(index).realHover();
+  getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
+}
+
+export function removeDashboardCard(index = 0) {
+  showDashboardCardActions(index);
+  cy.findAllByTestId("dashboardcard-actions-panel")
+    .eq(0)
+    .should("be.visible")
+    .icon("close")
+    .click();
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
@@ -115,6 +124,10 @@ export function createEmptyTextBox() {
 
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addTextBoxWhileEditing(string, options);
+}
+
+export function addTextBoxWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
@@ -130,13 +143,17 @@ export function createEmptyHeading() {
 
 export function addHeading(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addHeadingWhileEditing(string, options);
+}
+
+export function addHeadingWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
 export function openQuestionsSidebar() {
-  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -175,3 +192,59 @@ export function resizeDashboardCard({ card, x, y }) {
 export function createLinkCard() {
   cy.icon("link").click();
 }
+
+export function toggleDashboardInfoSidebar() {
+  dashboardHeader().icon("info").click();
+}
+
+export function openDashboardMenu() {
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
+}
+
+export const dashboardHeader = () => {
+  return cy.findByTestId("dashboard-header");
+};
+
+/**
+ *
+ * @param {number} dashboardId
+ * @param {Object} option
+ * @param {number=} option.id
+ * @param {number=} option.col
+ * @param {number=} option.row
+ * @param {number=} option.size_x
+ * @param {number=} option.size_y
+ * @param {string} option.text
+ */
+export function createTextCard({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 6,
+  text,
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
+}
+
+export const getNextUnsavedDashboardCardId = (() => {
+  let id = 0;
+  return () => --id;
+})();

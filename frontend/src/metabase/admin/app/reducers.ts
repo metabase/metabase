@@ -7,7 +7,7 @@ import {
   PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 import { REFRESH_CURRENT_USER } from "metabase/redux/user";
-import { AdminPath, AdminPathKey } from "metabase-types/store";
+import type { AdminPath, AdminPathKey } from "metabase-types/store";
 import { isNotNull } from "metabase/core/utils/types";
 import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
 
@@ -41,13 +41,8 @@ const getAdminPaths: () => AdminPath[] = () => {
   ];
 
   const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
-  const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
 
-  if (
-    !hasLoadedSettings ||
-    isModelPersistenceEnabled ||
-    PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0
-  ) {
+  if (isModelPersistenceEnabled || PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
     items.push({
       name: t`Tools`,
       path: "/admin/tools",

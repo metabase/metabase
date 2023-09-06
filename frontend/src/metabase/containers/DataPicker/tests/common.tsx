@@ -1,15 +1,15 @@
 /* istanbul ignore file */
 import {
+  setupCollectionVirtualSchemaEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCollectionsEndpoints,
-  setupCollectionVirtualSchemaEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
 
 import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -23,10 +23,11 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type { DataPickerValue, DataPickerFiltersProp } from "../types";
-import useDataPickerValue from "../useDataPickerValue";
-import { useDataPicker } from "../../DataPicker";
-import DataPicker from "../DataPickerContainer";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+} from "../../DataPicker";
+import type { DataPickerFiltersProp, DataPickerValue } from "../types";
 
 export const SAMPLE_TABLE = createMockTable({
   id: 1,

@@ -1,13 +1,15 @@
 import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
+import type { ColorName } from "metabase/lib/colors/types";
 
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
+import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -23,6 +25,7 @@ export interface QueryColumnPickerProps {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   maxHeight?: number;
+  color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
@@ -42,6 +45,7 @@ function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
+  color = "brand",
   checkIsColumnSelected,
   onSelect,
   onClose,
@@ -123,6 +127,7 @@ function QueryColumnPicker({
           isEditing={checkIsColumnSelected(item)}
           hasBinning={hasBinning}
           hasTemporalBucketing={hasTemporalBucketing}
+          color={color}
           onSelect={handleSelect}
         />
       ) : null,
@@ -131,13 +136,14 @@ function QueryColumnPicker({
       stageIndex,
       hasBinning,
       hasTemporalBucketing,
+      color,
       checkIsColumnSelected,
       handleSelect,
     ],
   );
 
   return (
-    <AccordionList
+    <StyledAccordionList
       className={className}
       sections={sections}
       maxHeight={maxHeight}
@@ -148,6 +154,7 @@ function QueryColumnPicker({
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
       renderItemExtra={renderItemExtra}
+      color={color}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"

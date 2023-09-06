@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations]
    [metabase.models]
    [metabase.models.revision-test]
@@ -68,6 +69,7 @@
     :model/FakedCard
     :model/Secret
     :model/Session
+    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
@@ -82,7 +84,7 @@
     (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                           "an external name, or explicitly listed as excluded from serialization")
                      model)
-      (is (true? (serdes.backfill/has-entity-id? model))))))
+      (is (serdes.backfill/has-entity-id? model)))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)

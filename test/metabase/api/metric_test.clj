@@ -84,8 +84,8 @@
                                              :table_id   123
                                              :definition "foobar"}))))
 
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {:keys [id]} {:db_id database-id}]
       (is (= (merge metric-defaults
                     {:name        "A Metric"
                      :description "I did it!"
@@ -135,9 +135,9 @@
                                               :revision_message "123"
                                               :definition       "foobar"}))))
 
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [{:keys [id]} {:table_id table-id}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   {:keys [id]} {:table_id table-id}]
       (is (= (merge metric-defaults
                     {:name       "Costa Rica"
                      :creator_id (mt/user->id :rasta)
@@ -196,9 +196,9 @@
 
 (deftest fetch-archived-test
   (testing "should still be able to fetch the archived Metric"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [{:keys [id]}   {:table_id table-id}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   {:keys [id]}   {:table_id table-id}]
       (mt/user-http-request
        :crowberto :delete 204 (format "metric/%d" id) :revision_message "carryon")
       (is (= (merge
@@ -216,17 +216,17 @@
 (deftest fetch-metric-test
   (testing "GET /api/metric/:id"
     (testing "test security. Requires perms for the Table it references"
-      (mt/with-temp* [Database [db]
-                      Table    [table  {:db_id (u/the-id db)}]
-                      Metric   [metric {:table_id (u/the-id table)}]]
+      (mt/with-temp [Database db {}
+                     Table    table  {:db_id (u/the-id db)}
+                     Metric   metric {:table_id (u/the-id table)}]
         (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
 
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [{:keys [id]}   {:creator_id (mt/user->id :crowberto)
-                                              :table_id   table-id}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   {:keys [id]}   {:creator_id (mt/user->id :crowberto)
+                                            :table_id   table-id}]
       (is (= (merge
               metric-defaults
               {:name        "Toucans in the rainforest"
@@ -239,36 +239,36 @@
 (deftest metric-revisions-test
   (testing "GET /api/metric/:id/revisions"
     (testing "test security. Requires read perms for Table it references"
-      (mt/with-temp* [Database [db]
-                      Table    [table  {:db_id (u/the-id db)}]
-                      Metric   [metric {:table_id (u/the-id table)}]]
+      (mt/with-temp [Database db {}
+                     Table    table  {:db_id (u/the-id db)}
+                     Metric   metric {:table_id (u/the-id table)}]
         (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
 
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id} {:db_id database-id}]
-                    Metric   [{:keys [id]}   {:creator_id              (mt/user->id :crowberto)
-                                              :table_id                table-id
-                                              :name                    "One Metric to rule them all, one metric to define them"
-                                              :description             "One metric to bring them all, and in the DataModel bind them"
-                                              :show_in_getting_started false
-                                              :caveats                 nil
-                                              :points_of_interest      nil
-                                              :how_is_this_calculated  nil
-                                              :definition              {:database 123
-                                                                        :query    {:filter [:= [:field 10 nil] 20]}}}]
-                    Revision [_              {:model       "Metric"
-                                              :model_id    id
-                                              :object      {:name       "b"
-                                                            :definition {:filter [:and [:> 1 25]]}}
-                                              :is_creation true}]
-                    Revision [_              {:model    "Metric"
-                                              :model_id id
-                                              :user_id  (mt/user->id :crowberto)
-                                              :object   {:name       "c"
-                                                         :definition {:filter [:and [:> 1 25]]}}
-                                              :message  "updated"}]]
+    (mt/with-temp [Database {database-id :id} {}
+                   Table    {table-id :id} {:db_id database-id}
+                   Metric   {:keys [id]}   {:creator_id              (mt/user->id :crowberto)
+                                            :table_id                table-id
+                                            :name                    "One Metric to rule them all, one metric to define them"
+                                            :description             "One metric to bring them all, and in the DataModel bind them"
+                                            :show_in_getting_started false
+                                            :caveats                 nil
+                                            :points_of_interest      nil
+                                            :how_is_this_calculated  nil
+                                            :definition              {:database 123
+                                                                      :query    {:filter [:= [:field 10 nil] 20]}}}
+                   Revision _              {:model       "Metric"
+                                            :model_id    id
+                                            :object      {:name       "b"
+                                                          :definition {:filter [:and [:> 1 25]]}}
+                                            :is_creation true}
+                   Revision _              {:model    "Metric"
+                                            :model_id id
+                                            :user_id  (mt/user->id :crowberto)
+                                            :object   {:name       "c"
+                                                       :definition {:filter [:and [:> 1 25]]}}
+                                            :message  "updated"}]
       (is (=? [{:is_reversion false
                 :is_creation  false
                 :message      "updated"
@@ -303,53 +303,53 @@
            (mt/user-http-request :crowberto :post 400 "metric/1/revert" {:revision_id "foobar"})))))
 
 (deftest metric-revisions-test-2
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id}    {:db_id database-id}]
-                  Metric   [{:keys [id]}      {:creator_id              (mt/user->id :crowberto)
-                                               :table_id                table-id
-                                               :name                    "One Metric to rule them all, one metric to define them"
-                                               :description             "One metric to bring them all, and in the DataModel bind them"
-                                               :show_in_getting_started false
-                                               :caveats                 nil
-                                               :points_of_interest      nil
-                                               :how_is_this_calculated  nil
-                                               :definition              {:creator_id              (mt/user->id :crowberto)
-                                                                         :table_id                table-id
-                                                                         :name                    "Reverted Metric Name"
-                                                                         :description             nil
-                                                                         :show_in_getting_started false
-                                                                         :caveats                 nil
-                                                                         :points_of_interest      nil
-                                                                         :how_is_this_calculated  nil
-                                                                         :definition              {:database 123
-                                                                                                   :query    {:filter [:= [:field 10 nil] 20]}}}}]
-                  Revision [{revision-id :id} {:model       "Metric"
-                                               :model_id    id
-                                               :object      {:creator_id              (mt/user->id :crowberto)
-                                                             :table_id                table-id
-                                                             :name                    "One Metric to rule them all, one metric to define them"
-                                                             :description             "One metric to bring them all, and in the DataModel bind them"
-                                                             :show_in_getting_started false
-                                                             :caveats                 nil
-                                                             :points_of_interest      nil
-                                                             :how_is_this_calculated  nil
-                                                             :definition              {:database 123
-                                                                                       :query    {:filter [:= [:field 10 nil] 20]}}}
-                                               :is_creation true}]
-                  Revision [_                 {:model    "Metric"
-                                               :model_id id
-                                               :user_id  (mt/user->id :crowberto)
-                                               :object   {:creator_id              (mt/user->id :crowberto)
-                                                          :table_id                table-id
-                                                          :name                    "Changed Metric Name"
-                                                          :description             "One metric to bring them all, and in the DataModel bind them"
-                                                          :show_in_getting_started false
-                                                          :caveats                 nil
-                                                          :points_of_interest      nil
-                                                          :how_is_this_calculated  nil
-                                                          :definition              {:database 123
-                                                                                    :query    {:filter [:= [:field 10 nil] 20]}}}
-                                               :message  "updated"}]]
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id}    {:db_id database-id}
+                 Metric   {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                                             :table_id                table-id
+                                             :name                    "One Metric to rule them all, one metric to define them"
+                                             :description             "One metric to bring them all, and in the DataModel bind them"
+                                             :show_in_getting_started false
+                                             :caveats                 nil
+                                             :points_of_interest      nil
+                                             :how_is_this_calculated  nil
+                                             :definition              {:creator_id              (mt/user->id :crowberto)
+                                                                       :table_id                table-id
+                                                                       :name                    "Reverted Metric Name"
+                                                                       :description             nil
+                                                                       :show_in_getting_started false
+                                                                       :caveats                 nil
+                                                                       :points_of_interest      nil
+                                                                       :how_is_this_calculated  nil
+                                                                       :definition              {:database 123
+                                                                                                 :query    {:filter [:= [:field 10 nil] 20]}}}}
+                 Revision {revision-id :id} {:model       "Metric"
+                                             :model_id    id
+                                             :object      {:creator_id              (mt/user->id :crowberto)
+                                                           :table_id                table-id
+                                                           :name                    "One Metric to rule them all, one metric to define them"
+                                                           :description             "One metric to bring them all, and in the DataModel bind them"
+                                                           :show_in_getting_started false
+                                                           :caveats                 nil
+                                                           :points_of_interest      nil
+                                                           :how_is_this_calculated  nil
+                                                           :definition              {:database 123
+                                                                                     :query    {:filter [:= [:field 10 nil] 20]}}}
+                                             :is_creation true}
+                 Revision _                 {:model    "Metric"
+                                             :model_id id
+                                             :user_id  (mt/user->id :crowberto)
+                                             :object   {:creator_id              (mt/user->id :crowberto)
+                                                        :table_id                table-id
+                                                        :name                    "Changed Metric Name"
+                                                        :description             "One metric to bring them all, and in the DataModel bind them"
+                                                        :show_in_getting_started false
+                                                        :caveats                 nil
+                                                        :points_of_interest      nil
+                                                        :how_is_this_calculated  nil
+                                                        :definition              {:database 123
+                                                                                  :query    {:filter [:= [:field 10 nil] 20]}}}
+                                             :message  "updated"}]
     (testing "API response"
       (is (=? {:is_reversion true
                :is_creation  false

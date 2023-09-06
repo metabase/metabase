@@ -6,6 +6,8 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -17,9 +19,9 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [schema.core :as schema]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -36,11 +38,13 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  instance-of?
   InstanceOf
+  InstanceOf:Schema
+  instance-of?
   model
   instance])
 
@@ -203,6 +207,7 @@
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
+  ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (seq (map mbql.normalize/normalize-source-metadata metadata))))
 
@@ -221,8 +226,13 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
-(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
+(def encrypted-json-in
+  "Serialize encrypted json."
+  (comp encryption/maybe-encrypt json-in))
+
+(def encrypted-json-out
+  "Deserialize encrypted json."
+  (comp json-out-with-keywordization encryption/maybe-decrypt))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
@@ -287,16 +297,16 @@
 ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
 
-
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
-
-
-(defn- validate-cron-string [s]
-  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
+(def ^{:arglists '([s])} ^:private validate-cron-string
+  (let [validator (mc/validator u.cron/CronScheduleString)]
+    (fn [s]
+      (when (validator s)
+        s))))
 
 (def transform-cron-string
   "Transform for encrypted json."
@@ -304,12 +314,19 @@
    :out identity})
 
 (def ^:private MetricSegmentDefinition
-  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
-   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
-   schema/Keyword                     schema/Any})
+  [:map
+   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (schema/validator MetricSegmentDefinition))
+  (let [explainer (mr/explainer MetricSegmentDefinition)]
+    (fn [definition]
+      (if-let [error (explainer definition)]
+        (let [humanized (me/humanize error)]
+          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                          {:error     error
+                           :humanized humanized})))
+        definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]

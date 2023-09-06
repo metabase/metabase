@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -11,7 +11,7 @@ import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import {
+import type {
   Card,
   DatabaseId,
   NativeDatasetQuery,
@@ -35,7 +35,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockEntitiesState } from "__support__/store";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
@@ -314,13 +314,6 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("locks question display", async () => {
-          const { result } = await setup({
-            card: { ...card, displayIsLocked: true },
-          });
-          expect(result.card.displayIsLocked).toBe(true);
-        });
-
         it("fetches alerts", async () => {
           const fetchAlertsForQuestionSpy = jest.spyOn(
             alert,
@@ -387,6 +380,11 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
+        it("locks question display", async () => {
+          const { result } = await setup({ card });
+          expect(result.card.displayIsLocked).toBe(true);
+        });
+
         it("throws not found error when opening question with /model URL", async () => {
           const { dispatch } = await setup({
             card: card,
@@ -536,6 +534,11 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
+        it("doesn't lock display", async () => {
+          const { result } = await setup({ card });
+          expect(result.card.displayIsLocked).toBeFalsy();
+        });
+
         it("runs question query on /query route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
           const baseUrl = Urls.question(card);
@@ -547,6 +550,7 @@ describe("QB Actions > initializeQB", () => {
 
           expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
         });
+
         it("runs question query on /metadata route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
           const baseUrl = Urls.question(card);

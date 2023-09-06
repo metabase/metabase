@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import NumericInput, { NumericInputProps } from "./NumericInput";
+import type { NumericInputProps } from "./NumericInput";
+import NumericInput from "./NumericInput";
 
 const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {
   const [value, setValue] = useState<number>();

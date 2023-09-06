@@ -1,5 +1,5 @@
 import {
-  createMockTokenFeatures,
+  createMockTokenStatus,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord,
@@ -36,9 +36,7 @@ function setup({
     "is-hosted?": isHosted,
     version,
     "version-info": versionInfo,
-    "token-features": createMockTokenFeatures({
-      sso: isPaid,
-    }),
+    "token-status": createMockTokenStatus({ valid: isPaid }),
   });
 
   const state = createMockState({

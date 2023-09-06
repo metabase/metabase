@@ -14,11 +14,18 @@ import { Container } from "./EntityMenu.styled";
 
 const MENU_SHIFT_Y = 10;
 
+/**
+ * @deprecated: use Menu from "metabase/ui"
+ */
 class EntityMenu extends Component {
   state = {
     open: false,
     freezeMenu: false,
     menuItemContent: null,
+  };
+
+  static defaultProps = {
+    horizontalAttachments: ["left", "right"],
   };
 
   constructor(props, context) {
@@ -54,6 +61,7 @@ class EntityMenu extends Component {
       className,
       openClassNames,
       closedClassNames,
+      horizontalAttachments,
       minWidth,
       tooltip,
       trigger,
@@ -89,7 +97,7 @@ class EntityMenu extends Component {
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["left", "right"]}
+          horizontalAttachments={horizontalAttachments}
           targetOffsetY={targetOffsetY || 0}
           ignoreTrigger
         >

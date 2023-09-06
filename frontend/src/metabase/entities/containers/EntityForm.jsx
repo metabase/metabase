@@ -21,17 +21,18 @@ const EForm = ({
   create,
   onSubmit = object => (object.id ? update(object) : create(object)),
   onSaved,
+  resumedValues,
   ...props
 }) => {
+  const initialValues =
+    typeof entityObject?.getPlainObject === "function"
+      ? entityObject.getPlainObject()
+      : entityObject;
   return (
     <Form
       {...props}
       form={form}
-      initialValues={
-        typeof entityObject?.getPlainObject === "function"
-          ? entityObject.getPlainObject()
-          : entityObject
-      }
+      initialValues={{ ...initialValues, ...resumedValues }}
       onSubmit={onSubmit}
       onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
     />

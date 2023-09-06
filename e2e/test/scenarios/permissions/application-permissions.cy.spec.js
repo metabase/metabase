@@ -6,11 +6,17 @@ import {
   getFullName,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
+  setupSMTP,
+  sidebar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -25,6 +31,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("shows permissions help", () => {
@@ -65,7 +72,7 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
         cy.icon("subscription").should("not.exist");
 
         visitQuestion(ORDERS_QUESTION_ID);
@@ -79,18 +86,17 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      beforeEach(() => {
-        cy.signInAsNormalUser();
-      });
-
       it("gives ability to create dashboard subscriptions", () => {
-        visitDashboard(1);
-        cy.icon("subscription").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Create a dashboard subscription");
+        setupSMTP();
+        cy.signInAsNormalUser();
+        visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.findByLabelText("subscriptions").click();
+
+        sidebar().findByText("Email this dashboard").should("exist");
       });
 
       it("gives ability to create question alerts", () => {
+        cy.signInAsNormalUser();
         visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -168,10 +174,6 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").should("not.exist");
-
-        cy.visit("/admin/tools/errors");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Sorry, you don’t have permission to see that.");
 
         cy.visit("/admin/tools/errors");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

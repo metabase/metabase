@@ -1,14 +1,16 @@
 import { t } from "ttag";
-import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
-import NightModeIcon from "metabase/components/icons/NightModeIcon";
-import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/core/components/Tooltip";
-import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
+import {
+  FullScreenButtonIcon,
+  NightModeButtonIcon,
+  RefreshWidgetButton,
+  ShareButton,
+} from "./DashboardActions.styled";
 
 export const getDashboardActions = (
   self,
@@ -16,6 +18,7 @@ export const getDashboardActions = (
     dashboard,
     isAdmin,
     canManageSubscriptions,
+    formInput,
     isEditing = false,
     isEmpty = false,
     isFullscreen,
@@ -41,20 +44,33 @@ export const getDashboardActions = (
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards =
     hasCards &&
-    dashboard.ordered_cards.some(dashCard => dashCard.card.display !== "text");
+    dashboard.ordered_cards.some(
+      dashCard => !["text", "heading"].includes(dashCard.card.display),
+    );
 
   const canShareDashboard = hasCards;
   const canCreateSubscription = hasDataCards && canManageSubscriptions;
 
+  const emailConfigured = formInput?.channels?.email?.configured || false;
+  const slackConfigured = formInput?.channels?.slack?.configured || false;
+
+  const shouldShowSubscriptionsButton =
+    emailConfigured || slackConfigured || isAdmin;
+
   if (!isEditing && !isEmpty && !isPublic) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
-    if (canCreateSubscription && !isFullscreen) {
+    if (
+      shouldShowSubscriptionsButton &&
+      canCreateSubscription &&
+      !isFullscreen
+    ) {
       buttons.push(
         <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
           <DashboardHeaderButton
             icon="subscription"
             disabled={!canManageSubscriptions}
             onClick={onSharingClick}
+            aria-label="subscriptions"
             data-metabase-event="Dashboard;Subscriptions"
           />
         </Tooltip>,
@@ -83,13 +99,7 @@ export const getDashboardActions = (
                   : t`Add data to share this dashboard`
               }
             >
-              <DashboardHeaderButton
-                icon="share"
-                className={cx({
-                  "text-brand-hover": canShareDashboard,
-                  "text-light": !canShareDashboard,
-                })}
-              />
+              <ShareButton icon="share" canShareDashboard={canShareDashboard} />
             </Tooltip>
           }
         />,
@@ -99,10 +109,9 @@ export const getDashboardActions = (
 
   if (!isEditing && !isEmpty) {
     buttons.push(
-      <RefreshWidget
+      <RefreshWidgetButton
         key="refresh"
         data-metabase-event="Dashboard;Refresh Menu Open"
-        className="text-brand-hover"
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
@@ -119,8 +128,7 @@ export const getDashboardActions = (
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
           <DashboardHeaderButton
             icon={
-              <NightModeIcon
-                className="text-brand-hover cursor-pointer"
+              <NightModeButtonIcon
                 isNightMode={isNightMode}
                 onClick={() => onNightModeChange(!isNightMode)}
               />
@@ -142,12 +150,7 @@ export const getDashboardActions = (
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
           <DashboardHeaderButton
-            icon={
-              <FullscreenIcon
-                className="text-brand-hover"
-                isFullscreen={isFullscreen}
-              />
-            }
+            icon={<FullScreenButtonIcon isFullscreen={isFullscreen} />}
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
           />
         </span>
