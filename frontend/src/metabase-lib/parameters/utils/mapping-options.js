@@ -11,8 +11,8 @@ import {
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
-import { isVirtualDashCard } from "../../dashboard/utils";
-import { isActionDashCard } from "../../actions/utils";
+import { isVirtualDashCard } from "metabase-lib/dashboard/utils";
+import { isActionDashCard } from "metabase-lib/actions/utils";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
