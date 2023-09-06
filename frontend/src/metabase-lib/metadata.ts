@@ -160,3 +160,10 @@ export function findColumnForLegacyRef(
 ): ColumnMetadata | null {
   return ML.find_column_for_legacy_ref(query, stageIndex, legacyRef, columns);
 }
+
+export function visibleColumns(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.visible_columns(query, stageIndex);
+}

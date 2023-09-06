@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [malli.error :as me]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -21,7 +22,6 @@
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [schema.core :as schema]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -302,8 +302,11 @@
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
-(defn- validate-cron-string [s]
-  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
+(def ^{:arglists '([s])} ^:private validate-cron-string
+  (let [validator (mc/validator u.cron/CronScheduleString)]
+    (fn [s]
+      (when (validator s)
+        s))))
 
 (def transform-cron-string
   "Transform for encrypted json."

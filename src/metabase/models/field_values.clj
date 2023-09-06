@@ -35,31 +35,31 @@
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
-(def ^Integer category-cardinality-threshold
+(def ^Long category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
-  (int 30))
+  30)
 
-(def ^Integer auto-list-cardinality-threshold
+(def ^Long auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
-  (int 1000))
+  1000)
 
-(def ^:private ^Integer entry-max-length
+(def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
-  (int 100))
+  100)
 
-(def ^:dynamic *total-max-length*
+(def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (int (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* auto-list-cardinality-threshold entry-max-length)))
 
-(def advanced-field-values-max-age
+(def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
 
-(def ^:private active-field-values-cutoff
+(def ^:private ^java.time.Period active-field-values-cutoff
   "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
    they are used again."
   (t/days 14))

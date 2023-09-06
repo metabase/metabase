@@ -7,12 +7,12 @@ import {
   rightSidebar,
   filter,
   filterField,
-  getCollectionIdFromSlug,
   visitCollection,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -33,9 +33,8 @@ describe("scenarios > question > native", () => {
   });
 
   it("should suggest the currently viewed collection when saving question", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
+
     openNativeEditor({ fromCurrentPage: true }).type(
       "select count(*) from orders",
     );

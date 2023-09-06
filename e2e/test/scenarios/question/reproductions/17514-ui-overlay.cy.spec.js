@@ -4,7 +4,6 @@ import {
   filterWidget,
   saveDashboard,
   editDashboard,
-  visualize,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -126,7 +125,9 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      visualize();
+      cy.button("Visualize").click();
+      cy.wait("@dataset");
+
       cy.findByTextEnsureVisible("Subtotal");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -145,7 +146,8 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products").click();
 
-      visualize();
+      cy.button("Visualize").click();
+      cy.wait("@dataset");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByTextEnsureVisible("Subtotal").click();

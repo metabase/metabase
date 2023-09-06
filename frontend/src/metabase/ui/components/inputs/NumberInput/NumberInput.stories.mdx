@@ -7,10 +7,11 @@ export const args = {
   variant: "default",
   size: "md",
   label: "Label",
-  description: "",
-  error: "",
+  description: undefined,
+  error: undefined,
   placeholder: "Placeholder",
   disabled: false,
+  readOnly: false,
   withAsterisk: false,
   min: undefined,
   max: undefined,
@@ -52,6 +53,9 @@ export const argTypes = {
     control: { type: "number" },
   },
   disabled: {
+    control: { type: "boolean" },
+  },
+  readOnly: {
     control: { type: "boolean" },
   },
   withAsterisk: {
