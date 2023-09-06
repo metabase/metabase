@@ -12,6 +12,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.util.malli :as mu]))
 
@@ -97,8 +98,7 @@
     :else           (clojure.core/= x y)))
 
 (defn- update-options-remove-namespaced-keys [a-ref]
-  (lib.options/update-options a-ref (fn [options]
-                                      (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
+  (lib.options/update-options a-ref lib.schema.util/remove-namespaced-keys))
 
 (defn- field-id-ref? [a-ref]
   (mbql.u.match/match-one a-ref
