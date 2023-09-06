@@ -104,9 +104,9 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
 }
 
 function setupForeignKeyCountQueryEndpoints() {
-  // XXX: I've tried to use the same function matcher but `request.body` was a promise. I'm not sure why they aren't the same 🤔
   fetchMock.post(
     {
+      name: "ordersCountQuery",
       url: "path:/api/dataset",
       matchPartialBody: true,
       body: {
@@ -121,12 +121,13 @@ function setupForeignKeyCountQueryEndpoints() {
     }),
   );
   fetchMock.post(
-    (url, request) => {
-      return (
-        url === "http://localhost/api/dataset" &&
-        JSON.parse(request.body as string).query?.["source-table"] ===
-          REVIEWS_TABLE.id
-      );
+    {
+      name: "reviewsCountQuery",
+      url: "path:/api/dataset",
+      matchPartialBody: true,
+      body: {
+        query: { "source-table": REVIEWS_TABLE.id },
+      },
     },
     createMockDataset({
       status: "completed",
