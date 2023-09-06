@@ -420,11 +420,6 @@
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
 
-(def normalize-field-ref
-  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
-  (comp canonicalize-mbql-clauses normalize-tokens))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
