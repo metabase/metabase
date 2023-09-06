@@ -18,9 +18,8 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
@@ -920,7 +919,7 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByLabelText("subscriptions").click();
 
       // should forward to email since that is the only one setup
@@ -1042,7 +1041,7 @@ describeEE("formatting > sandboxes", () => {
         });
 
         cy.signInAsSandboxedUser();
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
         cy.findByLabelText("subscriptions").click();
 
         sidebar()

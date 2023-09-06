@@ -137,7 +137,9 @@
   authenticate
   build-url
   client
-  client-full-response]
+  real-client
+  client-full-response
+  client-real-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -198,6 +200,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-real-request
   with-group
   with-group-for-user
   with-test-user]

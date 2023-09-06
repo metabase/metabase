@@ -8,6 +8,7 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
@@ -19,7 +20,7 @@ describe("scenarios > dashboard > filters > number", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });

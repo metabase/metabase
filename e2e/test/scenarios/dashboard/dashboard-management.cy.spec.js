@@ -13,6 +13,7 @@ import {
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -282,7 +283,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           beforeEach(() => {
             cy.signIn(user);
 
-            visitDashboard(1);
+            visitDashboard(ORDERS_DASHBOARD_ID);
 
             cy.get("main header").within(() => {
               cy.icon("ellipsis").should("be.visible").click();

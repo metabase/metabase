@@ -195,7 +195,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :oracle (mt/db))))))
 
 ;;; see also [[metabase.test.data.oracle/insert-all-test]]
