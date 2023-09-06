@@ -66,7 +66,10 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
     :expression (let [[_ expression-name] field-ref]
                   ;; api validated that this is a text field when the model-index was created. When selecting the
                   ;; expression we treat it as a field.
-                  [:field expression-name {:base-type :type/Text}])))
+                  [:field expression-name {:base-type :type/Text}])
+    (throw (ex-info (trs "Invalid field ref for indexing: {0}" field-ref)
+                    {:field-ref field-ref
+                     :valid-clauses [:field :expression]}))))
 
 (defn- fetch-values
   [model-index]
