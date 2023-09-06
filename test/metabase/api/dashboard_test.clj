@@ -2541,22 +2541,21 @@
                (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
                                                                                          (:id dashboard)
                                                                                          (:category-name param-keys)))))))
-      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
-                                                (:price param-keys) 4)]
+      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
         (testing "\nShow me names of categories that have expensive venues (price = 4)"
           (is (= {:values          [["Japanese"] ["Steakhouse"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
       ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
       ;; middleware does the right thing and converts the values to a vector
-      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
-                                                (:price param-keys) 3
-                                                (:price param-keys) 4)]
+      (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys))]
         (testing "\nmultiple values"
           (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
             (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
                     :has_more_values false}
-                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url
+                                                                            (keyword (:price param-keys)) 3
+                                                                            (keyword (:price param-keys)) 4))))))))
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
@@ -2732,10 +2731,11 @@
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "Should require a non-empty query"
-        (doseq [query [nil
-                       ""
-                       "   "
-                       "\n"]]
+        (doseq [query ["   " "\n"]]
+          (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
+            (is (=? {:errors {:query "value must be a non-blank string."}}
+                    (mt/user-http-request :rasta :get 400 url)))))
+        (doseq [query [nil ""]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
                    (mt/user-http-request :rasta :get 404 url)))))))
@@ -2976,20 +2976,11 @@
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
-    (letfn [(url [filtered filtering]
-              (let [url    "dashboard/params/valid-filter-fields"
-                    params (str/join "&" (concat (for [id filtered]
-                                                   (format "filtered=%d" id))
-                                                 (for [id filtering]
-                                                   (format "filtering=%d" id))))]
-                (if (seq params)
-                  (str url "?" params)
-                  url)))
-            (result= [expected {:keys [filtered filtering]}]
-              (let [url (url filtered filtering)]
-                (testing (format "\nGET %s" (pr-str url))
+    (letfn [(result= [expected {:keys [filtered filtering]}]
+                (testing (format "\nGET dashboard/params/valid-filter-fields")
                   (is (= expected
-                         (mt/user-http-request :rasta :get 200 url))))))]
+                         (mt/user-http-request :rasta :get 200 "dashboard/params/valid-filter-fields"
+                                               :filtered filtered :filtering filtering)))))]
       (mt/$ids
         (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
           (result= {%venues.price [%categories.name]}
@@ -3003,13 +2994,13 @@
                                             " 1) value must be a valid integer greater than zero."
                                             " 2) value must be an array. Each value must be a valid integer greater than zero."
                                             " The array cannot be empty.")}}
-                   (mt/user-http-request :rasta :get 400 (url [] [%categories.name])))))))
+                   (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name]))))))))))
-
+               (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
+                         :filtered [%venues.price] :filtering [%categories.name])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -3175,7 +3166,7 @@
                     export-format
                     (mt/mbql-query venues {:filter [:= $price 4]}))
                    (parse-export-format-results
-                    (mt/user-http-request :rasta :post 200 url
+                    (mt/user-real-request :rasta :post 200 url
                                           {:request-options {:as :byte-array}}
                                           :parameters (json/generate-string [{:id    "_PRICE_"
                                                                               :value 4}]))
@@ -3563,16 +3554,16 @@
                          DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                           :card_id model-id
                                                           :action_id action-id}]
-            (let [path #(format "dashboard/%s/dashcard/%s/execute?parameters=%s" dashboard-id dashcard-id (codec/url-encode (json/encode %)))]
+            (let [path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "It succeeds with appropriate parameters"
                 (is (partial= {:id 1 :name "African"}
                               (mt/user-http-request :crowberto :get 200
-                                                    (path {"id" 1})))))
+                                                    path :parameters (json/encode {"id" 1})))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request
                                :crowberto :get 400
-                               (path {"name" 1}))))))))))))
+                               path :parameters (json/encode {"name" 1}))))))))))))
 
 (deftest dashcard-implicit-action-only-expose-and-allow-model-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -3589,7 +3580,7 @@
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Prefetch should limit to id and name"
-                (let [values (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1})))]
+                (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated [1]}
@@ -3620,7 +3611,7 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Prefetch should only return non-hidden fields"
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                       (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
+                       (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated [1]}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
