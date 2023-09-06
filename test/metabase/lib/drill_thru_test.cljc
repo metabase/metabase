@@ -47,11 +47,8 @@
     :drill-thru/column-filter
     (concat
      (when-let [initial-op (:initial-op drill)]
-       [[initial-op 1]])
-     [[{:lib/type             :operator/filter
-        :short                :!=
-        :display-name-variant :default}
-       2]])
+       [[(:short initial-op) 1]])
+     [["!=" 2]])
 
     :drill-thru/summarize-column
     (for [ag (:aggregations drill)]

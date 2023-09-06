@@ -5,7 +5,6 @@
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
@@ -39,6 +38,6 @@
   [query                            :- ::lib.schema/query
    stage-number                     :- :int
    {:keys [column] :as _drill-thru} :- ::lib.schema.drill-thru/drill-thru.column-filter
-   filter-op                        :- ::lib.schema.filter/operator
+   filter-op                        :- [:or :keyword :string] ; filter tag
    value                            :- :any]
   (lib.filter/filter query stage-number (lib.filter/filter-clause filter-op column value)))

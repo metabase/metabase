@@ -11,7 +11,6 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -19,6 +18,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -183,18 +183,18 @@
 (def ColumnWithOperators
   "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
-    [:operators {:optional true} [:sequential ::lib.schema.filter/operator]]]])
+    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
 
 (mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
   "Returns the operators for which `filterable-column` is applicable."
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(defn add-column-operators
+(mu/defn add-column-operators :- ColumnWithOperators
   "Extend the column metadata with the available operators if any."
-  [column]
+  [column :- ::lib.schema.metadata/column]
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
 
@@ -228,11 +228,14 @@
 (mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
-  [filter-operator :- ::lib.schema.filter/operator
-   column :- lib.metadata/ColumnMetadata
+  [filter-operator :- [:or ::lib.schema.filter/operator :keyword :string]
+   column          :- ::lib.schema.metadata/column
    & args]
-  (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
-                                 (map lib.common/->op-arg args))))
+  (let [tag (if (map? filter-operator)
+              (:short filter-operator)
+              (keyword filter-operator))]
+    (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
+                                   (map lib.common/->op-arg args)))))
 
 (mu/defn filter-operator :- ::lib.schema.filter/operator
   "Return the filter operator of the boolean expression `filter-clause`
