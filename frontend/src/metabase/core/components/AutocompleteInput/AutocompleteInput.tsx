@@ -42,12 +42,12 @@ const AutocompleteInput = ({
   ...rest
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
-  const inputRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
   const filteredOptions = useMemo(() => {
     return filterOptions(String(value), options);
   }, [value, options, filterOptions]);
 
-  const { cursorIndex } = useListKeyboardNavigation<string, HTMLDivElement>({
+  const { cursorIndex } = useListKeyboardNavigation({
     list: filteredOptions,
     onEnter: (item: string) => handleOptionSelect(item),
     resetOnListChange: true,
