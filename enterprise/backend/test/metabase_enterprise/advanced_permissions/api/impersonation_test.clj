@@ -100,28 +100,29 @@
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
 
 (deftest delete-impersonation-policy-after-permissions-change-test
-  (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
-    (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
-                             :model/ConnectionImpersonation {impersonation-id :id}
-                                                            {:group_id group-id
-                                                             :db_id    (mt/id)
-                                                             :attribute "Attribute Name"}]
-      ;; Grant full data access to the DB and group
-      (let [graph (assoc-in (perms/data-perms-graph)
-                            [:groups group-id (mt/id) :data :schemas]
-                            :all)]
-        (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
-      (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
+  (premium-features-test/with-premium-features #{:advanced-permissions}
+    (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
+      (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+                               :model/ConnectionImpersonation {impersonation-id :id}
+                                                              {:group_id group-id
+                                                               :db_id    (mt/id)
+                                                               :attribute "Attribute Name"}]
+        ;; Grant full data access to the DB and group
+        (let [graph (assoc-in (perms/data-perms-graph)
+                              [:groups group-id (mt/id) :data :schemas]
+                              :all)]
+          (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
+        (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 
-  (testing "A connection impersonation policy is not deleted if unrelated permissions are changed"
-    (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
-                             :model/ConnectionImpersonation {impersonation-id :id}
-                                                            {:group_id group-id
-                                                             :db_id    (mt/id)
-                                                             :attribute "Attribute Name"}]
-      ;; Grant full database editing permissions
-      (let [graph (assoc-in (perms/data-perms-graph)
-                            [:groups group-id (mt/id) :details]
-                            :yes)]
-        (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
-      (is (not (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))))
+    (testing "A connection impersonation policy is not deleted if unrelated permissions are changed"
+      (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
+                               :model/ConnectionImpersonation {impersonation-id :id}
+                                                              {:group_id group-id
+                                                               :db_id    (mt/id)
+                                                               :attribute "Attribute Name"}]
+        ;; Grant full database editing permissions
+        (let [graph (assoc-in (perms/data-perms-graph)
+                              [:groups group-id (mt/id) :details]
+                              :yes)]
+          (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
+        (is (not (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
