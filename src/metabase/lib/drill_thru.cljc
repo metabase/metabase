@@ -11,7 +11,7 @@
    [metabase.lib.drill-thru.summarize-column :as lib.drill-thru.summarize-column]
    [metabase.lib.drill-thru.summarize-column-by-time :as lib.drill-thru.summarize-column-by-time]
    [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
-   #_[metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -51,7 +51,7 @@
           lib.drill-thru.summarize-column/summarize-column-drill
           lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
           lib.drill-thru.underlying-records/underlying-records-drill
-          #_lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])))
+          lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
