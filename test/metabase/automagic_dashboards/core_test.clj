@@ -1673,3 +1673,87 @@
                                                        {:name "L2" :display_name "Frooby"}
                                                        {:name "L3" :display_name "Frooby"}]}}
                                   bound-dimensions)))))))))
+
+;;; -------------------- Resolve overloading (metrics and filters) --------------------
+
+(deftest has-matches-test
+  (testing "has-matches? checks only the keys of the bound dimensions map against the [dimension X] vector in the
+            metric definition."
+    (let [dimensions {"GenericNumber" {:this :does :not :matter}
+                      "Income" {:this :does :not :matter}}]
+      (is (false?
+            (#'magic/has-matches?
+              dimensions
+              {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
+      (is (true?
+            (#'magic/has-matches?
+              dimensions
+              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}})))
+      (testing "Despite one dimension matching (Income) both must match to pass."
+        (is (false?
+              (#'magic/has-matches?
+                dimensions
+                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]],
+                                :score  100,
+                                :name   "Average discount %"}}))))
+      (testing "Once all specified dimensions are present the predicate will pass."
+        (is (true?
+              (#'magic/has-matches?
+                (assoc dimensions "Discount" :something)
+                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]],
+                                :score  100,
+                                :name   "Average discount %"}})))))))
+
+(deftest resolve-overloading-no-dimensions-test
+  (testing "Testing cases where no dimensions are present.
+            Note that this may be a bug in the implementation. If no dimensions are present, the overloaded items should
+            potentially be filtered out as they will never be used in cards anyways."
+    (let [dimensions nil
+          metrics [{"Count" {:metric ["count"] :score 100}}
+                   {"CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]] :score 100}}
+                   {"Sum" {:metric ["sum" ["dimension" "GenericNumber"]] :score 100}}
+                   {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 1}}]]
+      (testing "When no dimensions are present and there are no conflicts in metric name, the metrics are simply merged."
+        (is (= (apply merge metrics)
+               (#'magic/resolve-overloading dimensions metrics))))
+      (testing "When no dimensions are present and there is a conflict, tie is broken by score."
+        (let [new-metric {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 100}}
+              conflicting-metrics (into [new-metric] metrics)]
+          (testing "A simple merge won't do"
+            (is (not= (apply merge conflicting-metrics)
+                      (#'magic/resolve-overloading dimensions conflicting-metrics))))
+          (testing "The new metric wins because it has a higher score."
+            (is (= (into (apply merge metrics) new-metric)
+                   (#'magic/resolve-overloading dimensions conflicting-metrics)))))))))
+
+(deftest resolve-overloading-test
+  (testing "When there is a conflict in metric name, what matters is the ability to match to dimension name first."
+    (is (= {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}
+           (#'magic/resolve-overloading
+             {:dimensions {"GenericNumber" {}}}
+             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
+              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}]))))
+  (testing "When there is a conflict in metric name, we rank on score amongst the matching metrics."
+    (is (= {"Avg" {:metric ["/"
+                            ["sum" ["dimension" "Discount"]]
+                            ["sum" ["dimension" "Income"]]] :score 100}}
+           (#'magic/resolve-overloading
+             {:dimensions {"GenericNumber" {}
+                           "Discount"      {}
+                           "Income"        {}}}
+             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
+              {"Avg" {:metric ["/"
+                               ["sum" ["dimension" "Discount"]]
+                               ["sum" ["dimension" "Income"]]] :score 100}}
+              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}]))))
+  (testing "When no dimensions match, we rank on score alone"
+    (is (= {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
+           (#'magic/resolve-overloading
+             {:dimensions {"X" {}}}
+             [{"Avg" {:metric ["/"
+                               ["sum" ["dimension" "Discount"]]
+                               ["sum" ["dimension" "Income"]]] :score 1}}
+              {"Avg" {:metric ["/"
+                               ["sum" ["dimension" "Discount"]]
+                               ["sum" ["dimension" "Income"]]] :score 2}}
+              {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}])))))
