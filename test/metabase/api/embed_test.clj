@@ -1021,11 +1021,11 @@
                   :values-url values-url
                   :search-url search-url))))))
 
-(defmacro ^:private with-chain-filter-fixtures [[binding] & body]
+(defmacro ^:private with-chain-filter-fixtures! [[binding] & body]
   `(do-with-chain-filter-fixtures (fn [~binding] ~@body)))
 
 (deftest chain-filter-embedding-disabled-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
       (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1035,8 +1035,8 @@
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (search-url))))))))
 
-(deftest ^:parallel chain-filter-random-params-test
-  (with-chain-filter-fixtures [{:keys [values-url search-url]}]
+(deftest chain-filter-random-params-test
+  (with-chain-filter-fixtures! [{:keys [values-url search-url]}]
     (testing "Requests should fail if parameter is not explicitly enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
@@ -1047,7 +1047,7 @@
 
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
-    (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+    (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
       (t2/update! Dashboard (:id dashboard)
         {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
@@ -1061,7 +1061,7 @@
                  (client/client :get 200 (search-url {} "_STATIC_CATEGORY_LABEL_" "AF")))))))))
 
 (deftest chain-filter-enabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (t2/update! Dashboard (:id dashboard)
       {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
@@ -1105,7 +1105,7 @@
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+      (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
         (t2/update! Dashboard (:id dashboard)
           {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
         (testing "Should work if the param we're fetching values for is enabled"
@@ -1119,7 +1119,7 @@
                    (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (t2/update! Dashboard (:id dashboard)
         {:embedding_params {"category_id" "locked", "category_name" "locked"}})
@@ -1156,7 +1156,7 @@
                    (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (t2/update! Dashboard (:id dashboard)
         {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})

@@ -291,7 +291,7 @@
           (is (= [{:name "A" :children []}]
                  (collection-tree-view ids response))))))))
 
-(deftest ^:parallel collection-tree-exclude-other-users-personal-collections-test
+(deftest collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
     (testing "Excludes other user collections"
       (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
