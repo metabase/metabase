@@ -6,8 +6,6 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]))
 
@@ -27,7 +25,7 @@
   [query stage-number {:keys [column object-id]} & _]
   (let [fk-column-id     (:fk-target-field-id column)
         fk-column        (lib.metadata/field query fk-column-id)
-        fk-filter        (lib.options/ensure-uuid [:= {} (lib.ref/ref fk-column) object-id])
+        fk-filter        (lib.filter/= fk-column object-id)
         ;; Only filters which specify other PKs of the table are allowed to remain.
         other-pk?        (fn [[op _opts lhs :as _old-filter]]
                            (and lhs
