@@ -190,7 +190,7 @@ describe("scenarios > question > object details", () => {
     drillPK({ id: 5 });
     cy.get("@fetchDataset").should("have.callCount", 3);
 
-    cy.findByTestId("object-detail-close-button").click();
+    cy.realPress("{esc}");
 
     drillPK({ id: 5 });
     cy.get("@fetchDataset").should("have.callCount", 5);
