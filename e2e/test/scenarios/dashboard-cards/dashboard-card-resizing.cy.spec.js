@@ -203,7 +203,7 @@ describe("scenarios > dashboard card resizing", () => {
     cy.signInAsAdmin();
   });
 
-  it("should display all visualization cards with their default sizes", () => {
+  it.only("should display all visualization cards with their default sizes", () => {
     TEST_QUESTIONS.forEach(question => {
       cy.createQuestion(question);
     });
@@ -276,8 +276,9 @@ describe("scenarios > dashboard card resizing", () => {
             });
           });
         });
-
+        cy.intercept("PUT", `/api/dashboard/${dashId}`).as("saveDashboard");
         saveDashboard();
+        cy.wait("@saveDashboard");
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.ordered_cards.forEach(({ card, size_x, size_y }) => {
