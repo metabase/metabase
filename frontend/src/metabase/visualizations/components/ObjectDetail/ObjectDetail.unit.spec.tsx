@@ -23,6 +23,8 @@ import {
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
 import { createMockEntitiesState } from "__support__/store";
+import { checkNotNull } from "metabase/core/utils/types";
+
 import type { Field } from "metabase-types/api";
 
 import ObjectDetail from "./ObjectDetail";
@@ -34,6 +36,9 @@ const HIDDEN_ORDERS_TABLE = createOrdersTable({
 });
 const REVIEWS_TABLE = createReviewsTable();
 
+const PRODUCTS_RECORD_RELATED_ORDERS_COUNT = 93;
+const PRODUCTS_RECORD_RELATED_REVIEWS_COUNT = 8;
+
 interface SetupOpts {
   hideOrdersTable?: boolean;
 }
@@ -41,9 +46,13 @@ interface SetupOpts {
 function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupDatabasesEndpoints([]);
   setupActionsEndpoints([]);
-  const productsId = findField(PRODUCTS_TABLE.fields, "ID");
-  const ordersProductId = findField(ORDERS_TABLE.fields, "PRODUCT_ID");
-  const reviewsProductId = findField(REVIEWS_TABLE.fields, "PRODUCT_ID");
+  const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
+  const ordersProductId = checkNotNull(
+    findField(ORDERS_TABLE.fields, "PRODUCT_ID"),
+  );
+  const reviewsProductId = checkNotNull(
+    findField(REVIEWS_TABLE.fields, "PRODUCT_ID"),
+  );
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
@@ -116,7 +125,7 @@ function setupForeignKeyCountQueryEndpoints() {
     createMockDataset({
       status: "completed",
       data: {
-        rows: [[93]],
+        rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
       },
     }),
   );
@@ -132,14 +141,14 @@ function setupForeignKeyCountQueryEndpoints() {
     createMockDataset({
       status: "completed",
       data: {
-        rows: [[8]],
+        rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
       },
     }),
   );
 }
 
-function findField(fields: Field[] | undefined, name: string): Field {
-  return fields?.find(field => field.name === name) as Field;
+function findField(fields: Field[] | undefined, name: string) {
+  return fields?.find(field => field.name === name);
 }
 
 describe("ObjectDetail", () => {
@@ -147,10 +156,18 @@ describe("ObjectDetail", () => {
     setup();
 
     expect(
-      await screen.findByText(getBrokenUpTextMatcher("8Reviews")),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(getBrokenUpTextMatcher("93Orders")),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -158,10 +175,16 @@ describe("ObjectDetail", () => {
     setup({ hideOrdersTable: true });
 
     expect(
-      await screen.findByText(getBrokenUpTextMatcher("8Reviews")),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(getBrokenUpTextMatcher("93Orders")),
+      screen.queryByText(
+        [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+      ),
     ).not.toBeInTheDocument();
   });
 });
