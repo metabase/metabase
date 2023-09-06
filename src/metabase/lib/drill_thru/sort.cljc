@@ -24,7 +24,8 @@
                           (map :id)
                           set)
           this-order (first (for [[dir _opts field] (lib.order-by/order-bys query stage-number)
-                                  :when (lib.equality/find-closest-matching-ref query (lib.ref/ref column) [field])]
+                                  :when (lib.equality/find-closest-matching-ref
+                                         query stage-number (lib.ref/ref column) [field])]
                               dir))]
       (when (orderable (:id column))
         {:lib/type        :metabase.lib.drill-thru/drill-thru
