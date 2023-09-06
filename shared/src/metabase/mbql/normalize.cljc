@@ -327,10 +327,9 @@
 
 (declare canonicalize-mbql-clauses)
 
-(defn normalize-field-ref
+(def normalize-field-ref
   "Normalize the field ref. Ensure it's well-formed mbql, not just json."
-  [clause]
-  (-> clause normalize-tokens canonicalize-mbql-clauses))
+  (comp canonicalize-mbql-clauses normalize-tokens))
 
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
@@ -419,6 +418,7 @@
         (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
