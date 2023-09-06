@@ -1809,7 +1809,7 @@
                                      :fields       [(mt/id :people :latitude)]}
                           :type     :query}]
         (mt/with-temp
-          [Card card {:table_id        (mt/id :products)
+          [Card {card-id :id :as card} {:table_id        (mt/id :products)
                       :dataset_query   source-query
                       :result_metadata (mt/with-test-user
                                          :rasta
@@ -1820,7 +1820,7 @@
                 {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
-              (is (=? {"Lat" {:matches [{:id 1031, :name "LATITUDE"}]}} dimensions)))
+              (is (=? {"Lat" {:matches [{:id (mt/id :people :latitude) :name "LATITUDE"}]}} dimensions)))
             (testing "These are the metrics that were merged without conflict. Note that not all are actually applicable
                       in our scenario."
               (is (=? {"Count"            {:metric ["count"], :score 100},
@@ -1831,14 +1831,41 @@
             (testing "The only metric that will actually be used in our scenario is Count as it is dimensionless.
                       Our other bound dimension is Lat, which does not satisfy the other required dimensions of either
                       FK or GenericNumber."
-              (is (= [["Count" {:metric ["count"], :score 100}]]
+              (is (= [["Count" {:metric ["count"] :score 100}]]
                      (->> (seq metrics)
                           (filter
                             (fn [metric]
                               (every? dimensions (rules/collect-dimensions metric))))))))
-            (#'magic/card-candidates
-              context
-              {:title      "Total transactions"
-               :metrics    ["Count"]
-               :dimensions [{"Lat" {}}]
-               :score      100})))))))
+            (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
+              (let [card-def {:title      "A dimensionless quantity card"
+                              :metrics    ["Count"]
+                              :score      100}]
+                (is (=? [{:title         "A dimensionless quantity card"
+                          :metrics       [{:metric ["count"] :op "count"}]
+                          :dimensions    []
+                          :dataset_query {:type     :query
+                                          :database (mt/id)
+                                          :query    {:source-table (format "card__%s" card-id)
+                                                     :aggregation  [["count"]]}}}]
+                        (#'magic/card-candidates context card-def)))))
+            (testing "A card spec that requires both the Count and Lat metrics and dimensions will produce cards that
+                      use those bound dimensions."
+              (let [card-def {:title      "Some sort of card"
+                              :metrics    ["Count"]
+                              :dimensions [{"Lat" {}}]
+                              :score      100}]
+                (is (=? [{:title         "Some sort of card"
+                          :metrics       [{:metric ["count"] :op "count"}]
+                          :dimensions    ["LATITUDE"]
+                          :dataset_query {:type     :query
+                                          :database (mt/id)
+                                          :query    {:source-table (format "card__%s" card-id)
+                                                     :breakout     [[:field (mt/id :people :latitude) nil]]
+                                                     :aggregation  [["count"]]}}}]
+                        (#'magic/card-candidates context card-def)))))
+            (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
+              (let [card-def {:title      "Some sort of card"
+                              :metrics    ["Count"]
+                              :dimensions [{"Lat" {}}{"Lon" {}}]
+                              :score      100}]
+                (is (=? [] (#'magic/card-candidates context card-def)))))))))))
