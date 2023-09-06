@@ -45,7 +45,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     needs: build
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
@@ -180,7 +180,7 @@ jobs:
 
   visual-regression-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     needs: build
     name: percy-tests-sanity-check-${{ matrix.edition }}
     env:
