@@ -42,17 +42,17 @@
                 (some #(not-empty (dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"])))
     (deferred-tru "invalid value for prefix")))
 
-(def ^:private Rule
+(def ^:private DashboardTemplate
   (su/with-api-error-message
-      (s/pred (fn [rule]
+      (s/pred (fn [dashboard-template]
                 (some (fn [toplevel]
                         (some (comp dashboard-templates/get-dashboard-template
                                     (fn [prefix]
-                                      [toplevel prefix rule])
-                                    :rule)
+                                      [toplevel prefix dashboard-template])
+                                    :dashboard-template-name)
                               (dashboard-templates/get-dashboard-templates [toplevel])))
                       ["table" "metric" "field"])))
-    (deferred-tru "invalid value for rule name")))
+    (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
@@ -268,16 +268,16 @@
                                       :status-code    400}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
-  "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
-  [entity entity-id-or-query prefix rule show]
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
+  "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
+  [entity entity-id-or-query prefix dashboard-template show]
   {entity Entity
    show   Show
    prefix Prefix
-   rule   Rule}
+   dashboard-template   DashboardTemplate}
   (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show (keyword show)
-                           :rule ["table" prefix rule]})))
+                           :dashboard-template ["table" prefix dashboard-template]})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query"
@@ -293,18 +293,18 @@
                            :cell-query (decode-base64-json cell-query)})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
-   query `cell-querry` using rule `rule`."
-  [entity entity-id-or-query cell-query prefix rule show]
+   query `cell-query` using dashboard-template `dashboard-template`."
+  [entity entity-id-or-query cell-query prefix dashboard-template show]
   {entity     Entity
    show       Show
    prefix     Prefix
-   rule       Rule
+   dashboard-template       DashboardTemplate
    cell-query Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
-                           :rule       ["table" prefix rule]
+                           :dashboard-template       ["table" prefix dashboard-template]
                            :cell-query (decode-base64-json cell-query)})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -323,19 +323,19 @@
     (comparison-dashboard dashboard left right {})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
+  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [entity entity-id-or-query prefix rule show comparison-entity comparison-entity-id-or-query]
+  [entity entity-id-or-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
    show              Show
    prefix            Prefix
-   rule              Rule
+   dashboard-template              DashboardTemplate
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :rule         ["table" prefix rule]
+                                            :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
@@ -358,21 +358,21 @@
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
+   with id `id` defined by query `cell-querry` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [entity entity-id-or-query cell-query prefix rule show comparison-entity comparison-entity-id-or-query]
+  [entity entity-id-or-query cell-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
    show              Show
    prefix            Prefix
-   rule              Rule
+   dashboard-template              DashboardTemplate
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :rule         ["table" prefix rule]
+                                            :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
