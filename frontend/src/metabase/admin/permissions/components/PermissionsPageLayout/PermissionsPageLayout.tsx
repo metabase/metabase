@@ -3,8 +3,7 @@ import { useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import type { Route, InjectedRouter } from "react-router";
-import { withRouter } from "react-router";
+import type { Route } from "react-router";
 
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
@@ -46,7 +45,6 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError: () => void;
   navigateToLocation: (location: string) => void;
-  router: InjectedRouter;
   route: Route;
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
@@ -68,7 +66,6 @@ function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  router,
   route,
   toolbarRightContent,
   helpContent,
@@ -111,11 +108,7 @@ function PermissionsPageLayout({
           </ModalContent>
         </Modal>
 
-        <LeaveConfirmationModal
-          router={router}
-          route={route}
-          isEnabled={isDirty}
-        />
+        <LeaveConfirmationModal route={route} isEnabled={isDirty} />
 
         <TabsContainer className="border-bottom">
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
@@ -145,4 +138,4 @@ function PermissionsPageLayout({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(fitViewport, withRouter)(PermissionsPageLayout);
+export default _.compose(fitViewport)(PermissionsPageLayout);

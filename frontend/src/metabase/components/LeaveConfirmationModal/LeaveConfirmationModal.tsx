@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { useEffect, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
+import { withRouter, type InjectedRouter, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -15,7 +15,7 @@ interface Props {
   isEnabled: boolean;
 }
 
-export const LeaveConfirmationModal = ({ router, route, isEnabled }: Props) => {
+const LeaveConfirmationModalBase = ({ router, route, isEnabled }: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
@@ -62,3 +62,5 @@ export const LeaveConfirmationModal = ({ router, route, isEnabled }: Props) => {
     </Modal>
   );
 };
+
+export const LeaveConfirmationModal = withRouter(LeaveConfirmationModalBase);
