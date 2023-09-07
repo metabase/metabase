@@ -120,7 +120,9 @@
 (defn- create-table-sql
   [driver table-name col->type]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [kv] (map keyword kv)) col->type)}
+                      :with-columns (map (fn [[name type-spec]]
+                                           (vec (cons name type-spec)))
+                                         col->type)}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
@@ -155,6 +157,10 @@
     ;; across all drivers. With that in mind, 100 seems like a safe compromise.
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
+
+(defmethod driver/pk-options :sql-jdbc
+  [_driver]
+  [:auto-increment [:not nil]])
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]

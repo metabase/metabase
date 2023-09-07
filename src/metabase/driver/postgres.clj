@@ -752,13 +752,14 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "BIGINT"
-    ::upload/float       "FLOAT"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255 [:varchar 255]
+    ::upload/text        :text
+    ::upload/int         :bigint
+    ::upload/pk          :serial ;; bit of a hack, but we need to get it in the right order with :primary-key
+    ::upload/float       :float
+    ::upload/boolean     :boolean
+    ::upload/date        :date
+    ::upload/datetime    :timestamp))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -819,30 +820,34 @@
                          (StringReader.))]
            (.copyIn copy-manager ^String sql tsvs)))))))
 
+(defmethod driver/pk-options :postgres
+  [_driver]
+  [:primary-key])
+
 (defmethod driver/current-user-table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (jdbc/query
      conn-spec
      (str/join
-        "\n"
-        ["with table_privileges as ("
-         "select"
-         "  NULL as role,"
-         "  t.schemaname as schema,"
-         "  t.tablename as table,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
-         "from pg_catalog.pg_tables t"
-         "where t.schemaname !~ '^pg_'"
-         "  and t.schemaname <> 'information_schema'"
-         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-         ")"
-         "select t.*"
-         "from table_privileges t"
-         "where t.select or t.update or t.insert or t.delete"]))))
+      "\n"
+      ["with table_privileges as ("
+       "select"
+       "  NULL as role,"
+       "  t.schemaname as schema,"
+       "  t.tablename as table,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+       "from pg_catalog.pg_tables t"
+       "where t.schemaname !~ '^pg_'"
+       "  and t.schemaname <> 'information_schema'"
+       "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+       ")"
+       "select t.*"
+       "from table_privileges t"
+       "where t.select or t.update or t.insert or t.delete"]))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

@@ -608,13 +608,14 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "BIGINT"
-    ::upload/float       "DOUBLE"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255 [:varchar 255]
+    ::upload/text        :text
+    ::upload/int         :bigint
+    ::upload/pk          :int
+    ::upload/float       :double
+    ::upload/boolean     :boolean
+    ::upload/date        :date
+    ::upload/datetime    :timestamp))
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]

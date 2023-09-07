@@ -573,13 +573,14 @@
 (defmethod driver/upload-type->database-type :h2
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR"
-    ::upload/text        "VARCHAR"
-    ::upload/int         "BIGINT"
-    ::upload/float       "DOUBLE PRECISION"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255 :varchar
+    ::upload/text        :varchar
+    ::upload/int         :bigint
+    ::upload/pk          :int
+    ::upload/float       (keyword "DOUBLE PRECISION")
+    ::upload/boolean     :boolean
+    ::upload/date        :date
+    ::upload/datetime    :timestamp))
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

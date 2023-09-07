@@ -36,15 +36,16 @@
 ;;           |       |
 ;;           |       |
 ;;          int    date
-;;           |
-;;           |
-;;        boolean
+;;         /   \
+;;        /     \
+;;      pk     boolean
 
 (def ^:private type->parent
   ;; listed in depth-first order
   {::varchar_255 ::text
    ::float       ::varchar_255
    ::int         ::float
+   ::pk          ::int
    ::boolean     ::int
    ::datetime    ::varchar_255
    ::date        ::datetime})
@@ -117,6 +118,8 @@
     - ::float
     - ::varchar_255
     - ::text
+    - ::date
+    - ::datetime
     - nil, in which case other functions are expected to replace it with ::text as the catch-all type
 
   NB: There are currently the following gotchas:
@@ -170,11 +173,49 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
+(defn- is-pk?
+  [[type name]]
+  (and (#{"id" "pk" (u/lower-case-en name)})
+       (isa? type ::int)))
+
+(defn- add-pk-column
+  "Adds driver-specific auto-increment and non-nil/PK constraints to the first ID/PK column it finds; otherwise prepends
+  a new ID column to the columns list."
+  [driver name-type-pairs]
+  (let [found-it   (atom false)
+        pked-pairs (map (fn [[name type :as p]]
+                          (if (and (not @found-it)
+                                   (is-pk? p))
+                            (do (reset! found-it true)
+                                [(keyword name) {:type ::pk :opts (driver/pk-options driver)}])
+                            p))
+                        name-type-pairs)]
+    (if @found-it ;; we already have a PK, just return them
+      pked-pairs
+      ;;otherwise, prepend a new ID column
+      (cons [:id {:type ::pk :opts (driver/pk-options driver) :exclude-in-insert? true}]
+            name-type-pairs))))
+
+(defn- upload-type->column-spec
+  "Converts our internal types (e.g., ::int) to the type expected by the database as a HoneySQL
+  keyword (e.g., :biginteger). However, the returned type is *always* a vector since there may be additional HoneySQL
+  options included. Sample return values:
+
+    - [:text]
+    - [[:varchar 255]]
+    - [:int :autoincrement [:not nil]]"
+  [driver type-or-type-map]
+  (if (map? type-or-type-map)
+    (let [{the-type :type opts :opts} type-or-type-map]
+      (vec (cons (driver/upload-type->database-type driver the-type) opts)))
+    [(driver/upload-type->database-type driver type-or-type-map)]))
+
 (defn- rows->schema
-  [header rows]
+  [driver header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name)
-                               (mbql.u/uniquify-names))
+                               (mbql.u/uniquify-names)
+                               (map keyword))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
@@ -182,6 +223,7 @@
          (reduce coalesce-types (repeat column-count nil))
          (map #(or % ::text))
          (map vector normalized-header)
+         (add-pk-column driver)
          (ordered-map/ordered-map))))
 
 ;;;; +------------------+
@@ -242,11 +284,12 @@
               e)))))
 
 (defn- upload-type->parser [upload-type]
-  (case upload-type
+  (case (or (:type upload-type) upload-type)
     ::varchar_255 identity
     ::text        identity
     ::int         (partial parse-number (get-number-separators))
     ::float       (partial parse-number (get-number-separators))
+    ::pk          (partial parse-number (get-number-separators))
     ::boolean     #(parse-bool (str/trim %))
     ::date        #(parse-date (str/trim %))
     ::datetime    #(parse-datetime (str/trim %))))
@@ -302,22 +345,26 @@
     - ::datetime
 
   A column that is completely blank is assumed to be of type ::text."
-  [csv-file]
+  [driver csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
-      (rows->schema header (sample-rows rows)))))
+      (rows->schema driver header (sample-rows rows)))))
 
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [col->upload-type   (detect-schema csv-file)
-        col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
-        column-names       (keys col->upload-type)]
-    (driver/create-table! driver db-id table-name col->database-type)
+  (let [col->upload-type               (detect-schema driver csv-file)
+        col->column-spec               (update-vals col->upload-type (partial upload-type->column-spec driver))
+        columns-to-insert->upload-type (->> col->upload-type
+                                            (filter (fn [[_col-name upload-type]]
+                                                      (not (:exclude-in-insert? upload-type))))
+                                            (ordered-map/ordered-map))
+        column-names                   (keys columns-to-insert->upload-type)]
+    (driver/create-table! driver db-id table-name col->column-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows col->upload-type reader)]
+        (let [rows (parsed-rows columns-to-insert->upload-type reader)]
           (driver/insert-into! driver db-id table-name column-names rows)
           {:num-rows    (count rows)
            :num-columns (count column-names)
