@@ -527,9 +527,7 @@
   (testing "fetching a remapped field should returns remapped values (#21528)"
     (mt/with-discard-model-updates [:model/Field]
       (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
-      (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
-                                         :human_readable_field_id (mt/id :categories :name)
-                                         :type                    :external}]
+      (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
                 :has_more_values false}
                (take-n-values 3 (chain-filter/chain-filter (mt/id :venues :category_id) nil))))
