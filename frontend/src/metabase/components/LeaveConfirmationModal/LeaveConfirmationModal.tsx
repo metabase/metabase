@@ -10,12 +10,12 @@ import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
 
 interface Props {
-  router: InjectedRouter;
-  route: Route;
   isEnabled: boolean;
+  route: Route;
+  router: InjectedRouter;
 }
 
-const LeaveConfirmationModalBase = ({ router, route, isEnabled }: Props) => {
+const LeaveConfirmationModalBase = ({ isEnabled, route, router }: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
