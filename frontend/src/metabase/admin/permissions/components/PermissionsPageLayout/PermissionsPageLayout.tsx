@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import type { Route } from "react-router";
@@ -138,4 +137,4 @@ function PermissionsPageLayout({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(fitViewport)(PermissionsPageLayout);
+export default fitViewport(PermissionsPageLayout);
