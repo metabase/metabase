@@ -206,13 +206,15 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2023.07.13"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2023.09.07"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.46.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:sha "f1c10798f3230b976a1096cd0ff51daebe472fbb"}
-    jonase/eastwood              {:mvn/version "1.4.0"}                     ; inspects namespaces and reports possible problems using tools.analyzer
+    jonase/eastwood              {:mvn/version "1.4.0"                      ; inspects namespaces and reports possible problems using tools.analyzer
+                                  :exclusions
+                                  [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
