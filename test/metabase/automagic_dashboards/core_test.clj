@@ -1647,14 +1647,14 @@
       (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
                           :type     :native
                           :database (mt/id)}]
-        (mt/with-temp [Card {:keys [result_metadata] :as card} {:table_id        nil
-                                                                :dataset_query   source-query
-                                                                :result_metadata (->> (result-metadata-for-query source-query)
-                                                                                      (mt/with-test-user :rasta)
-                                                                                      (mapv (fn [m]
-                                                                                              (assoc m
-                                                                                                :display_name "Frooby"
-                                                                                                :semantic_type :type/Latitude))))}]
+        (mt/with-temp [Card card {:table_id        nil
+                                  :dataset_query   source-query
+                                  :result_metadata (->> (result-metadata-for-query source-query)
+                                                        (mt/with-test-user :rasta)
+                                                        (mapv (fn [m]
+                                                                (assoc m
+                                                                  :display_name "Frooby"
+                                                                  :semantic_type :type/Latitude))))}]
                       (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                             base-context        (#'magic/make-base-context root)
                             dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
