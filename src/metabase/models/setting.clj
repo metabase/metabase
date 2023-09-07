@@ -575,13 +575,14 @@
                          (u/qualified-name (:name setting))
                          (:type setting))
               nil)]
-      (some (fn [f]
-              (when-some [v (f setting)]
-                (cond
-                  (pred v)    v
-                  (string? v) (parse-string-value v)
-                  :else       (warn-about-invalid-value v))))
-            raw-value-source-fns))))
+      (loop [[f & more] raw-value-source-fns]
+        (if-some [v (f setting)]
+          (cond
+            (pred v)    v
+            (string? v) (parse-string-value v)
+            :else       (warn-about-invalid-value v))
+          (when (seq more)
+            (recur more)))))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter

@@ -95,6 +95,10 @@
      clojure.core.async/<!!
      clojure.core.async/>!
      clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
      clojure.core.async/close!
      clojure.core.async/poll!
      clojure.core.async/put!

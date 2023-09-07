@@ -23,13 +23,13 @@
     (driver/with-driver :h2
       ((splice-params-in-response/splice-params-in-response {} identity) metadata))))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (testing "Middleware should attempt to splice parameters into native query for queries that have params"
     (is (= {:native_form '(splice-parameters-into-native-query :h2 {:query  "SELECT * FROM birds WHERE name = ?"
                                                                     :params ["Reggae"]})}
            (splice-params {:native_form {:query "SELECT * FROM birds WHERE name = ?", :params ["Reggae"]}})))))
 
-(deftest empty-params-test
+(deftest ^:parallel empty-params-test
   (testing "No splicing should be attempted if `:params` is empty"
     (is (= {:native_form {:query "SELECT * FROM birds WHERE name IS NOT NULL", :params []}}
            (splice-params {:native_form {:query "SELECT * FROM birds WHERE name IS NOT NULL", :params []}})))))
@@ -45,7 +45,7 @@
               :filter       [:= [:field (data/id :venues :name) nil] "Beyond Sushi"]
               :limit 1}})
 
-(deftest compile-and-splice-parameters
+(deftest ^:parallel compile-and-splice-parameters
   (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
       (is (= '(splice-parameters-into-native-query
@@ -54,14 +54,14 @@
                 :params ["Beyond Sushi"]})
              (qp/compile-and-splice-parameters (sushi-query)))))))
 
-(deftest compile-test
+(deftest ^:parallel compile-test
   (testing "`compile` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
       (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
               :params ["Beyond Sushi"]}
              (qp/compile (sushi-query)))))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing (str "`splice-parameters-into-native-query` should get called on the `:native_form` returned in query "
                 "results, because this is currently what is ultimately used by the frontend when you click 'Convert "
                 "this Question to SQL'")

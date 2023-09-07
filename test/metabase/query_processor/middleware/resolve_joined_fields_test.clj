@@ -11,7 +11,7 @@
   (mt/with-metadata-provider (mt/id)
     (resolve-joined-fields/resolve-joined-fields query)))
 
-(deftest wrap-fields-in-joined-field-test
+(deftest ^:parallel wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
            {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
             :joins  [{:source-table $$users
@@ -36,7 +36,7 @@
                                         :alias        "u"
                                         :condition    [:= $user_id &u.users.id]}]}}))))))
 
-(deftest deduplicate-fields-test
+(deftest ^:parallel deduplicate-fields-test
   (testing "resolve-joined-fields should deduplicate :fields after resolving stuff"
     (is (= (mt/mbql-query checkins
              {:fields [[:field %users.name {:join-alias "u"}]]
@@ -53,7 +53,7 @@
                          :alias        "u"
                          :condition    [:= $user_id &u.users.id]}]}))))))
 
-(deftest resolve-joined-fields-in-source-queries-test
+(deftest ^:parallel resolve-joined-fields-in-source-queries-test
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
     (mt/dataset sample-dataset
       (testing "simple query"
@@ -142,7 +142,7 @@
                                  (mt/$ids [:= [:field %products.category {:join-alias "products-2"}] "Widget"])))
                    (wrap-joined-fields joins-in-joins-query)))))))))
 
-(deftest no-op-test
+(deftest ^:parallel no-op-test
   (testing "Make sure a query that doesn't need anything wrapped is returned as-is"
     (let [query (mt/mbql-query venues
                   {:source-query {:source-table $$venues
@@ -156,7 +156,7 @@
       (is (= query
              (wrap-joined-fields query))))))
 
-(deftest multiple-joins-to-same-table-test
+(deftest ^:parallel multiple-joins-to-same-table-test
   (testing "Should prefer EXPLICIT joins when resolving joined fields and both implicit/explicit joins are present"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query orders
@@ -192,7 +192,7 @@
                    :row_count 10}
                   (qp/process-query query))))))))
 
-(deftest handle-unwrapped-joined-fields-correctly-test
+(deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
   (mt/dataset sample-dataset
     (testing "References to joined fields in a join in a source query should be resolved correctly #(14766)"
       (is (= (mt/mbql-query orders
@@ -213,7 +213,7 @@
                  :breakout     [$products.id]
                  :limit        5})))))))
 
-(deftest do-not-rewrite-top-level-clauses-if-field-is-from-source-table-or-query
+(deftest ^:parallel do-not-rewrite-top-level-clauses-if-field-is-from-source-table-or-query
   (testing (str "Do not add `:join-alias` to top-level `:field` clauses if the Field could come from the "
                 "`:source-table` or `:source-query` (#18502)")
     (mt/dataset sample-dataset

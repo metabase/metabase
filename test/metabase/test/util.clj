@@ -396,11 +396,8 @@
   `(do-with-temporary-setting-values
     ~(into {}
            (map (fn [{:keys [setting value]}]
-                  [(if
-                       (and (simple-symbol? setting)
-                            (not (contains? &env setting)))
-                       (keyword setting)
-                       setting)
+                  [(cond-> setting
+                     (symbol? setting) keyword)
                    value]))
            (s/conform ::with-temporary-setting-values-bindings bindings))
     (^:once fn* []

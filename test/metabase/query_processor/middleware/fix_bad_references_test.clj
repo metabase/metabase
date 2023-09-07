@@ -9,7 +9,7 @@
   (mt/with-metadata-provider (mt/id)
     (fix-bad-refs/fix-bad-references query)))
 
-(deftest fix-bad-references-test
+(deftest ^:parallel fix-bad-references-test
   (mt/dataset sample-dataset
     (is (query= (mt/mbql-query orders
                   {:source-query {:source-table $$orders

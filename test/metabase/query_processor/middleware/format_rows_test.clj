@@ -21,7 +21,7 @@
   as to why a certain database is explicitly skipped if you skip it -- Cam"
   #{:bigquery-cloud-sdk :oracle :mongo :redshift :sparksql :snowflake})
 
-(deftest format-rows-test
+(deftest ^:parallel format-rows-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-except dbs-exempt-from-format-rows-tests))
     (mt/dataset test-data-with-time
       (testing "without report timezone"
@@ -70,7 +70,7 @@
                      {:order-by [[:asc $id]]
                       :limit    5})))))))))
 
-(deftest format-value-test
+(deftest ^:parallel format-value-test
   ;; `t` = original value
   ;; `expected` = the same value when shifted to `zone`
   (doseq [[t expected zone]
@@ -174,7 +174,7 @@
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
-(deftest results-timezone-test
+(deftest ^:parallel results-timezone-test
   (driver/with-driver ::timezone-driver
     (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
       (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
@@ -189,8 +189,10 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows {:cols [{}{}{}]}))))))))
+                     (format-rows rows {:cols [{}{}{}]}))))))))))
 
+(deftest ^:parallel results-timezone-test-2
+  (driver/with-driver ::timezone-driver
     (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
       (doseq [timezone-id ["UTC" "Asia/Tokyo"]]
         (mt/with-results-timezone-id timezone-id

@@ -68,6 +68,18 @@
   :setter     :none
   :getter     (constantly true))
 
+(defsetting test-double-setting
+  "Test setting - this only shows up in dev"
+  :visibility :internal
+  :type :double
+  :default 60.0)
+
+(defsetting test-boolean-setting-with-default
+  "Test setting - this only shows up in dev"
+  :visibility :internal
+  :type :boolean
+  :default true)
+
 (def ^:private ^:dynamic *enabled?* false)
 
 (defsetting test-enabled-setting-no-default
@@ -89,12 +101,6 @@
   :type       :string
   :default    "setting-default"
   :feature    :test-feature)
-
-(defsetting test-double-setting
-  "Test setting - this only shows up in dev"
-  :visibility :internal
-  :type :double
-  :default 60.0)
 
 ;; ## HELPER FUNCTIONS
 
@@ -118,14 +124,16 @@
           (is (= expected-tag
                  (:tag (meta arglist)))))))))
 
-(deftest preserve-metadata-test
+(deftest ^:parallel preserve-metadata-test
   (testing "defsetting should preserve metadata on the setting symbol in the getter/setter functions"
+    #_{:clj-kondo/ignore [:metabase/disallowed-form-in-parallel-test]}
     (doseq [varr [#'test-csv-setting-with-default #'test-csv-setting-with-default!]]
       (testing (format "\nvar = %s" (pr-str varr))
         (is (:private (meta varr)))))))
 
-(deftest string-tag-test
+(deftest ^:parallel string-tag-test
   (testing "String vars defined by `defsetting` should have correct `:tag` metadata\n"
+    #_{:clj-kondo/ignore [:metabase/disallowed-form-in-parallel-test]}
     (doseq [varr [#'test-setting-1 #'test-setting-1!]]
       (testing (format "\nVar = %s" (pr-str varr))
         (test-assert-setting-has-tag varr 'java.lang.String)))))
@@ -152,10 +160,11 @@
     (is (= true
            (setting/user-facing-value :test-setting-calculated-getter)))))
 
-(deftest do-not-define-setter-function-for-setter-none-test
+(deftest ^:parallel do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
     (testing "Sanity check: getter should be defined"
       (is (some? (resolve `test-setting-calculated-getter))))
+    #_{:clj-kondo/ignore [:metabase/disallowed-form-in-parallel-test]}
     (is (not (resolve `test-setting-calculated-getter!)))))
 
 (deftest defsetting-setter-fn-test
@@ -249,7 +258,7 @@
          (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
                  :key :description))))))
 
-(deftest user-facing-info-test
+(deftest ^:parallel user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
            (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))))
@@ -335,7 +344,7 @@
 (defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
-(deftest validate-description-test
+(deftest ^:parallel validate-description-test
   (testing "Validate setting description with i18n string"
     (mt/with-test-user :crowberto
       (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
@@ -373,11 +382,11 @@
 
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
-(deftest boolean-settings-tag-test
+(deftest ^:parallel boolean-settings-tag-test
   (testing "Boolean settings should have correct `:tag` metadata"
     (test-assert-setting-has-tag #'test-boolean-setting 'java.lang.Boolean)))
 
-(deftest boolean-setting-user-facing-info-test
+(deftest ^:parallel boolean-setting-user-facing-info-test
   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
          (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))))
 
@@ -421,6 +430,11 @@
       (is (= false
              (test-boolean-setting))))))
 
+(deftest ^:parallel with-temporary-setting-values-false-boolean-value-test
+  (is (true? (test-boolean-setting-with-default)))
+  (mt/with-temporary-setting-values [test-boolean-setting-with-default false]
+    (is (false? (test-boolean-setting-with-default)))))
+
 
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
@@ -437,7 +451,7 @@
   (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
-(deftest get-csv-setting-test
+(deftest ^:parallel get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
            (fetch-csv-setting-value "A,B,C"))))
@@ -796,7 +810,7 @@
       (is (= "WOW"
              (test-database-local-only-setting-with-default))))))
 
-(deftest database-local-settings-api-functions-test
+(deftest ^:parallel database-local-settings-api-functions-test
   ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
   ;; with a `nil` value)
   (mt/with-test-user :crowberto
@@ -891,8 +905,8 @@
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
+    (mt/with-temporary-setting-values! [test-setting-1 "123"
+                                        test-setting-2 "123"]
       (is (= "5f7f150c"
              (serdes/raw-hash ["test-setting-1"])
              (serdes/identity-hash (t2/select-one Setting :key "test-setting-1")))))))
@@ -972,7 +986,7 @@
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
 
-(deftest duplicated-setting-name
+(deftest ^:parallel duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public)))
@@ -1049,7 +1063,7 @@
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
 
-(deftest validate-default-value-for-type-test
+(deftest ^:parallel validate-default-value-for-type-test
   (letfn [(validate [tag default]
             (@#'setting/validate-default-value-for-type
              {:tag tag, :default default, :name :a-setting, :type :fake-type}))]

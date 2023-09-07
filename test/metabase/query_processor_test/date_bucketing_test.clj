@@ -57,7 +57,7 @@
     (get timezone x)
     x))
 
-(deftest sanity-check-test
+(deftest ^:parallel sanity-check-test
   ;; TIMEZONE FIXME — currently broken for Snowflake. UNIX timestamps are interpreted as being in the report timezone
   ;; rather than UTC.
   (mt/test-drivers (disj (mt/normal-drivers) :snowflake :redshift)
@@ -157,7 +157,7 @@
    (for [s temporal-literal-strs]
      [(-> s parse-fn format-result-fn) 1])))
 
-(deftest group-by-default-test
+(deftest ^:parallel group-by-default-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (cond
@@ -270,7 +270,9 @@
                 ["2015-06-02T05:37:00Z" 1]
                 ["2015-06-02T08:20:00Z" 1]
                 ["2015-06-02T11:11:00Z" 1]])
-             (sad-toucan-incidents-with-bucketing :default :eastern)))))
+             (sad-toucan-incidents-with-bucketing :default :eastern))))))
+
+(deftest group-by-default-test-2
   ;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
   ;; the JVM timezone (UTC on startup). When we change that timezone, it then assumes the data was also stored in that
   ;; timezone. This leads to incorrect results. In this example it applies the pacific offset twice
@@ -297,7 +299,7 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :default :eastern)))))))
 
-(deftest group-by-minute-test
+(deftest ^:parallel group-by-minute-test
   (testing "This dataset doesn't have multiple events in a minute, the results are the same as the default grouping"
     (mt/test-drivers (mt/normal-drivers)
       (is (= (cond
@@ -314,7 +316,7 @@
                (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
              (sad-toucan-incidents-with-bucketing :minute :pacific))))))
 
-(deftest group-by-minute-of-hour-test
+(deftest ^:parallel group-by-minute-of-hour-test
   (testing "Grouping by minute of hour is not affected by timezones"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[0 5]
@@ -354,7 +356,7 @@
 
 ;; For this test, the results are the same for each database, but the formatting of the time for that given count is
 ;; different depending on whether the database supports a report timezone and what timezone that database is in
-(deftest group-by-hour-test
+(deftest ^:parallel group-by-hour-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= (cond
              (= :sqlite driver/*driver*)
@@ -373,7 +375,7 @@
 ;; The counts are affected by timezone as the times are shifted back by 7 hours. These count changes can be validated
 ;; by matching the first three results of the pacific results to the last three of the UTC results (i.e. pacific is 7
 ;; hours back of UTC at that time)
-(deftest group-by-hour-of-day-test
+(deftest ^:parallel group-by-hour-of-day-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "results in pacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
@@ -404,7 +406,7 @@
 ;; events to we gain and lose. Although this test is technically covered by the other grouping by day tests, it's
 ;; useful for debugging to answer why row counts change when the timezone shifts by removing timezones and the related
 ;; database settings
-(deftest new-events-after-timezone-shift-test
+(deftest ^:parallel new-events-after-timezone-shift-test
   (driver/with-driver :h2
     (doseq [[timezone-id expected-net-gains] {:pacific [2 -1 5 -5 2 0 -2 1 -1 1]
                                               :eastern [1 -1 3 -3 3 -2 -1 0 1 1]}]
@@ -442,7 +444,7 @@
    sad-toucan-events-grouped-by-day
    counts))
 
-(deftest group-by-day-test
+(deftest ^:parallel group-by-day-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
       (is (= (if (= :sqlite driver/*driver*)
@@ -518,7 +520,9 @@
                (results-by-day u.date/parse
                                (format-in-timezone-fn :utc)
                                [6 10 4 9 9 8 8 9 7 9]))
-             (sad-toucan-incidents-with-bucketing :day :eastern)))))
+             (sad-toucan-incidents-with-bucketing :day :eastern))))))
+
+(deftest group-by-day-test-2
   (testing "\nWith JVM timezone set to Pacific time"
     ;; This tests out the JVM timezone's impact on the results. For databases supporting a report timezone, this should
     ;; have no affect on the results. When no report timezone is used it should convert dates to the JVM's timezone
@@ -553,7 +557,7 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :day :pacific)))))))
 
-(deftest group-by-day-of-week-test
+(deftest ^:parallel group-by-day-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
@@ -565,7 +569,7 @@
       (is (= [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
              (sad-toucan-incidents-with-bucketing :day-of-week :utc))))))
 
-(deftest group-by-day-of-month-test
+(deftest ^:parallel group-by-day-of-month-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
@@ -577,7 +581,7 @@
       (is (= [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
              (sad-toucan-incidents-with-bucketing :day-of-month :utc))))))
 
-(deftest group-by-day-of-year-test
+(deftest ^:parallel group-by-day-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
@@ -593,7 +597,7 @@
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
 ;; above and pacific test below, but this is still useful for debugging as it doesn't involve changing timezones or
 ;; database settings
-(deftest new-weekly-events-after-tz-shift-test
+(deftest ^:parallel new-weekly-events-after-tz-shift-test
   (driver/with-driver :h2
     (doseq [[timezone-id start-date->expected-net-gain] {:pacific {"2015-05-31" 3
                                                                    "2015-06-07" 0
@@ -634,7 +638,7 @@
 ;; Sad toucan incidents by week. Databases in UTC that don't support report timezones will be the same as the UTC test
 ;; above. Databases that support report timezone will have different counts as the week starts and ends 7 hours
 ;; earlier
-(deftest group-by-week-test
+(deftest ^:parallel group-by-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
       (is (= (if (= :sqlite driver/*driver*)
@@ -693,7 +697,9 @@
                                   (format-in-timezone-fn :utc)
                                   [46 47 40 60 7]))
 
-               (sad-toucan-incidents-with-bucketing :week :eastern))))))
+               (sad-toucan-incidents-with-bucketing :week :eastern)))))))
+
+(deftest group-by-week-test-2
   ;; Setting the JVM timezone will change how the datetime results are displayed but don't impact the calculation of the
   ;; begin/end of the week
   ;;
@@ -725,7 +731,7 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
-(deftest group-by-week-of-year-test
+(deftest ^:parallel group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
@@ -773,7 +779,7 @@
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
-(deftest group-by-month-test
+(deftest ^:parallel group-by-month-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= [[(cond
@@ -801,12 +807,12 @@
                  200]]
                (sad-toucan-incidents-with-bucketing :month :eastern)))))))
 
-(deftest group-by-month-of-year-test
+(deftest ^:parallel group-by-month-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[6 200]]
            (sad-toucan-incidents-with-bucketing :month-of-year :pacific)))))
 
-(deftest group-by-quarter-test
+(deftest ^:parallel group-by-quarter-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
       (is (= [[(cond (= :sqlite driver/*driver*)
@@ -831,7 +837,7 @@
                200]]
              (sad-toucan-incidents-with-bucketing :quarter :eastern))))))
 
-(deftest group-by-quarter-of-year-test
+(deftest ^:parallel group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[2 200]]
            (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))
@@ -845,7 +851,7 @@
                {:aggregation [[:count]]
                 :breakout    [!quarter-of-year.date]}))))))
 
-(deftest group-by-year-test
+(deftest ^:parallel group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[(cond
                (= :sqlite driver/*driver*)
@@ -970,7 +976,7 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
-(deftest count-of-grouping-test
+(deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
@@ -996,7 +1002,7 @@
                (count-of-grouping checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
-(deftest time-interval-test
+(deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
@@ -1028,7 +1034,7 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(deftest date-bucketing-when-you-test
+(deftest ^:parallel date-bucketing-when-you-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
@@ -1056,7 +1062,7 @@
 ;;
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
-(deftest default-bucketing-test
+(deftest ^:parallel default-bucketing-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
@@ -1133,7 +1139,7 @@
                      filter-value
                      expected-count))))))))))
 
-(deftest legacy-default-datetime-bucketing-test
+(deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
     (is (= (str "SELECT COUNT(*) AS \"count\" "
@@ -1149,7 +1155,7 @@
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
       (is (= (str "SELECT CHECKINS.DATE AS DATE "

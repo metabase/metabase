@@ -191,6 +191,7 @@
     (with-mock-cache [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
+
       (mt/with-temporary-setting-values [enable-query-caching false]
         (is (= false
                (cacheable?)))

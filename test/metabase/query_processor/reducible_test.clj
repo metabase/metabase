@@ -27,7 +27,7 @@
      (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 
-(deftest print-rows-test
+(deftest ^:parallel print-rows-test
   (testing "An example of using a reducing function that prints rows as they come in."
     (let [qp-result (atom nil)
           output    (str/split-lines
@@ -52,7 +52,7 @@
     {:reducef reducef*
      :rff     print-rows-rff}))
 
-(deftest write-rows-to-file-test
+(deftest ^:parallel write-rows-to-file-test
   (mt/with-temp-file [filename "out.txt"]
     (try
       (is (= 3
@@ -79,7 +79,7 @@
       ([acc row]
        (update-in acc [:data :rows] conj (zipmap ks row))))))
 
-(deftest maps-test
+(deftest ^:parallel maps-test
   (testing "Example using an alternative reducing function that returns rows as a sequence of maps."
     (is (= [{:ID 1, :CATEGORY_ID 4,  :LATITUDE 10.0646, :LONGITUDE -165.374, :NAME "Red Medicine",          :PRICE 3}
             {:ID 2, :CATEGORY_ID 11, :LATITUDE 34.0996, :LONGITUDE -118.329, :NAME "Stout Burgers & Beers", :PRICE 2}]
@@ -90,7 +90,7 @@
                :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
               {:rff maps-rff}))))))
 
-(deftest cancelation-test
+(deftest ^:parallel cancelation-test
   (testing "Example of canceling a query early before results are returned."
     (letfn [(process-query [canceled-chan timeout]
               ((qp.reducible/async-qp (fn [query rff {:keys [canceled-chan reducef], :as context}]
@@ -129,7 +129,7 @@
                    (throw result)
                    result)))))))))
 
-(deftest exceptions-test
+(deftest ^:parallel exceptions-test
   (testing "Test a query that throws an Exception."
     (is (thrown?
          Throwable
@@ -147,7 +147,7 @@
           {:reducef (fn [& _]
                       (throw (Exception. "Cannot open file")))})))))
 
-(deftest custom-qp-test
+(deftest ^:parallel custom-qp-test
   (testing "Rows don't actually have to be reducible. And you can build your own QP with your own middleware."
     (is (= {:data {:cols [{:name "n"}]
                    :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
@@ -158,7 +158,7 @@
                                   [[1] [2] [3] [4] [5]]))
              :rff      maps-rff})))))
 
-(deftest row-type-agnostic-test
+(deftest ^:parallel row-type-agnostic-test
   (let [api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
                                              :json_query
                                              :middleware))]

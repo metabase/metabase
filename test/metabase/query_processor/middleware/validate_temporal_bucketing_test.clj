@@ -10,7 +10,7 @@
 (defn- validate [query]
   (validate-temporal-bucketing/validate-temporal-bucketing query))
 
-(deftest validate-temporal-bucketing-test
+(deftest ^:parallel validate-temporal-bucketing-test
   (mt/dataset attempted-murders
     (mt/with-metadata-provider (mt/id)
       (doseq [field-clause-type [:id :name]]
@@ -48,7 +48,7 @@
                        #"Unsupported temporal bucketing: You can't bucket"
                        (validate (query field unit)))))))))))))
 
-(deftest unix-timestamp-test
+(deftest ^:parallel unix-timestamp-test
   (testing "UNIX Timestamps should be bucketable by anything"
     (mt/dataset sad-toucan-incidents
       (mt/with-metadata-provider (mt/id)
@@ -57,7 +57,7 @@
             (is (some? (validate (mt/mbql-query incidents
                                    {:filter [:= [:field %timestamp {:temporal-unit unit}]]}))))))))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing "We should throw an Exception if you try to do something that makes no sense, e.g. bucketing a DATE by MINUTE"
     (mt/dataset attempted-murders
       (is (thrown-with-msg?

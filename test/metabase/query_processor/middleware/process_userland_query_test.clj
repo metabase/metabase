@@ -43,7 +43,7 @@
        result
        (update (:metadata result) :running_time int?)))))
 
-(deftest success-test
+(deftest ^:parallel success-test
   (let [query {:query {:type ::success-test}}]
     (with-query-execution [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -77,7 +77,7 @@
              (qe))
           "QueryExecution should be saved"))))
 
-(deftest failure-test
+(deftest ^:parallel failure-test
   (let [query {:query {:type ::failure-test}}]
     (with-query-execution [qe query]
       (is (thrown-with-msg?
