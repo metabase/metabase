@@ -943,18 +943,13 @@
 (s/defn ^:private indepth
   [{:keys [dashboard-templates-prefix] :as root}
    {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
-  (let [res (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
-                 (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
-                         (when-let [[dashboard _ _] (apply-dashboard-template root indepth)]
-                           {:title       ((some-fn :short-title :title) dashboard)
-                            :description (:description dashboard)
-                            :url         (format "%s/rule/%s/%s" (:url root) dashboard-template-name indepth-template-name)})))
-                 (hash-map :indepth))]
-    (when (seq (:indepth res))
-      (tap> {:dashboard-templates-prefix dashboard-templates-prefix
-             :dashboard-template-name dashboard-template-name
-             :res res}))
-    res))
+  (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
+       (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
+               (when-let [[dashboard _ _] (apply-dashboard-template root indepth)]
+                 {:title       ((some-fn :short-title :title) dashboard)
+                  :description (:description dashboard)
+                  :url         (format "%s/rule/%s/%s" (:url root) dashboard-template-name indepth-template-name)})))
+       (hash-map :indepth)))
 
 (defn- drilldown-fields
   [context]
@@ -1097,7 +1092,8 @@
        (into {})))
 
 (defn- find-first-match-dashboard-template
-  "Given a 'root' context, apply matching rules in sequence and return the first match that generates cards."
+  "Given a 'root' context, apply matching dashboard templates in sequence and return the first application of this
+   template that generates cards."
   [{:keys [dashboard-template dashboard-templates-prefix full-name] :as root}]
   (or (when dashboard-template
         (apply-dashboard-template root (dashboard-templates/get-dashboard-template dashboard-template)))
@@ -1106,11 +1102,11 @@
           (apply-dashboard-template root dashboard-template))
         (matching-dashboard-templates (dashboard-templates/get-dashboard-templates dashboard-templates-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                      {:root            root
-                       :available-rules (map
-                                          :dashboard-template-name
-                                          (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
-                                              (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)))}))))
+                      (let [templates (->> (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
+                                               (dashboard-templates/get-dashboard-templates dashboard-templates-prefix))
+                                           (map :dashboard-template-name))]
+                        {:root                          root
+                         :available-dashboard-templates templates})))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
