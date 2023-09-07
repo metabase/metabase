@@ -31,7 +31,7 @@ export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentCom
         value={value}
         onChange={onChange}
       >
-        <Stack spacing="md" justify="center" align="flex-start">
+        <Stack spacing="md" p="md" justify="center" align="flex-start">
           {typeFilters.map(model => (
             <Checkbox
               key={model}

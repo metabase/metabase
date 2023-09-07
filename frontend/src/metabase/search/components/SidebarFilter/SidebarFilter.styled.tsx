@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { Stack } from "metabase/ui";
 import { ParameterFieldSet } from "metabase/parameters/components/ParameterWidget/ParameterWidget.styled";
 
 export const DropdownFilterElement = styled(ParameterFieldSet)`
@@ -29,9 +30,14 @@ export const DropdownFilterElement = styled(ParameterFieldSet)`
   }
 `;
 export const DropdownApplyButtonDivider = styled.hr`
+  width: 100%;
   ${({ theme }) => {
     return css`
       border-top: 1px solid ${theme.colors?.border[0]};
     `;
   }}
+`;
+
+export const SearchPopoverContent = styled(Stack)<{ maxHeight?: number }>`
+  max-height: ${({ maxHeight }) => maxHeight}px;
 `;

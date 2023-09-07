@@ -22,9 +22,11 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
+export type CreatedAtFilterProps = string[];
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.CreatedBy]: CreatedAtFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

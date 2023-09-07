@@ -1,5 +1,6 @@
 export const SearchFilterKeys = {
   Type: "type",
+  CreatedBy: "created_by",
 } as const;
 
 export const enabledSearchTypes = [
