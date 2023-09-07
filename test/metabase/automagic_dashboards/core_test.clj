@@ -8,7 +8,7 @@
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field Metric Segment Table]]
@@ -53,7 +53,7 @@
          (->> (mt/id :users)
               (t2/select-one Table :id)
               (#'magic/->root)
-              (#'magic/matching-dashboard-templates (rules/get-dashboard-templates ["table"]))
+              (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
               (map (comp first :applies_to)))))
 
   (testing "Test fallback to GenericTable"
@@ -61,7 +61,7 @@
            (->> (-> (t2/select-one Table :id (mt/id :users))
                     (assoc :entity_type nil)
                     (#'magic/->root))
-                (#'magic/matching-dashboard-templates (rules/get-dashboard-templates ["table"]))
+                (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
                 (map (comp first :applies_to)))))))
 
 
@@ -306,7 +306,7 @@
                                                                  source-query))
                                              :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-dashboard-template ["table" "GenericTable"])
+                  {:keys [dimensions] :as _rule} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)]
@@ -341,7 +341,7 @@
                                                                              source-query))
                                                          :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-dashboard-template ["table" "GenericTable"])
+                  {:keys [dimensions] :as _rule} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)
@@ -1818,7 +1818,7 @@
                                         :dataset         true}]
           (let [rule (some
                        #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
-                       (rules/get-dashboard-templates ["table"]))
+                       (dashboard-templates/get-dashboard-templates ["table"]))
                 {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
@@ -1837,7 +1837,7 @@
                      (->> (seq metrics)
                           (filter
                             (fn [metric]
-                              (every? dimensions (rules/collect-dimensions metric))))))))
+                              (every? dimensions (dashboard-templates/collect-dimensions metric))))))))
             (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
               (let [card-def {:title   "A dimensionless quantity card"
                               :metrics ["Count"]

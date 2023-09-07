@@ -7,7 +7,7 @@
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
    [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -39,18 +39,18 @@
 (def ^:private Prefix
   (su/with-api-error-message
       (s/pred (fn [prefix]
-                (some #(not-empty (rules/get-dashboard-templates [% prefix])) ["table" "metric" "field"])))
+                (some #(not-empty (dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"])))
     (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
       (s/pred (fn [rule]
                 (some (fn [toplevel]
-                        (some (comp rules/get-dashboard-template
+                        (some (comp dashboard-templates/get-dashboard-template
                                     (fn [prefix]
                                       [toplevel prefix rule])
                                     :rule)
-                              (rules/get-dashboard-templates [toplevel])))
+                              (dashboard-templates/get-dashboard-templates [toplevel])))
                       ["table" "metric" "field"])))
     (deferred-tru "invalid value for rule name")))
 

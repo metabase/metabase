@@ -1,34 +1,34 @@
-(ns metabase.automagic-dashboards.rules-test
+(ns metabase.automagic-dashboards.dashboard-templates-test
   (:require
-   [clojure.test :refer :all]
-   [metabase.automagic-dashboards.rules :as rules]))
+    [clojure.test :refer :all]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]))
 
 (deftest ^:parallel ga-dimension?-test
   (are [x expected] (= expected
-                       (rules/ga-dimension? x))
+                       (dashboard-templates/ga-dimension? x))
     "ga:foo" true
     "foo"    false))
 
 (deftest ^:parallel ->type-test
   (are [x expected] (= expected
-                       (#'rules/->type x))
+                       (#'dashboard-templates/->type x))
     :foo     :foo
     "ga:foo" "ga:foo"
     "Foo"    :type/Foo))
 
-(deftest ^:parallel get-rules-test
-  (testing "This also tests that all the rules are valid (else there would be nils returned)"
+(deftest ^:parallel get-dashboard-templates-test
+  (testing "This also tests that all the dashboard templates are valid (else there would be nils returned)"
     (doseq [s ["table"
                "metrics"
                "fields"]]
       (testing s
-        (is (every? some? (rules/get-dashboard-templates [s]))))))
+        (is (every? some? (dashboard-templates/get-dashboard-templates [s]))))))
 
-  (is (some? (rules/get-dashboard-templates ["table" "GenericTable" "ByCountry"]))))
+  (is (some? (dashboard-templates/get-dashboard-templates ["table" "GenericTable" "ByCountry"]))))
 
 (deftest ^:parallel dimension-form?-test
   (are [x expected] (= expected
-                       (rules/dimension-form? x))
+                       (dashboard-templates/dimension-form? x))
     [:dimension "Foo"]  true
     ["dimension" "Foo"] true
     ["DIMENSION" "Foo"] true
@@ -37,7 +37,7 @@
 
 (deftest ^:parallel collect-dimensions-test
   (is (= ["Foo" "Baz" "Bar"]
-         (#'rules/collect-dimensions
+         (#'dashboard-templates/collect-dimensions
           [{:metrics [{"Foo" {:metric [:sum [:dimension "Foo"]]}}
                       {"Foo" {:metric [:avg [:dimension "Foo"]]}}
                       {"Baz" {:metric [:sum ["dimension" "Baz"]]}}]}
