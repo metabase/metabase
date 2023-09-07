@@ -1107,6 +1107,23 @@
                             s/Keyword s/Any}
                      body)))))))))
 
+(deftest preview-card-info-pulse-test
+  (testing "GET /api/pulse/preview_card_info/:id"
+    (mt/with-temp [Collection _    {}
+                   Card       card {:dataset_query (mt/mbql-query checkins {:limit 5})}]
+        (testing "Should get the preview card info"
+          (let [response (mt/user-http-request :rasta :get 200 (format "pulse/preview_card_info/%d" (u/the-id card)))]
+            (is (= (u/the-id card)
+                   (:id response)))
+            (is (schema= {:col_count s/Int
+                          :id s/Int
+                          :pulse_card_html s/Str
+                          :pulse_card_name s/Str
+                          :pulse_card_type s/Str
+                          :pulse_card_url s/Str
+                          :row_count s/Int}
+                         response)))))))
+
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
     (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
