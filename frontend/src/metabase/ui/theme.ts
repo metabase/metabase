@@ -10,6 +10,8 @@ import {
   getMenuOverrides,
   getNumberInputOverrides,
   getRadioOverrides,
+  getPaperOverrides,
+  getSelectOverrides,
   getTextInputOverrides,
   getTextOverrides,
   getTitleOverrides,
@@ -39,6 +41,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       color("bg-medium"),
       color("bg-dark"),
     ]),
+    success: getThemeColors([color("success")]),
     error: getThemeColors([color("error")]),
   },
   primaryColor: "brand",
@@ -47,11 +50,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
   spacing: {
-    xs: "0.25rem",
-    sm: "0.5rem",
-    md: "1rem",
-    lg: "1.5rem",
-    xl: "2rem",
+    xs: rem(4),
+    sm: rem(8),
+    md: rem(16),
+    lg: rem(24),
+    xl: rem(32),
   },
   radius: {
     xs: "4px",
@@ -91,8 +94,8 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
-      outline: `0.125rem solid ${theme.colors.focus[0]}`,
-      outlineOffset: "0.125rem",
+      outline: `${rem(2)} solid ${theme.colors.focus[0]}`,
+      outlineOffset: rem(2),
     }),
   },
   components: {
@@ -104,6 +107,8 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getMenuOverrides(),
     ...getNumberInputOverrides(),
     ...getRadioOverrides(),
+    ...getPaperOverrides(),
+    ...getSelectOverrides(),
     ...getTextInputOverrides(),
     ...getTextOverrides(),
     ...getTitleOverrides(),

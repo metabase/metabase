@@ -21,6 +21,7 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -52,6 +53,7 @@
    :model_name                 nil
    :moderated_status           nil
    :pk_ref                     nil
+   :model_index_id             false ;; columns ending in _id get booleaned
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -539,11 +541,13 @@
               (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Rome"
                                  :model_id      (:id model)
-                                 :model_name    (:name model)}
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/schema s/Int}
                        "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Tromsø"
                                  :model_id      (:id model)
-                                 :model_name    (:name model)}}
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/schema s/Int}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
 

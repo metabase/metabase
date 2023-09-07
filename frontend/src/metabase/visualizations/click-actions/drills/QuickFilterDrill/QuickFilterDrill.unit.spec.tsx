@@ -463,7 +463,7 @@ describe("QuickFilterDrill", () => {
           series: [],
           onClick: jest.fn(),
           onChangeCardAndRun: jest.fn(),
-          onChange: jest.fn(),
+          onUpdateVisualizationSettings: jest.fn(),
           onResize: jest.fn(),
           onClose: jest.fn(),
         };

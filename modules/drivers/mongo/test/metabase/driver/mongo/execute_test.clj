@@ -16,20 +16,20 @@
       (next [_] (let [i @counter]
                   (vswap! counter inc)
                   (if (< i (count rows))
-                    (org.bson.BasicBSONObject. (get rows i))
+                    (org.bson.BasicBSONObject. ^java.util.Map (get rows i))
                     (throw (NoSuchElementException. (str "no element at " i)))))))))
 
-(deftest field-filter-relative-time-native-test
+(deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
     (let [now (str (java.time.Instant/now))]
-      (with-redefs [mongo.execute/aggregate
-                    (fn [& _] (make-mongo-cursor [{"_id" 0
-                                                  "name" "Crowberto"
-                                                  "alias" "the Brave"}
-                                                 {"_id" 1
-                                                  "name" "Rasta"
-                                                  "last_login" now
-                                                  "nickname" "Blue"}]))]
+      (binding [mongo.execute/*aggregate*
+                (fn [& _] (make-mongo-cursor [{"_id" 0
+                                               "name" "Crowberto"
+                                               "alias" "the Brave"}
+                                              {"_id" 1
+                                               "name" "Rasta"
+                                               "last_login" now
+                                               "nickname" "Blue"}]))]
         (testing "Projected and first-row fields are returned"
           (let [query {:database (mt/id)
                        :native
@@ -41,7 +41,6 @@
                            [1 "Rasta"     now nil]]
                     :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))
-
         (testing "Columns can be suppressed"
           (let [query {:database (mt/id)
                        :native
