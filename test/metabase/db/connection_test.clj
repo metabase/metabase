@@ -8,20 +8,23 @@
 
 (deftest nested-transaction-test
   (initialize/initialize-if-needed! :db)
-  (let [user-1                (mt/random-email)
-        user-2                (mt/random-email)
-        user-exists?          (fn [email]
-                                (t2/exists? :model/User :email email))
-        create-user!          (fn [email]
-                                (t2/insert! :model/User (assoc (t2.with-temp/with-temp-defaults :model/User) :email email)))
-        transaction-exception (Exception.)
-        do-in-transaction     (fn [thunk]
-                                (try
-                                  (t2/with-transaction _
-                                    (thunk))
-                                  (catch Throwable e
-                                    (when-not (identical? e transaction-exception)
-                                      (throw e)))))]
+  (let [user-1                    (mt/random-email)
+        user-2                    (mt/random-email)
+        user-exists?              (fn [email]
+                                    (t2/exists? :model/User :email email))
+        create-user!              (fn [email]
+                                    (t2/insert! :model/User (assoc (t2.with-temp/with-temp-defaults :model/User) :email email)))
+        transaction-exception     (Exception. "(Abort the current transaction)")
+        is-transaction-exception? (fn is-transaction-exception? [e]
+                                    (or (identical? e transaction-exception)
+                                        (some-> (ex-cause e) is-transaction-exception?)))
+        do-in-transaction         (fn [thunk]
+                                    (try
+                                      (t2/with-transaction []
+                                        (thunk))
+                                      (catch Throwable e
+                                        (when-not (is-transaction-exception? e)
+                                          (throw e)))))]
     (testing "inside transaction"
       (do-in-transaction
        (fn []
