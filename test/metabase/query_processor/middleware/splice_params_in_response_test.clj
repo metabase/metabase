@@ -7,26 +7,28 @@
     :as splice-params-in-response]
    [metabase.test.data :as data]))
 
-(defn- do-with-splice-params-call? [f]
-  (with-redefs [driver/splice-parameters-into-native-query (fn [& args]
-                                                             (cons 'splice-parameters-into-native-query args))]
-    (f)))
+(driver/register! ::test-driver, :parent :h2)
+
+(defmethod driver/splice-parameters-into-native-query ::test-driver
+  [& args]
+  (cons 'splice-parameters-into-native-query args))
 
 (defmacro ^:private with-splice-params-call?
   "Instead of actually calling `splice-parameters-into-native-query`, the results and correct implementation of which
   are not our problem, replace the results of a form showing the function call that is made (if any)."
   [& body]
-  `(do-with-splice-params-call? (fn [] ~@body)))
+  `(driver/with-driver ::test-driver ~@body))
 
 (defn- splice-params [metadata]
   (with-splice-params-call?
-    (driver/with-driver :h2
-      ((splice-params-in-response/splice-params-in-response {} identity) metadata))))
+    ((splice-params-in-response/splice-params-in-response {} identity) metadata)))
 
 (deftest ^:parallel basic-test
   (testing "Middleware should attempt to splice parameters into native query for queries that have params"
-    (is (= {:native_form '(splice-parameters-into-native-query :h2 {:query  "SELECT * FROM birds WHERE name = ?"
-                                                                    :params ["Reggae"]})}
+    (is (= {:native_form (list 'splice-parameters-into-native-query
+                               ::test-driver
+                               {:query  "SELECT * FROM birds WHERE name = ?"
+                                :params ["Reggae"]})}
            (splice-params {:native_form {:query "SELECT * FROM birds WHERE name = ?", :params ["Reggae"]}})))))
 
 (deftest ^:parallel empty-params-test
@@ -48,10 +50,10 @@
 (deftest ^:parallel compile-and-splice-parameters
   (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
-      (is (= '(splice-parameters-into-native-query
-               :h2
-               {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-                :params ["Beyond Sushi"]})
+      (is (= (list 'splice-parameters-into-native-query
+                   ::test-driver
+                   {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                    :params ["Beyond Sushi"]})
              (qp/compile-and-splice-parameters (sushi-query)))))))
 
 (deftest ^:parallel compile-test

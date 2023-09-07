@@ -154,6 +154,8 @@
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
+  (when config/tests-available?
+    ((requiring-resolve 'mb.hawk.parallel/assert-test-is-not-parallel) `destroy-pool!))
   (connection-pool/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
