@@ -3,8 +3,6 @@
    [metabase.events :as events]
    [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,7 +16,7 @@
 
 (methodical/defmethod events/publish-event! ::card-event
   [topic object]
-  (audit-log/record-event! topic object))
+  (audit-log/record-event! topic object :model/Card))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
@@ -28,7 +26,7 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic object]
-  (audit-log/record-event! topic object))
+  (audit-log/record-event! topic object :model/Dashboard))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
