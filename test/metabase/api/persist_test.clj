@@ -4,7 +4,9 @@
    [metabase.models.database :refer [Database]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -43,3 +45,39 @@
         (is (= default-cron
                (get-in (task.persist-refresh/job-info-by-db-id)
                        [(:id db) :schedule])))))))
+
+(deftest persisted-info-by-id-test
+  (with-setup db
+    (t2.with-temp/with-temp
+      [:model/Card          model     {:database_id (u/the-id db), :dataset true}
+       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "Should require a non-negative persisted-info-id"
+        (is (= "API endpoint does not exist."
+               (mt/user-http-request :crowberto :get 404 (format "persist/%d" -1)))))
+      (testing "Should not get info when the persisted-info-id doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "persist/%d" (+ 1 (u/the-id pmodel)))))))
+      (testing "Should get info when the ID exists"
+        (is (partial= {:active true
+                  :card_id (u/the-id model)
+                  :id (u/the-id model)
+                  :state "persisted"}
+                 (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pmodel)))))))))
+
+(deftest persisted-info-by-card-id-test
+  (with-setup db
+    (t2.with-temp/with-temp
+      [:model/Card          model     {:database_id (u/the-id db), :dataset true}
+       :model/PersistedInfo _         {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "Should require a non-negative card-id"
+        (is (= "API endpoint does not exist."
+               (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" -1)))))
+      (testing "Should not get info when the card-id doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" (+ 1 (u/the-id model)))))))
+      (testing "Should get info when the ID exists"
+        (is (partial= {:active true
+                       :card_id (u/the-id model)
+                       :id (u/the-id model)
+                       :state "persisted"}
+                      (mt/user-http-request :crowberto :get 200 (format "persist/card/%d" (u/the-id model)))))))))
