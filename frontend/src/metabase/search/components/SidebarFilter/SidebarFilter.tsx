@@ -30,7 +30,7 @@ export const SidebarFilter = ({
   onChange,
 }: SearchSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(title === "Creator");
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isSmallScreen = useIsSmallScreen();
