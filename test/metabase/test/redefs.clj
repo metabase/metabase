@@ -9,8 +9,13 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^{:dynamic true
-       :private true}
-  *in-with-temp* false)
+       :private true
+       :doc     "Used to detect whether we're in a nested [[with-temp]]. Default is false."}
+  *in-tx* false)
+
+(def ^{:dynamic true
+       :doc     "Used to control whether [[with-temp]] will run in a transaction. Default is true."}
+  *with-temp-use-transaction* true)
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :default
   "Initialize the DB before doing the other with-temp stuff. Make sure metabase.test.util is loaded.
@@ -22,11 +27,26 @@
   (classloader/require 'metabase.test.util)
 
   ;; run `f` in a transaction if it's the top-level with-temp
-  (if-not *in-with-temp*
-    (binding [*in-with-temp* true]
-      (t2.connection/with-transaction [_]
+  (if (and *with-temp-use-transaction* (not *in-tx*))
+    (binding [*in-tx* true]
+      (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
         (next-method model attributes f)))
     (next-method model attributes f)))
+
+(defmacro with-temp!
+  "Like [[mt/with-temp]] but does not run body in a transaction that will rollback at the end.
+  Can be used for cases where we test stuffs that can't be on the same thread.
+
+  An example is tests that make real http call with [[mt/user-real-request]]."
+  [& args]
+  `(binding [*with-temp-use-transaction* false]
+     (t2.with-temp/with-temp ~@args)))
+
+(defmacro with-ensure-with-temp-no-transaction!
+  "Run body with [[*with-temp-use-transaction*]] bound to false ensuring all nested [[mt/with-temp]] will not runs in a transaction."
+  [& body]
+  `(binding [*with-temp-use-transaction* false]
+     ~@body))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
 

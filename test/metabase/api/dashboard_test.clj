@@ -3158,19 +3158,20 @@
 
 (deftest dashboard-card-query-export-format-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
-    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-      (doseq [export-format [:csv :json :xlsx]]
-        (testing (format "Export format = %s" export-format)
-          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
-            (is (= (streaming.test-util/process-query-basic-streaming
-                    export-format
-                    (mt/mbql-query venues {:filter [:= $price 4]}))
-                   (parse-export-format-results
-                    (mt/user-real-request :rasta :post 200 url
-                                          {:request-options {:as :byte-array}}
-                                          :parameters (json/generate-string [{:id    "_PRICE_"
-                                                                              :value 4}]))
-                    export-format)))))))))
+    (mt/with-ensure-with-temp-no-transaction!
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+        (doseq [export-format [:csv :json :xlsx]]
+          (testing (format "Export format = %s" export-format)
+            (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
+              (is (= (streaming.test-util/process-query-basic-streaming
+                      export-format
+                      (mt/mbql-query venues {:filter [:= $price 4]}))
+                     (parse-export-format-results
+                      (mt/user-real-request :rasta :post 200 url
+                                            {:request-options {:as :byte-array}}
+                                            :parameters (json/generate-string [{:id    "_PRICE_"
+                                                                                :value 4}]))
+                      export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))

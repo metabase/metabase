@@ -432,7 +432,7 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp
+          (mt/with-temp!
             [Database   db1s {:name "my-db"}
              Collection coll1s {:name "My Collection"}
              Table      table1s {:name  "CUSTOMERS"
@@ -489,34 +489,34 @@
 
                 (storage/store! (seq extraction) dump-dir)))
 
-            (testing "ingest and load"
-              (ts/with-dest-db
-                ;; ingest
-                (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
-                      "successful"))
+           (testing "ingest and load"
+             (ts/with-dest-db
+               ;; ingest
+               (testing "doing ingestion"
+                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                     "successful"))
 
-                (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
-                      card1d (t2/select-one Card :name (:name card1s))
-                      card2d (t2/select-one Card :name (:name card2s))
-                      field1d (t2/select-one Field :name (:name field1s))]
-                  (testing "parameter on dashboard is loaded correctly"
-                    (is (= {:card_id     (:id card1d),
-                            :value_field [:field (:id field1d) nil]}
-                           (-> dash1d
-                               :parameters
-                               first
-                               :values_source_config)))
-                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+               (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
+                     card1d (t2/select-one Card :name (:name card1s))
+                     card2d (t2/select-one Card :name (:name card2s))
+                     field1d (t2/select-one Field :name (:name field1s))]
+                 (testing "parameter on dashboard is loaded correctly"
+                   (is (= {:card_id     (:id card1d),
+                           :value_field [:field (:id field1d) nil]}
+                          (-> dash1d
+                              :parameters
+                              first
+                              :values_source_config)))
+                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                  (testing "parameter on card is loaded correctly"
-                    (is (= {:card_id     (:id card1d),
-                            :value_field [:field (:id field1d) nil]}
-                           (-> card2d
-                               :parameters
-                               first
-                               :values_source_config)))
-                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+                 (testing "parameter on card is loaded correctly"
+                   (is (= {:card_id     (:id card1d),
+                           :value_field [:field (:id field1d) nil]}
+                          (-> card2d
+                              :parameters
+                              first
+                              :values_source_config)))
+                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

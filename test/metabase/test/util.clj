@@ -20,17 +20,11 @@
             Dimension
             Field
             FieldValues
-            LoginHistory
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
-            PersistedInfo
-            Revision
             Setting
             Table
-            TaskHistory
-            Timeline
-            TimelineEvent
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -100,72 +94,94 @@
 
 (defn- rasta-id [] (user-id :rasta))
 
-(def ^:private with-temp-defaults-fns
-  {Card
-   (fn [_] {:creator_id             (rasta-id)
-            :database_id            (data/id)
-            :dataset_query          {}
-            :display                :table
-            :name                   (tu.random/random-name)
-            :visualization_settings {}})
+(defn- default-updated-at-timestamped
+  [x]
+  (merge {:updated_at (t/zoned-date-time)} x))
 
-   Collection
-   (fn [_] {:name  (tu.random/random-name)
-            :color "#ABCDEF"})
+(defn- default-created-at-timestamped
+  [x]
+  (merge {:created_at (t/zoned-date-time)} x))
+
+(def ^:private default-timestamped
+  (comp default-updated-at-timestamped default-created-at-timestamped))
+
+(def ^:private with-temp-defaults-fns
+  {:model/Card
+   (fn [_] (default-timestamped
+             {:creator_id             (rasta-id)
+              :database_id            (data/id)
+              :dataset_query          {}
+              :display                :table
+              :name                   (tu.random/random-name)
+              :visualization_settings {}}))
+
+   :model/Collection
+   (fn [_] (default-created-at-timestamped
+             {:name  (tu.random/random-name)
+              :color "#ABCDEF"}))
 
    :model/Dashboard
-   (fn [_] {:creator_id (rasta-id)
-            :name       (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:creator_id (rasta-id)
+              :name       (tu.random/random-name)}))
 
    :model/DashboardCard
-   (fn [_] {:row    0
-            :col    0
-            :size_x 4
-            :size_y 4})
+   (fn [_] (default-timestamped
+             {:row    0
+               :col    0
+               :size_x 4
+               :size_y 4}))
 
    :model/DashboardCardSeries
    (constantly {:position 0})
 
    :model/DashboardTab
    (fn [_]
-     {:name     (tu.random/random-name)
-      :position 0})
+     (default-timestamped
+       {:name     (tu.random/random-name)
+        :position 0}))
 
    :model/Database
-   (fn [_] {:details   {}
-            :engine    :h2
-            :is_sample false
-            :name      (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:details   {}
+              :engine    :h2
+              :is_sample false
+              :name      (tu.random/random-name)}))
 
    :model/Dimension
-   (fn [_] {:name (tu.random/random-name)
-            :type "internal"})
+   (fn [_] (default-timestamped
+             {:name (tu.random/random-name)
+              :type "internal"}))
 
    :model/Field
-   (fn [_] {:database_type "VARCHAR"
-            :base_type     :type/Text
-            :name          (tu.random/random-name)
-            :position      1
-            :table_id      (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:database_type "VARCHAR"
+              :base_type     :type/Text
+              :name          (tu.random/random-name)
+              :position      1
+              :table_id      (data/id :checkins)}))
 
-   LoginHistory
+   :model/LoginHistory
    (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
-            :ip_address         "0:0:0:0:0:0:0:1"})
+            :ip_address         "0:0:0:0:0:0:0:1"
+            :timestamp          (t/zoned-date-time)})
 
    :model/Metric
-   (fn [_] {:creator_id  (rasta-id)
-            :definition  {}
-            :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"
-            :table_id    (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:creator_id  (rasta-id)
+              :definition  {}
+              :description "Lookin' for a blueberry"
+              :name        "Toucans in the rainforest"
+              :table_id    (data/id :checkins)}))
 
    :model/NativeQuerySnippet
-   (fn [_] {:creator_id (user-id :crowberto)
-            :name       (tu.random/random-name)
-            :content    "1 = 1"})
+   (fn [_] (default-timestamped
+             {:creator_id (user-id :crowberto)
+              :name       (tu.random/random-name)
+              :content    "1 = 1"}))
 
-   PersistedInfo
+   :model/PersistedInfo
    (fn [_] {:question_slug (tu.random/random-name)
             :query_hash    (tu.random/random-hash)
             :definition    {:table-name (tu.random/random-name)
@@ -183,8 +199,9 @@
    (fn [_] {:name (tu.random/random-name)})
 
    :model/Pulse
-   (fn [_] {:creator_id (rasta-id)
-            :name       (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:creator_id (rasta-id)
+              :name       (tu.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position    0
@@ -192,31 +209,35 @@
             :include_xls false})
 
    :model/PulseChannel
-   (constantly {:channel_type  :email
-                :details       {}
-                :schedule_type :daily
-                :schedule_hour 15})
+   (fn [_] (default-timestamped
+             {:channel_type  :email
+              :details       {}
+              :schedule_type :daily
+              :schedule_hour 15}))
 
-   Revision
+   :model/Revision
    (fn [_] {:user_id      (rasta-id)
             :is_creation  false
-            :is_reversion false})
+            :is_reversion false
+            :timestamp    (t/zoned-date-time)})
 
    :model/Segment
-   (fn [_] {:creator_id  (rasta-id)
-            :definition  {}
-            :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"
-            :table_id    (data/id :checkins)})
+   (fn [_] (default-timestamped
+             {:creator_id  (rasta-id)
+              :definition  {}
+              :description "Lookin' for a blueberry"
+              :name        "Toucans in the rainforest"
+              :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
    :model/Table
-   (fn [_] {:db_id  (data/id)
-            :active true
-            :name   (tu.random/random-name)})
+   (fn [_] (default-timestamped
+             {:db_id  (data/id)
+              :active true
+              :name   (tu.random/random-name)}))
 
-   TaskHistory
+   :model/TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
@@ -226,27 +247,31 @@
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
 
-   Timeline
+   :model/Timeline
    (fn [_]
-     {:name       "Timeline of bird squawks"
-      :default    false
-      :icon       timeline/DefaultIcon
-      :creator_id (rasta-id)})
+     (default-timestamped
+       {:name       "Timeline of bird squawks"
+        :default    false
+        :icon       timeline/DefaultIcon
+        :creator_id (rasta-id)}))
 
-   TimelineEvent
+   :model/TimelineEvent
    (fn [_]
-     {:name         "default timeline event"
-      :icon         timeline/DefaultIcon
-      :timestamp    (t/zoned-date-time)
-      :timezone     "US/Pacific"
-      :time_matters true
-      :creator_id   (rasta-id)})
+     (default-timestamped
+       {:name         "default timeline event"
+        :icon         timeline/DefaultIcon
+        :timestamp    (t/zoned-date-time)
+        :timezone     "US/Pacific"
+        :time_matters true
+        :creator_id   (rasta-id)}))
 
    :model/User
-   (fn [_] {:first_name (tu.random/random-name)
-            :last_name  (tu.random/random-name)
-            :email      (tu.random/random-email)
-            :password   (tu.random/random-name)})})
+   (fn [_] {:first_name  (tu.random/random-name)
+            :last_name   (tu.random/random-name)
+            :email       (tu.random/random-email)
+            :password    (tu.random/random-name)
+            :date_joined (t/zoned-date-time)
+            :updated_at  (t/zoned-date-time)})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

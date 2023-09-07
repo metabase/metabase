@@ -8,8 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- dashboard-subscriptions [dashboard-name]
   (mt/with-test-user :crowberto
@@ -23,31 +22,30 @@
   (is (= []
          (mt/rows (dashboard-subscriptions (mt/random-name)))))
   (let [dashboard-name (mt/random-name)]
-
-    (t2.with-temp/with-temp [Collection {collection-id :id, collection-name :name}]
+    (mt/with-temp! [Collection {collection-id :id, collection-name :name}]
       ;; test with both the Root Collection and a non-Root Collection
       (doseq [{:keys [collection-id collection-name]} [{:collection-id   collection-id
                                                         :collection-name collection-name}
                                                        {:collection-id   nil
                                                         :collection-name "Our analytics"}]]
         (testing (format "Collection = %d %s" collection-id collection-name)
-          (mt/with-temp [Dashboard             {dashboard-id :id} {:name          dashboard-name
-                                                                   :collection_id collection-id}
-                         Pulse                 {pulse-id :id}     {:dashboard_id  dashboard-id
-                                                                   :collection_id collection-id}
-                         PulseChannel          {channel-id :id}   {:pulse_id       pulse-id
-                                                                   :channel_type   "email"
-                                                                   :details        {:emails ["amazing@fake.com"]}
-                                                                   :schedule_type  "monthly"
-                                                                   :schedule_frame "first"
-                                                                   :schedule_day   "mon"
-                                                                   :schedule_hour  8}
-                         PulseChannelRecipient _                  {:pulse_channel_id channel-id
-                                                                   :user_id          (mt/user->id :rasta)}
-                         PulseChannel          {channel-2-id :id} {:pulse_id      pulse-id
-                                                                   :channel_type  "slack"
-                                                                   :details       {:channel "#wow"}
-                                                                   :schedule_type "hourly"}]
+          (mt/with-temp! [Dashboard             {dashboard-id :id} {:name          dashboard-name
+                                                                    :collection_id collection-id}
+                          Pulse                 {pulse-id :id}     {:dashboard_id  dashboard-id
+                                                                    :collection_id collection-id}
+                          PulseChannel          {channel-id :id}   {:pulse_id       pulse-id
+                                                                    :channel_type   "email"
+                                                                    :details        {:emails ["amazing@fake.com"]}
+                                                                    :schedule_type  "monthly"
+                                                                    :schedule_frame "first"
+                                                                    :schedule_day   "mon"
+                                                                    :schedule_hour  8}
+                          PulseChannelRecipient _                  {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :rasta)}
+                          PulseChannel          {channel-2-id :id} {:pulse_id      pulse-id
+                                                                    :channel_type  "slack"
+                                                                    :details       {:channel "#wow"}
+                                                                    :schedule_type "hourly"}]
             (is (= {:columns ["dashboard_id"
                               "dashboard_name"
                               "pulse_id"

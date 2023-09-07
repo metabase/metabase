@@ -597,7 +597,7 @@
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
                   "permissions groups get set after the User is created")
-      (t2.with-temp/with-temp [PermissionsGroup group {:name "Group"}]
+      (mt/with-temp! [PermissionsGroup group {:name "Group"}]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 400 "user"
                                 {:first_name             "Cam"
@@ -966,7 +966,7 @@
 
     (testing (str "if we try to create a new user with is_superuser FALSE but user_group_memberships that includes the Admin group "
                   "ID, the entire call should fail")
-      (t2.with-temp/with-temp [User {:keys [email id]} {:first_name "Old First Name"}]
+      (mt/with-temp! [User {:keys [email id]} {:first_name "Old First Name"}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           false
                                :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])
@@ -977,7 +977,7 @@
 
     (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
-      (t2.with-temp/with-temp [User {:keys [email id]}]
+      (mt/with-temp! [User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           true
                                :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})

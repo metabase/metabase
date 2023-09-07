@@ -383,7 +383,7 @@
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
         ;; should fail, causing the entire transaction to fail
-        (t2.with-temp/with-temp [User user {:is_superuser true}]
+        (mt/with-temp! [User user {:is_superuser true}]
           (u/ignore-exceptions
             (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
           (is (= true

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
   (:require
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values
@@ -39,8 +40,9 @@
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
               fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
           (is (= [(range 4 6)]
-                 (->> (t2/select [FieldValues :values] :field_id categories-id :type fv-type)
-                      (map :values))))
+                 (t2/select-fn-vec :values FieldValues
+                                   :field_id categories-id :type fv-type
+                                   {:order-by [:id]})))
           (is (= [4 5] (:values fv)))
           (is (= ["id_4" "id_5"] (:human_readable_values fv)))
           (is (some? (:hash_key fv)))
@@ -54,18 +56,16 @@
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories
                                            {:filter [:and [:> $id 1] [:< $id 4]]})]
-              ;; sleeping should ensure that updated_at changes
-              (Thread/sleep 1)
-              (t2/update! Card card-id {:dataset_query new-query}))
+               (t2/update! Card card-id {:dataset_query new-query
+                                         :updated_at    (t/local-date-time)}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one Field :id (mt/id :categories :id)))
             (is (= [(range 4 6)
                     (range 2 4)]
-                   (->> (t2/select [FieldValues :values]
-                                   :field_id categories-id :type fv-type
-                                   {:order-by [:id]})
-                        (map :values))))))))
+                   (t2/select-fn-vec :values FieldValues
+                                     :field_id categories-id :type fv-type
+                                     {:order-by [:id]})))))))
 
     (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"
       (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and

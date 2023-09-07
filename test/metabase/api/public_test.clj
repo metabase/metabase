@@ -392,7 +392,7 @@
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* ""]
         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]

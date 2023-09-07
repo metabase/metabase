@@ -651,21 +651,22 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (t2.with-temp/with-temp [Collection {collection-id :id}      {:name "Collection with Items"}
-                             User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-                             User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-                             Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-                             Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-                             Card       _                        {:name "ZZ" :collection_id collection-id}
-                             Card       _                        {:name "AA" :collection_id collection-id}
-                             Revision   revision1                {:model    "Card"
-                                                                  :model_id card1-id
-                                                                  :user_id  user2-id
-                                                                  :object   (revision/serialize-instance card1 card1-id card1)}
-                             Revision   _revision2               {:model    "Card"
-                                                                  :model_id card2-id
-                                                                  :user_id  user1-id
-                                                                  :object   (revision/serialize-instance card2 card2-id card2)}]
+    (mt/with-temp!
+      [Collection {collection-id :id}      {:name "Collection with Items"}
+       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+       Card       _                        {:name "ZZ" :collection_id collection-id}
+       Card       _                        {:name "AA" :collection_id collection-id}
+       Revision   revision1                {:model    "Card"
+                                            :model_id card1-id
+                                            :user_id  user2-id
+                                            :object   (revision/serialize-instance card1 card1-id card1)}
+       Revision   _revision2               {:model    "Card"
+                                            :model_id card2-id
+                                            :user_id  user1-id
+                                            :object   (revision/serialize-instance card2 card2-id card2)}]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (is (= 1
              (t2/query-one {:update :revision
