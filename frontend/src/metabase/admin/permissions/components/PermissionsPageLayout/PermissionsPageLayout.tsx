@@ -14,6 +14,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import type { PermissionsGraph } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useLeaveConfirmation } from "metabase/hooks/use-leave-confirmation";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   FullHeightContainer,
@@ -26,7 +27,6 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import type { IconName } from "metabase/core/components/Icon";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import {
   clearSaveError as clearPermissionsSaveError,
   toggleHelpReference,
