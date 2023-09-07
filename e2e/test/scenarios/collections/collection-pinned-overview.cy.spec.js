@@ -9,6 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -178,7 +179,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to hide the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", { collection_position: 1 });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(QUESTION_NAME);
@@ -194,7 +197,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to show the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
       collection_preview: false,
     });
@@ -223,7 +226,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a visualization by dragging it up", () => {
-    cy.request("PUT", "/api/card/2", {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
       collection_preview: false,
     });
@@ -252,6 +255,24 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByTestId("pinned-items")
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
+  });
+
+  it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_position: 1,
+    });
+
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
+    cy.wait("@getCardQuery");
+
+    cy.findByLabelText("Next page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
+
+    cy.findByLabelText("Previous page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
   });
 });
 
