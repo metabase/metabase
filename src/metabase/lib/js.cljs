@@ -112,11 +112,17 @@
   [a-query]
   (lib.core/drop-stage a-query))
 
-(defn ^:export orderable-columns
+(defn orderable-columns*
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
   [a-query stage-number]
   (to-array (lib.core/orderable-columns a-query stage-number)))
+
+(def ^{:export true
+       :arglists '([query stage-number])}
+  orderable-columns
+  "The cached version of [[orderable-columns*]]."
+  (memoize/lru orderable-columns* :lru/threshold 4))
 
 (defn display-info*
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
