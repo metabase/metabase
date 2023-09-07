@@ -9,13 +9,13 @@ import Button from "metabase/core/components/Button";
 import PermissionsConfirm from "../PermissionsConfirm";
 
 const propTypes = {
-  onSave: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  isDirty: PropTypes.bool.isRequired,
   diff: PropTypes.object,
+  isDirty: PropTypes.bool.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
 };
 
-export function PermissionsEditBar({ diff, isDirty, onSave, onCancel }) {
+export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
   const saveButton = (
     <Confirm
       title={t`Save permissions?`}
