@@ -1869,3 +1869,37 @@
                               :dimensions [{"Lat" {}}{"Lon" {}}]
                               :score      100}]
                 (is (=? [] (#'magic/card-candidates context card-def)))))))))))
+
+;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
+
+(deftest related-card-generation-test
+  (testing "Ensure that the `related` function is called and the right cards are created."
+    (mt/with-test-user :rasta
+      (mt/dataset sample-dataset
+        (let [{table-id :id :as table} (t2/select-one Table :id (mt/id :orders))
+              {:keys [related]} (magic/automagic-analysis table {:show :all})]
+          (is (=? {:zoom-in [{:title       "Orders per source"
+                              :description "Where most traffic is coming from."
+                              :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/BySource" table-id)}
+                             {:title       "Orders per product"
+                              :description "How different products are performing."
+                              :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/ByProduct" table-id)}
+                             {:title       "Orders per state"
+                              :description "Which US states are bringing you the most business."
+                              :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/ByState" table-id)}
+                             {:title       "Orders over time"
+                              :description "Whether or not there are any patterns to when they happen."
+                              :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/Seasonality" table-id)}
+                             {:url         (format "/auto/dashboard/field/%s" (mt/id :people :source))
+                              :title       "Source fields"
+                              :description "A look at People across Source fields, and how it changes over time."}
+                             {:url         (format "/auto/dashboard/field/%s" (mt/id :people :created_at))
+                              :title       "Created At fields"
+                              :description "How People are distributed across this time field, and if it has any seasonal patterns."}]
+                   :related [{:url         (format "/auto/dashboard/table/%s" (mt/id :people)),
+                              :title       "People"
+                              :description "An exploration of your users to get you started."}
+                             {:url         (format "/auto/dashboard/table/%s" (mt/id :products))
+                              :title       "Products"
+                              :description "An overview of Products and how it's distributed across time, place, and categories."}]}
+                  related)))))))
