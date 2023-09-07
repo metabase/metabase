@@ -737,6 +737,12 @@
         ;; into keep this number as low as we can
         (is (= 16 (call-count)))))))
 
+(deftest search-models-test
+  (testing "Should get at least a card model when a card exists"
+    (t2.with-temp/with-temp
+      [Card _ {:name "test card"}]
+        (is (some #{"card"} (mt/user-http-request :crowberto :get 200 "search/models"))))))
+
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
