@@ -104,7 +104,7 @@ export interface Version {
 }
 
 export interface VersionInfoRecord {
-  version?: string; // tag
+  version: string; // tag
   released?: string; // year-month-day
   patch?: boolean;
   highlights?: string[];

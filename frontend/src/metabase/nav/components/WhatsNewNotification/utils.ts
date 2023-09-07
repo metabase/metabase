@@ -44,5 +44,7 @@ export const getLatestEligibleReleaseNotes = ({
     );
   });
 
-  return eligibleVersions.find(({ announcement_url }) => announcement_url);
+  return eligibleVersions
+    .sort((a, b) => MetabaseUtils.compareVersions(b.version, a.version))
+    .find(({ announcement_url }) => announcement_url);
 };
