@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-query-execution [query run]
+(defn- do-with-query-execution! [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
@@ -30,8 +30,8 @@
                 (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                    (some-> a-hash codecs/bytes->hex)))))))))))
 
-(defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
-  `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
+(defmacro ^:private with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
+  `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
   ([query]
@@ -43,9 +43,9 @@
        result
        (update (:metadata result) :running_time int?)))))
 
-(deftest ^:parallel success-test
+(deftest success-test
   (let [query {:query {:type ::success-test}}]
-    (with-query-execution [qe query]
+    (with-query-execution! [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
           "sanity check")
@@ -77,9 +77,9 @@
              (qe))
           "QueryExecution should be saved"))))
 
-(deftest ^:parallel failure-test
+(deftest failure-test
   (let [query {:query {:type ::failure-test}}]
-    (with-query-execution [qe query]
+    (with-query-execution! [qe query]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Oops!"
