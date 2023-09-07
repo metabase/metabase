@@ -51,7 +51,7 @@
 (defn with-api-error-message
   "Return `schema` with an additional `api-error-message` that will be used to explain the error if a parameter fails
   validation."
-  {:style/indent [:defn]}
+  {:style/indent [:form]}
   [schema api-error-message]
   (if-not (record? schema)
     ;; since this only works for record types, if `schema` isn't already one just wrap it in `s/named` to make it one

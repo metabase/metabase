@@ -6,10 +6,13 @@ import {
   showDashboardCardActions,
   visitDashboard,
   addOrUpdateDashboardCard,
+  sidebar,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const {
   ORDERS,
@@ -28,45 +31,41 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle URL click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
-    cy.icon("pencil").click();
-    showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
+    createDashboardWithQuestion({}, dashboardId => {
+      visitDashboard(dashboardId);
 
-    // configure a URL click through on the  "MY_NUMBER" column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to a custom destination").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("URL").click();
+      cy.findByTestId("dashboard-header").icon("pencil").click();
+      showDashboardCardActions();
+      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
 
-    // set the url and text template
-    modal().within(() => {
-      cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
-        parseSpecialCharSequences: false,
+      // configure a URL click through on the  "MY_NUMBER" column
+      sidebar()
+        .findByText("On-click behavior for each column")
+        .parent()
+        .parent()
+        .within(() => cy.findByText("MY_NUMBER").click());
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("URL").click();
+
+      // set the url and text template
+      modal().within(() => {
+        cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
+          parseSpecialCharSequences: false,
+        });
+        cy.get("input").last().type("column value: {{my_number}}", {
+          parseSpecialCharSequences: false,
+        });
+        cy.findByText("Done").click();
       });
-      cy.get("input").last().type("column value: {{my_number}}", {
-        parseSpecialCharSequences: false,
-      });
-      cy.findByText("Done").click();
+
+      cy.findByTestId("edit-bar").findByText("Save").click();
+
+      setParamValue("My Param", "param-value");
+      // click value and confirm url updates
+
+      getDashboardCard().findByText("column value: 111").click();
+      cy.location("pathname").should("eq", "/foo/111/param-value");
     });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    setParamValue("My Param", "param-value");
-
-    // click value and confirm url updates
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("column value: 111").click();
-    cy.location("pathname").should("eq", "/foo/111/param-value");
   });
 
   it("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
@@ -280,38 +279,36 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
-    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
-    cy.icon("pencil").click();
-    showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
+    createDashboardWithQuestion({}, dashboardId => {
+      visitDashboard(dashboardId);
+      cy.icon("pencil").click();
+      showDashboardCardActions();
+      cy.findByTestId("dashboardcard-actions-panel").within(() => {
+        cy.icon("click").click();
+      });
+
+      cy.findByText("On-click behavior for each column")
+        .parent()
+        .parent()
+        .within(() => cy.findByText("MY_NUMBER").click());
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("URL").click();
+
+      modal().within(() => {
+        cy.get("input")
+          .first()
+          .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`);
+        cy.get("input").last().type("Click behavior");
+        cy.findByText("Done").click();
+      });
+
+      cy.findByText("Save").click();
+
+      cy.findByText("Click behavior").click();
+
+      cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
+      cy.location("search").should("eq", "?my_param=Aaron%20Hand");
     });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to a custom destination").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("URL").click();
-
-    modal().within(() => {
-      cy.get("input").first().type("/dashboard/2?my_param=Aaron Hand");
-      cy.get("input").last().type("Click behavior");
-      cy.findByText("Done").click();
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Click behavior").click();
-
-    cy.location("pathname").should("eq", "/dashboard/2");
-    cy.location("search").should("eq", "?my_param=Aaron%20Hand");
   });
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
@@ -442,7 +439,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     const FILTER_ID = "7c9ege62";
     const PK_VALUE = "7602";
 
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [
         {
           id: FILTER_ID,
@@ -453,7 +450,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       ],
     });
-    cy.request("PUT", "/api/dashboard/1/cards", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
           id: 1,
@@ -481,7 +478,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       ],
     });
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("column-header").contains("ID").click().click();
 
     cy.get(".Table-ID").contains(PK_VALUE).first().click();
@@ -501,7 +498,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     const FILTER_ID = "7c9ege62";
 
     cy.log("Add filter (with the default Category) to the dashboard");
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [
         {
           id: FILTER_ID,
@@ -514,7 +511,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", "/api/dashboard/1/cards", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
           id: 1,
@@ -543,7 +540,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     // Product ID in the first row (query fails for User ID as well)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("105").click();
@@ -873,12 +870,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     beforeEach(() => {
       // Add filters to the dashboard
-      cy.request("PUT", "/api/dashboard/1", {
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         parameters,
       });
 
       // Connect those filters to the existing dashboard card
-      cy.request("PUT", "/api/dashboard/1/cards", {
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
         cards: [
           {
             id: 1,
@@ -914,7 +911,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       });
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {

@@ -7,7 +7,10 @@ import {
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -70,7 +73,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("dashboard").should("be.visible");
       cy.findByText("A dashboard").should("be.visible");
       cy.findByText(DASHBOARD_NAME).click();
-      cy.url().should("include", "/dashboard/1");
+      cy.url().should("include", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
   });
 
@@ -119,7 +122,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to unpin a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -130,7 +135,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to move a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -141,7 +148,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to duplicate a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -154,7 +163,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to archive a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);

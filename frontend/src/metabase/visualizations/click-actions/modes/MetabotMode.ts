@@ -1,6 +1,6 @@
-import type { QueryMode } from "metabase/visualizations/types";
+import type { QueryClickActionsMode } from "../../types";
 
-export const MetabotMode: QueryMode = {
+export const MetabotMode: QueryClickActionsMode = {
   name: "public",
-  drills: [],
+  clickActions: [],
 };
