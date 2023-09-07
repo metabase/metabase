@@ -68,7 +68,7 @@
   (with-setup db
     (t2.with-temp/with-temp
       [:model/Card          model {:database_id (u/the-id db), :dataset true}
-       :model/PersistedInfo _     {:database_id (u/the-id db), :card_id (u/the-id model)}]
+       :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative card-id"
         (is (= "API endpoint does not exist."
                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" -1)))))
@@ -77,7 +77,7 @@
                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" Integer/MAX_VALUE)))))
       (testing "Should get info when the ID exists"
         (is (=? {:active true
-                       :card_id (u/the-id model)
-                       :id (u/the-id model)
-                       :state "persisted"}
-                      (mt/user-http-request :crowberto :get 200 (format "persist/card/%d" (u/the-id model)))))))))
+                  :card_id (u/the-id model)
+                  :id (u/the-id pinfo)
+                  :state "persisted"}
+                (mt/user-http-request :crowberto :get 200 (format "persist/card/%d" (u/the-id model)))))))))
