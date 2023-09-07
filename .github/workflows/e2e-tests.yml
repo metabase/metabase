@@ -412,12 +412,12 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
-            context: grep
             java-version: 11
+            context: oss-subset
           - edition: ee
             java-version: 11
-            context: grep
-            runner: buildjet-2vcpu-ubuntu-2204
+            context: slow
+
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
