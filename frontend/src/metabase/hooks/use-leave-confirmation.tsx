@@ -1,4 +1,6 @@
+import type { Location } from "history";
 import { useEffect, useState } from "react";
+import type { InjectedRouter, Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -8,11 +10,17 @@ import { useDispatch } from "metabase/lib/redux";
 
 import useBeforeUnload from "./use-before-unload";
 
-export const useLeaveConfirmation = ({ router, route, isEnabled }) => {
+interface Props {
+  router: InjectedRouter;
+  route: Route;
+  isEnabled: boolean;
+}
+
+export const useLeaveConfirmation = ({ router, route, isEnabled }: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
-  const [nextLocation, setNextLocation] = useState(null);
+  const [nextLocation, setNextLocation] = useState<Location>();
 
   useBeforeUnload(isEnabled);
 
