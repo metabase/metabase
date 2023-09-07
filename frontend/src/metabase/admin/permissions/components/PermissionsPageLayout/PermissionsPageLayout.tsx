@@ -107,7 +107,7 @@ function PermissionsPageLayout({
           </ModalContent>
         </Modal>
 
-        <LeaveConfirmationModal route={route} isEnabled={isDirty} />
+        <LeaveConfirmationModal isEnabled={isDirty} route={route} />
 
         <TabsContainer className="border-bottom">
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
