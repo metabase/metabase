@@ -37,7 +37,8 @@ export function ArchiveApp() {
   const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isAdmin = useSelector(getUserIsAdmin);
-  const mainElement = useMemo(() => getMainElement(), []);
+  const mainElement = getMainElement();
+
   useEffect(() => {
     if (!isSmallScreen()) {
       openNavbar();
