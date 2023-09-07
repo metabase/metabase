@@ -1,3 +1,4 @@
+import { Button } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/core/components/Icon";
@@ -8,6 +9,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
 import type { WrappedResult } from "metabase/search/types";
+import Link from "metabase/core/components/Link/Link";
 import {
   IconWrapper,
   ResultButton,
@@ -19,6 +21,7 @@ import {
   ContextContainer,
   ResultSpinner,
   ResultLinkContent,
+  ResultInner,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -121,6 +124,11 @@ export function SearchResult({
   // we want to remove link behavior if we have an onClick handler
   const ResultContainer = onClick ? ResultButton : ResultLink;
 
+  const showXRayButton =
+    result.model === "indexed-entity" &&
+    result.id !== undefined &&
+    result.model_index_id !== null;
+
   return (
     <ResultContainer
       isSelected={isSelected}
@@ -130,36 +138,53 @@ export function SearchResult({
       onClick={onClick && active ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
-      <ResultLinkContent>
-        <ItemIcon item={result} type={result.model} active={active} />
-        <div>
-          <TitleWrapper>
-            <Title active={active} data-testid="search-result-item-name">
-              {result.name}
-            </Title>
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              status={result.moderated_status}
-              size={12}
+      <ResultInner>
+        <ResultLinkContent>
+          <ItemIcon item={result} type={result.model} active={active} />
+          <div>
+            <TitleWrapper>
+              <Title active={active} data-testid="search-result-item-name">
+                {result.name}
+              </Title>
+              <PLUGIN_MODERATION.ModerationStatusIcon
+                status={result.moderated_status}
+                size={12}
+              />
+            </TitleWrapper>
+            <Text data-testid="result-link-info-text">
+              <InfoText result={result} />
+            </Text>
+            {hasDescription && result.description && (
+              <Description>{result.description}</Description>
+            )}
+            <Score scores={result.scores} />
+          </div>
+          {loading && (
+            // SearchApp also uses `loading-spinner`, using a different test ID
+            // to not confuse unit tests waiting for loading-spinner to disappear
+            <ResultSpinner
+              data-testid="search-result-loading-spinner"
+              size={24}
+              borderWidth={3}
             />
-          </TitleWrapper>
-          <Text data-testid="result-link-info-text">
-            <InfoText result={result} />
-          </Text>
-          {hasDescription && result.description && (
-            <Description>{result.description}</Description>
           )}
-          <Score scores={result.scores} />
-        </div>
-        {loading && (
-          // SearchApp also uses `loading-spinner`, using a different test ID
-          // to not confuse unit tests waiting for loading-spinner to disappear
-          <ResultSpinner
-            data-testid="search-result-loading-spinner"
-            size={24}
-            borderWidth={3}
-          />
+        </ResultLinkContent>
+        {showXRayButton && (
+          <Button
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+              e.stopPropagation()
+            }
+            variant="outline"
+            p="sm"
+          >
+            <Link
+              to={`/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`}
+            >
+              <Icon name="bolt" />
+            </Link>
+          </Button>
         )}
-      </ResultLinkContent>
+      </ResultInner>
       {compact || <Context context={result.context} />}
     </ResultContainer>
   );
