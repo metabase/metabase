@@ -66,3 +66,20 @@
           (is (true?
                (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
                     :archived))))))))
+
+(deftest delete-timeline-event-test
+  (testing "DELETE /api/timeline-event/:id"
+    (mt/with-temp [Collection    collection {:name "Example Data"}
+                   Timeline      timeline   {:name          "Example Events"
+                                             :collection_id (u/the-id collection)}
+                   TimelineEvent event      {:name         "Example Event"
+                                             :timeline_id  (u/the-id timeline)}]
+      (let [event-id (u/the-id event)]
+        (testing "delete the timeline-event by `id`"
+          (is (= "Example Event"
+                 (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" event-id))
+                      :name)))
+          (is (= nil
+                 (mt/user-http-request :rasta :delete 204 (str "timeline-event/" event-id))))
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :get 404 (str "timeline-event/" event-id)))))))))
