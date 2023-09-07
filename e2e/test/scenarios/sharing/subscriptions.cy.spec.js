@@ -439,12 +439,48 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+        cy.get("aside").last().findByText("Text is Corbin Mertz");
         clickButton("Done");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Corbin Mertz")
+          .click();
+
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Corbin Mertz").parent().findByText("Text");
+          cy.findByText("Text 1").should("not.exist");
+        });
+
+        // change default text to sallie
+        cy.visit(`/dashboard/1`);
+        cy.icon("pencil").click();
+        cy.findByTestId("edit-dashboard-parameters-widget-container")
+          .findByText("Text")
+          .click();
+        cy.get("aside").findByText("Corbin Mertz").click();
+        popover()
+          .findByText("Corbin Mertz")
+          .closest("li")
+          .icon("close")
+          .click();
+        popover().find("input").type("Sallie");
+        popover().findByText("Sallie Flatley").click();
+        popover().contains("Update filter").click();
+        cy.button("Save").click();
+
+        // verify existing subscription shows new default in UI
+        openDashboardSubscriptions(1);
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Sallie Flatley")
+          .click();
+
+        // verify existing subscription show new default in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Sallie Flatley").parent().findByText("Text");
+          cy.findByText("Text 1").should("not.exist");
+        });
       });
     });
   });
