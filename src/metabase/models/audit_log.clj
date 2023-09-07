@@ -52,21 +52,37 @@
             :model?      dataset?})))
 
 (defn record-event!
-  "Record an event in the Audit Log."
-  [topic object]
-  (let [topic   (keyword (name topic))
-        details (model-details object topic)]
-    (t2/insert! :model/AuditLog
-                {:topic    (name topic)
+  "Record an event in the Audit Log.
+
+  `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`. If the keyword is
+  namespaced (e.g. `:event/dashboard-create`) the namespace is stripped before the event is recorded.
+
+  `object` is typically the object that the event is acting on, e.g. a `Dashboard` instance. The details about the
+  object which are recorded are determined by the `model-details` multimethod, which is typically implemented in the
+  appropriate model namespace.
+
+  `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name of a model
+  is also relevant to the event and should be recorded, it can be passed as a third argument."
+  ([topic object]
+   (record-event! topic object (some-> (t2/model object) name)))
+
+  ([topic object model]
+   (let [unqualified-topic (keyword (name topic))
+         model-name        (name (name model))
+         details           (if (t2/model object)
+                             (model-details object unqualified-topic)
+                             (or object {}))]
+     (t2/insert! :model/AuditLog
+                 :topic    unqualified-topic
                  :details  details
-                 :model    (name (t2/model object))
-                 :model_id (u/the-id object)})
-    ;; TODO: temporarily double-writing to the `activity` table; remove in v49
-    (activity/record-activity!
-     :topic      topic
-     :object     object
-     :details-fn (fn [_] details)
-     :user-id    api/*current-user-id*)))
+                 :model    model-name
+                 :model_id (u/id object))
+     ;; TODO: temporarily double-writing to the `activity` table
+     (activity/record-activity!
+      :topic      topic
+      :object     object
+      :details-fn (fn [_] details)
+      :user-id    api/*current-user-id*))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

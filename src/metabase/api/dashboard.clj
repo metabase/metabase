@@ -684,7 +684,7 @@
                       (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
         ;; trigger events out of tx so rows are committed and visible from other threads
-        (track-dashcard-and-tab-events!  id @changes-stats)
+        (track-dashcard-and-tab-events! id @changes-stats)
         true))
    {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
     :ordered_tabs (dashboard/ordered-tabs id)}))
