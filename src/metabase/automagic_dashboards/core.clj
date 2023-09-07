@@ -1317,58 +1317,58 @@
     (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
     dashboard))
 
+(defn- query-based-analysis
+  [root opts {:keys [cell-query cell-url]}]
+  (letfn [(make-transient [{:keys [entity] :as root}]
+            (if (table-like? entity)
+              (let [root' (merge root
+                                 (when cell-query
+                                   {:url          cell-url
+                                    :entity       (:source root)
+                                    :dashboard-templates-prefix ["table"]})
+                                 opts)]
+                (automagic-dashboard root'))
+              (let [opts (assoc opts :show :all)
+                    root' (merge root
+                                 (when cell-query
+                                   {:url cell-url})
+                                 opts)
+                    base-dash (automagic-dashboard root')
+                    dash      (reduce populate/merge-dashboards
+                                      base-dash
+                                      (decompose-question root entity opts))]
+                (merge dash
+                       (when cell-query
+                         (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                           {:transient_name title
+                            :name           title}))))))]
+    (let [transient-dash (make-transient root)]
+      (maybe-enrich-joins (:entity root) transient-dash))))
+
 (defmethod automagic-analysis Card
   [card {:keys [cell-query] :as opts}]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
                          (u/the-id card)
                          (encode-base64-json cell-query))]
-    (maybe-enrich-joins
-     card
-     (if (table-like? card)
-       (automagic-dashboard
-        (merge (cond-> root
-                 cell-query (merge {:url          cell-url
-                                    :entity       (:source root)
-                                    :dashboard-templates-prefix ["table"]}))
-               opts))
-       (let [opts (assoc opts :show :all)]
-         (cond-> (reduce populate/merge-dashboards
-                         (automagic-dashboard (merge (cond-> root
-                                                       cell-query (assoc :url cell-url))
-                                                     opts))
-                         (decompose-question root card opts))
-           cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
-                               {:transient_name title
-                                :name           title}))))))))
+    (query-based-analysis root opts
+                          (when cell-query
+                            {:cell-query cell-query
+                             :cell-url   cell-url}))))
 
 (defmethod automagic-analysis Query
   [query {:keys [cell-query] :as opts}]
-  (let [root     (->root query)
+  (let [root       (->root query)
         cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
-        cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
-                         (encode-base64-json (:dataset_query query))
-                         (encode-base64-json cell-query))]
-    (maybe-enrich-joins
-     query
-     (if (table-like? query)
-       (automagic-dashboard
-        (merge (cond-> root
-                 cell-query (merge {:url          cell-url
-                                    :entity       (:source root)
-                                    :dashboard-templates-prefix ["table"]}))
-               opts))
-       (let [opts (assoc opts :show :all)]
-         (cond-> (reduce populate/merge-dashboards
-                         (automagic-dashboard (merge (cond-> root
-                                                       cell-query (assoc :url cell-url))
-                                                     opts))
-                         (decompose-question root query opts))
-           cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
-                               {:transient_name title
-                                :name           title}))))))))
+        cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint
+                           (encode-base64-json (:dataset_query query))
+                           (encode-base64-json cell-query))]
+    (query-based-analysis root opts
+                          (when cell-query
+                            {:cell-query cell-query
+                             :cell-url   cell-url}))))
 
 (defmethod automagic-analysis Field
   [field opts]
