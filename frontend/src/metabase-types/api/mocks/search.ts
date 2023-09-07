@@ -16,6 +16,7 @@ export const createMockSearchResult = (
     name: "Mock search result",
     description: "Mock search result description",
     model: "card",
+    model_index_id: null,
     model_id: null,
     archived: null,
     collection,

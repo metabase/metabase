@@ -5,6 +5,8 @@ import {
   showDashboardCardActions,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 describe("issue 21830", () => {
   beforeEach(() => {
     restore();
@@ -27,7 +29,7 @@ describe("issue 21830", () => {
       },
     ).as("getCardQuery");
 
-    cy.visit("/dashboard/1");
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.wait("@getDashboard");
 
     // it's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
