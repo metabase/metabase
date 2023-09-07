@@ -11,18 +11,11 @@ import PermissionsConfirm from "../PermissionsConfirm";
 const propTypes = {
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  shouldConfirmCancel: PropTypes.bool,
   isDirty: PropTypes.bool.isRequired,
   diff: PropTypes.object,
 };
 
-export function PermissionsEditBar({
-  diff,
-  isDirty,
-  shouldConfirmCancel,
-  onSave,
-  onCancel,
-}) {
+export function PermissionsEditBar({ diff, isDirty, onSave, onCancel }) {
   const saveButton = (
     <Confirm
       title={t`Save permissions?`}
@@ -35,16 +28,7 @@ export function PermissionsEditBar({
     </Confirm>
   );
 
-  const cancelButton = shouldConfirmCancel ? (
-    <Confirm
-      title={t`Discard changes?`}
-      action={onCancel}
-      content={t`No changes to permissions will be made.`}
-      key="discard"
-    >
-      <Button small>{t`Cancel`}</Button>
-    </Confirm>
-  ) : (
+  const cancelButton = (
     <Button small onClick={onCancel} key="cancel">{t`Cancel`}</Button>
   );
 
