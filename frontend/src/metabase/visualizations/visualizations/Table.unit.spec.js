@@ -70,8 +70,8 @@ const setup = ({ vizType }) => {
     it("should show you related columns in structured queries", async () => {
       setup({ vizType });
       expect(await screen.findByText("More columns")).toBeInTheDocument();
-      expect(await screen.findByText("People")).toBeInTheDocument();
-      expect(await screen.findByText("Products")).toBeInTheDocument();
+      expect(await screen.findByText("User")).toBeInTheDocument();
+      expect(await screen.findByText("Product")).toBeInTheDocument();
     });
 
     it("should allow you to show and hide columns", async () => {

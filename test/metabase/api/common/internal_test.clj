@@ -188,7 +188,8 @@
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                                                                                             ;; TODO remove .'s from ms schemas
                                                                                             ;; TODO translate received (?)
-                    :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco., received: {:address \"\"}"]}}
+                    :specific-errors
+                    {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
                    (:body (post! "/test-localized-error" {:address ""}))))))))
 
     (testing "auto-coercion"
