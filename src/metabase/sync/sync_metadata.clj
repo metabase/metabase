@@ -18,7 +18,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
@@ -52,7 +52,7 @@
    ;; finally, sync the metadata metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
-(s/defn sync-db-metadata!
+(mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (let [db-metadata (fetch-metadata/db-metadata database)]
@@ -62,7 +62,7 @@
           (sync-util/set-initial-database-sync-aborted! database)
           (sync-util/set-initial-database-sync-complete! database))))))
 
-(s/defn sync-table-metadata!
+(mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
   [table :- i/TableInstance]
   (sync-fields/sync-fields-for-table! table)

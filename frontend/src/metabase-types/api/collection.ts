@@ -49,7 +49,8 @@ type CollectionItemModel =
   | "dashboard"
   | "pulse"
   | "snippet"
-  | "collection";
+  | "collection"
+  | "indexed-entity";
 
 export type CollectionItemId = number;
 

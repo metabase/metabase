@@ -32,7 +32,6 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -77,6 +76,7 @@ interface DashCardVisualizationProps {
   isMobile?: boolean;
   isNightMode?: boolean;
   isPublic?: boolean;
+  isXray?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -116,6 +116,7 @@ function DashCardVisualization({
   isPreviewing,
   isEmbed,
   isPublic,
+  isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -186,14 +187,16 @@ function DashCardVisualization({
     const question = new Question(dashcard.card, metadata);
     const mainSeries = series[0] as unknown as Dataset;
 
-    const isInternalQuery = question.query() instanceof InternalQuery;
-    const shouldShowDownloadWidget =
-      isEmbed ||
-      (!isPublic &&
-        !isEditing &&
-        DashCardMenu.shouldRender({ question, result: mainSeries }));
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
+      question,
+      result: mainSeries,
+      isXray,
+      isEmbed,
+      isPublic,
+      isEditing,
+    });
 
-    if (isInternalQuery || !shouldShowDownloadWidget) {
+    if (!shouldShowDashCardMenu) {
       return null;
     }
 
@@ -208,14 +211,17 @@ function DashCardVisualization({
       />
     );
   }, [
-    series,
+    dashcard.card,
+    dashcard.id,
+    dashcard.dashboard_id,
     metadata,
+    series,
     isEmbed,
     isPublic,
     isEditing,
-    dashcard,
+    isXray,
+    dashboard.id,
     parameterValuesBySlug,
-    dashboard,
   ]);
 
   return (

@@ -728,14 +728,10 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod db-default-timezone ::driver
-  [_driver _database]
-  nil)
-
 ;; TIMEZONE FIXME — remove this method entirely
 (defmulti current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
+  [[metabase.driver.common/current-db-time]] to implement this. This should return a Joda-Time `DateTime`.
 
   deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
   [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
@@ -745,6 +741,19 @@
   :hierarchy #'hierarchy)
 
 (defmethod current-db-time ::driver [_ _] nil)
+
+(defmethod db-default-timezone ::driver
+  [driver database]
+  (when-not (identical? (get-method current-db-time driver)
+                        (get-method current-db-time ::driver))
+    (log/warnf
+     (u/colorize :red (str "Warning: driver %s implements %s, which was deprecated in 0.34.0 and is scheduled for "
+                           "imminent removal without further notice. Please update the driver to implement %s instead."))
+     driver
+     `current-db-time
+     `db-default-timezone)
+    (when-let [current-joda-time (current-db-time driver database)]
+      (-> current-joda-time .getChronology .getZone .getID))))
 
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
@@ -898,5 +907,27 @@
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."
   {:added "0.47.0", :arglists '([driver upload-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponing to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

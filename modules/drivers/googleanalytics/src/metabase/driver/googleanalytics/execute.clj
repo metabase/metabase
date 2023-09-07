@@ -4,6 +4,7 @@
    [clojure.tools.reader.edn :as edn]
    [java-time :as t]
    [metabase.driver.googleanalytics.metadata :as ga.metadata]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -25,7 +26,7 @@
             column))
         (ga.metadata/columns
          (qp.store/with-metadata-provider (u/the-id database-or-id)
-           (qp.store/database))
+           (lib.metadata/database (qp.store/metadata-provider)))
          {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]

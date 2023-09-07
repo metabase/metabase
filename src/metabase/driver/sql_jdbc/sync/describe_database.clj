@@ -9,6 +9,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
@@ -152,7 +153,7 @@
 
         (int? db-or-id-or-spec)
         (qp.store/with-metadata-provider db-or-id-or-spec
-          (qp.store/database))
+          (lib.metadata/database (qp.store/metadata-provider)))
 
         :else
         nil))

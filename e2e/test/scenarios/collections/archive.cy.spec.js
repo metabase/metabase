@@ -1,5 +1,6 @@
-import { getCollectionIdFromSlug, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -129,22 +130,18 @@ describe("scenarios > collections > archive", () => {
   });
 
   it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
-    getCollectionIdFromSlug("first_collection", collectionId => {
-      const questionDetails = getQuestionDetails(collectionId);
+    const questionDetails = getQuestionDetails(FIRST_COLLECTION_ID);
 
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: questionId } }) => {
-          cy.request("PUT", `/api/collection/${collectionId}`, {
-            archived: true,
-          });
+    cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+        archived: true,
+      });
 
-          // Question belonging to collection
-          // will have been archived,
-          // and archived page should be displayed
-          cy.visit(`/question/${questionId}`);
-          cy.findByText("This question has been archived");
-        },
-      );
+      // Question belonging to collection
+      // will have been archived,
+      // and archived page should be displayed
+      cy.visit(`/question/${questionId}`);
+      cy.findByText("This question has been archived");
     });
   });
 });

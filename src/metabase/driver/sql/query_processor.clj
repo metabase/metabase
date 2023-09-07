@@ -8,10 +8,10 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.wrap-value-literals
@@ -25,14 +25,11 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.models.field/keep-me) ; for FieldInstance
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
@@ -357,7 +354,7 @@
                                   (- offset) :day)
       (truncate-fn expr))))
 
-(s/defn adjust-day-of-week
+(mu/defn adjust-day-of-week
   "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
@@ -376,8 +373,8 @@
 
   ([driver
     day-of-week-honeysql-expr
-    offset :- s/Int
-    mod-fn :- (s/pred fn?)]
+    offset :- :int
+    mod-fn :- fn?]
    (cond
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
@@ -470,12 +467,12 @@
   honeysql-form)
 
 (defmulti json-query
-  "Reaches into a JSON field (that is, a field with a defined :nfc_path).
+  "Reaches into a JSON field (that is, a field with a defined `:nfc-path`).
 
   Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with
   indexing into it. Implement the special syntax in this multimethod."
   {:arglists '([driver identifier json-field]), :added "0.43.1"}
-  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 
@@ -574,22 +571,29 @@
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
-  [driver field honeysql-form]
-  (u/prog1 (match [(:base_type field) (:coercion_strategy field)]
-            [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
-            (unix-timestamp->honeysql driver
-                                      (semantic-type->unix-timestamp-unit (:coercion_strategy field))
-                                      honeysql-form)
+  [driver {:keys [base-type coercion-strategy], :as field} honeysql-form]
+  (if (some #(str/includes? (name %) "_") (keys field))
+    (do
+      (sql.qp.deprecated/log-deprecation-warning
+       driver
+       "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
+       "0.48.0")
+      (recur driver (update-keys field u/->kebab-case-en) honeysql-form))
+    (u/prog1 (match [base-type coercion-strategy]
+               [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+               (unix-timestamp->honeysql driver
+                                         (semantic-type->unix-timestamp-unit coercion-strategy)
+                                         honeysql-form)
 
-            [:type/Text (:isa? :Coercion/String->Temporal)]
-            (cast-temporal-string driver (:coercion_strategy field) honeysql-form)
+               [:type/Text (:isa? :Coercion/String->Temporal)]
+               (cast-temporal-string driver coercion-strategy honeysql-form)
 
-            [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
-            (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
+               [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+               (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-            :else honeysql-form)
-    (when-not (= <> honeysql-form)
-      (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
+               :else honeysql-form)
+      (when-not (= <> honeysql-form)
+        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
 (defmethod ->honeysql [:sql TypedHoneySQLForm]
   [driver typed-form]
@@ -627,7 +631,7 @@
     true                    (hx/* bin-width)
     (not (zero? min-value)) (hx/+ min-value)))
 
-(defn- field-source-table-aliases
+(mu/defn ^:private field-source-table-aliases :- [:maybe [:sequential ::lib.schema.common/non-blank-string]]
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
   `AS`).
 
@@ -635,24 +639,26 @@
   [[_ id-or-name {::add/keys [source-table]}]]
   (let [source-table (or source-table
                          (when (integer? id-or-name)
-                           (:table_id (qp.store/field id-or-name))))]
+                           (:table-id (lib.metadata/field (qp.store/metadata-provider) id-or-name))))]
     (cond
       (= source-table ::add/source) [source-query-alias]
       (= source-table ::add/none)   nil
-      (integer? source-table)       (let [{schema :schema, table-name :name} (qp.store/table source-table)]
-                                      [schema table-name])
+      (integer? source-table)       (let [{schema :schema, table-name :name} (lib.metadata/table
+                                                                              (qp.store/metadata-provider)
+                                                                              source-table)]
+                                      (not-empty (filterv some? [schema table-name])))
       source-table                  [source-table])))
 
 (defn- field-source-alias
   "Get alias that should be use to refer to a `:field` clause when compiling (e.g. left-hand side of an `AS`).
 
     (field-source-alias [:field 1 nil]) ; -> \"price\""
-  [[_ id-or-name {::add/keys [source-alias]}]]
+  [[_field id-or-name {::add/keys [source-alias]}]]
   (or source-alias
       (when (string? id-or-name)
         id-or-name)
       (when (integer? id-or-name)
-        (:name (qp.store/field id-or-name)))))
+        (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
 
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name {:keys             [database-type]
@@ -663,11 +669,11 @@
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-alias         (field-source-alias field-clause)
           field                (when (integer? id-or-name)
-                                 (qp.store/field id-or-name))
+                                 (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field
                                     (not outer-select))
           database-type        (or database-type
-                                   (:database_type field))
+                                   (:database-type field))
           identifier           (->honeysql driver
                                            (apply hx/identifier :field
                                                   (concat source-table-aliases [source-alias])))
@@ -937,23 +943,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
-(s/defn field-clause->alias :- (s/pred some? "non-nil")
+(mu/defn field-clause->alias :- some?
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
 
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
-  [driver [clause-type id-or-name {::add/keys [desired-alias]}] & _unique-name-fn]
-  (let [desired-alias (or desired-alias
-                          ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
-                          ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
-                          ;; going forward because it is liable to break
-                          (when (string? id-or-name)
-                            id-or-name)
-                          (when (and (= clause-type :field)
-                                     (integer? id-or-name))
-                            (:name (qp.store/field id-or-name))))]
-    (->honeysql driver (hx/identifier :field-alias desired-alias))))
+  ([driver                                                :- :keyword
+    [clause-type id-or-name {::add/keys [desired-alias]}] :- vector?]
+   (let [desired-alias (or desired-alias
+                           ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
+                           ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
+                           ;; going forward because it is liable to break
+                           (when (string? id-or-name)
+                             id-or-name)
+                           (when (and (= clause-type :field)
+                                      (integer? id-or-name))
+                             (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))))]
+     (->honeysql driver (hx/identifier :field-alias desired-alias))))
+
+  ([driver field-clause _unique-name-fn]
+   (sql.qp.deprecated/log-deprecation-warning
+    driver
+    "metabase.driver.sql.query-processor/field-clause->alias with 3 args"
+    "0.48.0")
+   (field-clause->alias driver field-clause)))
 
 ;;; TODO -- we should probably mark this as deprecated since in 0.49.0 we can presumably drop [[hx/*honey-sql-version*]]
 ;;; completely
@@ -1217,7 +1231,7 @@
     (mbql->honeysql driver {:query source-query})
 
     :else
-    (->honeysql driver (qp.store/table source-table))))
+    (->honeysql driver (lib.metadata/table (qp.store/metadata-provider) source-table))))
 
 (def ^:private HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
@@ -1308,14 +1322,37 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defmethod ->honeysql [:sql Table]
+(defn- has-to-honeysql-impl-for-legacy-table? [driver]
+  (not (identical? (get-method ->honeysql [driver :model/Table])
+                   (get-method ->honeysql [:sql :model/Table]))))
+
+(defmethod ->honeysql [:sql :model/Table]
   [driver table]
+  (sql.qp.deprecated/log-deprecation-warning
+   driver
+   "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
+   "0.48.0")
   (let [{table-name :name, schema :schema} table]
     (->honeysql driver (hx/identifier :table schema table-name))))
 
+(defmethod ->honeysql [:sql :metadata/table]
+  [driver table]
+  (if (has-to-honeysql-impl-for-legacy-table? driver)
+    (do
+      (sql.qp.deprecated/log-deprecation-warning
+       driver
+       "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
+       "0.48.0")
+      (->honeysql driver #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/->legacy-metadata table)))
+    (let [{table-name :name, schema :schema} table]
+      (->honeysql driver (hx/identifier :table schema table-name)))))
+
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
-  (sql.helpers/from honeysql-form (maybe-wrap-unaliased-expr (->honeysql driver (qp.store/table source-table-id)))))
+  (->> (lib.metadata/table (qp.store/metadata-provider) source-table-id)
+       (->honeysql driver)
+       maybe-wrap-unaliased-expr
+       (sql.helpers/from honeysql-form)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
