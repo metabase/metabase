@@ -259,13 +259,10 @@
                (let [linked (linked-entities {:model             model
                                               :model-index       model-index
                                               :model-index-value model-index-value})]
-                 (or (create-linked-dashboard {:model             model
-                                               :linked-tables     linked
-                                               :model-index       model-index
-                                               :model-index-value model-index-value})
-                     (throw (ex-info (tru "No linked entities")
-                                     {:model-index-id model-index-id
-                                      :status-code    400}))))))
+                 (create-linked-dashboard {:model             model
+                                           :linked-tables     linked
+                                           :model-index       model-index
+                                           :model-index-value model-index-value}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
