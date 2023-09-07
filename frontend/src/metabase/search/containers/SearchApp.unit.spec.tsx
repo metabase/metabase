@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Route } from "metabase/hoc/Title";
 import {
@@ -14,26 +14,25 @@ import {
 } from "metabase-types/api/mocks";
 import type { SearchResult } from "metabase-types/api";
 
-import type { SearchFilters } from "metabase/search/types";
+import type {
+  EnabledSearchModelType,
+  SearchFilters,
+} from "metabase/search/types";
 import { checkNotNull } from "metabase/core/utils/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
-  PAGE_SIZE: 3,
+  PAGE_SIZE: 4,
 }));
 
-const ALL_RESULTS_SIDEBAR_NAME = "All results";
-
-const SIDEBAR_NAMES: Record<string, string> = {
-  collection: "Collections",
-  dashboard: "Dashboards",
-  database: "Databases",
-  dataset: "Models",
-  metric: "Metrics",
-  pulse: "Pulses",
-  segment: "Segments",
-  table: "Raw Tables",
-  card: "Questions",
+const TYPE_FILTER_LABELS: Record<EnabledSearchModelType, string> = {
+  collection: "Collection",
+  dashboard: "Dashboard",
+  database: "Database",
+  dataset: "Model",
+  table: "Table",
+  card: "Question",
+  action: "Action",
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [
@@ -43,9 +42,7 @@ const TEST_ITEMS: Partial<SearchResult>[] = [
   { name: "Test Database", model: "database" },
   { name: "Test Dataset", model: "dataset" },
   { name: "Test Table", model: "table" },
-  { name: "Test Pulse", model: "pulse" },
-  { name: "Test Segment", model: "segment" },
-  { name: "Test Metric", model: "metric" },
+  { name: "Test Action", model: "action" },
 ];
 
 const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
@@ -122,68 +119,66 @@ describe("SearchApp", () => {
     });
 
     it("renders search results and pagination when there is more than PAGE_SIZE results", async () => {
-      await setup({ searchText: "a" });
+      await setup({ searchText: "Test" });
       const getPaginationTotal = () => screen.getByTestId("pagination-total");
       const getPagination = () => screen.getByLabelText("pagination");
       const getNextPageButton = () => screen.getByTestId("next-page-btn");
       const getPreviousPageButton = () =>
         screen.getByTestId("previous-page-btn");
 
-      expect(getPaginationTotal()).toHaveTextContent("5");
+      expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
-      expect(getPagination()).toHaveTextContent("1 - 3");
+      expect(getPagination()).toHaveTextContent("1 - 4");
 
       // test next page button
       userEvent.click(getNextPageButton());
       await waitFor(() => {
         expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
       });
-      expect(getPaginationTotal()).toHaveTextContent("5");
+      expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeEnabled();
       expect(getNextPageButton()).toBeDisabled();
 
-      expect(getPagination()).toHaveTextContent("4 - 5");
+      expect(getPagination()).toHaveTextContent("5 - 7");
 
       // test previous page button
       userEvent.click(getPreviousPageButton());
       await waitFor(() => {
         expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
       });
-      expect(getPaginationTotal()).toHaveTextContent("5");
+      expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
-      expect(getPagination()).toHaveTextContent("1 - 3");
+      expect(getPagination()).toHaveTextContent("1 - 4");
     });
   });
 
   describe("filtering search results with the sidebar", () => {
     it.each(TEST_SEARCH_RESULTS)(
-      "should reload with filtered searches when type=$model on the right sidebar is clicked without changing URL",
+      "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
       async ({ model, name }) => {
         const { history } = await setup({
           searchText: "Test",
         });
 
-        let url = history.getCurrentLocation();
-        const { pathname: prevPathname, search: prevSearch } = url ?? {};
+        userEvent.click(screen.getByTestId("sidebar-filter-dropdown-button"));
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("loading-spinner"),
+          ).not.toBeInTheDocument();
+        });
 
-        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
-        expect(sidebarItems).toHaveLength(10);
-        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
-
-        const sidebarItem = screen.getByText(SIDEBAR_NAMES[model]);
-        userEvent.click(sidebarItem);
-        url = history.getCurrentLocation();
-        const { pathname, search } = url ?? {};
-        expect(pathname).toEqual(prevPathname);
-        expect(search).toEqual(prevSearch);
-
-        const searchResultItem = await screen.findByTestId(
-          "search-result-item",
+        const popover = within(screen.getByTestId("popover"));
+        userEvent.click(
+          popover.getByRole("checkbox", {
+            name: TYPE_FILTER_LABELS[model],
+          }),
         );
-        expect(searchResultItem).toBeInTheDocument();
-        expect(searchResultItem).toHaveTextContent(name);
+        userEvent.click(popover.getByRole("button", { name: "Apply filters" }));
+
+        const url = history.getCurrentLocation();
+        expect(url.query.type).toEqual(model);
       },
     );
   });
@@ -205,11 +200,15 @@ describe("SearchApp", () => {
           name,
         );
 
-        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
+        const fieldSetContent = within(screen.getByTestId("field-set-content"));
 
-        expect(sidebarItems).toHaveLength(2);
-        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
-        expect(sidebarItems[1]).toHaveTextContent(SIDEBAR_NAMES[model]);
+        expect(
+          fieldSetContent.getByText(TYPE_FILTER_LABELS[model]),
+        ).toBeInTheDocument();
+
+        expect(
+          fieldSetContent.getByLabelText("close icon"),
+        ).toBeInTheDocument();
       },
     );
   });

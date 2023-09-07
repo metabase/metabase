@@ -1,70 +1,56 @@
 import {
+  createAction,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  popover,
   resetSnowplow,
   restore,
+  setActionsEnabledForDB,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createMetric,
-  createSegment,
-} from "e2e/support/helpers/e2e-table-metadata-helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const typeFilters = [
   {
     label: "Question",
-    sidebarLabel: "Questions",
     filterName: "card",
     resultInfoText: "Saved question in",
   },
   {
     label: "Dashboard",
-    sidebarLabel: "Dashboards",
     filterName: "dashboard",
     resultInfoText: "Dashboard in",
   },
   {
     label: "Collection",
-    sidebarLabel: "Collections",
     filterName: "collection",
     resultInfoText: "Collection",
   },
   {
-    label: "Metric",
-    sidebarLabel: "Metrics",
-    filterName: "metric",
-    resultInfoText: "Metric for",
-  },
-  {
-    label: "Segment",
-    sidebarLabel: "Segments",
-    filterName: "segment",
-    resultInfoText: "Segment of",
-  },
-  {
     label: "Table",
-    sidebarLabel: "Raw Tables",
     filterName: "table",
     resultInfoText: "Table in",
   },
   {
     label: "Database",
-    sidebarLabel: "Databases",
     filterName: "database",
     resultInfoText: "Database",
   },
   {
     label: "Model",
-    sidebarLabel: "Models",
     filterName: "dataset",
     resultInfoText: "Model in",
   },
+  {
+    label: "Action",
+    filterName: "action",
+  },
 ];
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -136,31 +122,31 @@ describe("scenarios > search", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
 
-      createSegment({
-        name: "Segment",
-        description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-        },
-      });
-
-      createMetric({
-        name: "Metric",
-        description: "Sum of orders subtotal",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-      });
+      setActionsEnabledForDB(SAMPLE_DB_ID);
 
       cy.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
         dataset: true,
+      }).then(({ body: { id } }) => {
+        createAction({
+          name: "Update orders quantity",
+          description: "Set orders quantity to the same value",
+          type: "query",
+          model_id: id,
+          database_id: SAMPLE_DB_ID,
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            native: {
+              query: "UPDATE orders SET quantity = quantity",
+            },
+            type: "native",
+          },
+          parameters: [],
+          visualization_settings: {
+            type: "button",
+          },
+        });
       });
     });
 
@@ -176,27 +162,23 @@ describe("scenarios > search", () => {
       });
 
       it("should hydrate search with search text and filter", () => {
-        const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
+        const { filterName, resultInfoText } = typeFilters[0];
         cy.visit(`/search?q=orders&type=${filterName}`);
         cy.wait("@search");
 
         getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-bar-filter-button").should(
-          "have.attr",
-          "data-is-filtered",
-          "true",
-        );
 
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
         });
 
-        cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-        cy.findByTestId("type-sidebar").within(() => {
-          cy.findByText(sidebarLabel).should("exist");
-        });
         cy.findAllByTestId("result-link-info-text").each(result => {
           cy.wrap(result).should("contain.text", resultInfoText);
+        });
+
+        cy.findByTestId("type-search-filter").within(() => {
+          cy.findByText("Question").should("exist");
+          cy.findByLabelText("close icon").should("exist");
         });
       });
     });
@@ -207,11 +189,6 @@ describe("scenarios > search", () => {
 
         cy.visit("/");
 
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
         getSearchBar().click().type("{enter}");
 
         cy.wait("@getRecentViews");
@@ -224,11 +201,7 @@ describe("scenarios > search", () => {
 
       it("should render full page search when search text is present and user clicks 'Enter'", () => {
         cy.visit("/");
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
+
         getSearchBar().click().type("orders{enter}");
         cy.wait("@search");
 
@@ -238,58 +211,57 @@ describe("scenarios > search", () => {
 
         cy.location().should(loc => {
           expect(loc.pathname).to.eq("/search");
-          expect(loc.search).to.eq("?q=orders&type=card");
+          expect(loc.search).to.eq("?q=orders");
         });
       });
     });
 
     describe("search filters", () => {
-      typeFilters.forEach(
-        ({ label, sidebarLabel, filterName, resultInfoText }) => {
+      describe("type filters", () => {
+        typeFilters.forEach(({ label, resultInfoText }) => {
           it(`should filter results by ${label}`, () => {
             cy.visit("/");
-
-            cy.findByTestId("search-bar-filter-button").click();
-            getSearchModalContainer().within(() => {
-              cy.findByText(label).click();
-              cy.findByText("Apply all filters").click();
-            });
 
             getSearchBar().clear().type("e{enter}");
             cy.wait("@search");
 
-            cy.url().should("include", `type=${filterName}`);
+            cy.findByTestId("type-search-filter").click();
+            popover().within(() => {
+              cy.findByText(label).click();
+              cy.findByText("Apply filters").click();
+            });
 
             cy.findAllByTestId("result-link-info-text").each(result => {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            });
-
-            cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-            cy.findByTestId("type-sidebar").within(() => {
-              cy.findByText(sidebarLabel).should("exist");
+              if (resultInfoText) {
+                cy.wrap(result).should("contain.text", resultInfoText);
+              }
             });
           });
-        },
-      );
-
-      it("should not filter results when `Clear all filters` is applied", () => {
-        cy.visit("/search?q=order&type=card");
-        cy.wait("@search");
-
-        cy.findAllByTestId("search-result-item-name");
-        cy.findByTestId("search-bar-filter-button").click();
-
-        getSearchModalContainer().within(() => {
-          cy.findByText("Clear all filters").click();
         });
 
-        getSearchBar().clear().type("e{enter}");
-        cy.wait("@search");
+        it("should remove type filter when `X` is clicked on search filter", () => {
+          const { filterName } = typeFilters[0];
+          cy.visit(`/search?q=orders&type=${filterName}`);
+          cy.wait("@search");
 
-        cy.findAllByTestId("type-sidebar-item").should(
-          "have.length",
-          typeFilters.length + 1,
-        );
+          cy.findByTestId("type-search-filter").within(() => {
+            cy.findByText("Question").should("exist");
+            cy.findByLabelText("close icon").click();
+            cy.findByText("Question").should("not.exist");
+            cy.findByText("Content type").should("exist");
+          });
+
+          cy.url().should("not.contain", "type");
+
+          // Check that we're getting elements other than Questions by checking the
+          // result text and checking if there's more than one result-link-info-text text
+          cy.findAllByTestId("result-link-info-text").then($elements => {
+            const textContent = new Set(
+              $elements.toArray().map(el => el.textContent),
+            );
+            expect(textContent.size).to.be.greaterThan(1);
+          });
+        });
       });
     });
   });
@@ -327,8 +299,4 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
-}
-
-function getSearchModalContainer() {
-  return cy.findByTestId("search-filter-modal-container");
 }
