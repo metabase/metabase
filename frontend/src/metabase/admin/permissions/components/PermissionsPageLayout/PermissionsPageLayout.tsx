@@ -8,11 +8,11 @@ import { withRouter } from "react-router";
 
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
 import type { PermissionsGraph } from "metabase-types/api";
-import { useLeaveConfirmation } from "metabase/hooks/use-leave-confirmation";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   FullHeightContainer,
@@ -86,12 +86,6 @@ function PermissionsPageLayout({
     dispatch(toggleHelpReference());
   }, [dispatch]);
 
-  const beforeLeaveConfirmation = useLeaveConfirmation({
-    router,
-    route,
-    isEnabled: isDirty,
-  });
-
   return (
     <PermissionPageRoot>
       <PermissionPageContent>
@@ -117,7 +111,11 @@ function PermissionsPageLayout({
           </ModalContent>
         </Modal>
 
-        {beforeLeaveConfirmation}
+        <LeaveConfirmationModal
+          router={router}
+          route={route}
+          isEnabled={isDirty}
+        />
 
         <TabsContainer className="border-bottom">
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

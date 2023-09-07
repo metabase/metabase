@@ -6,9 +6,8 @@ import { t } from "ttag";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
-
-import useBeforeUnload from "./use-before-unload";
 
 interface Props {
   router: InjectedRouter;
@@ -16,7 +15,7 @@ interface Props {
   isEnabled: boolean;
 }
 
-export const useLeaveConfirmation = ({ router, route, isEnabled }: Props) => {
+export const LeaveConfirmationModal = ({ router, route, isEnabled }: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
