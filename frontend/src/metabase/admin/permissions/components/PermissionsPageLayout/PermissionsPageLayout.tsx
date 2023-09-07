@@ -13,7 +13,6 @@ import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
 import type { PermissionsGraph } from "metabase-types/api";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useLeaveConfirmation } from "metabase/hooks/use-leave-confirmation";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -96,7 +95,6 @@ function PermissionsPageLayout({
     onConfirm: navigateToLocation,
     isEnabled: isDirty,
   });
-  useBeforeUnload(isDirty);
 
   return (
     <PermissionPageRoot>

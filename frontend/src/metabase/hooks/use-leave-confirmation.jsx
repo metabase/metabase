@@ -4,6 +4,8 @@ import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
 
+import useBeforeUnload from "./use-before-unload";
+
 export const useLeaveConfirmation = ({
   router,
   route,
@@ -13,6 +15,8 @@ export const useLeaveConfirmation = ({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [nextLocation, setNextLocation] = useState(null);
+
+  useBeforeUnload(isEnabled);
 
   useEffect(() => {
     const removeLeaveHook = router.setRouteLeaveHook(route, location => {
