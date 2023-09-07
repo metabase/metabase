@@ -123,7 +123,7 @@
    (when (lib.util/first-stage? query stage-number)
      (when-let [card-id (lib.util/source-card-id query)]
        (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
-         (m/find-first #(= (:id %) field-id)
+         (m/find-first #(clojure.core/= (:id %) field-id)
                        card-metadata))))
    (try
      (lib.metadata/field query field-id)
@@ -133,13 +133,13 @@
 (mu/defn ^:private plausible-matches-for-name :- [:sequential lib.metadata/ColumnMetadata]
   [ref-name :- :string
    columns  :- [:sequential lib.metadata/ColumnMetadata]]
-  (or (not-empty (filter #(= (:lib/desired-column-alias %) ref-name) columns))
-      (filter #(= (:name %) ref-name) columns)))
+  (or (not-empty (filter #(clojure.core/= (:lib/desired-column-alias %) ref-name) columns))
+      (filter #(clojure.core/= (:name %) ref-name) columns)))
 
 (mu/defn ^:private plausible-matches-for-id :- [:sequential lib.metadata/ColumnMetadata]
   [ref-id :- :int
    columns  :- [:sequential lib.metadata/ColumnMetadata]]
-  (filter #(= (:id %) ref-id) columns))
+  (filter #(clojure.core/= (:id %) ref-id) columns))
 
 (mu/defn ^:private disambiguate-matches :- [:maybe lib.metadata/ColumnMetadata]
   [a-ref   :- ::lib.schema.ref/ref
@@ -147,11 +147,11 @@
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
     (if join-alias
       ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
-      (m/find-first #(= (:source-alias %) join-alias) columns)
+      (m/find-first #(clojure.core/= (:source-alias %) join-alias) columns)
       ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
       (if-let [no-alias (not-empty (remove :source-alias columns))]
         ;; At least 1 matching column with no :source-alias.
-        (if (= (count no-alias) 1)
+        (if (clojure.core/= (count no-alias) 1)
           (first no-alias)
           ;; More than 1, it's ambiguous.
           (throw (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
@@ -183,8 +183,8 @@
    (case ref-kind
      ;; Aggregations are referenced by the UUID of the column being aggregated.
      :aggregation  (->> columns
-                        (filter #(= (:lib/source %) :source/aggregations))
-                        (filter #(= (:lib/source-uuid %) ref-id))
+                        (filter #(clojure.core/= (:lib/source %) :source/aggregations))
+                        (filter #(clojure.core/= (:lib/source-uuid %) ref-id))
                         first)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression

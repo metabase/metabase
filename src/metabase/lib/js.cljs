@@ -487,8 +487,13 @@
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)
+        ret (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)]
+    (js/console.log "viz cols query" a-query)
+    (js/console.log "viz cols viz  " vis-columns)
+    (js/console.log "viz cols ret  " ret-columns)
+    (js/console.log "viz cols msc  " ret)
+    (to-array ret)))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."

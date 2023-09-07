@@ -67,6 +67,10 @@ export const getQueryColumnSettingItems = (
       if (datasetIndex >= 0) {
         settingItems.push({
           enabled: columnSetting.enabled,
+          joined: window.$CLJS.cljs.core._EQ_(
+            window.$CLJS.cljs.core.keyword("lib", "source").call(null, metadataColumns[metadataIndex]),
+            window.$CLJS.cljs.core.keyword("source", "joins"),
+          ),
           metadataColumn: metadataColumns[metadataIndex],
           datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
@@ -111,7 +115,7 @@ export const getAdditionalMetadataColumns = (
 ): Lib.ColumnMetadata[] => {
   const additionalColumns = new Set(metadataColumns);
 
-  columnSettingItems.forEach(({ metadataColumn }) => {
+  columnSettingItems.forEach(({ enabled, metadataColumn }) => {
     if (metadataColumn) {
       additionalColumns.delete(metadataColumn);
     }
