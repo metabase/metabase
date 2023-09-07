@@ -26,13 +26,13 @@
 (deftest diff-indicies-test
   (testing "collections are the same"
     (is (= #{}
-           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a :b :c]))))
+           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a :b :c]))))
   (testing "one index is different"
     (is (= #{1}
-           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c])))))
+           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a 100 :c])))))
 
-(defn- sum-rows [replaced-indecies rows]
-  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
+(defn- sum-rows [replaced-indices rows]
+  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indices (fn
                                                                                  ([] [])
                                                                                  ([acc] acc)
                                                                                  ([acc row] (conj acc row))))]

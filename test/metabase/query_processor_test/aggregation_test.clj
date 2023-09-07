@@ -152,10 +152,14 @@
 (deftest ^:parallel cumulative-sum-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cum_sum w/o breakout should be treated the same as sum"
-      (is (= [[120]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]})))))))
+      (let [result (mt/run-mbql-query users
+                     {:aggregation [[:cum-sum $id]]})]
+        (is (=? [{:display_name "Cumulative sum of ID",
+                  :source :aggregation}]
+                (-> result :data :cols)))
+        (is (= [[120]]
+               (mt/formatted-rows [int]
+                 result)))))))
 
 (deftest ^:parallel cumulative-sum-test-2
   (mt/test-drivers (mt/normal-drivers)
