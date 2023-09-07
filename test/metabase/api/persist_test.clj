@@ -60,7 +60,7 @@
       (testing "Should get info when the ID exists"
         (is (=? {:active true
                   :card_id (u/the-id model)
-                  :id (u/the-id model)
+                  :id (u/the-id pmodel)
                   :state "persisted"}
                  (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pmodel)))))))))
 
