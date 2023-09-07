@@ -48,7 +48,12 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onUpdateTable: (table: Table, name: string, value: unknown) => void;
+  onUpdateTable: (
+    table: Table,
+    name: string,
+    value: unknown,
+    skipMerge?: boolean,
+  ) => void;
 }
 
 type MetadataTableProps = OwnProps &
@@ -91,7 +96,7 @@ const MetadataTable = ({
 
   const handleChangeVisibility = useCallback(
     (visibility: TableVisibilityType) => {
-      onUpdateTable(table, "visibility_type", visibility);
+      onUpdateTable(table, "visibility_type", visibility, true);
     },
     [table, onUpdateTable],
   );

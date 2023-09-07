@@ -67,7 +67,12 @@ export default function (state = [], { type, payload, error }) {
 
     const previous = state[state.length - 1];
     // if last undo was same verb then merge them
-    if (previous && undo.verb != null && undo.verb === previous.verb) {
+    if (
+      !undo.skipMerge &&
+      previous &&
+      undo.verb != null &&
+      undo.verb === previous.verb
+    ) {
       return state.slice(0, -1).concat({
         // use new undo so the timeout is extended
         ...undo,

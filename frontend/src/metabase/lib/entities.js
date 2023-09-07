@@ -658,8 +658,8 @@ export function combineEntities(entities) {
 
 // OBJECT ACTION DECORATORS
 
-export const notify = (opts = {}, subject, verb) =>
-  merge({ notify: { subject, verb, undo: false } }, opts || {});
+export const notify = (opts = {}, subject, verb, skipMerge = false) =>
+  merge({ notify: { subject, verb, undo: false, skipMerge } }, opts || {});
 
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});

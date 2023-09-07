@@ -74,11 +74,11 @@ const Tables = createEntity({
 
   // ACTION CREATORS
   objectActions: {
-    updateProperty(entityObject, name, value, opts) {
+    updateProperty(entityObject, name, value, skipMerge, opts) {
       return Tables.actions.update(
         entityObject,
         { [name]: value },
-        notify(opts, `Table ${name}`, t`updated`),
+        notify(opts, `Table ${name}`, t`updated`, skipMerge),
       );
     },
     // loads `query_metadata` for a single table
