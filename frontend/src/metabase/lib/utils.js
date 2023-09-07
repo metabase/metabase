@@ -150,7 +150,7 @@ const MetabaseUtils = {
     };
 
     const regex =
-      /v?(?<ossOrEE>\d+)\.?(?<major>\d+)\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+      /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
     const {
       ossOrEE,
       major = 0,

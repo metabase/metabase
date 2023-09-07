@@ -2,6 +2,11 @@ import MetabaseUtils from "metabase/lib/utils";
 
 describe("utils", () => {
   describe("versionToNumericComponents", () => {
+    it("should understand v1 and use defaults for the rest of fields", () => {
+      expect(MetabaseUtils.versionToNumericComponents("v1")).toStrictEqual([
+        1, 0, 0, 0, 0, 0,
+      ]);
+    });
     it("should pad to 4 numeric components", () => {
       expect(
         MetabaseUtils.versionToNumericComponents("v1.2-BETA1"),
