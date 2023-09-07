@@ -17,8 +17,8 @@
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
-   [metabase.util.memoize :as memoize]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
