@@ -12,13 +12,15 @@ export const getLatestEligibleReleaseNotes = ({
   currentVersion,
   lastAcknowledgedVersion,
   isEmbedded = false,
+  isWhiteLabeling = false,
 }: {
   versionInfo: VersionInfo | null;
-  currentVersion?: string;
+  currentVersion: string | undefined;
   lastAcknowledgedVersion: string | null;
-  isEmbedded?: boolean;
+  isEmbedded: boolean;
+  isWhiteLabeling: boolean;
 }): VersionInfoRecord | undefined => {
-  if (isEmbedded || currentVersion === undefined) {
+  if (isWhiteLabeling || isEmbedded || currentVersion === undefined) {
     return undefined;
   }
 
