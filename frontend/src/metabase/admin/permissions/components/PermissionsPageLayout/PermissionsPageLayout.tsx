@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import type { Route, Router } from "react-router";
+import type { Route, InjectedRouter } from "react-router";
 import { withRouter } from "react-router";
 
 import Button from "metabase/core/components/Button";
@@ -46,8 +46,8 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError: () => void;
   navigateToLocation: (location: string) => void;
-  router: typeof Router;
-  route: typeof Route;
+  router: InjectedRouter;
+  route: Route;
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;
