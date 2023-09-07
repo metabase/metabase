@@ -4,8 +4,8 @@
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [metabase.api.common :as api]
-   [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.activity :as activity]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -13,8 +13,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as m]
-   [toucan2.core :as t2]
-   [metabase.models.activity :as activity]))
+   [toucan2.core :as t2]))
 
 (doto :model/AuditLog
   (derive :metabase/model))
@@ -55,7 +54,8 @@
 (defn record-event!
   "Record an event in the Audit Log."
   [topic object]
-  (let [details (model-details object topic)]
+  (let [topic   (keyword (name topic))
+        details (model-details object topic)]
     (t2/insert! :model/AuditLog
                 {:topic    (name topic)
                  :details  details
