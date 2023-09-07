@@ -191,29 +191,29 @@
           schema
           (partition 2 constraints)))
 
-(def Rule
+(def DashboardTemplate
   "Rules defining an automagic dashboard."
   (constrained-all
-   {(s/required-key :title)             LocalizedString
-    (s/required-key :rule)              s/Str
-    (s/required-key :specificity)       s/Int
-    (s/optional-key :cards)             [Card]
-    (s/optional-key :dimensions)        [Dimension]
-    (s/optional-key :applies_to)        AppliesTo
-    (s/optional-key :transient_title)   LocalizedString
-    (s/optional-key :description)       LocalizedString
-    (s/optional-key :metrics)           [Metric]
-    (s/optional-key :filters)           [Filter]
-    (s/optional-key :groups)            Groups
-    (s/optional-key :indepth)           [s/Any]
-    (s/optional-key :dashboard_filters) [s/Str]}
-   valid-metrics-references?            (deferred-trs "Valid metrics references")
-   valid-filters-references?            (deferred-trs "Valid filters references")
-   valid-group-references?              (deferred-trs "Valid group references")
-   valid-order-by-references?           (deferred-trs "Valid order_by references")
-   valid-dashboard-filters-references?  (deferred-trs "Valid dashboard filters references")
-   valid-dimension-references?          (deferred-trs "Valid dimension references")
-   valid-breakout-dimension-references? (deferred-trs "Valid card dimension references")))
+    {(s/required-key :title)                   LocalizedString
+     (s/required-key :dashboard-template-name) s/Str
+     (s/required-key :specificity)             s/Int
+     (s/optional-key :cards)                   [Card]
+     (s/optional-key :dimensions)              [Dimension]
+     (s/optional-key :applies_to)              AppliesTo
+     (s/optional-key :transient_title)         LocalizedString
+     (s/optional-key :description)             LocalizedString
+     (s/optional-key :metrics)                 [Metric]
+     (s/optional-key :filters)                 [Filter]
+     (s/optional-key :groups)                  Groups
+     (s/optional-key :indepth)                 [s/Any]
+     (s/optional-key :dashboard_filters)       [s/Str]}
+    valid-metrics-references? (deferred-trs "Valid metrics references")
+    valid-filters-references? (deferred-trs "Valid filters references")
+    valid-group-references? (deferred-trs "Valid group references")
+    valid-order-by-references? (deferred-trs "Valid order_by references")
+    valid-dashboard-filters-references? (deferred-trs "Valid dashboard filters references")
+    valid-dimension-references? (deferred-trs "Valid dimension references")
+    valid-breakout-dimension-references? (deferred-trs "Valid card dimension references")))
 
 (defn- with-defaults
   [defaults]
@@ -233,8 +233,8 @@
 
 (def ^:private rules-validator
   (sc/coercer!
-   Rule
-   {[s/Str]         u/one-or-many
+    DashboardTemplate
+    {[s/Str]         u/one-or-many
     [OrderByPair]   u/one-or-many
     OrderByPair     (fn [x]
                       (if (string? x)
@@ -287,7 +287,7 @@
 (defn- make-rule
   [entity-type r]
   (-> r
-      (assoc :rule        entity-type
+      (assoc :dashboard-template-name entity-type
              :specificity 0)
       (update :applies_to #(or % entity-type))
       rules-validator
@@ -322,7 +322,7 @@
                       (u.files/with-open-path-to-resource [path rules-dir]
                         (into {} (load-rule-dir path)))))
 
-(defn get-rules
+(defn get-dashboard-templates
   "Get all rules with prefix `prefix`.
    prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
    table/TransactionTable/ByCountry.yaml"
@@ -331,7 +331,7 @@
        (get-in @rules)
        (keep (comp ::leaf val))))
 
-(defn get-rule
+(defn get-dashboard-template
   "Get rule at path `path`."
   [path]
   (get-in @rules (concat path [::leaf])))
@@ -340,14 +340,14 @@
   [[path rule]]
   (let [strings (atom [])]
     ((spec/run-checker
-      (fn [s params]
+       (fn [s params]
         (let [walk (spec/checker (s/spec s) params)]
           (fn [x]
             (when (= LocalizedString s)
               (swap! strings conj x))
             (walk x))))
-      false
-      Rule)
+       false
+       DashboardTemplate)
      rule)
     (map vector (distinct @strings) (repeat path))))
 

@@ -39,18 +39,18 @@
 (def ^:private Prefix
   (su/with-api-error-message
       (s/pred (fn [prefix]
-                (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
+                (some #(not-empty (rules/get-dashboard-templates [% prefix])) ["table" "metric" "field"])))
     (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
       (s/pred (fn [rule]
                 (some (fn [toplevel]
-                        (some (comp rules/get-rule
+                        (some (comp rules/get-dashboard-template
                                     (fn [prefix]
                                       [toplevel prefix rule])
                                     :rule)
-                              (rules/get-rules [toplevel])))
+                              (rules/get-dashboard-templates [toplevel])))
                       ["table" "metric" "field"])))
     (deferred-tru "invalid value for rule name")))
 

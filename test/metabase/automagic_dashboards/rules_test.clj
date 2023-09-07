@@ -22,9 +22,9 @@
                "metrics"
                "fields"]]
       (testing s
-        (is (every? some? (rules/get-rules [s]))))))
+        (is (every? some? (rules/get-dashboard-templates [s]))))))
 
-  (is (some? (rules/get-rules ["table" "GenericTable" "ByCountry"]))))
+  (is (some? (rules/get-dashboard-templates ["table" "GenericTable" "ByCountry"]))))
 
 (deftest ^:parallel dimension-form?-test
   (are [x expected] (= expected
