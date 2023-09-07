@@ -327,12 +327,17 @@
 
 (declare canonicalize-mbql-clauses)
 
+(defn normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  [clause]
+  (-> clause normalize-tokens canonicalize-mbql-clauses))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
+      (m/update-existing :field_ref normalize-field-ref)
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query

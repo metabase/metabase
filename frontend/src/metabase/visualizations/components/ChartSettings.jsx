@@ -125,8 +125,11 @@ class ChartSettings extends Component {
     this.props.onChange({ ...originalCardSettings, ...clickBehaviorSettings });
   };
 
-  handleChangeSettings = changedSettings => {
-    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
+  handleChangeSettings = (changedSettings, question) => {
+    this.props.onChange(
+      updateSettings(this._getSettings(), changedSettings),
+      question,
+    );
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {

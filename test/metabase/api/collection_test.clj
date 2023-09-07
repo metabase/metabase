@@ -625,17 +625,18 @@
           (with-some-children-of-collection collection
             (is (partial= ()
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "no_models")))))
             (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "dashboard")))))
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
                                 :collection_preview false,           :display     "table", :entity_id true}
                                default-item
                                (assoc :fully_parametrized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                           (mt/boolean-ids-and-timestamps
-                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))))
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")
+                                                        :models "dashboard" :models "card")))))))))))
 
 (deftest collection-items-archived-parameter-test
   (testing "GET /api/collection/:id/items"
@@ -773,7 +774,7 @@
                                   :user_id   passuser-id}
                          :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
         (is (= ["pass" "pass"]
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items") :models ["dashboard" "card"])
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
 
@@ -786,7 +787,8 @@
                                                                :authority_level "official"}
                                Card       _                   {:name "card" :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card&models=collection"))
+        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")
+                                               :models ["dashboard" "card" "collection"])
                          :data)]
           (is (= #{{:name "card"}
                    {:name "dash"}
@@ -804,21 +806,15 @@
                                Card       _                   {:name "card" :collection_id collection-id}
                                Card       _                   {:name "dataset" :dataset true :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (->> "/items?models=dashboard&models=card&models=collection"
-                         (str "collection/" collection-id)
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                 :models ["dashboard" "card" "collection"]))]
           (is (= #{"card" "dash" "subcollection"}
                  (into #{} (map :name) items))))
-        (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
-                         (str "collection/" collection-id)
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                  :models ["dashboard" "card" "collection" "dataset"]))]
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))
-        (let [items (->> (str "collection/" collection-id "/items")
-                         (mt/user-http-request :rasta :get 200)
-                         :data)]
+        (let [items (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))]
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 

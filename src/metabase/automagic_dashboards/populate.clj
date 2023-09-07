@@ -334,7 +334,7 @@
   "Merge dashboards `dashboard` into dashboard `target`."
   ([target dashboard] (merge-dashboards target dashboard {}))
   ([target dashboard {:keys [skip-titles?]}]
-   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+   (let [[parameters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
                                              :ordered_cards
                                              (map #(+ (:row %) (:size_y %)))
@@ -354,7 +354,7 @@
                                                          (for [mapping parameter-mappings]
                                                            (assoc mapping :card_id card-id)))))))]
      (-> target
-         (assoc :parameters paramters)
+         (assoc :parameters parameters)
          (cond->
            (not skip-titles?)
            (add-text-card {:width                  grid-width

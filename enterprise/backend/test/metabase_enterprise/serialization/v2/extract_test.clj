@@ -114,6 +114,7 @@
           (is (= 1 (count dbs)))
           (is (every? :details dbs)))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection {coll-id    :id
