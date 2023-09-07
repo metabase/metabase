@@ -138,8 +138,47 @@
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
 
-(methodical/defmethod t2.conn/do-with-transaction :around java.sql.Connection
-  [connection options f]
-  ;; Do not deadlock if using a Connection in a different thread inside of a transaction -- see
-  ;; https://github.com/seancorfield/next-jdbc/issues/244.
-  (next-method connection (assoc options :nested-transaction-rule :ignore) f))
+(defn- do-transaction [^java.sql.Connection connection f]
+  (letfn [(thunk []
+            (let [savepoint (.setSavepoint connection)]
+              (try
+                (f connection)
+                (.commit connection)
+                (catch Throwable e
+                  (.rollback connection savepoint)
+                  (throw e)))))]
+    ;; optimization: don't set and unset autocommit if it's already false
+    (if (.getAutoCommit connection)
+      (try
+        (.setAutoCommit connection false)
+        (thunk)
+        (finally
+          (.setAutoCommit connection true)))
+      (thunk))))
+
+(def ^:private ^:dynamic *in-transaction* false)
+
+(methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
+  "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
+  https://github.com/seancorfield/next-jdbc/issues/244. Use `Savepoint`s because MySQL only supports nested
+  transactions when done this way.
+
+  See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929"
+  [^java.sql.Connection connection {:keys [nested-transaction-rule], :as options} f]
+  (cond
+    (and *in-transaction*
+         (= nested-transaction-rule :ignore))
+    (f connection)
+
+    (and *in-transaction*
+         (= nested-transaction-rule :prohibit))
+    (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
+                    {:options options}))
+
+    ;; optimization: don't introduce an unnecessary call to `binding` if [[*in-transaction*]] is already truthy
+    *in-transaction*
+    (do-transaction connection f)
+
+    :else
+    (binding [*in-transaction* true]
+      (do-transaction connection f))))
