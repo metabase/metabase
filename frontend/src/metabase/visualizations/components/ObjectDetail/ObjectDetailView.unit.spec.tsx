@@ -273,7 +273,7 @@ function setup(
   );
 }
 
-describe("Object Detail", () => {
+describe("ObjectDetailView", () => {
   it("renders an object detail component", () => {
     setup({ question: mockQuestion });
 
