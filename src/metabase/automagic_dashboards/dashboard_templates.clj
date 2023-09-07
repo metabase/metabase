@@ -1,4 +1,4 @@
-(ns metabase.automagic-dashboards.rules
+(ns metabase.automagic-dashboards.dashboard-templates
   "Validation, transformation to canonical form, and loading of heuristics."
   (:gen-class)
   (:require
@@ -170,9 +170,9 @@
           (all-references :order_by cards)))
 
 (defn- valid-dimension-references?
-  [{:keys [dimensions] :as rule}]
+  [{:keys [dimensions] :as dashboard-template}]
   (every? (some-fn (identifiers dimensions) (comp table-type? ->entity))
-          (collect-dimensions rule)))
+          (collect-dimensions dashboard-template)))
 
 (defn- valid-dashboard-filters-references?
   [{:keys [dimensions dashboard_filters]}]
@@ -192,7 +192,7 @@
           (partition 2 constraints)))
 
 (def DashboardTemplate
-  "Rules defining an automagic dashboard."
+  "Specification defining an automagic dashboard."
   (constrained-all
     {(s/required-key :title)                   LocalizedString
      (s/required-key :dashboard-template-name) s/Str
@@ -231,7 +231,7 @@
         x
         {identifier {k definition}}))))
 
-(def ^:private rules-validator
+(def ^:private dashboard-template-validator
   (sc/coercer!
     DashboardTemplate
     {[s/Str]         u/one-or-many
@@ -275,23 +275,25 @@
     LocalizedString (fn [s]
                       (i18n/->UserLocalizedString s nil {}))}))
 
-(def ^:private rules-dir "automagic_dashboards/")
+(def ^:private dashboard-templates-dir "automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file->entity-type
   (comp (partial re-find #".+(?=\.yaml$)") str (memfn ^Path getFileName)))
 
 (defn- specificity
-  [rule]
-  (transduce (map (comp count ancestors)) + (:applies_to rule)))
+  [dashboard-template]
+  (transduce (map (comp count ancestors)) + (:applies_to dashboard-template)))
 
-(defn- make-rule
+(defn- make-dashboard-template
   [entity-type r]
   (-> r
       (assoc :dashboard-template-name entity-type
              :specificity 0)
       (update :applies_to #(or % entity-type))
-      rules-validator
-      (as-> rule (assoc rule :specificity (specificity rule)))))
+      dashboard-template-validator
+      (as-> dashboard-template
+            (assoc dashboard-template
+              :specificity (specificity dashboard-template)))))
 
 (defn- trim-trailing-slash
   [s]
@@ -299,45 +301,46 @@
     (subs s 0 (-> s count dec))
     s))
 
-(defn- load-rule-dir
-  ([dir] (load-rule-dir dir [] {}))
-  ([dir path rules]
+(defn- load-dashboard-template-dir
+  ([dir] (load-dashboard-template-dir dir [] {}))
+  ([dir path dashboard-templates]
    (with-open [ds (Files/newDirectoryStream dir)]
      (reduce
-      (fn [rules ^Path f]
+      (fn [acc ^Path f]
         (let [entity-type (file->entity-type f)]
           (cond
             (Files/isDirectory f (into-array java.nio.file.LinkOption []))
-            (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
+            (load-dashboard-template-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) acc)
 
             entity-type
-            (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load (partial make-rule entity-type) f))
+            (assoc-in acc (concat path [entity-type ::leaf]) (yaml/load (partial make-dashboard-template entity-type) f))
 
             :else
-            rules)))
-      rules
+            acc)))
+      dashboard-templates
       ds))))
 
-(def ^:private rules (delay
-                      (u.files/with-open-path-to-resource [path rules-dir]
-                        (into {} (load-rule-dir path)))))
+(def ^:private dashboard-templates
+  (delay
+    (u.files/with-open-path-to-resource [path dashboard-templates-dir]
+                                        (into {} (load-dashboard-template-dir path)))))
 
 (defn get-dashboard-templates
-  "Get all rules with prefix `prefix`.
+  "Get all dashboard templates with prefix `prefix`.
    prefix is greedy, so [\"table\"] will match table/TransactionTable.yaml, but not
    table/TransactionTable/ByCountry.yaml"
   [prefix]
   (->> prefix
-       (get-in @rules)
+       (get-in @dashboard-templates)
        (keep (comp ::leaf val))))
 
 (defn get-dashboard-template
-  "Get rule at path `path`."
+  "Get dashboard template at path `path`."
   [path]
-  (get-in @rules (concat path [::leaf])))
+  (get-in @dashboard-templates (concat path [::leaf])))
 
 (defn- extract-localized-strings
-  [[path rule]]
+  [[path dashboard-template]]
   (let [strings (atom [])]
     ((spec/run-checker
        (fn [s params]
@@ -348,7 +351,7 @@
             (walk x))))
        false
        DashboardTemplate)
-     rule)
+     dashboard-template)
     (map vector (distinct @strings) (repeat path))))
 
 (defn- make-pot
@@ -357,27 +360,27 @@
        (group-by first)
        (mapcat (fn [[s ctxs]]
                  (concat (for [[_ ctx] ctxs]
-                           (format "#: resources/%s%s.yaml" rules-dir (str/join "/" ctx)))
+                           (format "#: resources/%s%s.yaml" dashboard-templates-dir (str/join "/" ctx)))
                          [(format "msgid \"%s\"\nmsgstr \"\"\n" s)])))
        (str/join "\n")))
 
-(defn- all-rules
+(defn- all-dashboard-templates
   ([]
-   (all-rules [] @rules))
-  ([path rules]
-   (when (map? rules)
+   (all-dashboard-templates [] @dashboard-templates))
+  ([path dashboard-templates]
+   (when (map? dashboard-templates)
      (mapcat (fn [[k v]]
                (if (= k ::leaf)
                  [[path v]]
-                 (all-rules (conj path k) v)))
-             rules))))
+                 (all-dashboard-templates (conj path k) v)))
+             dashboard-templates))))
 
 (defn -main
   "Entry point for Clojure CLI task `generate-automagic-dashboards-pot`. Run it with
 
     clojure -M:generate-automagic-dashboards-pot"
   [& _]
-  (->> (all-rules)
+  (->> (all-dashboard-templates)
        (mapcat extract-localized-strings)
        make-pot
        (spit "locales/metabase-automatic-dashboards.pot"))

@@ -14,7 +14,7 @@
    [medley.core :as m]
    [metabase.automagic-dashboards.filters :as filters]
    [metabase.automagic-dashboards.populate :as populate]
-   [metabase.automagic-dashboards.rules :as dashboard-templates]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.visualization-macros :as visualization]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
