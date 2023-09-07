@@ -6,7 +6,6 @@ import { push } from "react-router-redux";
 import type { Route, Router } from "react-router";
 import { withRouter } from "react-router";
 
-import type { Location } from "history";
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
@@ -81,8 +80,6 @@ function PermissionsPageLayout({
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
-  const navigateToLocation = (location: Location) =>
-    dispatch(push(location.pathname + location.hash));
   const clearSaveError = () => dispatch(clearPermissionsSaveError());
 
   const handleToggleHelpReference = useCallback(() => {
@@ -92,7 +89,6 @@ function PermissionsPageLayout({
   const beforeLeaveConfirmation = useLeaveConfirmation({
     router,
     route,
-    onConfirm: navigateToLocation,
     isEnabled: isDirty,
   });
 
