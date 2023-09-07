@@ -186,7 +186,8 @@ export type DrillThruType =
   | "drill-thru/summarize-column"
   | "drill-thru/summarize-column-by-time"
   | "drill-thru/column-filter"
-  | "drill-thru/underlying-records";
+  | "drill-thru/underlying-records"
+  | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
@@ -232,6 +233,9 @@ export type UnderlyingRecordsDrillThruInfo =
     tableName: string;
   };
 
+export type ZoomInTimeseries =
+  BaseDrillThruInfo<"drill-thru/zoom-in.timeseries">;
+
 export type DrillThruDisplayInfo =
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
@@ -244,7 +248,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnDrillThruInfo
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
-  | UnderlyingRecordsDrillThruInfo;
+  | UnderlyingRecordsDrillThruInfo
+  | ZoomInTimeseries;
 
 export interface Dimension {
   column: DatasetColumn;

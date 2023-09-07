@@ -20,6 +20,7 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 import type { StructuredQuery as StructuredQueryApi } from "metabase-types/api/query";
+import type { ZoomInTimeseries } from "metabase-lib";
 import type {
   ColumnFilterDrillThruInfo,
   DistributionDrillThruInfo,
@@ -250,162 +251,273 @@ describe("availableDrillThrus", () => {
       });
     });
 
-    // FIXME MLv2 returns distribution drill for aggregated query, which is does not match current behavior on stats
-    // eslint-disable-next-line jest/no-disabled-tests
-    describe.skip("aggregated query", () => {
-      const COLUMNS = {
-        PRODUCT_ID: createOrdersProductIdDatasetColumn({
-          source: "breakout",
-          field_ref: [
-            "field",
-            ORDERS.PRODUCT_ID,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-        }),
-
-        count: createMockColumn({
-          base_type: "type/BigInteger",
-          name: "count",
-          display_name: "Count",
-          semantic_type: "type/Quantity",
-          source: "aggregation",
-          field_ref: ["aggregation", 0],
-          effective_type: "type/BigInteger",
-        }),
-      };
-      const ROW_VALUES = {
-        PRODUCT_ID: 3,
-        count: 77,
-      };
-      const QUESTION = Question.create({
-        databaseId: SAMPLE_DB_ID,
-        tableId: ORDERS_ID,
-        metadata: SAMPLE_METADATA,
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+    describe("aggregated query", () => {
+      describe("Orders, Count, Grouped by Product ID", () => {
+        const COLUMNS = {
+          PRODUCT_ID: createOrdersProductIdDatasetColumn({
+            source: "breakout",
+            field_ref: [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
             ],
+          }),
+
+          count: createMockColumn({
+            base_type: "type/BigInteger",
+            name: "count",
+            display_name: "Count",
+            semantic_type: "type/Quantity",
+            source: "aggregation",
+            field_ref: ["aggregation", 0],
+            effective_type: "type/BigInteger",
+          }),
+        };
+        const ROW_VALUES = {
+          PRODUCT_ID: 3,
+          count: 77,
+        };
+        const QUESTION = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+          metadata: SAMPLE_METADATA,
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+              ],
+            },
           },
-        },
-      });
-
-      it.each<TestCaseConfig<keyof typeof COLUMNS>>([
-        [
-          "count",
-          [
-            {
-              type: "drill-thru/quick-filter",
-              operators: ["<", ">", "=", "≠"],
-            } as QuickFilterDrillThruInfo,
-            {
-              type: "drill-thru/underlying-records",
-              rowCount: 77,
-              tableName: "Orders",
-            } as UnderlyingRecordsDrillThruInfo,
-          ],
-        ],
-        [
-          "PRODUCT_ID",
-          [
-            {
-              type: "drill-thru/fk-filter",
-            } as FKFilterDrillThruInfo,
-            {
-              type: "drill-thru/fk-details",
-              objectId: ROW_VALUES.PRODUCT_ID,
-              "manyPks?": false,
-            } as FKDetailsDrillThruInfo,
-          ],
-        ],
-      ])("ORDERS -> %s cell click", (clickedColumnName, expectedDrills) => {
-        const { query, stageIndex, column, cellValue, row } = setup({
-          question: QUESTION,
-          clickedColumnName,
-          columns: COLUMNS,
-          rowValues: ROW_VALUES,
         });
 
-        const dimensions = row
-          .filter(
-            ({ col }) =>
-              col.source === "breakout" && col.name !== clickedColumnName,
-          )
-          .map(({ value, col }) => ({ value, column: col }));
-
-        const drills = availableDrillThrus(
-          query,
-          stageIndex,
-          column,
-          cellValue,
-          row,
-          dimensions.length ? dimensions : undefined,
-        );
-
-        expect(
-          drills.map(drill => Lib.displayInfo(query, stageIndex, drill)),
-        ).toEqual(expectedDrills);
-      });
-
-      it.each<TestCaseConfig<keyof typeof COLUMNS>>([
-        [
-          "count",
+        it.each<TestCaseConfig<keyof typeof COLUMNS>>([
           [
-            {
-              initialOp: expect.objectContaining({ short: "=" }),
-              type: "drill-thru/column-filter",
-            } as ColumnFilterDrillThruInfo,
-            {
-              directions: ["asc", "desc"],
-              type: "drill-thru/sort",
-            } as SortDrillThruInfo,
+            "count",
+            [
+              {
+                type: "drill-thru/quick-filter",
+                operators: ["<", ">", "=", "≠"],
+              } as QuickFilterDrillThruInfo,
+              {
+                type: "drill-thru/underlying-records",
+                rowCount: 77,
+                tableName: "Orders",
+              } as UnderlyingRecordsDrillThruInfo,
+            ],
           ],
-        ],
-        [
-          "PRODUCT_ID",
           [
-            {
-              initialOp: expect.objectContaining({ short: "=" }),
-              type: "drill-thru/column-filter",
-            } as ColumnFilterDrillThruInfo,
-            {
-              directions: ["asc", "desc"],
-              type: "drill-thru/sort",
-            } as SortDrillThruInfo,
+            "PRODUCT_ID",
+            [
+              {
+                type: "drill-thru/fk-filter",
+              } as FKFilterDrillThruInfo,
+              {
+                type: "drill-thru/fk-details",
+                objectId: ROW_VALUES.PRODUCT_ID,
+                "manyPks?": false,
+              } as FKDetailsDrillThruInfo,
+            ],
           ],
-        ],
-      ])("ORDERS -> %s header click", (clickedColumnName, expectedDrills) => {
-        const { query, stageIndex, column } = setup({
-          question: QUESTION,
-          clickedColumnName,
-          columns: COLUMNS,
-          rowValues: ROW_VALUES,
+        ])("ORDERS -> %s cell click", (clickedColumnName, expectedDrills) => {
+          const { query, stageIndex, column, cellValue, row } = setup({
+            question: QUESTION,
+            clickedColumnName,
+            columns: COLUMNS,
+            rowValues: ROW_VALUES,
+          });
+
+          const dimensions = row
+            .filter(
+              ({ col }) =>
+                col.source === "breakout" && col.name !== clickedColumnName,
+            )
+            .map(({ value, col }) => ({ value, column: col }));
+
+          const drills = availableDrillThrus(
+            query,
+            stageIndex,
+            column,
+            cellValue,
+            row,
+            dimensions.length ? dimensions : undefined,
+          );
+
+          expect(
+            drills.map(drill => Lib.displayInfo(query, stageIndex, drill)),
+          ).toEqual(expectedDrills);
         });
 
-        const drills = availableDrillThrus(
-          query,
-          stageIndex,
-          column,
-          undefined,
-          undefined,
-          undefined,
-        );
+        it.each<TestCaseConfig<keyof typeof COLUMNS>>([
+          [
+            "count",
+            [
+              {
+                initialOp: expect.objectContaining({ short: "=" }),
+                type: "drill-thru/column-filter",
+              } as ColumnFilterDrillThruInfo,
+              {
+                directions: ["asc", "desc"],
+                type: "drill-thru/sort",
+              } as SortDrillThruInfo,
+            ],
+          ],
+          [
+            "PRODUCT_ID",
+            [
+              {
+                initialOp: expect.objectContaining({ short: "=" }),
+                type: "drill-thru/column-filter",
+              } as ColumnFilterDrillThruInfo,
+              {
+                directions: ["asc", "desc"],
+                type: "drill-thru/sort",
+              } as SortDrillThruInfo,
+            ],
+          ],
+        ])("ORDERS -> %s header click", (clickedColumnName, expectedDrills) => {
+          const { query, stageIndex, column } = setup({
+            question: QUESTION,
+            clickedColumnName,
+            columns: COLUMNS,
+            rowValues: ROW_VALUES,
+          });
 
-        expect(
-          drills.map(drill => Lib.displayInfo(query, stageIndex, drill)),
-        ).toEqual(expectedDrills);
+          const drills = availableDrillThrus(
+            query,
+            stageIndex,
+            column,
+            undefined,
+            undefined,
+            undefined,
+          );
+
+          expect(
+            drills.map(drill => Lib.displayInfo(query, stageIndex, drill)),
+          ).toEqual(expectedDrills);
+        });
+      });
+
+      describe("Orders, Count, Grouped by Created At: Month", () => {
+        const COLUMNS = {
+          CREATED_AT: createOrdersCreatedAtDatasetColumn({
+            source: "breakout",
+            unit: "month",
+            field_ref: [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+          }),
+
+          count: createMockColumn({
+            base_type: "type/BigInteger",
+            name: "count",
+            display_name: "Count",
+            semantic_type: "type/Quantity",
+            source: "aggregation",
+            field_ref: ["aggregation", 0],
+            effective_type: "type/BigInteger",
+          }),
+        };
+        const ROW_VALUES = {
+          CREATED_AT: "2023-02-01T00:00:00+02:00",
+          count: 206,
+        };
+
+        const QUESTION = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+          metadata: SAMPLE_METADATA,
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "base-type": "type/DateTime",
+                    "temporal-unit": "month",
+                  },
+                ],
+              ],
+            },
+          },
+        });
+
+        it.each<TestCaseConfig<keyof typeof COLUMNS>>([
+          [
+            "count",
+            [
+              {
+                type: "drill-thru/quick-filter",
+                operators: ["<", ">", "=", "≠"],
+              } as QuickFilterDrillThruInfo,
+              {
+                type: "drill-thru/underlying-records",
+                rowCount: 206,
+                tableName: "Orders",
+              } as UnderlyingRecordsDrillThruInfo,
+              {
+                type: "drill-thru/zoom-in.timeseries",
+              } as ZoomInTimeseries,
+            ],
+          ],
+          [
+            "CREATED_AT",
+            [
+              {
+                type: "drill-thru/fk-filter",
+              } as FKFilterDrillThruInfo,
+            ],
+          ],
+        ])(
+          "ORDERS GROUPED BY DATE -> %s cell click",
+          (clickedColumnName, expectedDrills) => {
+            const { query, stageIndex, column, cellValue, row } = setup({
+              question: QUESTION,
+              clickedColumnName,
+              columns: COLUMNS,
+              rowValues: ROW_VALUES,
+            });
+
+            const dimensions = row
+              .filter(
+                ({ col }) =>
+                  col.source === "breakout" && col.name !== clickedColumnName,
+              )
+              .map(({ value, col }) => ({ value, column: col }));
+
+            const drills = availableDrillThrus(
+              query,
+              stageIndex,
+              column,
+              cellValue,
+              row,
+              dimensions.length ? dimensions : undefined,
+            );
+
+            expect(
+              drills.map(drill => Lib.displayInfo(query, stageIndex, drill)),
+            ).toEqual(expectedDrills);
+          },
+        );
       });
     });
 
-    // FIXME MLv2 throws runtime error when we have a custom expression column
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should return list of available drills for aggregated query with custom column", () => {
+    it("should return list of available drills for aggregated query with custom column", () => {
       const question = Question.create({
         databaseId: SAMPLE_DB_ID,
         tableId: ORDERS_ID,
