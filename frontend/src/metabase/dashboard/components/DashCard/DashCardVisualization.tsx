@@ -187,7 +187,7 @@ function DashCardVisualization({
     const question = new Question(dashcard.card, metadata);
     const mainSeries = series[0] as unknown as Dataset;
 
-    const shouldShowDownloadWidget = DashCardMenu.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
       question,
       result: mainSeries,
       isXray,
@@ -196,7 +196,7 @@ function DashCardVisualization({
       isEditing,
     });
 
-    if (!shouldShowDownloadWidget) {
+    if (!shouldShowDashCardMenu) {
       return null;
     }
 
