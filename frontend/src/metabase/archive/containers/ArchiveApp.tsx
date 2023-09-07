@@ -160,7 +160,15 @@ const SelectionControls = ({
   clear: () => void;
 }) =>
   allSelected ? (
-    <StackedCheckBox checked={true} onChange={clear} />
+    <StackedCheckBox
+      ariaLabel="bulk-actions-input"
+      checked={true}
+      onChange={clear}
+    />
   ) : (
-    <StackedCheckBox checked={false} onChange={selectAll} />
+    <StackedCheckBox
+      ariaLabel="bulk-actions-input"
+      checked={false}
+      onChange={selectAll}
+    />
   );

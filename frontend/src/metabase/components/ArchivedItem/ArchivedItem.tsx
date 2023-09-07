@@ -39,6 +39,7 @@ export const ArchivedItem = ({
     data-testid={`archive-item-${name}`}
   >
     <Swapper
+      aria-label={"archive-item-swapper"}
       defaultElement={
         <ItemIconContainer>
           <ItemIcon name={icon} color={color} />
