@@ -61,7 +61,6 @@ import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
   findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
 } from "metabase-lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -730,7 +729,7 @@ class QuestionInner {
         this.setting("table.columns"),
       )
     ) {
-      return syncTableColumnsToQuery(this);
+      return this;
     }
 
     const addedColumnNames = _.difference(
@@ -1223,6 +1222,10 @@ class QuestionInner {
     }
 
     return this.__mlv2Query;
+  }
+
+  _setMLv2Query(query: Query): Question {
+    return this.setDatasetQuery(ML.toLegacyQuery(query));
   }
 
   generateQueryDescription() {

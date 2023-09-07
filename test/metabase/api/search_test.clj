@@ -19,6 +19,7 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -50,6 +51,7 @@
    :model_name                 nil
    :moderated_status           nil
    :pk_ref                     nil
+   :model_index_id             false ;; columns ending in _id get booleaned
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -494,11 +496,13 @@
               (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Rome"
                                  :model_id      (:id model)
-                                 :model_name    (:name model)}
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/schema s/Int}
                        "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Tromsø"
                                  :model_id      (:id model)
-                                 :model_name    (:name model)}}
+                                 :model_name     (:name model)
+                                 :model_index_id #hawk/schema s/Int}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom"))))))))))
 
@@ -726,11 +730,12 @@
                                :name     "segment count test 3"}]
     (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
       (t2.execute/with-call-count [call-count]
+        ;; there seems to be a bug with mu/def that if this is a list it fails validation
         (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 7 (call-count)))))))
+        (is (= 16 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"

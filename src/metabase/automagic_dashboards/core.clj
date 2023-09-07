@@ -501,7 +501,28 @@
       ancestors for both table and field are counted);
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
       `links_to`, ...) are used;
-   3) if there is still a tie, `score`."
+   3) if there is still a tie, `score`.
+
+   candidate-binding-values is a sequence of maps. Each map is a has a key
+   of dimension spec name to potential dimension binding spec along with a
+   collection of matches, all of which are merges of this spec with the same
+   column.
+
+   Note that it would make a lot more sense to refactor this to return a
+   map of column to potential binding dimensions. This return value is kind of
+   the opposite of what makes sense.
+
+   Here's an example input with :matches updated as just the names of the
+   columns in the matches. IRL, matches are the entire field n times, with
+   each field a merge of the spec with the field.
+
+   ({\"Timestamp\" {:field_type [:type/DateTime],
+                    :score 60,
+                    :matches [\"CREATED_AT\"]}}
+    {\"CreateTimestamp\" {:field_type [:type/CreationTimestamp],
+                          :score 80
+                          :matches [\"CREATED_AT\"]}})
+   "
   [candidate-binding-values]
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
@@ -510,6 +531,11 @@
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
   [context dimensions]
+  ;; TODO - Fix this so that the intermediate representations aren't so crazy.
+  ;; all-bindings a map of binding dim identifier to binding def which contains
+  ;; field matches which are all the same field except they are merged with the binding.
+  ;; What we want instead is just a map of field to potential bindings.
+  ;; Just rack and stack the bindings then return that with the field or something.
   (let [all-bindings (for [dimension dimensions
                            :let [[identifier definition] (first dimension)]
                            candidate (field-candidates context definition)]
@@ -650,23 +676,32 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit query] :as card}]
-  (let [metrics         (map (partial get (:metrics context)) metrics)
-        filters         (cond-> (map (partial get (:filters context)) filters)
-                          (:query-filter context) (conj {:filter (:query-filter context)}))
+  [{context-dimensions :dimensions
+    context-metrics    :metrics
+    context-filters    :filters
+    :keys              [tables query-filter]
+    :as                context}
+   {card-dimensions :dimensions
+    card-metrics    :metrics
+    card-filters    :filters
+    :keys           [score limit query] :as card}]
+  (let [metrics            (map (partial get context-metrics) card-metrics)
+        filters            (cond-> (map (partial get context-filters) card-filters)
+                             query-filter
+                             (conj {:filter query-filter}))
         score           (if query
                           score
-                          (* (or (->> dimensions
-                                      (map (partial get (:dimensions context)))
+                          (* (or (->> card-dimensions
+                                      (map (partial get context-dimensions))
                                       (concat filters metrics)
                                       (transduce (keep :score) stats/mean))
                                  rules/max-score)
                              (/ score rules/max-score)))
-        dimensions      (map (comp (partial into [:dimension]) first) dimensions)
+        dimensions         (map (comp (partial into [:dimension]) first) card-dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])
         cell-dimension? (->> context :root singular-cell-dimensions)
-        matched-dimensions (map (some-fn #(get-in (:dimensions context) [% :matches])
-                                         (comp #(filter-tables % (:tables context)) rules/->entity))
+        matched-dimensions (map (some-fn #(get-in context-dimensions [% :matches])
+                                         (comp #(filter-tables % tables) rules/->entity))
                                 used-dimensions)]
     (->> matched-dimensions
          (apply math.combo/cartesian-product)
@@ -700,9 +735,9 @@
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       metrics
-                             :dimensions    (map (comp :name bindings second) dimensions)
-                             :score         score))))))))
+                             :metrics metrics
+                             :dimensions (map (comp :name bindings second) dimensions)
+                             :score score))))))))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.
@@ -1086,7 +1121,6 @@
                :param_fields       (->> context :query-filter (filter-referenced-fields root))
                :auto_apply_filters true))))
 
-
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
   {:arglists '([entity opts])}
@@ -1251,9 +1285,9 @@
   "Recursively finds key in coll, returns true or false"
   [coll k]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-            (loop [x coll-zip]
-              (when-not (zip/end? x)
-                (if (k (zip/node x)) true (recur (zip/next x))))))))
+             (loop [x coll-zip]
+               (when-not (zip/end? x)
+                 (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]

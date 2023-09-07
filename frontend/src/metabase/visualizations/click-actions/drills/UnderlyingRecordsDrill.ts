@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
-import type { Drill } from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,
@@ -8,7 +8,7 @@ import {
 
 const isShortTableName = (tableName: string) => tableName.length <= 20;
 
-export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
+export const UnderlyingRecordsDrill: LegacyDrill = ({ question, clicked }) => {
   const drill = underlyingRecordsDrill({ question, clicked });
   if (!drill) {
     return [];
