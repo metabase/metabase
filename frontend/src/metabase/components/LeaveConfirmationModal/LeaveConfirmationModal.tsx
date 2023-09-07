@@ -1,6 +1,7 @@
 import type { Location } from "history";
 import { useEffect, useState } from "react";
-import { withRouter, type InjectedRouter, type Route } from "react-router";
+import type { InjectedRouter, Route } from "react-router";
+import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
