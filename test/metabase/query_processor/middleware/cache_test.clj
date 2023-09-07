@@ -92,20 +92,20 @@
     (mt/with-temporary-setting-values [enable-query-caching  true
                                        query-caching-max-ttl 60
                                        query-caching-min-ttl 0]
-      (binding [cache/*backend* (test-backend save-chan purge-chan)
-                *save-chan*     save-chan
-                *purge-chan*    purge-chan]
-        (let [orig @#'cache/serialized-bytes]
-          (with-redefs [cache/serialized-bytes (fn []
+      (binding [cache/*backend*              (test-backend save-chan purge-chan)
+                *save-chan*                  save-chan
+                *purge-chan*                 purge-chan
+                cache/*wrap-result-thunk-fn* (fn wrap-result-thunk [result-thunk]
+                                               (fn result-thunk' []
                                                  ;; if `save-results!` isn't going to get called because `*result-fn*`
                                                  ;; throws an Exception, catch it and send it to `save-chan` so it still
                                                  ;; gets a result and tests can finish
                                                  (try
-                                                   (orig)
+                                                   (result-thunk)
                                                    (catch Throwable e
                                                      (a/>!! save-chan e)
-                                                     (throw e))))]
-            (f {:save-chan save-chan, :purge-chan purge-chan})))))))
+                                                     (throw e)))))]
+        (f {:save-chan save-chan, :purge-chan purge-chan})))))
 
 (defmacro with-mock-cache [[& bindings] & body]
   `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))

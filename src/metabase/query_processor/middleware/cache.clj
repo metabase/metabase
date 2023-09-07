@@ -67,13 +67,13 @@
   (when *in-fn*
     (*in-fn* object)))
 
-(def ^:private ^:dynamic *result-fn*
+(def ^:private ^:dynamic *result-thunk*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
   nil)
 
 (defn- serialized-bytes []
-  (when *result-fn*
-    (*result-fn*)))
+  (when *result-thunk*
+    (*result-thunk*)))
 
 (defn- cache-results!
   "Save the final results of a query."
@@ -179,6 +179,12 @@
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
+(def ^:private ^:dynamic *wrap-result-thunk-fn*
+  "This is just for mocking stuff in tests -- when bound, this function is called like
+
+    (f result-thunk) => new-result-thunk"
+  nil)
+
 (defn- run-query-with-cache
   [qp {:keys [cache-ttl middleware], :as query} rff {:keys [reducef], :as context}]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
@@ -191,8 +197,10 @@
         (let [reducef' (fn [rff context metadata rows]
                          (impl/do-with-serialization
                           (fn [in-fn result-fn]
-                            (binding [*in-fn*     in-fn
-                                      *result-fn* result-fn]
+                            (binding [*in-fn*        in-fn
+                                      *result-thunk* (if *wrap-result-thunk-fn*
+                                                       (*wrap-result-thunk-fn* result-fn)
+                                                       result-fn)]
                               (reducef rff context metadata rows)))))]
           (qp query
               (fn [metadata]
