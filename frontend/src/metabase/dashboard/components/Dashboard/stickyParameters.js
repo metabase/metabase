@@ -45,9 +45,5 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
 const getOffsetTop = dashboard => {
   const parametersWidget = dashboard.parametersWidgetRef.current;
 
-  if (parametersWidget) {
-    return parametersWidget.offsetTop;
-  } else {
-    return 0;
-  }
+  return parametersWidget?.offsetTop ?? 0;
 };
