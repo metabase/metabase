@@ -81,7 +81,7 @@ export function ArchiveApp() {
           {list.length > 0 ? (
             <VirtualizedList
               scrollElement={mainElement}
-              items={data}
+              items={list}
               rowHeight={ROW_HEIGHT}
               renderItem={({ item }: { item: CollectionItem }) => (
                 <ArchivedItem
