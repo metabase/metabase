@@ -47,14 +47,15 @@ describe("snapshots", () => {
         );
       });
 
-      const instanceData = getDefaultInstanceData();
+      snapshot("default");
 
+      // we need to do this after the snapshot because hitting the API populates the audit log
+      const instanceData = getDefaultInstanceData();
       cy.writeFile(
         "e2e/support/cypress_sample_instance_data.json",
         instanceData,
       );
 
-      snapshot("default");
       restore("blank");
     });
   });
