@@ -107,66 +107,42 @@ export default createEntity({
     setArchived: (object, archived) => {
       return dispatch => {
         const entity = entityForObject(object);
-        if (entity) {
-          return dispatch(entity.actions.setArchived(object, archived));
-        } else {
-          console.warn("Couldn't find entity for object", object);
-          return object;
-        }
+        return entity
+          ? dispatch(entity.actions.setArchived(object, archived))
+          : warnEntityAndReturnObject(object);
       };
     },
 
     delete: object => {
       return dispatch => {
         const entity = entityForObject(object);
-        if (entity) {
-          return dispatch(entity.actions.delete(object));
-        } else {
-          console.warn("Couldn't find entity for object", object);
-          return object;
-        }
+        return entity
+          ? dispatch(entity.actions.delete(object))
+          : warnEntityAndReturnObject(object);
       };
     },
   },
 
   objectSelectors: {
-    setArchived: (object, archived) => {
-      return dispatch => {
-        const entity = entityForObject(object);
-        if (entity) {
-          return dispatch(entity.actions.setArchived(object, archived));
-        } else {
-          console.warn("Couldn't find entity for object", object);
-          return object;
-        }
-      };
-    },
-
-    delete: object => {
-      return dispatch => {
-        const entity = entityForObject(object);
-        if (entity) {
-          return dispatch(entity.actions.delete(object));
-        } else {
-          console.warn("Couldn't find entity for object", object);
-          return object;
-        }
-      };
-    },
-
     getName: object => {
       const entity = entityForObject(object);
-      return entity?.objectSelectors?.getName?.(object) ?? object?.name;
+      return entity
+        ? entity?.objectSelectors?.getName?.(object) ?? object?.name
+        : warnEntityAndReturnObject(object);
     },
 
     getColor: object => {
       const entity = entityForObject(object);
-      return entity?.objectSelectors?.getColor?.(object) ?? null;
+      return entity
+        ? entity?.objectSelectors?.getColor?.(object) ?? null
+        : warnEntityAndReturnObject(object);
     },
 
     getIcon: object => {
       const entity = entityForObject(object);
-      return entity?.objectSelectors?.getIcon?.(object) ?? null;
+      return entity
+        ? entity?.objectSelectors?.getIcon?.(object) ?? null
+        : warnEntityAndReturnObject(object);
     },
   },
   // delegate to each entity's actionShouldInvalidateLists
@@ -185,3 +161,8 @@ export default createEntity({
     );
   },
 });
+
+function warnEntityAndReturnObject(object) {
+  console.warn("Couldn't find entity for object", object);
+  return object;
+}
