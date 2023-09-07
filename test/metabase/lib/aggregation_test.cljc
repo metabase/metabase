@@ -766,3 +766,28 @@
               query))
       (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
               (lib/ref expr-metadata))))))
+
+(deftest ^:parallel aggregate-by-coalesce-test
+  (testing "Converted query returns same columns as built query"
+    (let [built-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "Zero" (lib/+ 0 0))
+                          (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
+          converted-query (lib/query meta/metadata-provider
+                            (lib.convert/->pMBQL
+                              {:database (meta/id)
+                               :type :query
+                               :query {:source-table (meta/id :orders) ,
+                                       :expressions {"Zero" [:+ 0 0]
+                                                     "Total of Zero" [:coalesce
+                                                                      [:field
+                                                                       (meta/id :orders :total) ,
+                                                                       nil],
+                                                                      0]}}}))]
+      (is (= (->> built-query
+                  lib/available-aggregation-operators
+                  (m/find-first #(= (:short %) :sum))
+                  lib/aggregation-operator-columns)
+             (->> converted-query
+                  lib/available-aggregation-operators
+                  (m/find-first #(= (:short %) :sum))
+                  lib/aggregation-operator-columns))))))

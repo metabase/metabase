@@ -7,9 +7,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -75,11 +77,21 @@
   [metadata-providerable query]
   (query-from-existing metadata-providerable query))
 
-;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
-;;; passed in
+;;; this should already be a query in the shape we want but:
+;; - let's make sure it has the database metadata that was passed in
+;; - fill in field refs with metadata (#33680)
 (defmethod query-method :mbql/query
   [metadata-providerable query]
-  (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
+  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+        query (assoc query :lib/metadata metadata-provider)]
+    (mbql.u/replace query
+      [:field (opts :guard (complement :effective-type)) field-id]
+      (or (some->
+               (lib.metadata/field metadata-provider field-id)
+               lib.ref/ref
+               (update 1 merge opts))
+          ;; Fallback if metadata is missing
+          [:field opts field-id]))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
