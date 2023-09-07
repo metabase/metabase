@@ -5,6 +5,7 @@ import {
   screen,
   fireEvent,
   getIcon,
+  waitFor,
 } from "__support__/ui";
 import {
   setupSearchEndpoints,
@@ -255,7 +256,11 @@ describe("LinkViz", () => {
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
-      expect(await screen.findByText("Loading...")).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      });
+
       userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({

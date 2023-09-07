@@ -381,16 +381,16 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'false' &&
       needs.build.result == 'skipped' &&
       needs.download_uberjar.result == 'skipped'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04]
         java-version: [11]
         edition: [ee]
         folder:
-          - "auditing"
           - "actions"
           - "admin"
           - "admin-2"
@@ -414,9 +414,11 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
+            runner: ubuntu-22.04
             java-version: 11
             context: oss-subset
           - edition: ee
+            runner: ubuntu-latest
             java-version: 11
             context: slow
 
