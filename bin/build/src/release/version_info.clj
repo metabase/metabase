@@ -14,8 +14,10 @@
 (defn- version-info-filename
   [edition]
   (case edition
-    :oss "version-info.json"
-    :ee  "version-info-ee.json"
+    :oss      "version-info.json"
+    :oss-test "test-version-info.json"
+    :ee       "version-info-ee.json"
+    :ee-test  "test-version-info-ee.json"
     nil))
 
 (defn- version-info-url
@@ -111,11 +113,14 @@
 
 (defn update-announcement-url!
   "Not part of the main build process. Set latest.announcement_url in the edition-appropriate version-info JSON file"
-  [{ee-or-oss-string :edition announcement-url :url}]
+  [{ee-or-oss-string :edition announcement-url-symbol :url}]
   (u/exit-when-finished-nonzero-on-exception
-    (let [edition      (keyword ee-or-oss-string)
-          _chk-ed      (assert (#{:ee :oss} edition) "The edition must be either `ee' or `oss'")
-          _chk-url     (assert (re-matches #"^https://www.metabase.com/.*" announcement-url) "URL must match \"https://www.metabase.com/.*\"")
-          updated-info (assoc-in (current-version-info edition) [:latest :announcement_url] announcement-url)]
+    (let [edition          (keyword ee-or-oss-string)
+          announcement-url (str announcement-url-symbol)
+          _chk-ed          (assert (#{:ee :oss :ee-test :oss-test} edition)
+                                   "The edition must be either `ee' or `oss' (or `ee-test' or `oss-test')")
+          _chk-url         (assert (re-matches #"^https://www.metabase.com/.*" announcement-url)
+                                   "URL must match \"https://www.metabase.com/.*\"")
+          updated-info     (assoc-in (current-version-info edition) [:latest :announcement_url] announcement-url)]
       (save-version-info! edition updated-info)
       (upload-version-info! edition true))))
