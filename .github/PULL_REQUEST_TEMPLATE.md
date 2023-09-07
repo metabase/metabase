@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> Please add either a `backport` or a `no-backport` label to this PR. You will not be able to merge until you do this step.
+> If you are merging into master, please add either a `backport` or a `no-backport` label to this PR. You will not be able to merge until you do this step.
 
 > **Warning**
 >
