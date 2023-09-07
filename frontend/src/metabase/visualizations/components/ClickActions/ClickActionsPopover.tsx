@@ -35,7 +35,10 @@ interface State {
   popoverAction: PopoverClickAction | null;
 }
 
-class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
+export class ClickActionsPopover extends Component<
+  ChartClickActionsProps,
+  State
+> {
   state: State = {
     popoverAction: null,
   };
@@ -135,7 +138,7 @@ class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
             this.close();
           }}
           series={series}
-          onChange={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />
       );
     }

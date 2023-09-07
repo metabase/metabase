@@ -1259,7 +1259,7 @@
       ;; `:relative-datetime` expression and do this directly in MBQL.
       (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-initialized-driver %) :sql)
                                (mt/normal-drivers))
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (doseq [[n unit] [[3 :month]
                             [1 :quarter]]
                   t        [#t "2022-03-31"
@@ -1269,7 +1269,7 @@
               (sql.qp/with-driver-honey-sql-version driver/*driver*
                 (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                       june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                      checkins     (mt/with-everything-store
+                      checkins     (mt/with-metadata-provider (mt/id)
                                      (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
                       honeysql     {:select [[june-31 :june_31]]
                                     :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
