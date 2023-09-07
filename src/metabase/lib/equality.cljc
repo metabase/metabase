@@ -8,8 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.u.match]
-   [metabase.util.memoize :as memoize]))
+   [metabase.mbql.util.match :as mbql.u.match]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -107,7 +106,7 @@
   (lib.options/update-options a-ref (fn [options]
                                       (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
 
-(defn find-closest-matching-ref*
+(defn find-closest-matching-ref
   "Find the ref that most closely matches `a-ref` from a sequence of `refs`. This is meant to power things
   like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
   that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
@@ -141,14 +140,8 @@
            (recur (comp xform (first more-xforms)) (rest more-xforms))))))
 
   ([metadata-providerable a-ref refs]
-   (or (find-closest-matching-ref* a-ref refs)
+   (or (find-closest-matching-ref a-ref refs)
        (mbql.u.match/match-one a-ref
          [:field opts (field-id :guard integer?)]
          (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-           (find-closest-matching-ref* [:field opts field-name] refs))))))
-
-(def ^{:arglists '([a-ref refs]
-                   [metadata-providerable a-ref refs])}
-  find-closest-matching-ref
-  "The cached version of [[find-closest-matching-ref*]]."
-  (memoize/lru find-closest-matching-ref* :lru/threshold 8))
+           (find-closest-matching-ref [:field opts field-name] refs))))))

@@ -17,6 +17,7 @@
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
+   [metabase.util.memoize :as memoize]
    [metabase.util.log :as log]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
@@ -117,7 +118,7 @@
   [a-query stage-number]
   (to-array (lib.core/orderable-columns a-query stage-number)))
 
-(defn ^:export display-info
+(defn display-info*
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
   See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
   the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
@@ -128,6 +129,12 @@
       (update-keys u/->camelCaseEn)
       (update :table update-keys u/->camelCaseEn)
       (clj->js :keyword-fn u/qualified-name)))
+
+(def ^{:export true
+       :arglists '([query stage-number])}
+  display-info
+  "The cached version of [[display-info*]]."
+  (memoize/lru display-info* :lru/threshold 1024))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
@@ -153,12 +160,18 @@
   [a-query current-order-by]
   (lib.core/change-direction a-query current-order-by))
 
-(defn ^:export breakoutable-columns
+(defn breakoutable-columns*
   "Return an array of Column metadatas about the columns that can be broken out by in a given stage of `a-query.`
   To break out by a given column, the corresponding element of the result has to be added to the query using
   [[breakout]]."
   [a-query stage-number]
   (to-array (lib.core/breakoutable-columns a-query stage-number)))
+
+(def ^{:export true
+       :arglists '([query stage-number])}
+  breakoutable-columns
+  "The cached version of [[breakoutable-columns*]]."
+  (memoize/lru breakoutable-columns* :lru/threshold 4))
 
 (defn ^:export breakouts
   "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
