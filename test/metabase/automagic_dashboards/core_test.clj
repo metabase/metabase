@@ -53,7 +53,7 @@
          (->> (mt/id :users)
               (t2/select-one Table :id)
               (#'magic/->root)
-              (#'magic/matching-rules (rules/get-rules ["table"]))
+              (#'magic/matching-dashboard-templates (rules/get-dashboard-templates ["table"]))
               (map (comp first :applies_to)))))
 
   (testing "Test fallback to GenericTable"
@@ -61,7 +61,7 @@
            (->> (-> (t2/select-one Table :id (mt/id :users))
                     (assoc :entity_type nil)
                     (#'magic/->root))
-                (#'magic/matching-rules (rules/get-rules ["table"]))
+                (#'magic/matching-dashboard-templates (rules/get-dashboard-templates ["table"]))
                 (map (comp first :applies_to)))))))
 
 
@@ -306,7 +306,7 @@
                                                                  source-query))
                                              :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  {:keys [dimensions] :as _rule} (rules/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)]
@@ -341,7 +341,7 @@
                                                                              source-query))
                                                          :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  {:keys [dimensions] :as _rule} (rules/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)
@@ -1810,13 +1810,15 @@
                           :type     :query}]
         (mt/with-temp
           [Card {card-id :id :as card} {:table_id        (mt/id :products)
-                      :dataset_query   source-query
-                      :result_metadata (mt/with-test-user
-                                         :rasta
-                                         (result-metadata-for-query
-                                           source-query))
-                      :dataset         true}]
-          (let [rule (some #(when (-> % :rule #{"GenericTable"}) %) (rules/get-rules ["table"]))
+                                        :dataset_query   source-query
+                                        :result_metadata (mt/with-test-user
+                                                           :rasta
+                                                           (result-metadata-for-query
+                                                             source-query))
+                                        :dataset         true}]
+          (let [rule (some
+                       #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
+                       (rules/get-dashboard-templates ["table"]))
                 {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
@@ -1837,9 +1839,9 @@
                             (fn [metric]
                               (every? dimensions (rules/collect-dimensions metric))))))))
             (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
-              (let [card-def {:title      "A dimensionless quantity card"
-                              :metrics    ["Count"]
-                              :score      100}]
+              (let [card-def {:title   "A dimensionless quantity card"
+                              :metrics ["Count"]
+                              :score   100}]
                 (is (=? [{:title         "A dimensionless quantity card"
                           :metrics       [{:metric ["count"] :op "count"}]
                           :dimensions    []
@@ -1866,6 +1868,28 @@
             (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
               (let [card-def {:title      "Some sort of card"
                               :metrics    ["Count"]
-                              :dimensions [{"Lat" {}}{"Lon" {}}]
+                              :dimensions [{"Lat" {}} {"Lon" {}}]
                               :score      100}]
                 (is (=? [] (#'magic/card-candidates context card-def)))))))))))
+#_
+(mt/dataset sample-dataset
+  (testing "A model with a single field that matches all potential bindings"
+    (let [source-query {:database (mt/id)
+                        :query    {:source-table (mt/id :people)
+                                   :fields       [(mt/id :people :latitude)]}
+                        :type     :query}]
+      (mt/with-temp
+        [Card {card-id :id :as card} {:table_id        (mt/id :products)
+                                      :dataset_query   source-query
+                                      :result_metadata (mt/with-test-user
+                                                         :rasta
+                                                         (result-metadata-for-query
+                                                           source-query))
+                                      :dataset         true}]
+        (let [rule (some
+                     #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
+                     (rules/get-dashboard-templates ["table"]))
+              context (#'magic/make-context (#'magic/->root card) rule)]
+          (#'magic/indepth
+            context
+            rule))))))
