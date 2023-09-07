@@ -221,10 +221,14 @@ export const getTableMetadata = createSelector(
   (tableId, metadata) => metadata.table(tableId),
 );
 
-export const getTableForeignKeys = createSelector(
-  [getTableMetadata],
-  table => table?.fks ?? [],
-);
+export const getTableForeignKeys = createSelector([getTableMetadata], table => {
+  const tableForeignKeys = table?.fks ?? [];
+  const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
+    tableForeignKey => tableForeignKey.origin != null,
+  );
+
+  return tableForeignKeysWithoutHiddenTables;
+});
 
 export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
