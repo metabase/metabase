@@ -52,10 +52,6 @@ export function getTargetFieldFromCard(
   card: Card,
   metadata: Metadata,
 ) {
-  if (!card?.dataset_query) {
-    return null;
-  }
-
   const question = new Question(card, metadata);
   const field = getParameterTargetField(target, metadata, question);
   return field ?? null;
