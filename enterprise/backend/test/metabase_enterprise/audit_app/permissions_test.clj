@@ -24,6 +24,9 @@
       (testing "Adding instance analytics adds audit db permissions"
         (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :read))
         (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
+          (is (= "[group-id collection-id]" (pr-str [group-id collection-id])))
+          (is (= "new-perms"                (pr-str new-perms)))
+          (is (= "view-table"               (pr-str view-table)))
           (is (contains? new-perms (table-query-path view-table)))))
       (testing "Unable to update instance analytics to writable"
         (is (thrown-with-msg?
