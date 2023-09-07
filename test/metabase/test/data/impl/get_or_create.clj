@@ -171,8 +171,8 @@
     ;;
     ;; require/resolve used here to avoid circular refs
     (if (driver/report-timezone)
-      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
-       :report-timezone nil
+      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-values)
+       {:report-timezone nil}
        thunk)
       (thunk))))
 

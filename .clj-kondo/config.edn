@@ -475,8 +475,9 @@
     toucan.db                                                       db
     toucan.models                                                   models}}
 
-  :metabase/validate-deftest                   {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs {:level :warning}}
+  :metabase/deftest-marked-parallel-and-synchronized {:level :warning}
+  :metabase/disallowed-form-in-parallel-test         {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs       {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -618,6 +619,7 @@
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.util/with-temporary-setting-values!                                                                         hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
    metabase.test/dataset                                                                                                     hooks.metabase.test.data/dataset
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
@@ -632,7 +634,8 @@
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
-   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values}
+   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test/with-temporary-setting-values!                                                                              hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job

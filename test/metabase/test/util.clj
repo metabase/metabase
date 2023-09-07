@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -49,6 +50,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -363,19 +365,52 @@
     (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
-(defn do-with-temporary-setting-value
-  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
-  the original value. This works much the same way as [[binding]].
+(mu/defn do-with-temporary-setting-values
+  "Impl for [[with-temporary-setting-values]]."
+  [bindings-map :- [:map-of
+                    [:fn
+                     {:error/message "Setting name or definition"}
+                     #(satisfies? setting/Resolvable %)]
+                    any?]
+   thunk        :- [:=> [:cat] any?]]
+  (testing (format "\nwith temporary setting values\n%s\n" (u/pprint-to-str bindings-map))
+    (binding [setting/*thread-local-values* (merge setting/*thread-local-values*
+                                                   bindings-map)]
+      (thunk))))
 
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
+(s/def ::with-temporary-setting-values-bindings
+  (s/spec (s/* (s/cat
+                :setting any?
+                :value   any?))))
 
-  If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
-  is thrown if the `setting-k` already exists.
+(defmacro with-temporary-setting-values
+  "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
+  This works much the same way as `binding`. Thread-safe.
 
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+     (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
+
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
+  {:style/indent :defn}
+  [bindings & body]
+  `(do-with-temporary-setting-values
+    ~(into {}
+           (map (fn [{:keys [setting value]}]
+                  [(if
+                       (and (simple-symbol? setting)
+                            (not (contains? &env setting)))
+                       (keyword setting)
+                       setting)
+                   value]))
+           (s/conform ::with-temporary-setting-values-bindings bindings))
+    (^:once fn* []
+     ~@body)))
+
+(defn do-with-temporary-setting-value!
+  "Impl for [[with-temporary-setting-values!]]."
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value!")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
@@ -417,12 +452,8 @@
                                  :original-value original-value}
                                 e))))))))))
 
-(defmacro with-temporary-setting-values
-  "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
-  This works much the same way as `binding`.
-
-     (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
-       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
+(defmacro with-temporary-setting-values!
+  "Thread-unsafe version of [[with-temporary-setting-values]].
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
@@ -430,9 +461,9 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
-         (with-temporary-setting-values ~more
+         (with-temporary-setting-values! ~more
            ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
@@ -442,7 +473,7 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
          (with-temporary-raw-setting-values ~more
            ~@body))
@@ -453,7 +484,7 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+        (do-with-temporary-setting-value! setting-k (setting/get setting-k) thunk)))
     thunk
     settings)))
 

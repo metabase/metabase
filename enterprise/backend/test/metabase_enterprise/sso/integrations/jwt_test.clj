@@ -22,7 +22,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
-  (let [current-features (premium-features/token-features)]
+  (let [current-features (premium-features/*token-features*)]
     (premium-features-test/with-premium-features #{:sso-saml}
       (mt/with-temporary-setting-values [ldap-enabled false
                                          saml-enabled false]
@@ -43,7 +43,7 @@
      ~@body))
 
 (defn- call-with-default-jwt-config [f]
-  (let [current-features (premium-features/token-features)]
+  (let [current-features (premium-features/*token-features*)]
     (premium-features-test/with-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri

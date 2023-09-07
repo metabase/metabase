@@ -17,7 +17,7 @@
 (defn- add-timezone-info [metadata]
   ((add-timezone-info/add-timezone-info {} identity) metadata))
 
-(deftest post-processing-test
+(deftest ^:parallel post-processing-test
   (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
                                                                            :requested_timezone "US/Pacific"}
                                                              nil          {:results_timezone "UTC"}}

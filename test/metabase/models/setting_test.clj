@@ -90,6 +90,12 @@
   :default    "setting-default"
   :feature    :test-feature)
 
+(defsetting test-double-setting
+  "Test setting - this only shows up in dev"
+  :visibility :internal
+  :type :double
+  :default 60.0)
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -234,7 +240,7 @@
 ;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (tu/do-with-temporary-setting-value setting db-value
+  (tu/do-with-temporary-setting-values {(keyword setting) db-value}
     (fn []
       (tu/do-with-temp-env-var-value
        (setting/setting-env-map-name (keyword setting))
@@ -1091,3 +1097,14 @@
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
                           (:cause (Throwable->map e)))))))))
+
+(deftest ^:parallel double-settings-allow-ints-test
+  (mt/with-temporary-setting-values [test-double-setting 0]
+    ;; not using `zero?` on purpose here because we don't want to count `0.0`
+    (is (= 0
+           (setting/get-value-of-type :double :test-double-setting)))))
+
+(deftest ^:parallel fall-back-to-default-for-invalid-values-test
+  (mt/with-temporary-setting-values [test-double-setting :wow]
+    (is (= 60.0
+           (setting/get-value-of-type :double :test-double-setting)))))

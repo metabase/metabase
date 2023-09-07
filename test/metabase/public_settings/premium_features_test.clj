@@ -20,7 +20,7 @@
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      (with-redefs [premium-features/token-features (constantly features)]
+      (binding [premium-features/*token-features* (constantly features)]
         (f)))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
@@ -46,7 +46,7 @@
       ...)"
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features (set/union (premium-features/token-features) ~features)
+  `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
                              (fn [] ~@body)))
 
 (defn- token-status-response
@@ -105,7 +105,7 @@
                 (is (= token
                        (premium-features/premium-embedding-token)))
                 (is (= #{}
-                       (#'premium-features/token-features))))
+                       (#'premium-features/*token-features*))))
               (doseq [has-feature? [#'premium-features/hide-embed-branding?
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
@@ -153,7 +153,7 @@
   [username]
   (format "Hi %s, you're not extra special :(" (name username)))
 
-(deftest defenterprise-test
+(deftest ^:parallel defenterprise-test
   (when-not config/ee-available?
    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
      (is (= "Hi rasta, you're an OSS customer!"
@@ -207,7 +207,7 @@
   [username]
   (format "Hi %s, you're an OSS customer!" username))
 
-(deftest defenterprise-schema-test
+(deftest ^:parallel defenterprise-schema-test
   (when-not config/ee-available?
     (testing "Argument schemas are validated for OSS implementations"
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))

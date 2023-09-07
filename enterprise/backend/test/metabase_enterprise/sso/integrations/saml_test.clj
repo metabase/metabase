@@ -35,7 +35,7 @@
 
 (defn- disable-other-sso-types [thunk]
   (classloader/require 'metabase.api.ldap)
-  (let [current-features (premium-features/token-features)]
+  (let [current-features (premium-features/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
     (premium-features-test/with-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values [ldap-enabled false
@@ -58,7 +58,7 @@
      ~@body))
 
 (defn call-with-default-saml-config [f]
-  (let [current-features (premium-features/token-features)]
+  (let [current-features (premium-features/*token-features*)]
     (premium-features-test/with-premium-features #{:sso-saml}
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri

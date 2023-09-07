@@ -47,7 +47,7 @@
              (set (mt/rows (mt/dataset toucan-microsecond-incidents
                              (mt/run-mbql-query incidents)))))))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
@@ -62,7 +62,7 @@
               (is (= 10
                      (count (mt/rows (qp/process-query query))))))))))))
 
-(deftest results-test
+(deftest ^:parallel results-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= (cond
              (= :sqlite driver/*driver*)

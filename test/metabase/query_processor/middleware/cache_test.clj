@@ -150,7 +150,7 @@
 (defn- cacheable? [& {:as query-kvs}]
   (boolean (#'cache/is-cacheable? (merge {:cache-ttl 60, :query :abc} query-kvs))))
 
-(deftest is-cacheable-test
+(deftest ^:parallel is-cacheable-test
   (testing "something is-cacheable? if it includes a cach_ttl and the caching setting is enabled"
     (with-mock-cache []
       (doseq [enable-caching? [true false]
@@ -161,13 +161,13 @@
             (is (= expected
                    (boolean (#'cache/is-cacheable? {:cache-ttl cache-ttl}))))))))))
 
-(deftest empty-cache-test
+(deftest ^:parallel empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"
     (with-mock-cache []
       (is (= :not-cached
              (run-query))))))
 
-(deftest return-cached-results-test
+(deftest ^:parallel return-cached-results-test
   (testing "if we run the query twice, the second run should return cached results"
     (with-mock-cache [save-chan]
       (is (= true
@@ -177,7 +177,7 @@
       (is (= :cached
              (run-query))))))
 
-(deftest expired-results-test
+(deftest ^:parallel expired-results-test
   (testing "If cached resutls are past their TTL, the cached results shouldn't be returned"
     (with-mock-cache [save-chan]
       (run-query :cache-ttl 0.1)
@@ -186,7 +186,7 @@
       (is (= :not-cached
              (run-query :cache-ttl 0.1))))))
 
-(deftest ignore-valid-results-when-caching-is-disabled-test
+(deftest ^:parallel ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
     (with-mock-cache [save-chan]
       (run-query)
@@ -197,7 +197,7 @@
         (is (= :not-cached
                (run-query)))))))
 
-(deftest max-kb-test
+(deftest ^:parallel max-kb-test
   (testing "check that `query-caching-max-kb` is respected and queries aren't cached if they're past the threshold"
     (with-mock-cache [save-chan]
       (mt/with-temporary-setting-values [query-caching-max-kb 0]
@@ -209,7 +209,7 @@
         (is (= :not-cached
                (run-query)))))))
 
-(deftest max-ttl-test
+(deftest ^:parallel max-ttl-test
   (testing (str "Check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should "
                 "evict any entries older that `query-caching-max-ttl`. Set max-ttl to 100 ms, run query `:abc`, "
                 "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
@@ -225,7 +225,7 @@
         (is (= :not-cached
                (run-query)))))))
 
-(deftest ignore-cached-results-test
+(deftest ^:parallel ignore-cached-results-test
   (testing "check that :ignore-cached-results? in middleware is respected when returning results..."
     (with-mock-cache [save-chan]
       (run-query :middleware {:ignore-cached-results? false})
@@ -233,7 +233,7 @@
       (is (= :not-cached
              (run-query :middleware {:ignore-cached-results? true}))))))
 
-(deftest ignore-cached-results-should-still-save-test
+(deftest ^:parallel ignore-cached-results-should-still-save-test
   (testing "...but if it's set those results should still be cached for next time."
     (with-mock-cache [save-chan]
       (is (= true (cacheable?)))
@@ -241,7 +241,7 @@
       (mt/wait-for-result save-chan)
       (is (= :cached (run-query))))))
 
-(deftest min-ttl-test
+(deftest ^:parallel min-ttl-test
   (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
     (with-mock-cache [save-chan]
       (mt/with-temporary-setting-values [query-caching-min-ttl 60]
@@ -260,7 +260,7 @@
           (is (= :cached
                  (run-query))))))))
 
-(deftest invalid-cache-entry-test
+(deftest ^:parallel invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
     (with-mock-cache [save-chan]
       (run-query)
@@ -270,12 +270,13 @@
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
                    some?))))
+        #_{:clj-kondo/ignore [:metabase/disallowed-form-in-parallel-test]}
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
                  (run-query))))))))
 
-(deftest metadata-test
+(deftest ^:parallel metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."
     (with-mock-cache [save-chan]
       (mt/with-clock #t "2020-02-19T02:31:07.798Z[UTC]"
@@ -289,7 +290,7 @@
                   :status     :completed}
                  result)))))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
     (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                    (mt/native-query {:query "SELECT * FROM VENUES ORDER BY ID ASC LIMIT 5;"})]]
@@ -313,7 +314,9 @@
                        (dissoc cached-result :data))
                     "Results should be cached")
                 (is (= original-result (dissoc cached-result :cached :updated_at))
-                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [query                               (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                                                      :cache-ttl 5000)
@@ -349,7 +352,7 @@
                 "Cached query execution should not update average query duration")
             (is (= avg-execution-time (query/average-execution-time-ms q-hash)))))))))
 
-(deftest insights-from-cache-test
+(deftest ^:parallel insights-from-cache-test
   (testing "Insights should work on cahced results (#12556)"
     (with-mock-cache [save-chan]
       (let [query (-> checkins
@@ -399,18 +402,16 @@
                      (vec (csv/read-csv reader)))
                   "CSV results should match results when caching isn't in play"))))))))
 
-(deftest caching-across-different-formats-test
+(deftest ^:parallel caching-across-different-formats-test
   (testing "If we run a query with a download format such as CSV we should be able to use cached results elsewhere"
     (let [query          (mt/mbql-query venues {:order-by [[:asc $id]], :limit 7})
           normal-results (qp/process-query query)]
-      (is (= false
-             (boolean (:cached normal-results)))
+      (is (not (:cached normal-results))
           "Query shouldn't be cached when running without mock cache in place")
       (with-mock-cache [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (with-open [os (java.io.ByteArrayOutputStream.)]
-            (is (= false
-                   (boolean (:cached (qp/process-query query (qp.streaming/streaming-context :csv os)))))
+            (is (not (:cached (qp/process-query query (qp.streaming/streaming-context :csv os))))
                 "Query shouldn't be cached after first run with the mock cache in place")
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cached true)
@@ -421,7 +422,7 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
-(deftest caching-big-resultsets
+(deftest ^:parallel caching-big-resultsets
   (testing "Make sure we can save large result sets without tripping over internal async buffers"
     (is (= 10000 (count (transduce identity
                                    (#'cache/save-results-xform 0 {} (byte 0) conj)

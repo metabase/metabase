@@ -192,7 +192,7 @@
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
-    (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
+    (mt/with-temporary-setting-values! [custom-geojson test-custom-geojson]
       (testing "test the endpoint that fetches JSON files given a GeoJSON key"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
@@ -204,7 +204,7 @@
       (testing "try fetching an invalid key; should fail"
         (is (= "Invalid custom GeoJSON key: invalid-key"
                (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
-    (mt/with-temporary-setting-values [custom-geojson test-broken-custom-geojson]
+    (mt/with-temporary-setting-values! [custom-geojson test-broken-custom-geojson]
       (testing "fetching a broken URL should fail"
         (is (= "GeoJSON URL failed to load"
                (mt/user-http-request :rasta :get 400 "geojson/middle-earth")))))))
@@ -243,7 +243,7 @@
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"
-    (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
+    (mt/with-temporary-setting-values! [custom-geojson test-custom-geojson]
       (mt/with-temp-env-var-value [mb-custom-geojson-enabled false]
         (testing "Should not be able to fetch GeoJSON via URL proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"

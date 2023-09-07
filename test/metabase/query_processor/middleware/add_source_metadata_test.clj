@@ -260,7 +260,7 @@
                :joins        [{:source-query {:source-table $$venues
                                               :fields       [$id $name]}}]}))))))
 
-(deftest binned-fields-test
+(deftest ^:parallel binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"
     (mt/with-temporary-setting-values [breakout-bin-width 5.0]
       (qp.store/with-metadata-provider meta/metadata-provider

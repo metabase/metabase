@@ -1,7 +1,9 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]))
 
+;; TODO -- figure out how to move these into `config.edn`
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
   in [[allowed-parallel-forms]] is not allowed."
@@ -39,7 +41,6 @@
      metabase.test.util/with-temp-env-var-value
      metabase.test.util/with-temp-vals-in-db
      metabase.test.util/with-temporary-raw-setting-values
-     metabase.test.util/with-temporary-setting-values
      metabase.test.util/with-user-in-groups
      metabase.test/with-actions
      metabase.test/with-actions-disabled
@@ -67,7 +68,6 @@
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
-     metabase.test/with-temporary-setting-values
      metabase.test/with-user-in-groups
      toucan2.tools.with-temp/with-temp})
 
@@ -91,6 +91,13 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/close!
+     clojure.core.async/poll!
+     clojure.core.async/put!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
@@ -106,25 +113,40 @@
     (catch Exception _
       nil)))
 
+(defn- ignored-linters [node]
+  (when-let [sexpr (some-> node meta :clj-kondo/ignore hooks/sexpr)]
+    (cond
+      (keyword? sexpr) #{sexpr}
+      (vector? sexpr)  (set sexpr))))
+
 (defn- warn-about-disallowed-parallel-forms [form]
   (letfn [(error! [form message]
             (hooks/reg-finding! (assoc (meta form)
                                        :message message
-                                       :type :metabase/validate-deftest)))
-          (f [form]
+                                       :type :metabase/disallowed-form-in-parallel-test))
+            ::error)
+          (check-node [form]
             (when-let [qualified-symbol (node->qualified-symbol form)]
               (cond
                 (disallowed-parallel-forms qualified-symbol)
                 (error! form (format "%s is not allowed inside a ^:parallel test or test fixture" qualified-symbol))
 
                 (and (not (allowed-parallel-forms qualified-symbol))
-                     (str/ends-with? (name qualified-symbol) "!"))
+                     (or (str/ends-with? (name qualified-symbol) "!")
+                         (str/ends-with? (name qualified-symbol) "!*")))
                 (error! form (format "destructive functions like %s are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in .clj-kondo/hooks/clojure/test.clj"
                                      qualified-symbol)))))
-          (walk [form]
-            (f form)
-            (doseq [child (:children form)]
-              (walk child)))]
+          (walk [node]
+            (when-not (contains? (ignored-linters node) :metabase/disallowed-form-in-parallel-test)
+              ;; stop after the first error.
+              (if (= (check-node node) ::error)
+                ::error
+                (reduce
+                 (fn [_ child]
+                   (when (= (walk child) ::error)
+                     (reduced ::error)))
+                 nil
+                 (:children node)))))]
     (walk form)))
 
 (defn- deftest-check-parallel
@@ -146,7 +168,7 @@
     (when (and parallel? synchronized?)
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
-                                 :type :metabase/validate-deftest)))
+                                 :type :metabase/deftest-marked-parallel-and-synchronized)))
     ;; only when the custom `:metabase/deftest-not-marked-parallel` is enabled: complain if tests are not explicitly
     ;; marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything `^:parallel` in
     ;; places like `metabase.lib` tests unless there is a really good reason not to.

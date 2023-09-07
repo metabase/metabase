@@ -43,7 +43,7 @@
   (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
-(deftest result-rows-test
+(deftest ^:parallel result-rows-test
   (mt/dataset test-data-with-timezones
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
@@ -67,7 +67,7 @@
                       :order-by [[:asc $last_login]]})))
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/dataset test-data-with-timezones
     (mt/test-drivers (set-timezone-drivers)
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -167,7 +167,7 @@
                     :target ["dimension" ["template-tag" "just_a_date"]]
                     :value  "2014-08-02"}]}}))
 
-(deftest native-sql-params-filter-test
+(deftest ^:parallel native-sql-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (mt/test-drivers (filter
@@ -226,7 +226,7 @@
    (when (supports-datetime-with-zone-id?)
      {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
-(deftest sql-time-timezone-handling-test
+(deftest ^:parallel sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
@@ -244,7 +244,7 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
-(deftest general-timezone-support-test
+(deftest ^:parallel general-timezone-support-test
   (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
       (let [extract-units (disj u.date/extract-units :day-of-year)
@@ -298,7 +298,7 @@
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-relative-to-current-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
@@ -322,7 +322,7 @@
                                    (u.date/parse nil)
                                    t/offset-date-time)))))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-relative-to-days-since-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
@@ -346,7 +346,7 @@
                                    (u.date/parse nil)
                                    t/offset-date-time)))))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-fixed-date-test
+(deftest ^:parallel filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
       (mt/dataset test-data-with-timezones

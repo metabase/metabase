@@ -98,6 +98,8 @@
    (java.io StringWriter)
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
@@ -123,9 +125,15 @@
   [[metabase.server.middleware.session/do-with-current-user]]."
   (delay (atom nil)))
 
+(def ^:dynamic *thread-local-values*
+  "Mostly for tests, e.g. [[metabase.test/with-temporary-setting-values]]. A map of setting-name =>
+  already-deserialized value. If this is bound, values from this map are used preferentially over ones in the cache or
+  app DB."
+  nil)
+
 (def ^:private retired-setting-names
-  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
-  these names to avoid unintended side-effects if an application database still stores values for these settings."
+  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not
+  use these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
     "metabot-enabled"
@@ -308,7 +316,7 @@
   registered-settings
   (atom {}))
 
-(defprotocol ^:private Resolvable
+(defprotocol Resolvable
   (resolve-setting [setting-definition-or-name]
     "Resolve the definition map for a Setting. `setting-definition-or-name` map be a map, keyword, or string."))
 
@@ -471,6 +479,13 @@
   [setting-definition-or-name]
   (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
 
+(defn- thread-local-value
+  "Get the thread-local value from [[*thread-local-values*]] if they are being bound for
+  tests (see [[metabase.test/with-temporary-setting-values]]). This value is already deserialized."
+  [setting-definition-or-name]
+  (when *thread-local-values*
+    (core/get *thread-local-values* (keyword (setting-name setting-definition-or-name)))))
+
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
    The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
@@ -515,15 +530,24 @@
   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
     default))
 
+(def ^:private raw-value-source-fns
+  [#'user-local-value
+   #'database-local-value
+   #'thread-local-value
+   #'env-var-value
+   #'db-or-cache-value
+   #'default-value])
+
 (defn get-raw-value
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
 
   1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
   2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
-  3. From the corresponding env var (excluding empty string values)
-  4. From the application database (i.e., set via the admin panel) (excluding empty string values)
-  5. The default value, if one was specified
+  3. From [[*thread-local-values*]] which is used to mock Settings in tests with [[metabase.test/with-temporary-setting-values]]
+  4. From the corresponding env var (excluding empty string values)
+  5. From the application database (i.e., set via the admin panel) (excluding empty string values)
+  6. The default value, if one was specified
 
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
@@ -533,33 +557,31 @@
 
   Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
-  ([setting-definition-or-name]
-   (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [user-local-value
-                     database-local-value
-                     env-var-value
-                     db-or-cache-value
-                     default-value]]
-     (loop [[f & more] source-fns]
-       (let [v (f setting)]
-         (cond
-           (some? v)  v
-           (seq more) (recur more))))))
-
-  ([setting-definition-or-name pred parse-fn]
-   (let [parse     (fn [v]
-                     (try
-                       (parse-fn v)
-                       (catch Throwable e
-                         (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
-                           (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
-                                           {:setting setting-name}
-                                           e))))))
-         raw-value (get-raw-value setting-definition-or-name)
-         v         (cond-> raw-value
-                     (string? raw-value) parse)]
-     (when (pred v)
-       v))))
+  [setting-definition-or-name pred parse-fn]
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (letfn [(parse-string-value [v]
+              (try
+                (when-some [parsed (parse-fn v)]
+                  (when (pred parsed)
+                    parsed))
+                (catch Throwable e
+                  (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
+                                  {:setting (:name setting)}
+                                  e)))))
+            (warn-about-invalid-value [v]
+              (log/warnf "Ignoring value ^%s %s for Setting %s: value is not valid for Settings of type %s"
+                         (.getCanonicalName (class v))
+                         (pr-str v)
+                         (u/qualified-name (:name setting))
+                         (:type setting))
+              nil)]
+      (some (fn [f]
+              (when-some [v (f setting)]
+                (cond
+                  (pred v)    v
+                  (string? v) (parse-string-value v)
+                  :else       (warn-about-invalid-value v))))
+            raw-value-source-fns))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
@@ -601,7 +623,7 @@
 
 (defmethod get-value-of-type :double
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
+  (get-raw-value setting-definition-or-name (some-fn double? integer?) #(Double/parseDouble ^String %)))
 
 (defmethod get-value-of-type :keyword
   [_setting-type setting-definition-or-name]

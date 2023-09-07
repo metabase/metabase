@@ -297,7 +297,7 @@
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
     (do-response-formats [response-format request-options]
       (testing "check that the endpoint doesn't work if embedding isn't enabled"
-        (mt/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values! [enable-embedding false]
           (with-new-secret-key
             (with-temp-card [card]
               (is (= "Embedding is not enabled."
@@ -485,7 +485,7 @@
     (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+        (mt/with-temporary-setting-values! [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
           (is (= "count\n107\n"
                  (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
 

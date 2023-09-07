@@ -266,7 +266,7 @@
     (for [s strs]
       [(format-fn (u.date/parse s "UTC"))])))
 
-(deftest temporal-arithmetic-test
+(deftest ^:parallel temporal-arithmetic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (testing "Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions"
       (is (= (robust-dates
@@ -279,7 +279,10 @@
                       :fields      [[:expression :prev_month]]
                       :limit       3
                       :order-by    [[:asc $name]]})
-                   mt/rows)))))
+                   mt/rows)))))))
+
+(deftest ^:parallel temporal-arithmetic-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (testing "Test interaction of datetime arithmetics with truncation"
       (is (= (robust-dates
               ["2014-09-02T00:00:00"

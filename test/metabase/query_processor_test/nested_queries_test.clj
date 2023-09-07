@@ -369,7 +369,7 @@
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them")))
 
-(deftest field-literals-date-time-fields-test
+(deftest ^:parallel field-literals-date-time-fields-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (is (= (honeysql->sql
             {:select [[:source.ID :ID]

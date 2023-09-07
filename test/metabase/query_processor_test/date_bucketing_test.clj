@@ -737,7 +737,7 @@
     (str x)
     (int x)))
 
-(deftest week-of-year-and-week-count-should-be-consistent-test
+(deftest ^:parallel week-of-year-and-week-count-should-be-consistent-test
   (testing "consistent break out between weeks and week-of-year #4910"
     (mt/test-drivers (mt/normal-drivers)
       ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
@@ -1118,7 +1118,7 @@
        {:aggregation [[:count]]
         :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
 
-(deftest additional-unit-filtering-tests
+(deftest ^:parallel additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (mt/with-temporary-setting-values [start-of-week :sunday]
       (mt/test-drivers (mt/normal-drivers)
@@ -1168,7 +1168,7 @@
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [!day.date]})))))))))
 
-(deftest field-filter-start-of-week-test
+(deftest ^:parallel field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
       (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
@@ -1198,7 +1198,7 @@
                    (mt/first-row
                      (qp/process-query query))))))))))
 
-(deftest day-of-week-custom-start-of-week-test
+(deftest ^:parallel day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
       (testing "filter by `:day-of-week` should work correctly (#15044)"
@@ -1216,7 +1216,7 @@
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
-(deftest first-day-of-week-for-day-of-week-bucketing-test
+(deftest ^:parallel first-day-of-week-for-day-of-week-bucketing-test
   (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
     (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
       (let [query (mt/mbql-query checkins
@@ -1234,7 +1234,7 @@
               (is (= expected-rows
                      (mt/formatted-rows [int int] (qp/process-query query)))))))))))
 
-(deftest filter-by-current-quarter-test
+(deftest ^:parallel filter-by-current-quarter-test
   ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
   (mt/test-drivers (disj (mt/normal-drivers) :oracle)
     (testing "Should be able to filter by current quarter (#20683)"
@@ -1251,7 +1251,7 @@
                (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
-(deftest june-31st-test
+(deftest ^:parallel june-31st-test
   (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
     (mt/with-temporary-setting-values [report-timezone "UTC"]
       ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
