@@ -15,7 +15,7 @@ rm -rf .clj-kondo/.cache
 find modules/drivers shared enterprise/backend \
      -maxdepth 2 \
      -type d \
-     -name src -or -name test \
+     -name bin -or -name src -or -name test \
     | xargs clj-kondo \
             --parallel \
-            --lint src test
+            --lint bin src test
