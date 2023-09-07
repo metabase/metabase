@@ -64,53 +64,55 @@
              [&match])
           subclauses))
 
+(declare simplify-compound-filter)
+
+(defn- simplify-and-or-filter
+  [op args]
+  (let [args (distinct (filter some? args))]
+    (case (count args)
+      ;; an empty filter, toss it
+      0 nil
+      ;; single arg, unwrap it
+      1 (simplify-compound-filter (first args))
+      (if (some (partial is-clause? op) args)
+        ;; clause of the same type embedded, faltten it
+        (recur op (combine-compound-filters-of-type op args))
+        ;; simplify the arguments
+        (let [simplified (map simplify-compound-filter args)]
+          (if (= simplified args)
+            ;; no change, we can stop
+            (into [op] args)
+            ;; there is a change, we might be able to simplify even further
+            (recur op simplified)))))))
+
 (defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
-  [filter-clause]
-  (mbql.match/replace filter-clause
-    seq? (recur (vec &match))
-
-    ;; if this an an empty filter, toss it
-    nil                                  nil
-    [& (_ :guard (partial every? nil?))] nil
-    []                                   nil
-    [(:or :and :or)]                     nil
-
-    ;; if the COMPOUND clause contains any nils, toss them
-    [(clause-name :guard #{:and :or}) & (args :guard (partial some nil?))]
-    (recur (apply vector clause-name (filterv some? args)))
-
-    ;; Rewrite a `:not` over `:and` using de Morgan's law
-    [:not [:and & args]]
-    (recur (apply vector :or (map #(vector :not %) args)))
-
-    ;; Rewrite a `:not` over `:or` using de Morgan's law
-    [:not [:or & args]]
-    (recur (apply vector :and (map #(vector :not %) args)))
-
-    ;; for `and` or `not` compound filters with only one subclase, just unnest the subclause
-    [(:or :and :or) arg] (recur arg)
-
-    ;; for `and` and `not` compound filters with subclauses of the same type pull up any compounds of the same type
-    ;; e.g. [:and :a [:and b c]] ; -> [:and a b c]
-    [:and & (args :guard (partial some (partial is-clause? :and)))]
-    (recur (apply vector :and (combine-compound-filters-of-type :and args)))
-
-    [:or & (args :guard (partial some (partial is-clause? :or)))]
-    (recur (apply vector :or (combine-compound-filters-of-type :or args)))
-
-    ;; for `and` or `or` clauses with duplicate args, remove the duplicates and recur
-    [(clause :guard #{:and :or}) & (args :guard #(not (apply distinct? %)))]
-    (recur (apply vector clause (distinct args)))
-
-    ;; for `not` that wraps another `not`, eliminate both
-    [:not [:not arg]]
-    (recur arg)
-
-    :else
-    filter-clause))
+  [x]
+  (cond
+    ;; look for filters in the values
+    (map? x) (update-vals x simplify-compound-filter)
+    (seq? x) (recur (vec x))
+    ;; not a map and not vector, leave it as is
+    (not (vector? x)) x
+    ;; an empty filter, toss it
+    (not (some some? x)) nil
+    :else (let [[op & [farg :as args]] x]
+            (case op
+              :not (if-not (seqable? farg)
+                     x
+                     (case (first farg)
+                       ;; double negation, eliminate both
+                       :not (recur (second farg))
+                       ;; use de Morgan's law to push the negation down
+                       :and (simplify-and-or-filter :or (map #(vector :not %) (rest farg)))
+                       :or  (simplify-and-or-filter :and (map #(vector :not %) (rest farg)))
+                       x))
+              :and (simplify-and-or-filter :and args)
+              :or  (simplify-and-or-filter :or args)
+              ;; simplify the elements of the vector
+              (mapv simplify-compound-filter x)))))
 
 (mu/defn combine-filter-clauses :- mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
