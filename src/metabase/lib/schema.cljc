@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref])
   (:require
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -55,27 +54,19 @@
 (mr/def ::breakout
   [:ref ::ref/ref])
 
-(defn- distinct-refs? [refs]
-  (or
-   (< (count refs) 2)
-   (apply
-    distinct?
-    (for [ref refs]
-      (lib.options/update-options ref dissoc :lib/uuid)))))
-
 (mr/def ::breakouts
   [:and
    [:sequential {:min 1} ::breakout]
    [:fn
     {:error/message "Breakouts must be distinct"}
-    distinct-refs?]])
+    #'lib.schema.util/distinct-refs?]])
 
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
    [:fn
     {:error/message ":fields must be distinct"}
-    distinct-refs?]])
+    #'lib.schema.util/distinct-refs?]])
 
 ;; this is just for enabling round-tripping filters with named segment references
 (mr/def ::filterable
