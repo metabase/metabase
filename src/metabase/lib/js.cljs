@@ -509,11 +509,8 @@
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
-    (if (.-field_ref legacy-column)
-      ;; Prefer the attached field_ref if provided.
-      (legacy-ref->pMBQL (.-field_ref legacy-column))
-      ;; Fall back to converting like metadata.
-      (js.metadata/parse-column legacy-column))
+    ;; Convert legacy columns like we do for metadata.
+    (js.metadata/parse-column legacy-column)
     ;; It's already a :metadata/column map
     column))
 

@@ -240,9 +240,10 @@
    stage-number :- :int
    needles      :- [:sequential ::lib.schema.ref/ref]
    haystack     :- [:sequential lib.metadata/ColumnMetadata]]
-  (for [needle needles]
-    (or (find-matching-column query stage-number needle haystack)
-        -1)))
+  (let [by-column (into {} (for [[i column] (m/indexed haystack)]
+                             [column i]))]
+    (for [needle needles]
+      (get by-column (find-matching-column query stage-number needle haystack) -1))))
 
 ;; TODO: Refactor this away. Handle legacy refs in `lib.js`, then call [[find-matching-column]] directly.
 (mu/defn find-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
