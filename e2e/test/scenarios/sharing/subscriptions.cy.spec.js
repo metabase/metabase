@@ -439,7 +439,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
-        cy.get("aside").last().findByText("Text is Corbin Mertz");
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .as("subscriptionBar")
+          .findByText("Text is Corbin Mertz");
         clickButton("Done");
 
         cy.get("[aria-label='Pulse Card']")
@@ -448,7 +452,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
-          cy.findByText("Corbin Mertz").parent().findByText("Text");
+          cy.findByText("Text").next().findByText("Corbin Mertz");
           cy.findByText("Text 1").should("not.exist");
         });
 
@@ -458,7 +462,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
           .click();
-        cy.get("aside").findByText("Corbin Mertz").click();
+        cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
         popover()
           .findByText("Corbin Mertz")
           .closest("li")
@@ -478,7 +482,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription show new default in email
         sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
-          cy.findByText("Sallie Flatley").parent().findByText("Text");
+          cy.findByText("Text").next().findByText("Sallie Flatley");
           cy.findByText("Text 1").should("not.exist");
         });
       });
@@ -540,7 +544,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify defaults are listed correctly in email
         sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
-          cy.findByText("Corbin Mertz").parent().findByText("Text");
+          cy.findByText("Text").next().findByText("Corbin Mertz");
           cy.findByText("Text 1").should("not.exist");
         });
 
@@ -550,7 +554,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
           .click();
-        cy.get("aside").findByText("Corbin Mertz").click();
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .findByText("Corbin Mertz")
+          .click();
         popover()
           .findByText("Corbin Mertz")
           .closest("li")
@@ -570,7 +578,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription show new default in email
         sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
-          cy.findByText("Sallie Flatley").parent().findByText("Text");
+          cy.findByText("Text").next().findByText("Sallie Flatley");
           cy.findByText("Text 1").should("not.exist");
         });
       });
@@ -595,8 +603,18 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         clickButton("Done");
         cy.wait("@pulsePut");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is 2 selections and 1 more filter");
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .findByText("Text is 2 selections and 1 more filter")
+          .click();
+
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text")
+            .next()
+            .findByText("Corbin Mertz and Bobby Kessler");
+          cy.findByText("Text 1").next().findByText("Gizmo");
+        });
       });
     });
   });
