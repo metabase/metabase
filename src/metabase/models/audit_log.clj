@@ -68,7 +68,7 @@
 
   ([topic object model]
    (let [unqualified-topic (keyword (name topic))
-         model-name        (name (name model))
+         model-name        (some-> model name)
          details           (if (t2/model object)
                              (model-details object unqualified-topic)
                              (or object {}))]
