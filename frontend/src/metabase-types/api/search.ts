@@ -65,6 +65,7 @@ export interface SearchResult {
   moderated_status: boolean | null;
   model_id: CardId | null;
   model_name: string | null;
+  model_index_id: number | null;
   table_description: string | null;
   table_name: string | null;
   initial_sync_status: InitialSyncStatus | null;
