@@ -186,10 +186,7 @@ export function fixTimeseriesTicksExceedXTickCount(
     }
 
     return minLengthTicks.filter(
-      (_, index, ticks) =>
-        numTicks == null ||
-        ticks.length <= numTicks ||
-        index % Math.round((ticks.length - 1) / numTicks) === 0,
+      (_, index, ticks) => index % Math.ceil(ticks.length / numTicks) === 0,
     );
   }
 
