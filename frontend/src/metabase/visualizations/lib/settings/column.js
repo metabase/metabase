@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import { ChartSettingOrderedColumns } from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -18,7 +18,7 @@ import {
   getDateFormatFromStyle,
 } from "metabase/lib/formatting";
 
-import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
+import { hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
@@ -79,7 +79,7 @@ function getInhertiedSettingsForColumn(column) {
   };
 }
 
-const EXAMPLE_DATE = moment("2018-01-07 17:24");
+const EXAMPLE_DATE = moment("2018-01-31 17:24");
 
 function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   // hour-of-day shouldn't have any date style. It's handled as a time instead.
@@ -90,30 +90,12 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   }
 
   const options = [
-    dateStyleOption("MMMM D, YYYY", unit, null, abbreviate, separator),
-    dateStyleOption("D MMMM, YYYY", unit, null, abbreviate, separator),
-    dateStyleOption("dddd, MMMM D, YYYY", unit, null, abbreviate, separator),
-    dateStyleOption(
-      "M/D/YYYY",
-      unit,
-      hasDay(unit) ? "month, day, year" : null,
-      abbreviate,
-      separator,
-    ),
-    dateStyleOption(
-      "D/M/YYYY",
-      unit,
-      hasDay(unit) ? "day, month, year" : null,
-      abbreviate,
-      separator,
-    ),
-    dateStyleOption(
-      "YYYY/M/D",
-      unit,
-      hasDay(unit) ? "year, month, day" : null,
-      abbreviate,
-      separator,
-    ),
+    dateStyleOption("MMMM D, YYYY", unit, abbreviate, separator),
+    dateStyleOption("D MMMM, YYYY", unit, abbreviate, separator),
+    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate, separator),
+    dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
+    dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
+    dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
   ];
   const seen = new Set();
   return options.filter(option => {
@@ -127,20 +109,13 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
   });
 }
 
-function dateStyleOption(
-  style,
-  unit,
-  description,
-  abbreviate = false,
-  separator,
-) {
+function dateStyleOption(style, unit, abbreviate = false, separator) {
   let format = getDateFormatFromStyle(style, unit, separator);
   if (abbreviate) {
     format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
   }
   return {
-    name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    name: EXAMPLE_DATE.format(format),
     value: style,
   };
 }
@@ -465,7 +440,7 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefinitionsForColumn(series, column) {
-  const { visualization } = getVisualizationRaw(series);
+  const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"
       ? visualization.columnSettings(column)
@@ -532,7 +507,7 @@ export const tableColumnSettings = {
   "table.columns": {
     section: t`Columns`,
     title: t`Columns`,
-    widget: ChartSettingOrderedColumns,
+    widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
       const columns = card.visualization_settings["table.columns"];
@@ -569,15 +544,7 @@ export const tableColumnSettings = {
 
       return {
         columns: cols,
-        getColumnName: columnSetting => {
-          const columnIndex = findColumnIndexForColumnSetting(
-            cols,
-            columnSetting,
-          );
-          if (columnIndex >= 0) {
-            return getTitleForColumn(cols[columnIndex], series, settings);
-          }
-        },
+        getColumnName: column => getTitleForColumn(column, series, settings),
       };
     },
   },

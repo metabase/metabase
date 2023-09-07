@@ -10,7 +10,7 @@
    [metabase.test :as mt]))
 
 (defn- upgrade-field-literals [query]
-  (mt/with-everything-store
+  (mt/with-metadata-provider (mt/id)
     (upgrade-field-literals/upgrade-field-literals query)))
 
 (deftest dont-replace-aggregations-test
@@ -93,7 +93,7 @@
 (deftest attempt-case-insensitive-match-test
   (testing "Attempt to fix things even if the name used is the wrong case (#16389)"
     (mt/dataset sample-dataset
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (query= (mt/mbql-query orders
                       {:source-query {:source-table $$orders
                                       :aggregation  [[:count]]

@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
-import { Icon } from "metabase/core/components/Icon";
-import Link from "metabase/core/components/Link";
-
-import { color } from "metabase/lib/colors";
-import { BrowserCrumbsItem, BrowserCrumbsRoot } from "./BrowserCrumbs.styled";
+import {
+  BrowserCrumbsIcon,
+  BrowserCrumbsItem,
+  BrowserCrumbsLink,
+  BrowserCrumbsRoot,
+} from "./BrowserCrumbs.styled";
 
 // TODO: merge with Breadcrumbs
 
@@ -20,22 +21,17 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
       .map((crumb, index, crumbs) => (
         <BrowserCrumbsItem key={index}>
           {crumb.to ? (
-            <Link
-              className="text-brand-hover cursor-pointer"
+            <BrowserCrumbsLink
               to={crumb.to}
               data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
             >
               <Crumb>{crumb.title}</Crumb>
-            </Link>
+            </BrowserCrumbsLink>
           ) : (
             <Crumb>{crumb.title}</Crumb>
           )}
           {index < crumbs.length - 1 ? (
-            <Icon
-              name="chevronright"
-              color={color("text-light")}
-              className="mx1"
-            />
+            <BrowserCrumbsIcon name="chevronright" />
           ) : null}
         </BrowserCrumbsItem>
       ))}

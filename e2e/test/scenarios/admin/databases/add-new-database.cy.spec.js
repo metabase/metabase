@@ -16,6 +16,7 @@ describe("admin > database > add", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/database").as("createDatabase");
+    cy.intercept("GET", "/api/database").as("getDatabases");
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
@@ -23,29 +24,6 @@ describe("admin > database > add", () => {
     cy.findByText("Need help connecting?");
 
     cy.findByLabelText("Database type").click();
-  });
-
-  it.skip("should add a new database", () => {
-    typeAndBlurUsingLabel("Display name", "Test");
-    typeAndBlurUsingLabel("Connection String", "invalid");
-
-    // should surface an error if the connection string is invalid
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(": check your connection string");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Implicitly relative file paths are not allowed.");
-
-    // should be able to recover from an error and add database with the correct connection string
-    cy.findByDisplayValue("invalid")
-      .clear()
-      .type(
-        "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-        { delay: 0 },
-      );
-    cy.button("Save", { timeout: 10000 }).click();
-    cy.wait("@createDatabase");
   });
 
   describe("external databases", { tags: "@external" }, () => {
@@ -58,38 +36,35 @@ describe("admin > database > add", () => {
         }
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("PostgreSQL").click({ force: true });
+      popover().contains("PostgreSQL").click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show advanced options").click();
+      cy.findByTestId("database-form").within(() => {
+        cy.findByText("Show advanced options").click();
+        cy.findByLabelText("Rerun queries for simple explorations").should(
+          "have.attr",
+          "aria-checked",
+          "true",
+        );
+        // Reproduces (metabase#14334)
+        cy.findByText("Additional JDBC connection string options");
+        // Reproduces (metabase#17450)
+        cy.findByLabelText("Choose when syncs and scans happen")
+          .click()
+          .should("have.attr", "aria-checked", "true");
+        cy.findByLabelText("Never, I'll do this manually if I need to").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
 
-      // Reproduces (metabase#14334)
-      cy.findByLabelText("Rerun queries for simple explorations").should(
-        "have.attr",
-        "aria-checked",
-        "true",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Additional JDBC connection string options");
-      // Reproduces (metabase#17450)
-      cy.findByLabelText("Choose when syncs and scans happen")
-        .click()
-        .should("have.attr", "aria-checked", "true");
-
-      cy.findByLabelText("Never, I'll do this manually if I need to").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-      typeAndBlurUsingLabel("Display name", "QA Postgres12");
-      typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-      typeAndBlurUsingLabel("Database name", "sample");
-      typeAndBlurUsingLabel("Username", "metabase");
-      typeAndBlurUsingLabel("Password", "metasample123");
+        // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
+        typeAndBlurUsingLabel("Display name", "QA Postgres12");
+        typeAndBlurUsingLabel("Host", "localhost");
+        typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+        typeAndBlurUsingLabel("Database name", "sample");
+        typeAndBlurUsingLabel("Username", "metabase");
+        typeAndBlurUsingLabel("Password", "metasample123");
+      });
 
       const confirmSSLFields = (visible, hidden) => {
         visible.forEach(field => cy.findByText(field));
@@ -148,12 +123,14 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      waitForDbSync();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.icon("close").click();
+      });
 
       cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
         cy.findByText("Done!");
       });
 
@@ -213,23 +190,38 @@ describe("admin > database > add", () => {
     });
 
     it("should add Mongo database via the connection string", () => {
-      const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const badDBString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}`;
+      const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+      const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("MongoDB").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Paste a connection string").click();
-      typeAndBlurUsingLabel("Display name", "QA Mongo4");
-      cy.findByLabelText("Port").should("not.exist");
-      cy.findByLabelText("Paste your connection string").type(
-        connectionString,
-        {
+      popover().findByText("MongoDB").click({ force: true });
+
+      cy.findByTestId("database-form").within(() => {
+        cy.findByText("Paste a connection string").click();
+        typeAndBlurUsingLabel("Display name", "QA Mongo4");
+        cy.findByLabelText("Port").should("not.exist");
+        cy.findByLabelText("Paste your connection string").type(badDBString, {
           delay: 0,
-        },
-      );
+        });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").should("not.be.disabled").click();
+        cy.button("Save").should("not.be.disabled").click();
+        cy.findByText(/No database name specified/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(badPasswordString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+        cy.findByText(/Exception authenticating MongoCredential/);
+        cy.button("Failed");
+
+        cy.findByLabelText("Paste your connection string")
+          .clear()
+          .type(validConnectionString);
+
+        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
+      });
 
       cy.wait("@createDatabase");
 
@@ -367,4 +359,16 @@ function mockSuccessfulDatabaseSave() {
 
   cy.button("Save").click();
   return cy.wait("@createDatabase");
+}
+
+// we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
+function waitForDbSync(maxRetries = 10) {
+  if (maxRetries === 0) {
+    throw new Error("Timed out waiting for database sync");
+  }
+  cy.wait("@getDatabases").then(({ response }) => {
+    if (response.body.data.some(db => db.initial_sync_status !== "complete")) {
+      waitForDbSync(maxRetries - 1);
+    }
+  });
 }

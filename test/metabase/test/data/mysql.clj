@@ -1,6 +1,7 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -59,3 +60,9 @@
   (apply load-data/load-data-all-at-once! args))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
+
+;;; use one single global lock for all datasets. MySQL needs a global lock to do DDL stuff and blows up if other queries
+;;; are running at the same time even if they are in different logical databases
+(defmethod test.data.impl.get-or-create/dataset-lock :mysql
+  [driver _dataset-name]
+  ((get-method test.data.impl.get-or-create/dataset-lock :sql-jdbc) driver ""))

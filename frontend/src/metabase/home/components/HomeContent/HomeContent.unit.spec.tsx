@@ -1,4 +1,9 @@
-import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
+import type {
+  Database,
+  PopularItem,
+  RecentItem,
+  User,
+} from "metabase-types/api";
 import {
   createMockDatabase,
   createMockPopularItem,

@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Card, Dataset } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   getQuestionVirtualTableId,

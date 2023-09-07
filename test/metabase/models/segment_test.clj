@@ -34,10 +34,10 @@
                (t2/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest serialize-segment-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [segment        {:table_id   table-id
-                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id} {:db_id database-id}
+                 Segment  segment        {:table_id   table-id
+                                          :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:id                      true
             :table_id                true
             :creator_id              (mt/user->id :rasta)
@@ -54,10 +54,10 @@
                         (update :table_id boolean)))))))
 
 (deftest diff-segments-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [segment        {:table_id   table-id
-                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id} {:db_id database-id}
+                 Segment  segment        {:table_id   table-id
+                                          :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                           :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
             :description {:before "Lookin' for a blueberry"
@@ -110,9 +110,9 @@
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
-                      Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                      Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
+      (mt/with-temp [Database db      {:name "field-db" :engine :h2}
+                     Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
         (is (= "be199b7c"
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
                (serdes/identity-hash segment)))))))

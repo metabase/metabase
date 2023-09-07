@@ -270,8 +270,8 @@
   (let [sync-default (first sync.schedules/default-metadata-sync-schedule-cron-strings)
         fv-default   (first sync.schedules/default-cache-field-values-schedule-cron-strings)]
     (testing "Randomizes databases that have the 'old' style schedule defaults"
-      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
-                                    :cache_field_values_schedule fv-default}]]
+      (mt/with-temp [Database db {:metadata_sync_schedule      sync-default
+                                  :cache_field_values_schedule fv-default}]
         (#'task.sync-databases/randomize-db-schedules-if-needed)
         (let [after (t2/select-one Database :id (u/the-id db))]
           (is (not= sync-default (:metadata_sync_schedule after))
@@ -281,8 +281,8 @@
     (testing "Does not randomize databases that have an already randomized sched"
       (let [custom-sync "0 58 * * * ? *",
             custom-fv   "0 0 16 * * ? *"]
-        (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
-                                      :cache_field_values_schedule custom-fv}]]
+        (mt/with-temp [Database db {:metadata_sync_schedule      custom-sync
+                                    :cache_field_values_schedule custom-fv}]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
           (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= custom-sync (:metadata_sync_schedule after))
@@ -291,8 +291,8 @@
                 "Field values schedule was erroneously randomized")
             (is (= (:updated_at after) (:updated_at db)))))))
     (testing "Does not randomize databases that have default schedules but let users control schedule"
-      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
-                                    :cache_field_values_schedule fv-default}]]
+      (mt/with-temp [Database db {:metadata_sync_schedule      sync-default
+                                  :cache_field_values_schedule fv-default}]
         (t2/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
         (let [before (t2/select-one Database :id (u/the-id db))]

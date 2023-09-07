@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import { screen, render, within } from "__support__/ui";
-import { SearchModelType } from "metabase-types/api";
+import type { SearchModelType } from "metabase-types/api";
 
 const TEST_TYPES: {
   name: string;

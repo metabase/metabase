@@ -1,9 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import DeleteGroupMappingModal, {
-  DeleteGroupMappingModalProps,
-} from "./DeleteGroupMappingModal";
+import type { DeleteGroupMappingModalProps } from "./DeleteGroupMappingModal";
+import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 

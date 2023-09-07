@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 
-import * as React from "react";
+import type * as React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -15,13 +15,14 @@ import type { State } from "metabase-types/store";
 
 import { Stack, Group } from "metabase/ui";
 import Link from "metabase/core/components/Link";
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/metadata/Database";
+import type Schema from "metabase-lib/metadata/Schema";
 
 import SettingHeader from "../SettingHeader";
 import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";

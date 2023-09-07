@@ -1,8 +1,8 @@
-import { CardId } from "./card";
-import { Collection } from "./collection";
-import { DatabaseId, InitialSyncStatus } from "./database";
-import { FieldReference } from "./query";
-import { TableId } from "./table";
+import type { CardId } from "./card";
+import type { Collection } from "./collection";
+import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { FieldReference } from "./query";
+import type { TableId } from "./table";
 
 export type SearchModelType =
   | "card"
@@ -65,6 +65,7 @@ export interface SearchResult {
   moderated_status: boolean | null;
   model_id: CardId | null;
   model_name: string | null;
+  model_index_id: number | null;
   table_description: string | null;
   table_name: string | null;
   initial_sync_status: InitialSyncStatus | null;

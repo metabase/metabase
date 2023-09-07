@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import {
+import type {
   Parameter,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -9,7 +9,7 @@ import {
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 

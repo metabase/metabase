@@ -1,6 +1,6 @@
-import { RowValue } from "./dataset";
-import { FieldReference } from "./query";
-import { Table, TableId } from "./table";
+import type { RowValue } from "./dataset";
+import type { FieldReference } from "./query";
+import type { Table, TableId } from "./table";
 
 export type FieldId = number;
 

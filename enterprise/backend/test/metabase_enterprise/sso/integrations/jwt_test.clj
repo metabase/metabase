@@ -7,6 +7,7 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase.config :as config]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
@@ -31,7 +32,7 @@
 (use-fixtures :each disable-other-sso-types)
 
 (def ^:private default-idp-uri      "http://test.idp.metabase.com")
-(def ^:private default-redirect-uri "http://localhost:3000/test")
+(def ^:private default-redirect-uri "/")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (defmacro with-sso-jwt-token
@@ -47,7 +48,7 @@
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret
-                                         site-url                  "http://localhost"]
+                                         site-url                  (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
         (premium-features-test/with-premium-features current-features
           (f))))))
 

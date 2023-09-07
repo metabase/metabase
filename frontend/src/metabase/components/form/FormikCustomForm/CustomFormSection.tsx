@@ -1,8 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { CollapsibleSectionContent } from "./CustomFormSection.styled";
 
 interface SectionProps {
   title?: string;
@@ -22,13 +23,10 @@ function CollapsibleSection({ title, children }: SectionProps) {
   const [isExpanded, { toggle: handleToggle }] = useToggle(false);
   return (
     <section className="mb4">
-      <div
-        className="mb2 flex align-center cursor-pointer text-brand-hover"
-        onClick={handleToggle}
-      >
+      <CollapsibleSectionContent onClick={handleToggle}>
         <DisclosureTriangle className="mr1" open={isExpanded} />
         <h3>{title}</h3>
-      </div>
+      </CollapsibleSectionContent>
       <div className={isExpanded ? undefined : "hide"}>{children}</div>
     </section>
   );

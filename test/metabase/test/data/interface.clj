@@ -56,7 +56,9 @@
    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
    ;; datasets e.g. [[mt/with-actions-test-data]]
+   ;; default is nullable
    (s/optional-key :not-null?)         (s/maybe s/Bool)
+   (s/optional-key :unique?)           (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
@@ -77,13 +79,14 @@
 
 (def ^:private ValidDatabaseDefinition
   (s/constrained
-   {:database-name     su/NonBlankString
+   {:database-name     su/NonBlankString ; this must be unique
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
 ;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
-  "Return a definition of a dataset, so a test database can be created from it."
+  "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
+  the [[ValidDatabaseDefinition]] schema."
   {:arglists '([this])}
   class)
 

@@ -16,10 +16,10 @@
     :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.context :as qp.context]
@@ -33,8 +33,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -288,7 +287,8 @@
                        `do-with-connection-with-options))
         ;; for compatibility, make sure we pass it an actual Database instance.
         (let [database (if (integer? db-or-id-or-spec)
-                         (t2/select-one Database db-or-id-or-spec)
+                         (qp.store/with-metadata-provider db-or-id-or-spec
+                           (lib.metadata/database (qp.store/metadata-provider)))
                          db-or-id-or-spec)]
           (reify DataSource
             (getConnection [_this]
@@ -345,7 +345,8 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (t2/select-one Database db-or-id-or-spec)
+    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
+                                                                            (lib.metadata/database (qp.store/metadata-provider)))
                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
     (let [read-only? (not write?)]
       (try
@@ -438,6 +439,14 @@
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
+  (when (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
+                (catch Throwable _ (count params)))
+           (count params))
+    (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
+                    {:driver driver
+                     :type   qp.error-type/driver
+                     :statement (str/split-lines (str stmt))
+                     :params params})))
   (dorun
    (map-indexed
     (fn [i param]
@@ -663,8 +672,8 @@
   ([driver sql params max-rows context respond]
    (do-with-connection-with-options
     driver
-    (qp.store/database)
-    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+    (lib.metadata/database (qp.store/metadata-provider))
+    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
                   ^ResultSet rs (try
@@ -691,7 +700,7 @@
   (try
     (do-with-connection-with-options
      driver
-     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
          {:rows-affected (if (instance? PreparedStatement stmt)

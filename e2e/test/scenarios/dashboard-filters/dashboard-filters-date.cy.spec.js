@@ -1,12 +1,14 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
@@ -18,7 +20,7 @@ describe("scenarios > dashboard > filters > date", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -50,7 +52,8 @@ describe("scenarios > dashboard > filters > date", () => {
           cy.findByText(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery1");
       },
     );
   });
@@ -87,7 +90,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
@@ -125,7 +128,7 @@ describe("scenarios > dashboard > filters > date", () => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
     });
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
@@ -194,9 +197,4 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     default:
       throw new Error("Wrong filter type!");
   }
-}
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
 }

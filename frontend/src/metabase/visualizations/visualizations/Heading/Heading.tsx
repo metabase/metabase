@@ -1,4 +1,5 @@
-import { useMemo, MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
+import { useMemo, useState } from "react";
 
 import { t } from "ttag";
 

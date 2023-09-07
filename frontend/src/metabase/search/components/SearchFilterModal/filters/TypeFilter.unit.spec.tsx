@@ -4,7 +4,7 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
-import { SearchModelType } from "metabase-types/api";
+import type { SearchModelType } from "metabase-types/api";
 
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   card: "Question",

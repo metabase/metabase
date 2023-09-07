@@ -12,7 +12,6 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import {
@@ -190,6 +189,7 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+
     return {
       id: parameterId,
       value: normalizeValue(value),
@@ -200,6 +200,10 @@ export const setParameterValue = createThunkAction(
 
 function normalizeValue(value) {
   if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  if (value === "") {
     return null;
   }
 
@@ -330,12 +334,9 @@ export const setOrUnsetParameterValues =
 export const setParameterValuesFromQueryParams =
   queryParams => (dispatch, getState) => {
     const parameters = getParameters(getState());
-    const metadata = getMetadata(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
-      metadata,
-      { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
     );
 
     dispatch(setParameterValues(parameterValues));

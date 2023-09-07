@@ -1,10 +1,14 @@
 (ns metabase.shared.formatting.time-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [are deftest]]
    [metabase.shared.formatting.time :as time]))
 
 (deftest format-time-test
-  (are [exp input] (= exp (time/format-time input))
+  ;; some JVMs use non-breaking space (nbsp) in their formatted strings
+  ;; which can cause confusing looking test failures.
+  ;; A string replace normalizes on the ascii space char
+  (are [exp input] (= exp (str/replace (time/format-time input) \u202f \space))
     "1:02 AM"  "01:02:03.456+07:00"
     "1:02 AM"  "01:02"
     "10:29 PM" "22:29:59.26816+01:00"

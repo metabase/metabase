@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import styled from "@emotion/styled";
-import { ComponentProps } from "react";
+import type { ComponentProps } from "react";
 import { space } from "metabase/styled-components/theme";
 import Radio from "metabase/core/components/Radio";
 import CacheTTLField from "../CacheTTLField";

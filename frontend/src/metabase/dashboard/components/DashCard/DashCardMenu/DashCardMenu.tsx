@@ -4,20 +4,18 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/core/components/Icon";
-import {
-  downloadQueryResults,
-  DownloadQueryResultsOpts,
-} from "metabase/query_builder/actions";
+import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
+import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { editQuestion } from "metabase/dashboard/actions";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import {
+import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {

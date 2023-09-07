@@ -1,5 +1,9 @@
-import type { Field as ApiField } from "metabase-types/api";
-import { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  Field as ApiField,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
+
 import { isFK, isPK } from "metabase-lib/types/utils/isa";
 import type Question from "metabase-lib/Question";
 import type {
@@ -8,7 +12,7 @@ import type {
 } from "metabase-lib/queries/drills/types";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Field from "metabase-lib/metadata/Field";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import { isSameField } from "metabase-lib/queries/utils";
 
 export type ObjectDetailDrillType = "pk" | "fk" | "zoom" | "dashboard";
@@ -77,7 +81,7 @@ function objectDetailDrillType({
   data,
 }: {
   question: Question;
-  column: DatasetColumn;
+  column: DatasetColumn | null;
   value: RowValue | undefined;
   extraData: ClickObject["extraData"];
   data?: ClickObject["data"];

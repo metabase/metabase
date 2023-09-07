@@ -52,7 +52,7 @@ const targetQuestion = {
   },
 };
 
-describe("scenarios > dashboard > filters", () => {
+describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

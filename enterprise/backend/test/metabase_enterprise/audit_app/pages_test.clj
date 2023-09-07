@@ -224,3 +224,14 @@
                       (sort-by first)
                       (filter #((set (map u/the-id [a b c d e])) (first %)))
                       (map #(nth % 6))))))))))
+
+(deftest active-and-new-by-time-test
+  (testing "The active-and-new-by-time audit query correctly returns results (#32244)"
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (let [results (mt/user-http-request :crowberto :post 202 "dataset"
+                                            {:type :internal
+                                             :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"
+                                             :args ["day"]})]
+          (is (not= 0
+                    (count (-> results :data :rows)))))))))

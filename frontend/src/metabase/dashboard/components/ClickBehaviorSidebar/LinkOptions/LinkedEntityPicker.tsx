@@ -23,7 +23,7 @@ import type {
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
 import { Heading } from "../ClickBehaviorSidebar.styled";
