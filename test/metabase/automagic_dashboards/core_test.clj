@@ -1635,10 +1635,10 @@
                                       :matches [{:id (mt/id :people :longitude)}]
                                       :score 85}
                      "Loc"           {:field_type [:type/Location]
-                                      :matches [{:id (mt/id :people :state)}
-                                                {:id (mt/id :people :city)}]
-                                      :score 60}}
-                    bound-dimensions)))))))))
+                                      :matches    (sort-by :id [{:id (mt/id :people :state)}
+                                                                {:id (mt/id :people :city)}])
+                                      :score      60}}
+                    (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id)))))))))))
 
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
@@ -1905,4 +1905,3 @@
                   (-> related
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
-
