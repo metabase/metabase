@@ -109,7 +109,11 @@ async function setup({ dashboard }: Options = {}) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { dashboardId, history, mockEventListener };
+  return {
+    dashboardId,
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 }
 
 describe("DashboardApp", function () {
@@ -172,8 +176,8 @@ describe("DashboardApp", function () {
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      checkNotNull(history).push("/");
-      checkNotNull(history).push(`/dashboard/${dashboardId}`);
+      history.push("/");
+      history.push(`/dashboard/${dashboardId}`);
 
       await waitForElementToBeRemoved(() =>
         screen.queryAllByTestId("loading-spinner"),
@@ -184,7 +188,7 @@ describe("DashboardApp", function () {
       userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      checkNotNull(history).goBack();
+      history.goBack();
 
       expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
       expect(
