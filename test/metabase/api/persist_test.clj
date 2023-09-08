@@ -5,8 +5,7 @@
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-))
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
