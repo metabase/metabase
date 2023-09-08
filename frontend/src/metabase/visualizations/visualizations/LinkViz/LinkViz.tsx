@@ -9,6 +9,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import type {
   DashboardOrderedCard,
   LinkCardSettings,
+  SearchModelType,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
@@ -35,7 +36,7 @@ import {
 import { isUrlString } from "./utils";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
 
-const MODELS_TO_SEARCH = [
+const MODELS_TO_SEARCH: SearchModelType[] = [
   "card",
   "dataset",
   "dashboard",

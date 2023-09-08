@@ -64,7 +64,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
+    (nextLocation: LocationDescriptorObject | string) =>
+      dispatch(push(nextLocation)),
     [dispatch],
   );
 
@@ -78,7 +79,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    result => {
+    (result: WrappedResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
