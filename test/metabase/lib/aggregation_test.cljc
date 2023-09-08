@@ -768,7 +768,7 @@
               (lib/ref expr-metadata))))))
 
 (deftest ^:parallel aggregate-by-coalesce-test
-  (testing "Converted query returns same columns as built query"
+  (testing "Converted query returns same columns as built query (#33680)"
     (let [built-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/expression "Zero" (lib/+ 0 0))
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
