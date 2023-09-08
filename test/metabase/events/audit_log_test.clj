@@ -5,7 +5,7 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
+    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -30,7 +30,7 @@
    (activity topic nil))
 
   ([topic model-id]
-   (t2/select-one [:model/Activity :topic :user_id :model :model_id :details]
+   (t2/select-one [:model/Activity :topic :user_id :model :model_id :database_id :table_id :details]
                   :topic    topic
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
@@ -175,25 +175,25 @@
     (mt/with-temp [Dashboard     dashboard {:name "My Cool Dashboard"}
                    Card          card {}
                    DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (mt/with-model-cleanup [Activity]
-        (let [event {:id        (:id dashboard)
-                     :actor_id  (mt/user->id :rasta)
-                     :dashcards [dashcard]}]
-          (is (= event
-                 (events/publish-event! :event/dashboard-remove-cards event))))
-        (is (= {:topic       :dashboard-remove-cards
+      (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-test-user :rasta
+          (let [event {:id        (:id dashboard)
+                       :actor_id  (mt/user->id :rasta)
+                       :dashcards [dashcard]}]
+            (is (= event
+                   (events/publish-event! :event/dashboard-remove-cards event))))
+          (is (partial=
+               {:topic       :dashboard-remove-cards
                 :user_id     (mt/user->id :rasta)
-                :model       "dashboard"
+                :model       "Dashboard"
                 :model_id    (:id dashboard)
-                :database_id nil
-                :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
                               :dashcards   [{:description (:description card)
                                              :name        (:name card)
                                              :id          (:id dashcard)
                                              :card_id     (:id card)}]}}
-               (activity "dashboard-remove-cards" (:id dashboard))))))))
+               (event "dashboard-remove-cards" (:id dashboard)))))))))
 
 (deftest install-event-test
   (testing :install
@@ -202,10 +202,10 @@
              (events/publish-event! :event/install {})))
       (is (= {:topic       :install
               :user_id     nil
-              :database_id nil
-              :table_id    nil
               :model       "install"
               :model_id    nil
+              :database_id nil
+              :table_id    nil
               :details     {}}
              (activity "install"))))))
 
@@ -369,4 +369,4 @@
               :database_id nil
               :table_id    nil
               :details     {}}
-             (activity "user-joined" (mt/user->id :rasta)))))))
+             (activity "user-login" (mt/user->id :rasta)))))))
