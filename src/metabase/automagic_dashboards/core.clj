@@ -945,14 +945,15 @@
    defined in the dashboard template are used to match to the source data fields.
 
    This data structure is used to generate cards."
-  [{:keys [source] :as root}, dashboard-template :- dashboard-templates/DashboardTemplate]
+  [{:keys [source entity] :as root}
+   {:keys [dimensions metrics filters]} :- dashboard-templates/DashboardTemplate]
   {:pre [source]}
   (let [base-context (make-base-context root)]
     (as-> base-context context
-      (assoc context :dimensions (bind-dimensions context (:dimensions dashboard-template)))
-      (assoc context :metrics (resolve-overloading context (:metrics dashboard-template)))
-      (assoc context :filters (resolve-overloading context (:filters dashboard-template)))
-      (inject-root context (:entity root)))))
+      (assoc context :dimensions (bind-dimensions context dimensions))
+      (assoc context :metrics (resolve-overloading context metrics))
+      (assoc context :filters (resolve-overloading context filters))
+      (inject-root context entity))))
 
 (defn- make-cards
   "Create cards from the context using the provided template cards.
