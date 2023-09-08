@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { setupCardDataset } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
 import { createMockCard } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/core/utils/types";
 import Question from "metabase-lib/Question";
 
 import { ObjectDetailView } from "./ObjectDetailView";
@@ -11,7 +12,7 @@ import type { ObjectDetailProps } from "./types";
 function setup(options?: Partial<ObjectDetailProps>) {
   render(
     <ObjectDetailView
-      data={testDataset as any}
+      data={testDataset}
       question={
         new Question(
           createMockCard({
@@ -48,19 +49,19 @@ function setup(options?: Partial<ObjectDetailProps>) {
   );
 }
 
-describe("Object Detail", () => {
+describe("ObjectDetailView", () => {
   it("renders an object detail component", () => {
     setup();
 
     expect(screen.getByText(/Product/i)).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][2].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][3].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][3]).toString()),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][4].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][4]).toString()),
     ).toBeInTheDocument();
   });
 

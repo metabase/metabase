@@ -8,7 +8,7 @@ describe("ObjectDetailBody", () => {
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
-        data={testDataset as any}
+        data={testDataset}
         objectName="Large Sandstone Socks"
         zoomedRow={testDataset.rows[2]}
         settings={{
