@@ -309,3 +309,64 @@ describe("scenarios > question > new", () => {
     cy.get("header").findByText(NEW_COLLECTION);
   });
 });
+
+// the data picker has different behavior if there are no models in the instance
+// the default instance image has a model in it, so we need to separately test the
+// model-less behavior
+describe("scenarios > question > new > data picker > without models", () => {
+  beforeEach(() => {
+    restore("without-models");
+    cy.signInAsAdmin();
+  });
+
+  it("can create a question from the sample database", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+    });
+  });
+
+  it("can create a question from a saved question", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Orders").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText(39.72).should("be.visible");
+    });
+  });
+
+  it("shows models and raw data options after creating a model", () => {
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
+    });
+
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Raw Data").should("be.visible");
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("be.visible");
+    });
+  });
+});
