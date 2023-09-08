@@ -165,7 +165,7 @@
   transactions when done this way.
 
   See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929"
-  [^java.sql.Connection connection {:keys [nested-transaction-rule], :as options} f]
+  [^java.sql.Connection connection {:keys [nested-transaction-rule] :as options} f]
   (cond
    (and *in-transaction*
         (= nested-transaction-rule :ignore))
@@ -176,7 +176,7 @@
    (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
                    {:options options}))
 
-    ;; optimization: don't introduce an unnecessary call to `binding` if [[*in-transaction*]] is already truthy
+   ;; optimization: don't introduce an unnecessary call to `binding` if [[*in-transaction*]] is already truthy
    *in-transaction*
    (do-transaction connection f)
 
