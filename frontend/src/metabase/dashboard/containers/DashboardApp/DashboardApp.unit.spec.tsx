@@ -154,14 +154,14 @@ describe("DashboardApp", function () {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      checkNotNull(history).push("/");
-      checkNotNull(history).push(`/dashboard/${dashboardId}`);
+      history.push("/");
+      history.push(`/dashboard/${dashboardId}`);
 
       await waitForElementToBeRemoved(() =>
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      checkNotNull(history).goBack();
+      history.goBack();
 
       expect(
         screen.queryByText("Changes were not saved"),
