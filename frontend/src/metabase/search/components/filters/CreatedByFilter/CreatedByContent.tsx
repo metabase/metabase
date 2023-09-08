@@ -48,7 +48,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
 
     return isLoading ? (
       <Center>
-        <Loader />
+        <Loader data-testid="loading-spinner" />
       </Center>
     ) : (
       <Stack p="md" h="100%" spacing="xs" style={{ overflow: "hidden" }}>

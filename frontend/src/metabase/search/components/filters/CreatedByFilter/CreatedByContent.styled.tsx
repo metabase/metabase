@@ -4,9 +4,9 @@ import type { HTMLAttributes } from "react";
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
-export const UserElement = styled(Box)<
-  HTMLAttributes<HTMLDivElement> & BoxProps & { isSelected: boolean }
->`
+export const UserElement = styled(Box, {
+  shouldForwardProp: prop => prop !== "isSelected",
+})<HTMLAttributes<HTMLDivElement> & BoxProps & { isSelected: boolean }>`
   cursor: pointer;
   border-radius: ${({ theme }) => theme.radius.sm};
 
@@ -15,7 +15,6 @@ export const UserElement = styled(Box)<
     css`
       background-color: ${theme.colors.brand[0]};
     `}
-
   &:hover {
     background-color: ${({ theme }) => theme.colors.brand[0]};
   }
