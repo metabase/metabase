@@ -156,17 +156,22 @@
   [file]
   (.isDirectory (io/file file)))
 
+(defn exists?
+  "Whether `file` exists or not."
+  [file]
+  (.exists (io/file file)))
+
 (defn zip-directory->file
   "Given a source directory and a destination zip file path,
    zip the directory and writes it to the destination"
   ([source-dir zip-file]
    (zip-directory->file source-dir zip-file {}))
-  ([^String source-dir
-    ^String zip-file
-    {:keys [verbose]}]
+  ([^String source-dir ^String zip-file {:keys [verbose]}]
    (let [verbose true
          ^File source-path (File. source-dir)
          entry-count (atom 0)]
+     (when-not (exists? source-path)
+       (throw (ex-info "Directory to zip must exist!" {:source-path source-path})))
      (with-open [fos (FileOutputStream. ^String zip-file)
                  zos (ZipOutputStream. fos)]
        (doseq [^File file (file-seq source-path)
