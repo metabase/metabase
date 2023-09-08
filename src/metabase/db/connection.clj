@@ -142,11 +142,12 @@
   (letfn [(thunk []
             (let [savepoint (.setSavepoint connection)]
               (try
-                (f connection)
-                (.commit connection)
-                (catch Throwable e
-                  (.rollback connection savepoint)
-                  (throw e)))))]
+               (let [result (f connection)]
+                 (.commit connection)
+                 result)
+               (catch Throwable e
+                 (.rollback connection savepoint)
+                 (throw e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try
@@ -166,19 +167,19 @@
   See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929"
   [^java.sql.Connection connection {:keys [nested-transaction-rule], :as options} f]
   (cond
-    (and *in-transaction*
-         (= nested-transaction-rule :ignore))
-    (f connection)
+   (and *in-transaction*
+        (= nested-transaction-rule :ignore))
+   (f connection)
 
-    (and *in-transaction*
-         (= nested-transaction-rule :prohibit))
-    (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
-                    {:options options}))
+   (and *in-transaction*
+        (= nested-transaction-rule :prohibit))
+   (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
+                   {:options options}))
 
     ;; optimization: don't introduce an unnecessary call to `binding` if [[*in-transaction*]] is already truthy
-    *in-transaction*
-    (do-transaction connection f)
+   *in-transaction*
+   (do-transaction connection f)
 
-    :else
-    (binding [*in-transaction* true]
-      (do-transaction connection f))))
+   :else
+   (binding [*in-transaction* true]
+     (do-transaction connection f))))

@@ -2,12 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.test.initialize :as initialize]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(use-fixtures
+  :once
+  (fixtures/initialize :db))
+
 (deftest nested-transaction-test
-  (initialize/initialize-if-needed! :db)
   (let [user-1                    (mt/random-email)
         user-2                    (mt/random-email)
         user-exists?              (fn [email]
