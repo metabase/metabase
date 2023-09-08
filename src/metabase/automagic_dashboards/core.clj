@@ -1,6 +1,85 @@
 (ns metabase.automagic-dashboards.core
-  "Automatically generate questions and dashboards based on predefined
-   heuristics."
+  "Automatically generate questions and dashboards based on predefined heuristics.
+
+  There are two key inputs to this algorithm:
+  - An entity to generate the dashboard for. The primary data needed from this entity is:
+    - The entity type itself
+    - The field information, especially the metadata about these fields
+  - A set of potential dashboard templates from which a dashboard can be realized based on the entity and field data
+
+  The first step in the base `automagic-dashboard` is to select dashboard templates that match the entity type of
+  the entity to be x-rayed. A simple entity might match only to a GenericTable template while a more complicated
+  entity might match to a TransactionTable or EventTable template.
+
+  Once potential templates are selected, the following process is attempted for each template in order of most
+  specialized template to least:
+  - Determine which entity fields map to dimensions and metrics described in the template.
+  - Match these selected dimensions and metrics to required dimensions and metrics for cards specified in the template.
+  - If any cards match, we successfully return a dashboard generated with the created cards.
+
+  The following example is provided to better illustrate the template process and how dimensions and metrics work.
+
+  This is a notional dashboard template:
+
+                              Card 1: You have N Items!
+
+              Card 2:                      Card 3:                       Card 4:
+        Avg Income over Time        Total Income per Category            X vs. Y
+                   ___
+      Avg  |    __/                  Total | #     #                 | *    *      *
+    Income | __/                    Income | #  #  #               X |    ***
+           |/                              | #  #  #  #              |      ***   *  *
+           +----------                     +-----------              +-----------------
+              Time                           Category                        Y
+
+  Key things to note:
+  - Each dimension _in a card_ is specified by *name*.
+  - There are 5 dimensions across all cards:
+    - Income
+    - Time
+    - Category
+    - X
+    - Y
+  - There are 3 metrics:
+    - Count (N Items)
+    - Avg Income
+    - Total Income
+  - Each metric is a _computed value_ based on 0 or more dimensions, also specified by *name*.
+    - Count is dimensionless
+    - Avg and Total require the Income dimensions
+    - Not shown, but a card such as \"Sales by Location\" could require 3 dimensions:
+      - Total of the Sales dimension
+      - Longitude and Latitude dimensions
+    - A metric can also have multiple dimensions with its calculated value, such as the quotient of 2 dimensions.
+  - Not described here are filters, which have the same nominal syntax for referencing dimensions as cards and metrics.
+
+   Dimensions are the key Lego™ brick for all of the above and are specified as a named element with specialization
+   based on entity and field semantic types as well as a score.
+
+   For example, Income could have the following potential matches to underlying fields:
+   - A field from a Sales table with semantic type `:type/Income` and score of 100
+   - A field from an unspecified table with semantic type `:type/Income` and score of 90
+   - A field from a Sales table with semantic type `:type/Number` and score of 50
+
+   When matched with actual fields from an x-rayed entity, the highest matching field is selected to be \"bound\" to
+   the Income dimensions. Suppose you have an entity of type SalesTable and fields of INCOME (semantic type Income),
+   TAX (type Float), and TOTAL (Float). In this case, the INCOME field would match best (score 100) and be bound to the
+   Income dimension.
+
+   The other specified dimensions will have similar matching rules. Note that X & Y are, like all other dimensions,
+   *named* dimensions. In our above example the Income dimension matched to the INCOME field of type `:type/Income`.
+   This happens to be well-aligned data. X and Y might look like:
+   - X is a field from the Sales table of type `:type/Decimal`
+   - Y is a field from the Sales table of type `:type/Decimal`
+   So long as two fields match the above criteria (decimal types (including descendants) and from a Sales table), they
+   can be bound to the X and Y dimensions. They could be, for example, TAX and TOTAL.
+
+   The above example, starting from the dashboard template, works backwards from the actual x-ray generation algorithm
+   but should provide clarity as to the terminology and how everything fits together.
+
+   In practice, we gather the entity data (including fields), the dasboard templates, attempt to bind dimensions to
+   fields, then build metrics, filters, and finally cards based on the bound dimensions.
+  "
   (:require
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
@@ -531,13 +610,13 @@
 (defn- candidate-bindings
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
-  [context dimensions]
+  [context dimension-specs]
   ;; TODO - Fix this so that the intermediate representations aren't so crazy.
   ;; all-bindings a map of binding dim identifier to binding def which contains
   ;; field matches which are all the same field except they are merged with the binding.
   ;; What we want instead is just a map of field to potential bindings.
   ;; Just rack and stack the bindings then return that with the field or something.
-  (let [all-bindings (for [dimension dimensions
+  (let [all-bindings (for [dimension dimension-specs
                            :let [[identifier definition] (first dimension)]
                            candidate (field-candidates context definition)]
                        {(name identifier)
@@ -549,8 +628,8 @@
    Each field will be bound to only one dimension. If multiple dimension definitions
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
-  [context dimensions]
-  (->> (candidate-bindings context dimensions)
+  [context dimension-specs]
+  (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
