@@ -3,6 +3,12 @@ import { useRef } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
+import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  VisualizationProps,
+  VisualizationStaticProps,
+} from "metabase/visualizations/types";
+
 import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
@@ -22,6 +28,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
@@ -48,7 +55,7 @@ import {
   getValueWidth,
 } from "./utils";
 
-const staticProps = {
+const staticProps: VisualizationStaticProps = {
   uiName: t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -66,8 +73,8 @@ const staticProps = {
           {
             data: { cols },
           },
-        ],
-        settings,
+        ]: Series,
+        settings: VisualizationSettings,
       ) => [
         // try and find a selected field setting
         cols.find(col => col.name === settings["scalar.field"]) ||
@@ -86,7 +93,7 @@ const staticProps = {
   },
 
   isSensible({ insights }) {
-    return insights && insights.length > 0;
+    return insights ? insights.length > 0 : false;
   },
 
   // Smart scalars need to have a breakout
@@ -106,28 +113,28 @@ const staticProps = {
   },
 };
 
-export function SmartScalar(props) {
-  const {
-    actionButtons,
-    onChangeCardAndRun,
-    onVisualizationClick,
-    isDashboard,
-    settings,
-    visualizationIsClickable,
-    series: [
-      {
-        card,
-        data: { rows, cols },
-      },
-    ],
-    rawSeries,
-    gridSize,
-    width,
-    height,
-    totalNumGridCols,
-    fontFamily,
-  } = props;
-
+export function SmartScalar({
+  actionButtons,
+  onChangeCardAndRun,
+  onVisualizationClick,
+  isDashboard,
+  settings,
+  visualizationIsClickable,
+  series: [
+    {
+      card,
+      data: { rows, cols },
+    },
+  ],
+  rawSeries,
+  gridSize,
+  width,
+  height,
+  totalNumGridCols,
+  fontFamily,
+}: VisualizationProps & {
+  totalNumGridCols: number;
+}) {
   const _scalar = useRef(null);
 
   const metricIndex = cols.findIndex(col => !isDate(col));
@@ -138,13 +145,13 @@ export function SmartScalar(props) {
   const column = cols[metricIndex];
 
   const insights = rawSeries?.[0].data?.insights;
-  const insight = _.findWhere(insights, { col: column.name });
+  const insight = insights && _.findWhere(insights, { col: column.name });
   if (!insight) {
     return null;
   }
 
   const lastValue = insight["last-value"];
-  const formatOptions = settings.column(column);
+  const formatOptions = settings.column?.(column) as OptionsType;
 
   const { displayValue, fullScalarValue } = compactifyValue(
     lastValue,
@@ -154,8 +161,9 @@ export function SmartScalar(props) {
 
   const granularity = Lib.describeTemporalUnit(insight["unit"]).toLowerCase();
 
-  const lastChange = insight["last-change"];
-  const previousValue = insight["previous-value"];
+  // FIXME: previous value and last change are not guaranteed to exist
+  const lastChange = insight["last-change"] as number;
+  const previousValue = insight["previous-value"] as number;
 
   const isNegative = lastChange < 0;
   const isSwapped = settings["scalar.switch_positive_negative"];
@@ -178,10 +186,7 @@ export function SmartScalar(props) {
     <PreviousValueSeparator>•</PreviousValueSeparator>
   );
   const granularityDisplay = jt`last ${granularity}`;
-  const previousValueDisplay = formatValue(
-    previousValue,
-    settings.column(column),
-  );
+  const previousValueDisplay = formatValue(previousValue, formatOptions);
 
   const previousValueDisplayInTooltip = jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
   const previousValueDisplayInCard = jt`${previousValueSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
@@ -228,10 +233,11 @@ export function SmartScalar(props) {
       >
         <span
           onClick={
-            isClickable &&
-            (() =>
-              _scalar.current &&
-              onVisualizationClick({ ...clicked, element: _scalar.current }))
+            isClickable
+              ? () =>
+                  _scalar.current &&
+                  onVisualizationClick({ ...clicked, element: _scalar.current })
+              : undefined
           }
           ref={_scalar}
         >
@@ -291,7 +297,7 @@ export function SmartScalar(props) {
             </Tooltip>
 
             {canShowPreviousValue && (
-              <PreviousValue id="SmartScalar-PreviousValue" responsive>
+              <PreviousValue id="SmartScalar-PreviousValue">
                 {previousValueDisplayInCard}
               </PreviousValue>
             )}

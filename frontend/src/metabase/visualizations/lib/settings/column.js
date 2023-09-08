@@ -25,11 +25,8 @@ import { currency } from "cljs/metabase.shared.util.currency";
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => (s.data && s.data.cols) || []));
 
-export function columnSettings({
-  getColumns = DEFAULT_GET_COLUMNS,
-  hidden,
-  ...def
-} = {}) {
+export function columnSettings(args = {}) {
+  const { getColumns = DEFAULT_GET_COLUMNS, hidden, ...def } = args;
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",

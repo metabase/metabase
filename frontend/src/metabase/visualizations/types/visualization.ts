@@ -101,6 +101,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
   useRawSeries?: boolean;
+  inline?: boolean;
 };
 
 export type VisualizationSettingsDefinitions = {
@@ -114,17 +115,15 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-// TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
-  name: string;
-  noun: string;
+export type VisualizationStaticProps = {
+  noun?: string;
   uiName: string;
   identifier: string;
   aliases?: string[];
   iconName: IconName;
 
-  maxMetricsSupported: number;
-  maxDimensionsSupported: number;
+  maxMetricsSupported?: number;
+  maxDimensionsSupported?: number;
 
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
@@ -139,9 +138,9 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries: Series;
+  placeHolderSeries?: Series;
 
-  transformSeries: (series: Series) => TransformedSeries;
+  transformSeries?: (series: Series) => TransformedSeries;
   // TODO: remove dependency on metabase-lib
   isSensible: (data: DatasetData, query?: Query) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
@@ -150,6 +149,12 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
     settings: VisualizationSettings,
     query: Query,
   ) => void | never;
-  isLiveResizable: (series: Series) => boolean;
+  isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
 };
+
+// TODO: add component property for the react component instead of the intersection
+export type Visualization = React.ComponentType<VisualizationProps> &
+  VisualizationStaticProps & {
+    name: string; // name of this visualization’s `class` or `function`
+  };
