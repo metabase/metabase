@@ -8,7 +8,7 @@
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field Metric Segment Table]]
@@ -30,6 +30,45 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------- `->field` -------------------
+(deftest ->field-test
+  (testing "Demonstrate the stated methods in which ->fields works"
+    (mt/with-test-user :rasta
+      (mt/dataset sample-dataset
+        (testing "->field checks for a table-based context"
+          (let [table (t2/select-one :model/Table :id (mt/id :orders))
+                root  (#'magic/->root table)]
+            (testing "Looking up the field by name does not work"
+              (is (nil? (magic/->field root "DISCOUNT"))))
+            (testing "Looking up the field by id or id-field ref works."
+              (is (=?
+                    {:id (mt/id :orders :discount)}
+                    (magic/->field root (mt/id :orders :discount))))
+              (is (=?
+                    {:id (mt/id :orders :discount)}
+                    (magic/->field root [:field (mt/id :orders :discount) nil]))))))
+        (testing "->field checks for a model-based context"
+          (let [query (mt/native-query {:query "select * from orders"})]
+            (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
+              (let [root  (#'magic/->root card)]
+                (testing "Looking up the field by id or id-field ref works"
+                  (is (=?
+                        {:id (mt/id :orders :discount)}
+                        (magic/->field root (mt/id :orders :discount))))
+                  (is (=?
+                        {:id (mt/id :orders :discount)}
+                        (magic/->field root [:field (mt/id :orders :discount) nil]))))
+                (testing "Looking up the field by name or named field ref works,
+                          returning the metadata description of the field."
+                  (is (=?
+                        {:name      "DISCOUNT"
+                         :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
+                        (magic/->field root "DISCOUNT"))))
+                (is (=?
+                      {:name      "DISCOUNT"
+                       :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
+                      (magic/->field root [:field "DISCOUNT" {:base-type :type/Float}])))))))))))
+
 ;;; ------------------- `->reference` -------------------
 
 (deftest ^:parallel ->reference-test
@@ -46,14 +85,14 @@
               (#'magic/->reference :mbql)))))
 
 
-;;; ------------------- Rule matching  -------------------
+;;; ------------------- Dashboard template matching  -------------------
 
-(deftest ^:parallel rule-matching-test
+(deftest ^:parallel dashboard-template-matching-test
   (is (= [:entity/UserTable :entity/GenericTable :entity/*]
          (->> (mt/id :users)
               (t2/select-one Table :id)
               (#'magic/->root)
-              (#'magic/matching-rules (rules/get-rules ["table"]))
+              (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
               (map (comp first :applies_to)))))
 
   (testing "Test fallback to GenericTable"
@@ -61,11 +100,106 @@
            (->> (-> (t2/select-one Table :id (mt/id :users))
                     (assoc :entity_type nil)
                     (#'magic/->root))
-                (#'magic/matching-rules (rules/get-rules ["table"]))
+                (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
                 (map (comp first :applies_to)))))))
 
+;;; ------------------- `->root source` -------------------
 
-;;; ------------------- `automagic-anaysis` -------------------
+;;(:model/Segment)
+(deftest source-root-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of an entity"
+    (mt/with-test-user :rasta
+      (mt/dataset sample-dataset
+        (testing "The source of a table is the table itself"
+          (let [table (t2/select-one :model/Table :id (mt/id :orders))
+                {:keys [entity source]} (#'magic/->root table)]
+            (is (= source table))
+            (is (= entity table))
+            (is (= source entity))))
+        (testing "The source of a field is the originating table of the field"
+          (let [table (t2/select-one :model/Table :id (mt/id :orders))
+                field (t2/select-one :model/Field :id (mt/id :orders :discount))
+                {:keys [entity source]} (#'magic/->root field)]
+            (is (= source table))
+            (is (= entity field))))
+        (testing "Card sourcing has four branches..."
+          (testing "A model's (dataset = true) source is itself with the :entity_type :entity/GenericTable assoced in"
+            (mt/with-temp
+              [Card card {:table_id      (mt/id :orders)
+                          :dataset_query {:query    {:source-table (mt/id :orders)}
+                                          :type     :query
+                                          :database (mt/id)}
+                          :dataset       true}]
+              (let [{:keys [entity source]} (#'magic/->root card)]
+                (is (true? (:dataset card)))
+                (is (= entity card))
+                (is (= source (assoc card :entity_type :entity/GenericTable))))))
+          (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
+            (mt/with-temp
+              [Card {source-query-id :id
+                     :as             nested-query} {:table_id      (mt/id :orders)
+                                                    :dataset_query {:query    {:source-table (mt/id :orders)}
+                                                                    :type     :query
+                                                                    :database (mt/id)}
+                                                    :dataset       true}
+               Card card {:table_id      (mt/id :orders)
+                          :dataset_query {:query    {:limit        10
+                                                     :source-table (format "card__%s" source-query-id)}
+                                          :type     :query
+                                          :database (mt/id)}}]
+              (let [{:keys [entity source]} (#'magic/->root card)]
+                (is (false? (:dataset card)))
+                (is (true? (#'magic/nested-query? card)))
+                (is (= entity card))
+                (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
+          (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
+            (let [query (mt/native-query {:query "select * from orders"})]
+              (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
+                (let [{:keys [entity source]} (#'magic/->root card)]
+                  (is (false? (:dataset card)))
+                  (is (true? (#'magic/native-query? card)))
+                  (is (= entity card))
+                  (is (= source (assoc card :entity_type :entity/GenericTable)))))))
+          (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
+            (mt/with-temp
+              [Card {table-id :table_id
+                     :as      card} {:table_id      (mt/id :orders)
+                                     :dataset_query {:query    {:filter       [:> [:field (mt/id :orders :quantity) nil] 10]
+                                                                :source-table (mt/id :orders)}
+                                                     :type     :query
+                                                     :database (mt/id)}}]
+              (let [{:keys [entity source]} (#'magic/->root card)]
+                (is (false? (:dataset card)))
+                (is (false? (#'magic/nested-query? card)))
+                (is (false? (#'magic/native-query? card)))
+                (is (= entity card))
+                (is (= source (t2/select-one :model/Table :id table-id)))))))
+        (testing "The source of a query is the underlying datasource of the query"
+          (let [query (mi/instance
+                        Query
+                        {:database-id   (mt/id)
+                         :table-id      (mt/id :orders)
+                         :dataset_query {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :orders)
+                                                    :aggregation  [[:count]]}}})
+                {:keys [entity source]} (#'magic/->root query)]
+            (is (= entity query))
+            (is (= source (t2/select-one :model/Table (mt/id :orders)))))))
+      (testing "The source of a metric is its underlying table."
+        (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                                :definition {:aggregation [[:count]]}}]
+          (let [{:keys [entity source]} (#'magic/->root metric)]
+            (is (= entity metric))
+            (is (= source (t2/select-one :model/Table (mt/id :venues)))))))
+      (testing "The source of a segment is its underlying table."
+        (mt/with-temp [Segment segment {:table_id   (mt/id :venues)
+                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+          (let [{:keys [entity source]} (#'magic/->root segment)]
+            (is (= entity segment))
+            (is (= source (t2/select-one :model/Table (mt/id :venues))))))))))
+
+;;; ------------------- `automagic-analysis` -------------------
 
 (defn- test-automagic-analysis
   ([entity card-count] (test-automagic-analysis entity nil card-count))
@@ -122,6 +256,33 @@
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
         (test-automagic-analysis metric 8)))))
+
+(deftest parameter-mapping-test
+  (mt/dataset sample-dataset
+    (testing "mbql queries have parameter mappings with field ids"
+        (let [table (t2/select-one Table :id (mt/id :products))
+              dashboard (magic/automagic-analysis table {})
+              expected-targets (mt/$ids #{[:dimension $products.category]
+                                          [:dimension $products.created_at]})
+              actual-targets (into #{}
+                                   (comp (mapcat :parameter_mappings)
+                                         (map :target))
+                                   (:ordered_cards dashboard))]
+          (is (= expected-targets actual-targets))))
+    (testing "native queries have parameter mappings with field ids"
+      (let [query (mt/native-query {:query "select * from products"})]
+        (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query
+                                            query)]
+          (let [dashboard (magic/automagic-analysis card {})
+                ;; i'm not sure why category isn't picked here
+                expected-targets #{[:dimension
+                                    [:field "CREATED_AT"
+                                     {:base-type :type/DateTimeWithLocalTZ}]]}
+                actual-targets (into #{}
+                                     (comp (mapcat :parameter_mappings)
+                                           (map :target))
+                                     (:ordered_cards dashboard))]
+            (is (= expected-targets actual-targets))))))))
 
 (deftest complicated-card-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -306,7 +467,7 @@
                                                                  source-query))
                                              :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)]
@@ -341,7 +502,7 @@
                                                                              source-query))
                                                          :dataset         true}]
             (let [root               (#'magic/->root card)
-                  {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
+                  {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)
@@ -1461,7 +1622,7 @@
                         :dataset         true}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
-                  ;; These typically come from the "rules," but can be mocked (injected dyamically if desired) easily.
+                  ;; These typically come from the dashboard templates, but can be mocked (injected dyamically if desired) easily.
                   dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
                                       {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
                                       {"Lat" {:field_type [:type/Latitude], :score 90}}
@@ -1810,14 +1971,16 @@
                           :type     :query}]
         (mt/with-temp
           [Card {card-id :id :as card} {:table_id        (mt/id :products)
-                      :dataset_query   source-query
-                      :result_metadata (mt/with-test-user
-                                         :rasta
-                                         (result-metadata-for-query
-                                           source-query))
-                      :dataset         true}]
-          (let [rule (some #(when (-> % :rule #{"GenericTable"}) %) (rules/get-rules ["table"]))
-                {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) rule)]
+                                        :dataset_query   source-query
+                                        :result_metadata (mt/with-test-user
+                                                           :rasta
+                                                           (result-metadata-for-query
+                                                             source-query))
+                                        :dataset         true}]
+          (let [dashboard-template (some
+                                     #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
+                                     (dashboard-templates/get-dashboard-templates ["table"]))
+                {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) dashboard-template)]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
               (is (=? {"Lat" {:matches [{:id (mt/id :people :latitude) :name "LATITUDE"}]}} dimensions)))
@@ -1835,11 +1998,11 @@
                      (->> (seq metrics)
                           (filter
                             (fn [metric]
-                              (every? dimensions (rules/collect-dimensions metric))))))))
+                              (every? dimensions (dashboard-templates/collect-dimensions metric))))))))
             (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
-              (let [card-def {:title      "A dimensionless quantity card"
-                              :metrics    ["Count"]
-                              :score      100}]
+              (let [card-def {:title   "A dimensionless quantity card"
+                              :metrics ["Count"]
+                              :score   100}]
                 (is (=? [{:title         "A dimensionless quantity card"
                           :metrics       [{:metric ["count"] :op "count"}]
                           :dimensions    []
@@ -1866,7 +2029,7 @@
             (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
               (let [card-def {:title      "Some sort of card"
                               :metrics    ["Count"]
-                              :dimensions [{"Lat" {}}{"Lon" {}}]
+                              :dimensions [{"Lat" {}} {"Lon" {}}]
                               :score      100}]
                 (is (=? [] (#'magic/card-candidates context card-def)))))))))))
 
