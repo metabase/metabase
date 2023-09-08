@@ -167,8 +167,7 @@
   ([source-dir zip-file]
    (zip-directory->file source-dir zip-file {}))
   ([^String source-dir ^String zip-file {:keys [verbose]}]
-   (let [verbose true
-         ^File source-path (File. source-dir)
+   (let [^File source-path (File. source-dir)
          entry-count (atom 0)]
      (when-not (exists? source-path)
        (throw (ex-info "Directory to zip must exist!" {:source-path source-path})))
@@ -178,8 +177,6 @@
                :when (not (directory? file))]
          (when verbose (out/safe-println "Zipping file:" file))
          (let [file-path (.getAbsolutePath file)
-               _ (out/announce (pr-str ["file path" file-path]))
-               _ (out/announce (pr-str ["source dir path" (.getAbsolutePath source-path)]))
                buffer (byte-array 1024)
                fis (FileInputStream. file)]
            (swap! entry-count inc)
