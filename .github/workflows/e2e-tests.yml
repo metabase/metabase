@@ -141,7 +141,7 @@ jobs:
     if: |
       !cancelled() &&
       (needs.download_uberjar.result == 'success' || needs.build.result == 'success')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
@@ -159,6 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04]
         java-version: [11]
         edition: [ee]
         folder:
@@ -185,8 +186,13 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
-            context: grep
+            runner: ubuntu-22.04
+            context: oss-subset
             java-version: 11
+          - edition: ee
+            java-version: 11
+            context: slow
+            runner: buildjet-2vcpu-ubuntu-2204
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -294,17 +300,27 @@ jobs:
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags=@OSS \
+          --env grepTags=@OSS,grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        env:
+          TERM: xterm
+
+      - name: Run slow and resource-intensive Cypress tests
+        if: matrix.context == 'slow' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee' && github.event_name != 'schedule'
+        if: matrix.edition == 'ee' && github.event_name != 'schedule' && matrix.context != 'slow'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.folder }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
@@ -319,7 +335,7 @@ jobs:
         if: matrix.edition == 'oss' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags=@OSS \
+          --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser "replay-chromium"
         env:
@@ -329,10 +345,10 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
-        if: matrix.edition == 'ee' && github.event_name == 'schedule'
+        if: matrix.edition == 'ee' && github.event_name == 'schedule' && matrix.context != 'slow'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
           --folder ${{ matrix.folder }} \
           --browser "replay-chromium"
         env:
@@ -365,22 +381,24 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'false' &&
       needs.build.result == 'skipped' &&
       needs.download_uberjar.result == 'skipped'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04]
         java-version: [11]
         edition: [ee]
         folder:
-          - "auditing"
           - "actions"
           - "admin"
+          - "admin-2"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
+          - "dashboard-cards"
           - "dashboard-filters"
           - "embedding"
           - "filters"
@@ -396,8 +414,14 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
-            context: grep
+            runner: ubuntu-22.04
             java-version: 11
+            context: oss-subset
+          - edition: ee
+            runner: ubuntu-latest
+            java-version: 11
+            context: slow
+
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"

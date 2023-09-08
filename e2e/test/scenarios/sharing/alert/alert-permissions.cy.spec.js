@@ -48,7 +48,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     });
 
     it("should let you edit an alert", () => {
-      cy.intercept("PUT", "/api/alert/1").as("updatedAlert");
+      cy.intercept("PUT", "/api/alert/*").as("updatedAlert");
 
       // Change alert
       visitQuestion(ORDERS_QUESTION_ID);

@@ -8,7 +8,7 @@ describe("scenarios > models > revision history", () => {
   });
 
   beforeEach(() => {
-    cy.request("PUT", "/api/card/3", {
+    cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
       dataset: true,
     });
