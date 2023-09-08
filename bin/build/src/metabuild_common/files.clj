@@ -164,23 +164,24 @@
   ([^String source-dir
     ^String zip-file
     {:keys [verbose]}]
-   (let [^File source-path (File. source-dir)
+   (let [verbose true
+         ^File source-path (File. source-dir)
          entry-count (atom 0)]
      (with-open [fos (FileOutputStream. ^String zip-file)
                  zos (ZipOutputStream. fos)]
-       (doseq [^File file (file-seq source-path)]
-         (when (not (directory? file))
-           (when verbose (out/safe-println "Zipping file:" file))
-           (let [file-path (.getAbsolutePath file)
-                 _ (out/announce (pr-str ["file path" file-path]))
-                 _ (out/announce (pr-str ["source dir path" (.getAbsolutePath source-path)]))
-                 buffer (byte-array 1024)
-                 fis (FileInputStream. file)]
-             (swap! entry-count inc)
-             (.putNextEntry zos (ZipEntry. file-path))
-             (loop [len (.read fis buffer)]
-               (when (pos? len)
-                 (.write zos buffer 0 len)
-                 (recur (.read fis buffer))))
-             (.closeEntry zos)))))
+       (doseq [^File file (file-seq source-path)
+               :when (not (directory? file))]
+         (when verbose (out/safe-println "Zipping file:" file))
+         (let [file-path (.getAbsolutePath file)
+               _ (out/announce (pr-str ["file path" file-path]))
+               _ (out/announce (pr-str ["source dir path" (.getAbsolutePath source-path)]))
+               buffer (byte-array 1024)
+               fis (FileInputStream. file)]
+           (swap! entry-count inc)
+           (.putNextEntry zos (ZipEntry. file-path))
+           (loop [len (.read fis buffer)]
+             (when (pos? len)
+               (.write zos buffer 0 len)
+               (recur (.read fis buffer))))
+           (.closeEntry zos))))
      (out/announce "%d Entries zipped to '%s'!" @entry-count zip-file))))
