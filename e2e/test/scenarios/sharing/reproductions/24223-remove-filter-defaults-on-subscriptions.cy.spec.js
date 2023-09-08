@@ -6,6 +6,7 @@ import {
   setTokenFeatures,
   setupSMTP,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
@@ -19,7 +20,7 @@ describeEE("issue 24223", () => {
   });
 
   it("should clear default filter", () => {
-    cy.visit(`/dashboard/1`);
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     addParametersToDashboard();
     cy.findByLabelText("subscriptions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

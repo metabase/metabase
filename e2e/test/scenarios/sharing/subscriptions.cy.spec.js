@@ -174,7 +174,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           ).should("exist");
         });
 
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         openPulseSubscription();
 
         sidebar().findByText(nonUserEmail).should("not.exist");
@@ -208,7 +208,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           ).should("exist");
         });
 
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         openPulseSubscription();
 
         sidebar().findByText(nonUserEmail).should("exist");
@@ -474,7 +474,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
           .findByText("Text is Sallie Flatley")
           .click();
@@ -570,7 +570,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
           .findByText("Text is Sallie Flatley")
           .click();
@@ -621,13 +621,16 @@ describe("scenarios > dashboard > subscriptions", () => {
 });
 
 // Helper functions
-function openDashboardSubscriptions(dashboard_id = 1) {
+function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
   cy.findByLabelText("subscriptions").click();
 }
 
-function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {
+function assignRecipient({
+  user = admin,
+  dashboard_id = ORDERS_DASHBOARD_ID,
+} = {}) {
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")
