@@ -1,0 +1,77 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Questions created per month
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  type: query
+  query:
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: month
+    joins:
+    - fields: all
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - join-alias: Question 1
+      alias: Question 1
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - null
+    - question-create
+  database: Internal Metabase Database
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: Z18i0B5CgOe66-YScAZdx
+  label: questions_created_per_month
+display: line
+entity_id: Z18i0B5CgOe66-YScAZdx
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - timestamp
+  graph.show_values: true
+  graph.metrics:
+  - count
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-15T02:12:55.658594Z'
+public_uuid: null
