@@ -76,8 +76,8 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" Integer/MAX_VALUE)))))
       (testing "Should get info when the ID exists"
-        (is (=? {:active true
-                  :card_id (u/the-id model)
-                  :id (u/the-id pinfo)
-                  :state "persisted"}
+        (is (=? {:active  true
+                 :card_id (u/the-id model)
+                 :id      (u/the-id pinfo)
+                 :state   "persisted"}
                 (mt/user-http-request :crowberto :get 200 (format "persist/card/%d" (u/the-id model)))))))))
