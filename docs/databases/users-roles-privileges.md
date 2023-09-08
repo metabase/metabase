@@ -123,7 +123,7 @@ CREATE ROLE metabase_model_caching WITH LOGIN;
 GRANT CREATE ON "database" TO metabase_model_caching;
 
 -- Grant write privileges to the SCHEMA used for model caching.
-GRANT USAGE ON "your_schema" TO metabase_model_caching;
+GRANT USAGE ON SCHEMA "your_schema" TO metabase_model_caching;
 GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase_model_caching;
 
 -- Grant role to the metabase user.
