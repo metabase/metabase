@@ -91,12 +91,11 @@ describe("updateParametersWidgetStickiness", () => {
   describe("on small device", () => {
     beforeEach(() => {
       simulateSmallScreen();
+      mockMainElementScroll(offsetTop + 1);
     });
 
     it("makes filters not sticky if too many parameters", () => {
       const setState = jest.fn();
-
-      mockMainElementScroll(offsetTop + 1);
 
       const dashboard = {
         parametersWidgetRef: { current: { offsetTop } },
@@ -114,8 +113,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     it("makes filters sticky if not too many parameters", () => {
       const setState = jest.fn();
-
-      mockMainElementScroll(offsetTop + 1);
 
       const dashboard = {
         parametersWidgetRef: { current: { offsetTop } },
