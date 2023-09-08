@@ -264,6 +264,7 @@
                                 :model-index       model-index
                                 :model-index-value model-index-value}))))
 
+;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
@@ -289,6 +290,7 @@
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
+;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
@@ -319,6 +321,7 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
+;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
@@ -354,6 +357,7 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
+;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
