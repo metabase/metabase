@@ -540,23 +540,23 @@ export default class Dimension {
     return this;
   }
 
-  /**
-   * Return a copy of this Dimension with any temporal unit options removed.
-   */
-  withoutTemporalBucketing(): Dimension {
+  // memoize to avoid performance issues (metabase#33676)
+
+  baseDimension = _.once(() =>
+    this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS),
+  );
+
+  withoutTemporalBucketing = _.once(() => {
     return this.withoutOptions("temporal-unit");
-  }
+  });
 
-  withoutJoinAlias(): Dimension {
+  withoutJoinAlias = _.once(() => {
     return this.withoutOptions("join-alias");
-  }
+  });
 
-  /**
-   * Return a copy of this Dimension with any temporal bucketing or binning options removed.
-   */
-  baseDimension(): Dimension {
-    return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
-  }
+  withoutBinning = _.once(() => {
+    return this.withoutOptions("binning");
+  });
 
   isValidFKRemappingTarget() {
     return !(
@@ -859,11 +859,12 @@ export class FieldDimension extends Dimension {
     return this._createFallbackField();
   }
 
-  getMLv1CompatibleDimension() {
+  // memoize to avoid performance issues (metabase#33676)
+  getMLv1CompatibleDimension = _.once(() => {
     return this.isIntegerFieldId()
       ? this.withoutOptions("base-type", "effective-type")
       : this;
-  }
+  });
 
   tableId() {
     return this.field()?.table?.id;
@@ -1311,9 +1312,10 @@ export class ExpressionDimension extends Dimension {
     });
   }
 
-  getMLv1CompatibleDimension() {
+  // memoize to avoid performance issues (metabase#33676)
+  getMLv1CompatibleDimension = _.once(() => {
     return this.withoutOptions("base-type", "effective-type");
-  }
+  });
 
   icon(): string {
     const field = this.field();
@@ -1489,9 +1491,10 @@ export class AggregationDimension extends Dimension {
     });
   }
 
-  getMLv1CompatibleDimension() {
+  // memoize to avoid performance issues (metabase#33676)
+  getMLv1CompatibleDimension = _.once(() => {
     return this.withoutOptions("base-type", "effective-type");
-  }
+  });
 
   /**
    * Raw aggregation
