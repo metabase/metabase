@@ -94,7 +94,7 @@ describe("updateParametersWidgetStickiness", () => {
       mockMainElementScroll(offsetTop + 1);
     });
 
-    it("makes filters not sticky if too many parameters", () => {
+    it("keeps filters not sticky if filters number is > MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
       const setState = jest.fn();
 
       const dashboard = {
@@ -111,7 +111,7 @@ describe("updateParametersWidgetStickiness", () => {
       expect(setState).not.toHaveBeenCalled();
     });
 
-    it("makes filters sticky if not too many parameters", () => {
+    it("makes filters sticky if filters number is <= MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
       const setState = jest.fn();
 
       const dashboard = {
