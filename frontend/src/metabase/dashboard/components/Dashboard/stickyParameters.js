@@ -1,6 +1,6 @@
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
-export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 6;
+export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 5;
 
 export const updateParametersWidgetStickiness = dashboard => {
   const shouldBeSticky = checkIfParametersWidgetShouldBeSticky(dashboard);
