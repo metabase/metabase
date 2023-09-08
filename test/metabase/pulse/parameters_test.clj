@@ -28,9 +28,10 @@
       (is (= "https://metabase.com/dashboard/1?%26=contains%3F"
              (params/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))
 
-(deftest param-val-test
-  (testing "When the parameter’s :value key is missing, fallback to the :default key"
-    (is (= "my default value"
-           (params/param-val {:default "my default value"}))))
-  (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
-    (is (nil? (params/param-val {:value nil :default "my default value"})))))
+(deftest param-val-or-default-test
+  (let [param-val-or-default #'params/param-val-or-default]
+    (testing "When the parameter’s :value key is missing, fallback to the :default key"
+      (is (= "my default value"
+             (param-val-or-default {:default "my default value"}))))
+    (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
+      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))))

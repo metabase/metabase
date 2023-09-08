@@ -15,8 +15,10 @@
   [_pulse dashboard]
   (:parameters dashboard))
 
-(defn param-val
-  "Returns the parameter value, falling back to :default if :value is not present."
+(defn- param-val-or-default
+  "Returns the parameter value, such that:
+    * nil value => nil
+    * missing value key => default"
   [parameter]
   (get parameter :value (:default parameter)))
 
@@ -25,14 +27,14 @@
   without a value"
   [subscription dashboard]
   (filter
-   param-val
+   param-val-or-default
    (the-parameters subscription dashboard)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
   [parameter]
   (let [tyype  (:type parameter)
-        values (param-val parameter)]
+        values (param-val-or-default parameter)]
     (try (shared.params/formatted-value tyype values (public-settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))
@@ -43,7 +45,7 @@
   (let [base-url   (urls/dashboard-url dashboard-id)
         url-params (flatten
                     (for [param parameters]
-                      (for [value (u/one-or-many (param-val param))]
+                      (for [value (u/one-or-many (param-val-or-default param))]
                         (str (codec/url-encode (:slug param))
                              "="
                              (codec/url-encode value)))))]
