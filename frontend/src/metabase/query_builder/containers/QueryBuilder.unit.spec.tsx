@@ -261,7 +261,7 @@ describe("QueryBuilder", () => {
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
-      it("render time-series grouping widget for date field breakout", async () => {
+      it("renders time-series grouping widget for date field breakout", async () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
         });
