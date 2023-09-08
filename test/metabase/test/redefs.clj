@@ -18,8 +18,9 @@
   *with-temp-use-transaction* true)
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :default
-  "Initialize the DB before doing the other with-temp stuff. Make sure metabase.test.util is loaded.
-  Make sure the the "
+  "Initialize the DB before doing the other with-temp stuff.
+  Make sure metabase.test.util is loaded.
+  Run [[f]] in transaction by default, bind [[*with-temp-use-transaction*]] to false to disable this."
   [model attributes f]
   (classloader/require 'metabase.test.initialize)
   ((resolve 'metabase.test.initialize/initialize-if-needed!) :db)

@@ -303,7 +303,7 @@
     (mt/with-user-in-groups
       [group {:name "New Group"}
        user  [group]]
-      (t2.with-temp/with-temp [User user-to-update]
+      (mt/with-temp! [User user-to-update]
         (letfn [(update-user-firstname! [req-user status]
                   (testing (format "- update users firstname with %s user" (mt/user-descriptor user))
                     (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))

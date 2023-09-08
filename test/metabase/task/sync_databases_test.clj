@@ -131,7 +131,7 @@
              (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (t2.with-temp/with-temp [Database database {:engine :postgres}]
+    (mt/with-temp! [Database database {:engine :postgres}]
       (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
         (testing (format "Update %s" k)
           (is (thrown?
