@@ -35,7 +35,7 @@ export const SearchResultsDropdown = ({
           size="sm"
           c="inherit"
         >{jt`View and filter all ${metadata.total} results`}</Text>
-        <Icon name="arrow_right" />
+        <Icon name="arrow_right" size={14} />
       </SearchDropdownFooter>
     ) : null;
 
