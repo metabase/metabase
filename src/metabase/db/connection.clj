@@ -165,7 +165,8 @@
   transactions when done this way.
 
   See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929"
-  [^java.sql.Connection connection {:keys [nested-transaction-rule] :as options} f]
+  [^java.sql.Connection connection {:keys [nested-transaction-rule] :or {nested-transaction-rule :allow} :as options} f]
+  (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
   (cond
    (and *in-transaction*
         (= nested-transaction-rule :ignore))
