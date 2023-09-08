@@ -930,11 +930,12 @@
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-        (with-preserved-rasta-personal-collection-name
-          (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
-            (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
-                                  {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
-                                   :first_name             "Reggae"})))
+        (mt/with-ensure-with-temp-no-transaction!
+          (with-preserved-rasta-personal-collection-name
+            (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
+              (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
+                                    {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
+                                     :first_name             "Reggae"}))))
         (testing "groups"
           (is (= #{"All Users"}
                  (user-test/user-group-names (mt/user->id :rasta)))))

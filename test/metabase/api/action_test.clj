@@ -282,16 +282,16 @@
                         (is (partial= (expected-fn updated-action)
                                       (mt/user-http-request :crowberto :get 200 action-path))))))
                   (testing "Get All"
-                    (is (partial= [(expected-fn updated-action)
-                                   {:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}]
+                    (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                   (expected-fn updated-action)]
                                   (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
                     (testing "Should not be possible without permission"
                       (is (= "You don't have permissions to do that."
                              (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))
                     (testing "Should still work if actions are disabled"
                       (mt/with-actions-disabled
-                        (is (partial= [(expected-fn updated-action)
-                                       {:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}]
+                        (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                       (expected-fn updated-action)]
                                       (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))))
                 (testing "Delete"
                   (testing "Should not be possible without permission"
