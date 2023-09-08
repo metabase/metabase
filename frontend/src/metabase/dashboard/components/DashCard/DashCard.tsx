@@ -69,6 +69,7 @@ export interface DashCardProps {
   isMobile?: boolean;
   isNightMode?: boolean;
   isPublic?: boolean;
+  isXray?: boolean;
 
   headerIcon?: IconProps;
 
@@ -99,6 +100,7 @@ function DashCard({
   isFullscreen = false,
   isMobile = false,
   isPublic = false,
+  isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
@@ -319,6 +321,7 @@ function DashCard({
           error={error}
           isAction={isAction}
           isEmbed={isEmbed}
+          isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}
