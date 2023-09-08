@@ -105,99 +105,115 @@
 
 ;;; ------------------- `->root source` -------------------
 
-;;(:model/Segment)
-(deftest source-root-test
-  (testing "Demonstrate the stated methods in which ->root computes the source of an entity"
-    (mt/with-test-user :rasta
-      (mt/dataset sample-dataset
-        (testing "The source of a table is the table itself"
-          (let [table (t2/select-one :model/Table :id (mt/id :orders))
-                {:keys [entity source]} (#'magic/->root table)]
-            (is (= source table))
-            (is (= entity table))
-            (is (= source entity))))
-        (testing "The source of a field is the originating table of the field"
-          (let [table (t2/select-one :model/Table :id (mt/id :orders))
-                field (t2/select-one :model/Field :id (mt/id :orders :discount))
-                {:keys [entity source]} (#'magic/->root field)]
-            (is (= source table))
-            (is (= entity field))))
-        (testing "Card sourcing has four branches..."
-          (testing "A model's (dataset = true) source is itself with the :entity_type :entity/GenericTable assoced in"
-            (mt/with-temp
-              [Card card {:table_id      (mt/id :orders)
-                          :dataset_query {:query    {:source-table (mt/id :orders)}
-                                          :type     :query
-                                          :database (mt/id)}
-                          :dataset       true}]
-              (let [{:keys [entity source]} (#'magic/->root card)]
-                (is (true? (:dataset card)))
-                (is (= entity card))
-                (is (= source (assoc card :entity_type :entity/GenericTable))))))
-          (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
-            (mt/with-temp
-              [Card {source-query-id :id
-                     :as             nested-query} {:table_id      (mt/id :orders)
-                                                    :dataset_query {:query    {:source-table (mt/id :orders)}
-                                                                    :type     :query
-                                                                    :database (mt/id)}
-                                                    :dataset       true}
-               Card card {:table_id      (mt/id :orders)
-                          :dataset_query {:query    {:limit        10
-                                                     :source-table (format "card__%s" source-query-id)}
-                                          :type     :query
-                                          :database (mt/id)}}]
-              (let [{:keys [entity source]} (#'magic/->root card)]
-                (is (false? (:dataset card)))
-                (is (true? (#'magic/nested-query? card)))
-                (is (= entity card))
-                (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
-          (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
-            (let [query (mt/native-query {:query "select * from orders"})]
-              (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
-                (let [{:keys [entity source]} (#'magic/->root card)]
-                  (is (false? (:dataset card)))
-                  (is (true? (#'magic/native-query? card)))
-                  (is (= entity card))
-                  (is (= source (assoc card :entity_type :entity/GenericTable)))))))
-          (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
-            (mt/with-temp
-              [Card {table-id :table_id
-                     :as      card} {:table_id      (mt/id :orders)
-                                     :dataset_query {:query    {:filter       [:> [:field (mt/id :orders :quantity) nil] 10]
-                                                                :source-table (mt/id :orders)}
-                                                     :type     :query
-                                                     :database (mt/id)}}]
+(deftest source-root-table-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Table"
+    (mt/dataset sample-dataset
+      (testing "The source of a table is the table itself"
+        (let [table (t2/select-one :model/Table :id (mt/id :orders))
+              {:keys [entity source]} (#'magic/->root table)]
+          (is (= source table))
+          (is (= entity table))
+          (is (= source entity)))))))
+
+(deftest source-root-field-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
+    (mt/dataset sample-dataset
+      (testing "The source of a field is the originating table of the field"
+        (let [table (t2/select-one :model/Table :id (mt/id :orders))
+              field (t2/select-one :model/Field :id (mt/id :orders :discount))
+              {:keys [entity source]} (#'magic/->root field)]
+          (is (= source table))
+          (is (= entity field)))))))
+
+(deftest source-root-card-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset sample-dataset
+      (testing "Card sourcing has four branches..."
+        (testing "A model's (dataset = true) source is itself with the :entity_type :entity/GenericTable assoced in"
+          (mt/with-temp
+            [Card card {:table_id      (mt/id :orders)
+                        :dataset_query {:query    {:source-table (mt/id :orders)}
+                                        :type     :query
+                                        :database (mt/id)}
+                        :dataset       true}]
+            (let [{:keys [entity source]} (#'magic/->root card)]
+              (is (true? (:dataset card)))
+              (is (= entity card))
+              (is (= source (assoc card :entity_type :entity/GenericTable))))))
+        (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
+          (mt/with-temp
+            [Card {source-query-id :id
+                   :as             nested-query} {:table_id      (mt/id :orders)
+                                                  :dataset_query {:query    {:source-table (mt/id :orders)}
+                                                                  :type     :query
+                                                                  :database (mt/id)}
+                                                  :dataset       true}
+             Card card {:table_id      (mt/id :orders)
+                        :dataset_query {:query    {:limit        10
+                                                   :source-table (format "card__%s" source-query-id)}
+                                        :type     :query
+                                        :database (mt/id)}}]
+            (let [{:keys [entity source]} (#'magic/->root card)]
+              (is (false? (:dataset card)))
+              (is (true? (#'magic/nested-query? card)))
+              (is (= entity card))
+              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
+        (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
+          (let [query (mt/native-query {:query "select * from orders"})]
+            (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
               (let [{:keys [entity source]} (#'magic/->root card)]
                 (is (false? (:dataset card)))
-                (is (false? (#'magic/nested-query? card)))
-                (is (false? (#'magic/native-query? card)))
+                (is (true? (#'magic/native-query? card)))
                 (is (= entity card))
-                (is (= source (t2/select-one :model/Table :id table-id)))))))
-        (testing "The source of a query is the underlying datasource of the query"
-          (let [query (mi/instance
-                        Query
-                        {:database-id   (mt/id)
-                         :table-id      (mt/id :orders)
-                         :dataset_query {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :orders)
-                                                    :aggregation  [[:count]]}}})
-                {:keys [entity source]} (#'magic/->root query)]
-            (is (= entity query))
-            (is (= source (t2/select-one :model/Table (mt/id :orders)))))))
-      (testing "The source of a metric is its underlying table."
-        (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
-                                                :definition {:aggregation [[:count]]}}]
-          (let [{:keys [entity source]} (#'magic/->root metric)]
-            (is (= entity metric))
-            (is (= source (t2/select-one :model/Table (mt/id :venues)))))))
-      (testing "The source of a segment is its underlying table."
-        (mt/with-temp [Segment segment {:table_id   (mt/id :venues)
-                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
-          (let [{:keys [entity source]} (#'magic/->root segment)]
-            (is (= entity segment))
-            (is (= source (t2/select-one :model/Table (mt/id :venues))))))))))
+                (is (= source (assoc card :entity_type :entity/GenericTable)))))))
+        (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
+          (mt/with-temp
+            [Card {table-id :table_id
+                   :as      card} {:table_id      (mt/id :orders)
+                                   :dataset_query {:query    {:filter       [:> [:field (mt/id :orders :quantity) nil] 10]
+                                                              :source-table (mt/id :orders)}
+                                                   :type     :query
+                                                   :database (mt/id)}}]
+            (let [{:keys [entity source]} (#'magic/->root card)]
+              (is (false? (:dataset card)))
+              (is (false? (#'magic/nested-query? card)))
+              (is (false? (#'magic/native-query? card)))
+              (is (= entity card))
+              (is (= source (t2/select-one :model/Table :id table-id))))))))))
+
+(deftest source-root-query-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
+    (mt/dataset sample-dataset
+      (testing "The source of a query is the underlying datasource of the query"
+        (let [query (mi/instance
+                      Query
+                      {:database-id   (mt/id)
+                       :table-id      (mt/id :orders)
+                       :dataset_query {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :orders)
+                                                  :aggregation  [[:count]]}}})
+              {:keys [entity source]} (#'magic/->root query)]
+          (is (= entity query))
+          (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
+
+(deftest source-root-metric-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Metric"
+    (testing "The source of a metric is its underlying table."
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [[:count]]}}]
+        (let [{:keys [entity source]} (#'magic/->root metric)]
+          (is (= entity metric))
+          (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
+
+(deftest source-root-segment-test
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
+    (testing "The source of a segment is its underlying table."
+      (mt/with-temp [Segment segment {:table_id   (mt/id :venues)
+                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+        (let [{:keys [entity source]} (#'magic/->root segment)]
+          (is (= entity segment))
+          (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
 
 ;;; ------------------- `automagic-analysis` -------------------
 
