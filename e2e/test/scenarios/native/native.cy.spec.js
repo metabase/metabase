@@ -232,7 +232,7 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.intercept("GET", "/api/card/4").as("cardQuestion");
+    cy.intercept("GET", "/api/card/*").as("cardQuestion");
     cy.visit("/question/4?cat=Gizmo&stars=3");
     cy.wait("@cardQuestion").should(xhr => {
       const responseBody = xhr.response?.body;

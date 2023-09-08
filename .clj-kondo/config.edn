@@ -475,8 +475,9 @@
     toucan.db                                                       db
     toucan.models                                                   models}}
 
-  :metabase/validate-deftest                   {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs {:level :warning}}
+  :metabase/validate-deftest                                           {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -558,6 +559,7 @@
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
+   metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
