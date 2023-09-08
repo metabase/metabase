@@ -61,12 +61,15 @@
   object which are recorded are determined by the `model-details` multimethod, which is typically implemented in the
   appropriate model namespace.
 
-  `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name of a model
-  is also relevant to the event and should be recorded, it can be passed as a third argument."
+  `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name and/or ID
+  of a model are also relevant to the event and should be recorded, they can be passed as third and fourth arguments."
   ([topic object]
    (record-event! topic object (some-> (t2/model object) name)))
 
   ([topic object model]
+   (record-event! topic object model (u/id object)))
+
+  ([topic object model model-id]
    (let [unqualified-topic (keyword (name topic))
          model-name        (some-> model name)
          details           (if (t2/model object)
@@ -76,7 +79,7 @@
                  :topic    unqualified-topic
                  :details  details
                  :model    model-name
-                 :model_id (u/id object))
+                 :model_id model-id)
      ;; TODO: temporarily double-writing to the `activity` table
      (activity/record-activity!
       :topic      topic
