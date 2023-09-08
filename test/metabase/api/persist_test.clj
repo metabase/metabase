@@ -48,7 +48,7 @@
 
 (deftest persisted-info-by-id-test
   (with-setup db
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card          model {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative persisted-info-id"
