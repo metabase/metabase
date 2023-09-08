@@ -241,6 +241,16 @@
               (is (= []
                      (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
 
+(deftest list-collections-instance-analytics-test
+  (testing "GET /api/collection"
+    (testing "Intsance Analytics Collection should be the last collection, when it exists."
+      (is (= (if config/ee-available?
+               "instance-analytics"
+               nil)
+             (->> (mt/user-http-request :rasta :get 200 "collection")
+                  last
+                  :type))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/tree                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -452,6 +462,16 @@
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
+
+(deftest collection-tree-instance-analytics-test
+  (testing "GET /api/collection/tree"
+    (testing "Intsance Analytics Collection should be the last collection, when it exists."
+      (is (= (if config/ee-available?
+               "instance-analytics"
+               nil)
+             (->> (mt/user-http-request :rasta :get 200 "collection")
+                  last
+                  :type))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
