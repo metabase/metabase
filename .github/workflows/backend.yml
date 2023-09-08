@@ -142,7 +142,7 @@ jobs:
   # test runs at all times to give them an early warning sign is something is broken.
   be-tests-java-11-ee-pre-check:
     needs: files-changed
-    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
+    if: github.event.pull_request.draft == true && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 60
