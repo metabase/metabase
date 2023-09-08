@@ -157,6 +157,8 @@
   "Return the (display) name of the source of a given root object."
   (comp (some-fn :display_name :name) :source))
 
+;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
+;; here so make sure to do a *thorough* find and replace on this.
 (def ^:private op->name
   {:sum       (deferred-tru "sum")
    :avg       (deferred-tru "average")
