@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
