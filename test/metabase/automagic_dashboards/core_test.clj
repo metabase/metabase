@@ -123,6 +123,33 @@
       (automagic-dashboards.test/with-dashboard-cleanup
         (test-automagic-analysis metric 8)))))
 
+(deftest parameter-mapping-test
+  (mt/dataset sample-dataset
+    (testing "mbql queries have parameter mappings with field ids"
+        (let [table (t2/select-one Table :id (mt/id :products))
+              dashboard (magic/automagic-analysis table {})
+              expected-targets (mt/$ids #{[:dimension $products.category]
+                                          [:dimension $products.created_at]})
+              actual-targets (into #{}
+                                   (comp (mapcat :parameter_mappings)
+                                         (map :target))
+                                   (:ordered_cards dashboard))]
+          (is (= expected-targets actual-targets))))
+    (testing "native queries have parameter mappings with field ids"
+      (let [query (mt/native-query {:query "select * from products"})]
+        (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query
+                                            query)]
+          (let [dashboard (magic/automagic-analysis card {})
+                ;; i'm not sure why category isn't picked here
+                expected-targets #{[:dimension
+                                    [:field "CREATED_AT"
+                                     {:base-type :type/DateTimeWithLocalTZ}]]}
+                actual-targets (into #{}
+                                     (comp (mapcat :parameter_mappings)
+                                           (map :target))
+                                     (:ordered_cards dashboard))]
+            (is (= expected-targets actual-targets))))))))
+
 (deftest complicated-card-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp
