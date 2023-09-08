@@ -172,7 +172,9 @@ describe("SearchApp", () => {
         const popover = within(screen.getByTestId("popover"));
         userEvent.click(
           popover.getByRole("checkbox", {
-            name: TYPE_FILTER_LABELS[model],
+            name: TYPE_FILTER_LABELS[
+              model as EnabledSearchModelType
+            ] as EnabledSearchModelType,
           }),
         );
         userEvent.click(popover.getByRole("button", { name: "Apply filters" }));
@@ -191,7 +193,7 @@ describe("SearchApp", () => {
       async ({ name, model }) => {
         await setup({
           searchText: name,
-          searchFilters: { type: [model] },
+          searchFilters: { type: [model as EnabledSearchModelType] },
         });
 
         expect(screen.getByText(`Results for "${name}"`)).toBeInTheDocument();
@@ -203,7 +205,9 @@ describe("SearchApp", () => {
         const fieldSetContent = within(screen.getByTestId("field-set-content"));
 
         expect(
-          fieldSetContent.getByText(TYPE_FILTER_LABELS[model]),
+          fieldSetContent.getByText(
+            TYPE_FILTER_LABELS[model as EnabledSearchModelType],
+          ),
         ).toBeInTheDocument();
 
         expect(

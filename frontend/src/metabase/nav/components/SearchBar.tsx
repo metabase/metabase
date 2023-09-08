@@ -19,7 +19,7 @@ import { getSetting } from "metabase/selectors/settings";
 import RecentsList from "metabase/nav/components/RecentsList";
 import { SearchResults } from "metabase/nav/components/SearchResults";
 
-import type { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import { getSearchTextFromLocation } from "metabase/search/utils";
 import {
   SearchInputContainer,
