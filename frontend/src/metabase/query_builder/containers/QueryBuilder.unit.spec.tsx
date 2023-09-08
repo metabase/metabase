@@ -261,12 +261,12 @@ describe("QueryBuilder", () => {
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
-      it("renders time-series grouping widget for date field breakout", async () => {
+      it("renders time series grouping widget for date field breakout", async () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
         });
         const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-mode-bar",
+          "time-series-mode-footer",
         );
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
@@ -279,13 +279,13 @@ describe("QueryBuilder", () => {
         ).toBeInTheDocument();
       });
 
-      it("doesn't render time-series grouping widget for custom date field breakout (metabase#33504)", async () => {
+      it("doesn't render time series grouping widget for custom date field breakout (metabase#33504)", async () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
         });
 
         const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-mode-bar",
+          "time-series-mode-footer",
         );
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(

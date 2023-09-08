@@ -19,7 +19,7 @@ export const TimeseriesModeFooter = (props: Props): JSX.Element => {
     .isExpression();
 
   return (
-    <div className="flex layout-centered" data-testid="timeseries-mode-bar">
+    <div className="flex layout-centered" data-testid="time-series-mode-footer">
       <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
       {!shouldHideTimeseriesGroupingWidget && (
