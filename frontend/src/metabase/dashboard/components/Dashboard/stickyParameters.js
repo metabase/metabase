@@ -1,6 +1,6 @@
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
-export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 6;
+export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 5;
 
 export const updateParametersWidgetStickiness = dashboard => {
   const shouldBeSticky = checkIfParametersWidgetShouldBeSticky(dashboard);
@@ -45,9 +45,5 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
 const getOffsetTop = dashboard => {
   const parametersWidget = dashboard.parametersWidgetRef.current;
 
-  if (parametersWidget) {
-    return parametersWidget.offsetTop;
-  } else {
-    return 0;
-  }
+  return parametersWidget?.offsetTop ?? 0;
 };
