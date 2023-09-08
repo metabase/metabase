@@ -172,13 +172,22 @@ export function queryIcon(name: string, role: ByRoleMatcher = "img") {
 
 /**
  * Returns a matcher function to find text content that is broken up by multiple elements
+ * There is also a version of this for e2e tests - e2e/support/helpers/e2e-misc-helpers.js
+ * In case of changes, please, add them there as well
  *
- * @param {string} textToFind
  * @example
  * screen.getByText(getBrokenUpTextMatcher("my text with a styled word"))
  */
 export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
-  return (content, element) => element?.textContent === textToFind;
+  return (content, element) => {
+    const hasText = (node: Element | null | undefined) =>
+      node?.textContent === textToFind;
+    const childrenDoNotHaveText = element
+      ? Array.from(element.children).every(child => !hasText(child))
+      : true;
+
+    return hasText(element) && childrenDoNotHaveText;
+  };
 }
 
 export * from "@testing-library/react";

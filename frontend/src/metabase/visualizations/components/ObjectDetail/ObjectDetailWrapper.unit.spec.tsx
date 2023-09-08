@@ -8,7 +8,7 @@ describe("ObjectDetailWrapper", () => {
   it("renders an object detail with a paginator", () => {
     render(
       <ObjectDetailWrapper
-        data={testDataset as any}
+        data={testDataset}
         question={
           {
             displayName: () => "Product",
@@ -50,7 +50,7 @@ describe("ObjectDetailWrapper", () => {
   it("shows object detail header", () => {
     render(
       <ObjectDetailWrapper
-        data={testDataset as any}
+        data={testDataset}
         question={
           {
             displayName: () => "Product",
@@ -92,7 +92,7 @@ describe("ObjectDetailWrapper", () => {
   it("hides object detail header", () => {
     render(
       <ObjectDetailWrapper
-        data={testDataset as any}
+        data={testDataset}
         question={
           {
             displayName: () => "Product",

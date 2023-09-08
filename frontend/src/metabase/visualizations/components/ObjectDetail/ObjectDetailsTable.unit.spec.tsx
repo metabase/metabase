@@ -95,7 +95,7 @@ describe("ObjectDetailsTable", () => {
   it("renders an object details table", () => {
     render(
       <DetailsTable
-        data={testDataset as any}
+        data={testDataset}
         zoomedRow={testDataset.rows[1]}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}

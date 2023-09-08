@@ -164,7 +164,7 @@ class AutomaticDashboardAppInner extends Component {
                 />
               </div>
             )}
-            <Dashboard {...this.props} />
+            <Dashboard isXray {...this.props} />
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
