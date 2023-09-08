@@ -749,14 +749,13 @@
            (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
-  [root]
+  [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
               :and (mapcat collect-dimensions args)
               :=   (filters/collect-field-references args)
               nil))]
-    (->> root
-         :cell-query
+    (->> cell-query
          collect-dimensions
          (map filters/field-reference->id)
          set)))
