@@ -897,6 +897,32 @@ describe("scenarios > dashboard", () => {
       cy.findByText("There was a problem displaying this chart.");
     });
   });
+
+  it("warns about leaving with unsaved changes", () => {
+    cy.visit("/collection/root");
+    cy.findByTestId("collection-table")
+      .findByText("Orders in a dashboard")
+      .click();
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    cy.icon("filter").click();
+    popover().findByText("ID").click();
+
+    modal().should("not.exist");
+
+    cy.go("back");
+    // cy.realPress(["Alt", "ArrowLeft"]);
+    // cy.visit("/");
+
+    modal()
+      .should("exist")
+      .within(() => {
+        cy.findByText("Changes were not saved");
+        cy.findByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        );
+      });
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard", () => {
