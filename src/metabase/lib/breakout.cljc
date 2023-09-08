@@ -75,7 +75,8 @@
      (when (seq cols)
        (let [matching (into {} (keep-indexed (fn [index breakout]
                                                (when-let [col (lib.equality/find-matching-column
-                                                               query stage-number breakout cols)]
+                                                               query stage-number breakout cols
+                                                               {:generous? true})]
                                                  [col index]))
                                              (or (breakouts query stage-number) [])))]
          (mapv #(let [pos (matching %)]

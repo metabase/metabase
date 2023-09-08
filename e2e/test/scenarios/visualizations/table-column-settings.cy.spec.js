@@ -317,7 +317,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Category").should("exist");
     });
 
-    it.only("should be able to show and hide table fields with a self join with fields", () => {
+    it("should be able to show and hide table fields with a self join with fields", () => {
       cy.createQuestion(tableQuestionWithSelfJoinAndFields, {
         visitQuestion: true,
       });

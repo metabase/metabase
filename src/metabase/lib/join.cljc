@@ -727,7 +727,12 @@
                              (lib.join.util/current-join-alias join-or-joinable))
          rhs-column-or-nil (or rhs-column-or-nil
                                (when (join? join-or-joinable)
-                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))]
+                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))
+         rhs-column-or-nil (when rhs-column-or-nil
+                             (if (not join-alias)
+                               ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
+                               (lib.options/update-options rhs-column-or-nil dissoc :join-alias)
+                               rhs-column-or-nil))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
           (map (fn [col]
                  (cond-> (assoc col :lib/source :source/joins)

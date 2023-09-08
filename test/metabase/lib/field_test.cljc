@@ -810,7 +810,9 @@
                   (-> field-query
                       (lib/with-fields -1 extended-subset)
                       (lib/add-field -1 created-at)
-                      fields-of)))))))
+                      fields-of))))))))
+
+(deftest ^:parallel add-field-expressions-test
   (testing "custom expressions are ignored"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/expression "custom" (lib/* 3 2)))
@@ -826,7 +828,9 @@
                 (lib/add-field query -1 expr-column))))
       (testing "with explicit :fields list"
         (is (=? field-query
-                (lib/add-field field-query -1 expr-column))))))
+                (lib/add-field field-query -1 expr-column)))))))
+
+(deftest ^:parallel add-field-join-test
   (testing "single join"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
@@ -872,9 +876,9 @@
 
       (testing "join :fields list"
         (let [join-fields-query (lib.util/update-query-stage
-                                 query -1
-                                 update-in [:joins 0]
-                                 lib/with-join-fields (map lib/ref (take 4 join-columns)))]
+                                  query -1
+                                  update-in [:joins 0]
+                                  lib/with-join-fields (map lib/ref (take 4 join-columns)))]
           (testing "returns those plus all the main table fields"
             (is (=? (->> (concat table-columns
                                  (take 4 join-columns))
@@ -897,8 +901,9 @@
                          sorted-fields))))
           (testing "does nothing if the join field is already selected"
             (is (=? join-fields-query
-                    (lib/add-field join-fields-query -1 (nth join-columns 3)))))))))
+                    (lib/add-field join-fields-query -1 (nth join-columns 3))))))))))
 
+(deftest ^:parallel add-field-implicit-join-test
   (testing "adding implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
           viz-columns      (lib/visible-columns query)

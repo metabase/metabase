@@ -562,8 +562,8 @@
 
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
-    (if (or (and field (:selected? field))
-            (= join-fields :all))
+    (if (or (= join-fields :all)
+            (and field (lib.equality/find-matching-ref field join-fields)))
       query
       (lib.remove-replace/replace-join query stage-number join
                                        (lib.join/with-join-fields join

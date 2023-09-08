@@ -232,12 +232,44 @@
              (mapv #(select-keys % [:name :selected?])
                    (lib.equality/mark-selected-columns query -1 cols selected)))))))
 
-(deftest ^:parallel find-matching-column
+(deftest ^:parallel find-matching-column-by-id-test
   (testing "find-matching-column should find columns based on matching ID (#31482) (#33453)"
-    (let [query (lib/append-stage lib.tu/query-with-join)
+    (let [query lib.tu/query-with-join
           cols  (lib/returned-columns query)
           refs  (map lib.ref/ref cols)
-          a-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]]
+          a-ref [:field {:lib/uuid (str (random-uuid))
+                         :base-type :type/Text
+                         :join-alias "Cat"}
+                 (meta/id :categories :name)]]
+      (is (=? [[:field {} (meta/id :venues :id)]
+               [:field {} (meta/id :venues :name)]
+               [:field {} (meta/id :venues :category-id)]
+               [:field {} (meta/id :venues :latitude)]
+               [:field {} (meta/id :venues :longitude)]
+               [:field {} (meta/id :venues :price)]
+               [:field {} (meta/id :categories :id)]
+               [:field {} (meta/id :categories :name)]]
+              refs))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column a-ref cols)
+             (lib.equality/find-matching-column query -1 a-ref cols))))))
+
+(deftest ^:parallel find-matching-column-by-name-test
+  (testing "find-matching-column should find columns based on matching name"
+    (let [query    (lib/append-stage lib.tu/query-with-join)
+          cols     (lib/returned-columns query)
+          refs     (map lib.ref/ref cols)
+          cat-name [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text
+                            :join-alias "Cat"}
+                    "Cat__NAME"]
+          cat-raw  [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text
+                            :join-alias "Cat"}
+                    "NAME"]
+          ven-name [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text}
+                    "NAME"]]
       (is (=? [[:field {} "ID"]          ; 0
                [:field {} "NAME"]        ; 1
                [:field {} "CATEGORY_ID"] ; 2
@@ -248,8 +280,88 @@
                [:field {} "Cat__NAME"]]  ; 7
               refs))
       (is (= (nth cols 7)
-             (lib.equality/find-matching-column a-ref cols)
-             (lib.equality/find-matching-column query -1 a-ref cols))))))
+             (lib.equality/find-matching-column cat-name cols)
+             (lib.equality/find-matching-column query -1 cat-name cols)))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column cat-raw cols)
+             (lib.equality/find-matching-column query -1 cat-raw cols)))
+      (is (= (nth cols 1)
+             (lib.equality/find-matching-column ven-name cols)
+             (lib.equality/find-matching-column query -1 ven-name cols))))))
+
+(deftest ^:parallel find-matching-column-self-join-test
+  (testing "find-matching-column with a self join"
+    (let [query     lib.tu/query-with-self-join
+          cols      (for [col (meta/fields :orders)]
+                       (meta/field-metadata :orders col))
+          table-col #(assoc % :lib/source :source/table-defaults)
+          join-col  #(merge %
+                            {:lib/source                   :source/joins
+                             :metabase.lib.join/join-alias "Orders"
+                             :lib/desired-column-alias     (str "Orders__" (:name %))})
+          sorted    #(sort-by (juxt :position :source-alias) %)
+          visible   (lib/visible-columns query)]
+      (is (=? (sorted (concat (map table-col cols)
+                              (map join-col  cols)))
+              (sorted (lib/returned-columns query))))
+      (testing "matches the defaults by ID"
+        (doseq [col-key (meta/fields :orders)]
+          (is (=? (table-col (meta/field-metadata :orders col-key))
+                  (-> (meta/field-metadata :orders col-key)
+                      table-col
+                      lib/ref
+                      (lib.equality/find-matching-column visible))))))
+      (testing "matches the joined columns by ID"
+        (doseq [col-key (meta/fields :orders)]
+          (is (=? (join-col (meta/field-metadata :orders col-key))
+                  (-> (meta/field-metadata :orders col-key)
+                      join-col
+                      lib/ref
+                      (lib.equality/find-matching-column visible))))))
+      (testing "the matches of default and joins are distinct"
+        (let [matches (for [col-key (meta/fields :orders)
+                            col-fn  [table-col join-col]]
+                        (-> (meta/field-metadata :orders col-key)
+                            col-fn
+                            lib/ref
+                            (lib.equality/find-matching-column visible)))]
+          (is (every? some? matches))
+          (is (= (count matches)
+                 (count (set matches)))))))))
+
+(deftest ^:parallel find-matching-column-self-join-with-fields-test
+  (testing "find-matching-column works with a tricky case taken from an e2e test"
+    (let [base   (-> lib.tu/query-with-self-join
+                     (lib/with-fields [(meta/field-metadata :orders :id)
+                                       (meta/field-metadata :orders :tax)]))
+          [join] (lib/joins base)
+          all-4  (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)
+                                                                         (meta/field-metadata :orders :tax)]))
+          just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))]
+      (is (=? [{:lib/desired-column-alias "ID"}
+               {:lib/desired-column-alias "TAX"}
+               {:lib/desired-column-alias "Orders__ID"}
+               {:lib/desired-column-alias "Orders__TAX"}]
+              (lib/returned-columns all-4)))
+      (is (=? [{:lib/desired-column-alias "ID"}
+               {:lib/desired-column-alias "TAX"}
+               {:lib/desired-column-alias "Orders__ID"}]
+              (lib/returned-columns just-3)))
+      (testing "matching the four fields against"
+        (let [cols  (lib/returned-columns all-4)
+              ret-3 (lib/returned-columns just-3)]
+          (testing "all-4 matches everything"
+            (is (=? ["ID" "TAX" "Orders__ID" "Orders__TAX"]
+                    (->> cols
+                         (map lib/ref)
+                         (map #(lib.equality/find-matching-column all-4  -1 % cols))
+                         (map :lib/desired-column-alias)))))
+          (testing "just-3 does not match the joined TAX"
+            (is (=? ["ID" "TAX" "Orders__ID" nil]
+                    (->> cols
+                         (map lib/ref)
+                         (map #(lib.equality/find-matching-column just-3 -1 % ret-3))
+                         (map :lib/desired-column-alias))))))))))
 
 (deftest ^:parallel find-matching-column-aggregation-test
   (let [query (-> lib.tu/venues-query

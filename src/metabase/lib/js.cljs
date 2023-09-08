@@ -489,10 +489,6 @@
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)
         ret (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)]
-    (js/console.log "viz cols query" a-query)
-    (js/console.log "viz cols viz  " vis-columns)
-    (js/console.log "viz cols ret  " ret-columns)
-    (js/console.log "viz cols msc  " ret)
     (to-array ret)))
 
 (defn ^:export legacy-field-ref
@@ -519,6 +515,16 @@
     ;; It's already a :metadata/column map
     column))
 
+(defn- legacy->column-or-ref [column]
+  (if-let [^js legacy-column (when (object? column) column)]
+    (if (.-field_ref legacy-column)
+      ;; Prefer the attached field_ref if provided.
+      (legacy-ref->pMBQL (.-field_ref legacy-column))
+      ;; Fall back to converting like metadata.
+      (js.metadata/parse-column legacy-column))
+    ;; It's already a :metadata/column map
+    column))
+
 (defn ^:export find-column-indexes-from-legacy-refs
   "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
@@ -529,9 +535,15 @@
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [haystack (mapv ->column-or-ref legacy-columns)
-          needles  (map legacy-ref->pMBQL legacy-refs)]
+          needles  (map legacy-ref->pMBQL legacy-refs)
+          legacy-haystack (mapv legacy->column-or-ref legacy-columns)
+          legacy-indexes  (lib.equality/legacy-find-column-indexes-for-refs a-query stage-number needles legacy-haystack)
+          modern-indexes  (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)]
+      (when (not= legacy-indexes modern-indexes)
+        (js/console.log "Difference detected!" legacy-indexes modern-indexes
+                        legacy-haystack haystack needles))
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+      (to-array modern-indexes))))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."

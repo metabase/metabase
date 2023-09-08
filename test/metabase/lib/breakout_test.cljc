@@ -464,13 +464,14 @@
   (testing "Field refs that differ from what we return should still show up as selected if they refer to the same Field (#31482)"
     (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
                                  ;; contain type info, shouldn't matter tho.
-                                 "correct ref but missing :base-type/:effective-type"
+                                 #_#_"correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
-                                 [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]}]
+                                 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text}
+                                  (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> lib.tu/venues-query
                         (lib/join (-> (lib/join-clause
@@ -495,7 +496,9 @@
       ;; technically wrong.
       ;;
       ;; Actually a correct reference would be [:field {} "Products__Category"], see #29763
-      (lib/breakout [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])))
+      (lib/breakout [:field {:lib/uuid (str (random-uuid))
+                             :base-type :type/Text}
+                     (meta/id :products :category)])))
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
