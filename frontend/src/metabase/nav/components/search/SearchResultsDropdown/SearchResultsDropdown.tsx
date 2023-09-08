@@ -47,7 +47,6 @@ export const SearchResultsDropdown = ({
       <SearchResults
         searchText={searchText.trim()}
         onEntitySelect={onSearchItemSelect}
-        onClickViewAll={goToSearchApp}
         footer={renderFooter}
       />
     </SearchResultsContainer>

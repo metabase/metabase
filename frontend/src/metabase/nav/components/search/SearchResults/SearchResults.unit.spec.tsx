@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
-import SearchResults from "./SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];
@@ -148,5 +148,8 @@ describe("SearchResults", () => {
     );
     await setup({ footer });
     expect(screen.getByTestId("footer")).toBeInTheDocument();
+    expect(screen.getByTestId("test-total")).toHaveTextContent(
+      TEST_SEARCH_RESULTS.length.toString(),
+    );
   });
 });
