@@ -241,7 +241,7 @@
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding      true]
-        (embed-test/with-new-secret-key
+        (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [Card          card      (if viz-settings
                                                              (assoc card-defaults :visualization_settings viz-settings)
                                                              card-defaults)

@@ -1,4 +1,5 @@
-(ns ^{:added "0.45.0"} metabase-enterprise.advanced-config.file
+(ns ^{:added "0.45.0"}
+ metabase-enterprise.advanced-config.file
   "Support for initializing Metabase with configuration from a `config.yml` file located in the current working
   directory. See https://github.com/metabase/metabase/issues/2052 for more information.
 
@@ -81,8 +82,8 @@
   ```
 
   Replaces the template with the value of an environment variable. The template consisting of two parts: the word
-  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after passing the
-  symbol thru [[csk/->kebab-case-keyword]]. This means it is case-insensitive and `lisp-case`/`snake_case`
+  `env` and then the name of an environment variable. It uses [[metabase.config.env/*env*]] under the hood, after
+  passing the symbol thru [[csk/->kebab-case-keyword]]. This means it is case-insensitive and `lisp-case`/`snake_case`
   insensitive, and Java system properties are supported as well, provided you replace dots in their names with slashes
   or underscores. In other words, this works as well:
 
@@ -95,12 +96,12 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
+   [metabase.config.env :as config.env]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.public-settings.premium-features :as premium-features]
@@ -146,18 +147,10 @@
   (s/keys :req-un [:metabase.config.file.config/version
                    :metabase.config.file.config/config]))
 
-(def ^:private ^:dynamic *env*
-  "Environment variables and system properties used in this namespace. This is a dynamic version
-  of [[environ.core/env]]; it is dynamic for test mocking purposes.
-
-  Yes, [[metabase.test/with-temp-env-var-value]] exists, but it is not allowed inside parallel tests. This is an
-  experiment that I may adapt into a new pattern in the future to allow further test parallelization."
-  env/env)
-
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
+  (let [path* (or (some-> (get config.env/*env* :mb-config-file-path) u.files/get-path)
                   (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
     (if (u.files/exists? path*)
       (log/info (u/colorize :magenta
@@ -183,7 +176,7 @@
 
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  (get *env* (keyword (u/->kebab-case-en env-var-name))))
+  (get config.env/*env* (keyword (u/->kebab-case-en env-var-name))))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}

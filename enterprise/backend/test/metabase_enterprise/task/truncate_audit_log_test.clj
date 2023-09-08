@@ -2,13 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.task.truncate-audit-log.interface :as truncate-audit-log.i]
    [metabase.test :as mt]))
 
 (deftest audit-max-retention-days-test
   ;; Tests for the OSS & Cloud implementations are in `metabase.task.truncate-audit-log-test`
-  (with-redefs [premium-features/enable-audit-app? (constantly true)]
+  (premium-features-test/with-premium-features #{:audit-app}
     (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
     (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]

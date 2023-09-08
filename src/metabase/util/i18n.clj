@@ -15,14 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(p/import-vars
- [i18n.impl
-  available-locale?
-  fallback-locale
-  locale
-  normalized-locale-string
-  translate])
-
 (def ^:dynamic *user-locale*
   "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
   *use*, use the `user-locale` function instead."
@@ -51,13 +43,13 @@
 (defn site-locale
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
-  (locale (site-locale-string)))
+  (i18n.impl/locale (site-locale-string)))
 
 (defn user-locale
   "Locale we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the system
   locale."
   ^Locale []
-  (locale (user-locale-string)))
+  (i18n.impl/locale (user-locale-string)))
 
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
@@ -65,12 +57,13 @@
   (for [locale-name (i18n.impl/available-locale-names)]
     ;; Abbreviation must be normalized or the language picker will show incorrect saved value
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
+    [(i18n.impl/normalized-locale-string locale-name)
+     (.getDisplayName (i18n.impl/locale locale-name))]))
 
 (defn- translate-site-locale
   "Translate a string with the System locale."
   [format-string args pluralization-opts]
-  (let [translated (translate (site-locale) format-string args pluralization-opts)]
+  (let [translated (i18n.impl/translate (site-locale) format-string args pluralization-opts)]
     (log/tracef "Translated %s for site locale %s -> %s"
                 (pr-str format-string) (pr-str (site-locale-string)) (pr-str translated))
     translated))
@@ -78,7 +71,7 @@
 (defn- translate-user-locale
   "Translate a string with the current User's locale."
   [format-string args pluralization-opts]
-  (let [translated (translate (user-locale) format-string args pluralization-opts)]
+  (let [translated (i18n.impl/translate (user-locale) format-string args pluralization-opts)]
     (log/tracef "Translating %s for user locale %s (site locale %s) -> %s"
                 (pr-str format-string) (pr-str (user-locale-string))
                 (pr-str (site-locale-string)) (pr-str translated))
@@ -270,3 +263,11 @@
                    (cond-> node
                      (localized-string? node) str))
                  x))
+
+(p/import-vars
+ [i18n.impl
+  available-locale?
+  fallback-locale
+  locale
+  normalized-locale-string
+  translate])

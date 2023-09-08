@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.users :as advanced-config.file.users]
+   [metabase.config.env :as config.env]
    [metabase.models :refer [User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.util.password :as u.password]
@@ -107,12 +108,12 @@
                                                                   :last_name  "Era"
                                                                   :email      "cam+config-file-password-test@metabase.com"
                                                                   :password   "{{env USER_PASSWORD}}"}]}}
-                advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :user-password "1234cans")]
+                config.env/*env*              (assoc config.env/*env* :user-password "1234cans")]
         (testing "Create a User if it does not already exist"
           (is (= :ok
                  (advanced-config.file/initialize!)))
           (let [user (t2/select-one [User :first_name :last_name :email :password_salt :password]
-                       :email "cam+config-file-password-test@metabase.com")]
+                                    :email "cam+config-file-password-test@metabase.com")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"
                            :email      "cam+config-file-password-test@metabase.com"}

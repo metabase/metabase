@@ -76,7 +76,7 @@
   (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
                                                        [:raw "current_timestamp"])]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
+    (or (pos? (t2/update! :setting {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead

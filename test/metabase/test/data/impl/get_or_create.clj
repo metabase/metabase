@@ -10,6 +10,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -79,7 +80,6 @@
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as _database-definition} db]
-  {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -108,33 +108,32 @@
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
-          "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
-  (try
-    (u/with-timeout sync-timeout-ms
-      (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                   "NONE")
-            full-sync?         (#{"test-data" "sample-dataset"} database-name)]
-        (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                           (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-          ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-          (binding [sync-util/*log-exceptions-and-continue?* false]
-            (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
-          ;; add extra metadata for fields
-          (try
-            (add-extra-metadata! database-definition db)
-            (catch Throwable e
-              (log/error e "Error adding extra metadata"))))))
-    (catch Throwable e
-      (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
-            e       (ex-info message
-                             {:driver             driver
-                              :database-name      database-name
-                              :connection-details connection-details}
-                             e)]
-        (log/error e message)
-        (t2/delete! Database :id (u/the-id db))
-        (throw e)))))
+  (tu.setting/with-temporary-setting-values [humanization/humanization-strategy :simple]
+    (try
+      (u/with-timeout sync-timeout-ms
+        (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                     "NONE")
+              full-sync?         (#{"test-data" "sample-dataset"} database-name)]
+          (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                             (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+            ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+            (binding [sync-util/*log-exceptions-and-continue?* false]
+              (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
+            ;; add extra metadata for fields
+            (try
+              (add-extra-metadata! database-definition db)
+              (catch Throwable e
+                (log/error e "Error adding extra metadata"))))))
+      (catch Throwable e
+        (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
+              e       (ex-info message
+                               {:driver             driver
+                                :database-name      database-name
+                                :connection-details connection-details}
+                               e)]
+          (log/error e message)
+          (t2/delete! Database :id (u/the-id db))
+          (throw e))))))
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -171,9 +170,8 @@
     ;;
     ;; require/resolve used here to avoid circular refs
     (if (driver/report-timezone)
-      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-values)
-       {:report-timezone nil}
-       thunk)
+      (tu.setting/with-temporary-setting-values [:report-timezone nil]
+        (thunk))
       (thunk))))
 
 (defn- create-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]

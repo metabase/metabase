@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase.config.env :as config.env]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -28,7 +29,7 @@
   (testing "Specify a custom path and read from YAML"
     (mt/with-temp-file [filename "temp-config-file.yml"]
       (spit filename (yaml/generate-string mock-yaml))
-      (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path filename)]
+      (binding [config.env/*env* (assoc config.env/*env* :mb-config-file-path filename)]
         (is (= {:version 1
                 :config  {:settings {:my-setting "abc123"}}}
                (#'advanced-config.file/config))))))
@@ -98,14 +99,14 @@
 
 (deftest recursive-template-form-expansion-test
   (testing "Recursive expansion is unsupported, for now."
-    (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :x "{{env Y}}", :y "Y")
+    (binding [config.env/*env*    (assoc config.env/*env* :x "{{env Y}}", :y "Y")
               advanced-config.file/*config* (mock-config-with-setting "{{env X}}")]
       (is (= (mock-config-with-setting "{{env Y}}")
              (#'advanced-config.file/config))))))
 
 (deftest expand-template-env-var-values-test
   (testing "env var values"
-    (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :config-file-bird-name "Parrot Hilton")]
+    (binding [config.env/*env* (assoc config.env/*env* :config-file-bird-name "Parrot Hilton")]
       (testing "Nothing weird"
         (binding [advanced-config.file/*config* (mock-config-with-setting "{{env CONFIG_FILE_BIRD_NAME}}")]
           (is (= (mock-config-with-setting "Parrot Hilton")
@@ -147,7 +148,7 @@
 
 (deftest optional-template-test
   (testing "[[optional {{template}}]] values"
-    (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")]
+    (binding [config.env/*env* (assoc config.env/*env* :my-sensitive-password "~~~SeCrEt123~~~")]
       (testing "env var exists"
         (binding [advanced-config.file/*config* (mock-config-with-setting "[[{{env MY_SENSITIVE_PASSWORD}}]]")]
           (is (= (mock-config-with-setting "~~~SeCrEt123~~~")
@@ -191,7 +192,7 @@
 
 (deftest error-validation-do-not-leak-env-vars-test
   (testing "spec errors should not include contents of env vars -- expand templates after spec validation."
-    (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")
+    (binding [config.env/*env*    (assoc config.env/*env* :my-sensitive-password "~~~SeCrEt123~~~")
               advanced-config.file/*config* {:version 1
                                              :config  {:users [{:first_name "Cam"
                                                                 :last_name  "Era"

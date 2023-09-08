@@ -61,7 +61,7 @@
       (is (= nil
              (public-settings/site-url))))))
 
-(deftest site-url-settings-normalize
+(deftest ^:parallel site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
       (is (= "localhost:3000/"
@@ -69,7 +69,7 @@
       (is (= "http://localhost:3000"
              (public-settings/site-url))))))
 
-(deftest invalid-site-url-env-var-test
+(deftest ^:parallel invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
     (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
@@ -80,8 +80,8 @@
 
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
-    (mt/with-temporary-setting-values [site-url                       "https://example.com"
-                                       redirect-all-requests-to-https true]
+    (mt/with-temporary-setting-values! [site-url                       "https://example.com"
+                                        redirect-all-requests-to-https true]
       (is (= true
              (public-settings/redirect-all-requests-to-https)))
       (public-settings/site-url! "http://example.com")
@@ -89,22 +89,22 @@
              (public-settings/redirect-all-requests-to-https)))))
 
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
-    (mt/with-temporary-setting-values [site-url                       "https://example.com"
-                                       redirect-all-requests-to-https true]
+    (mt/with-temporary-setting-values! [site-url                       "https://example.com"
+                                        redirect-all-requests-to-https true]
       (is (= true
              (public-settings/redirect-all-requests-to-https)))
       (public-settings/site-url! "https://different.example.com")
       (is (= true
              (public-settings/redirect-all-requests-to-https))))))
 
-(deftest translate-public-setting
+(deftest ^:parallel translate-public-setting
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
              (str (get-in (setting/user-readable-values-map #{:public})
                           [:engines :postgres :details-fields 0 :display-name])))))))
 
-(deftest tru-translates
+(deftest ^:parallel tru-translates
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= true
@@ -171,8 +171,8 @@
     (doseq [v [true "true"]]
       (testing (format "\nSet value to ^%s %s" (.getCanonicalName (class v)) (pr-str v))
         (testing "\n`site-url` *is* HTTPS"
-          (mt/with-temporary-setting-values [site-url                       "https://example.com"
-                                             redirect-all-requests-to-https false]
+          (mt/with-temporary-setting-values! [site-url                       "https://example.com"
+                                              redirect-all-requests-to-https false]
             (public-settings/redirect-all-requests-to-https! v)
             (is (= true
                    (public-settings/redirect-all-requests-to-https)))))

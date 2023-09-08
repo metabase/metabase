@@ -14,7 +14,7 @@
   (:require
    [clojure.string :as str]
    [clojurewerkz.quartzite.scheduler :as qs]
-   [environ.core :as env]
+   [metabase.config.env :as config.env]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
@@ -159,7 +159,7 @@
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
-  (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
+  (some-> (config.env/*env* :mb-disable-scheduler) Boolean/parseBoolean))
 
 (defn start-scheduler!
   "Start the task scheduler. Tasks do not run before calling this function."

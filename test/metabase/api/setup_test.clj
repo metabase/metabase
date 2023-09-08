@@ -525,7 +525,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
 
-(deftest annotate-test
+(deftest ^:parallel annotate-test
   (testing "identifies next step"
     (is (partial= [{:group "first"
                     :tasks [{:title "t1", :is_next_step false}]}
@@ -576,7 +576,7 @@
                 default-checklist-state
                 scenarios)))))
 
-(deftest user-defaults-test
+(deftest ^:parallel user-defaults-test
   (testing "with no user defaults configured"
     (mt/with-temp-env-var-value [mb-user-defaults nil]
       (is (= "Not found." (client/client :get "setup/user_defaults")))))

@@ -1,7 +1,7 @@
 (ns metabase.plugins.dependencies
   (:require
    [clojure.string :as str]
-   [environ.core :as env]
+   [metabase.config.env :as config.env]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -67,7 +67,7 @@
 
 (defmethod dependency-satisfied? :env-var
   [_ {{plugin-name :name} :info} {env-var-name :env-var}]
-  (if (str/blank? (env/env (keyword env-var-name)))
+  (if (str/blank? (config.env/*env* (keyword env-var-name)))
     (do
       (log-once plugin-name (trs "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"
                                  plugin-name

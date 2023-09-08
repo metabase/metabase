@@ -119,7 +119,7 @@
   (when-let [resource (locale-edn-resource a-locale)]
     (edn/read-string (slurp resource))))
 
-(def ^:private ^{:arglists '([locale-or-name])} translations
+(def ^:private ^{:arglists '([locale-or-name])} ^:dynamic *translations*
   "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
   by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.
 
@@ -136,7 +136,7 @@
   ^String [locale-or-name format-string n]
   (when (seq format-string)
     (when-let [locale (locale locale-or-name)]
-      (when-let [translations (translations locale)]
+      (when-let [translations (*translations* locale)]
         (when-let [string-or-strings (get-in translations [:messages format-string])]
           (if (string? string-or-strings)
             ;; Only a singular form defined; ignore `n`

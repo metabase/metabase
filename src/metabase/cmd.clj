@@ -18,8 +18,8 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [environ.core :as env]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -96,8 +96,8 @@
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
-  (alter-var-root #'env/env assoc :mb-jetty-join "false")
-  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
+  (binding [config.env/*env* (assoc config.env/*env* :mb-jetty-join "false")]
+    (u/profile "start-normally" ((resolve 'metabase.core/start-normally)))))
 
 (defn ^:command reset-password
   "Reset the password for a user with `email-address`."

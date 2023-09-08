@@ -3,11 +3,10 @@
   (:require
    [clojure.data :as data]
    [clojure.test :refer :all]
-   [environ.core :as env]
    [java-time :as t]
    [mb.hawk.init]
-   [mb.hawk.parallel]
    [medley.core :as m]
+   [metabase.config.env :as config.env]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.context :as qp.context]
@@ -109,7 +108,7 @@
                       [middleware-fn])))
          context  (merge
                    ;; CI is S U P E R  S L O W so give this a longer timeout.
-                   {:timeout (if (env/env :ci)
+                   {:timeout (if (config.env/*env* :ci)
                                5000
                                500)
                     :runf    (fn [query rff context]

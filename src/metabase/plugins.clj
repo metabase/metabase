@@ -4,8 +4,8 @@
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [environ.core :as env]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.plugins.classloader :as classloader]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- plugins-dir-filename ^String []
-  (or (env/env :mb-plugins-dir)
+  (or (config.env/*env* :mb-plugins-dir)
       (.getAbsolutePath (io/file "plugins"))))
 
 (def ^:private plugins-dir*
@@ -139,7 +139,7 @@
      ;; `-Dmb.dev.additional.driver.manifest.paths=/path/to/whatever/metabase-plugin.yaml` or
      ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
      ;; multiple plugin manifests by comma-separating them.
-     (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
+     (when-let [additional-paths (config.env/*env* :mb-dev-additional-driver-manifest-paths)]
        (map u.files/get-path (str/split additional-paths #",")))))
 
   (defn- load-local-plugin-manifests!

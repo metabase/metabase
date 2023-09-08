@@ -36,6 +36,7 @@
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.test.util.timezone :as test.tz]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
@@ -80,6 +81,7 @@
   tu.log/keep-me
   tu.misc/keep-me
   tu.random/keep-me
+  tu.setting/keep-me
   tu/keep-me
   tx.env/keep-me
   tx/keep-me)
@@ -212,7 +214,6 @@
  [tu
   boolean-ids-and-timestamps
   call-with-paused-query
-  discard-setting-changes
   doall-recursive
   file->bytes
   is-uuid-string?
@@ -233,14 +234,10 @@
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
-  with-temp-env-var-value
   with-temp-dir
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
-  with-temporary-setting-values
-  with-temporary-setting-values!
-  with-temporary-raw-setting-values
   with-user-in-groups]
 
  [tu.async
@@ -263,6 +260,14 @@
   random-name
   random-hash
   random-email]
+
+ [tu.setting
+  discard-setting-changes
+  with-temp-env-var-value
+  with-temp-env-var-value!
+  with-temporary-raw-setting-values
+  with-temporary-setting-values
+  with-temporary-setting-values!]
 
  [test.tz
   with-system-timezone-id]

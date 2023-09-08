@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [environ.core :as env]
    [medley.core :as m]
+   [metabase.config.env :as config.env]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -12,10 +12,11 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -248,10 +249,27 @@
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed
 ;; into the API
 
+(def ^:private ^:dynamic *mock-db-values* nil)
+
+(defn- mock-db-source [setting]
+  (get *mock-db-values* (keyword (setting/setting-name setting))))
+
+(mu/defn ^:private do-with-mock-db-values
+  [m     :- [:map-of :keyword :any]
+   thunk :- [:=> [:cat] :any]]
+  (binding [*mock-db-values*  (merge *mock-db-values* m)
+            setting/*sources* (into []
+                                    (map (fn [source]
+                                           (if (= source #'setting/db-or-cache-value)
+                                             #'mock-db-source
+                                             source)))
+                                    setting/*sources*)]
+    (thunk)))
+
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (tu/do-with-temporary-setting-values {(keyword setting) db-value}
+  (do-with-mock-db-values {(keyword setting) db-value}
     (fn []
-      (tu/do-with-temp-env-var-value
+      (tu.setting/do-with-temp-env-var-value
        (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
@@ -448,8 +466,8 @@
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
-    (test-csv-setting)))
+  (do-with-mock-db-values {:test-csv-setting v}
+    test-csv-setting))
 
 (deftest ^:parallel get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
@@ -739,7 +757,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu.setting/do-with-temp-env-var-value
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
@@ -866,7 +884,7 @@
   (testing "Reading and writing a user-local-allowed setting in the context of a user uses the user-local value"
     ;; TODO: mt/with-temporary-setting-values only affects site-wide value, we should figure out whether it should also
     ;; affect user-local settings.
-    (mt/with-temporary-setting-values [test-user-local-allowed-setting nil]
+    (mt/with-temporary-setting-values! [test-user-local-allowed-setting nil]
       (mt/with-current-user (mt/user->id :rasta)
         (test-user-local-allowed-setting! "ABC")
         (is (= "ABC" (test-user-local-allowed-setting))))
@@ -1018,47 +1036,55 @@
   "Test setting - this only shows up in dev (6)"
   :visibility :internal)
 
-(deftest munged-setting-name-test
+(deftest ^:parallel munged-setting-name-test
   (testing "Only valid characters used for environment lookup"
     (is (nil? (test-setting-with-question-mark?)))
     ;; note now question mark on the environmental setting
-    (with-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
-      (binding [setting/*disable-cache* false]
-        (is (= "resolved" (test-setting-with-question-mark?))))))
+    (binding [config.env/*env*        {:mb-test-setting-with-question-mark "resolved"}
+              setting/*disable-cache* false]
+      (is (= "resolved" (test-setting-with-question-mark?))))))
+
+(deftest ^:parallel munged-setting-name-test-2
   (testing "Setting a setting that would munge the same throws an error"
     (is (= {:existing-setting
-            {:name :test-setting-with-question-mark?
+            {:name        :test-setting-with-question-mark?
              :munged-name "test-setting-with-question-mark"}
             :new-setting
-            {:name :test-setting-with-question-mark????
+            {:name        :test-setting-with-question-mark????
              :munged-name "test-setting-with-question-mark"}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+                            (catch Exception e (ex-data e))))))))
+
+(deftest ^:parallel munged-setting-name-test-3
   (testing "Munge collision on first definition"
     (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
-            :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
+            :new-setting      {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+                            (catch Exception e (ex-data e))))))))
+
+(deftest ^:parallel munged-setting-name-test-4
   (testing "Munge collision on second definition"
     (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
-    (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
-             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+    (is (= {:new-setting      {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
+            :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+                            (catch Exception e (ex-data e))))))))
+
+(deftest ^:parallel munged-setting-name-test-5
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
@@ -1122,3 +1148,9 @@
   (mt/with-temporary-setting-values [test-double-setting :wow]
     (is (= 60.0
            (setting/get-value-of-type :double :test-double-setting)))))
+
+(deftest with-temporary-setting-values-test
+  (testing "nil values should override non-nil ones"
+    (test-setting-1! "wow")
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (is (nil? (test-setting-1))))))

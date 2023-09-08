@@ -8,10 +8,10 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
-   [environ.core :as env]
    [mb.hawk.init]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -673,14 +673,14 @@
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env/env (db-test-env-var-keyword driver env-var) default)))
+   (get config.env/*env* (db-test-env-var-keyword driver env-var) default)))
 
 (defn db-test-env-var!
   "Update or the value of a test env var. A `nil` new-value removes the env var value."
   [driver env-var new-value]
   (if (some? new-value)
-    (alter-var-root #'env/env assoc (db-test-env-var-keyword driver env-var) (str new-value))
-    (alter-var-root #'env/env dissoc (db-test-env-var-keyword driver env-var)))
+    (alter-var-root #'config.env/*env* assoc (db-test-env-var-keyword driver env-var) (str new-value))
+    (alter-var-root #'config.env/*env* dissoc (db-test-env-var-keyword driver env-var)))
   nil)
 
 (defn- to-system-env-var-str

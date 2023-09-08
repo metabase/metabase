@@ -142,6 +142,7 @@
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   environ.core/env                                   {:message "Use metabase.config.env/*env* instead of environ.core/env"}
    honeysql.core/call                                 {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                               {:message "Use mt/with-clock"}
@@ -186,6 +187,7 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   environ.core           {:message "Use metabase.config.env/*env* instead of environ.core/env"}
    metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
@@ -216,7 +218,6 @@
     clojure.tools.namespace.find                                    ns.find
     clojure.tools.namespace.parse                                   ns.parse
     colorize.core                                                   colorize
-    environ.core                                                    env
     hf.depstar.api                                                  depstar
     hiccup.core                                                     hiccup
     hiccup.util                                                     hiccup.util
@@ -287,6 +288,7 @@
     metabase.automagic-dashboards.populate                          populate
     metabase.cmd.copy.h2                                            copy.h2
     metabase.config                                                 config
+    metabase.config.env                                             config.env
     metabase.config.file                                            config.file
     metabase.connection-pool                                        connection-pool
     metabase.db.connection                                          mdb.connection
@@ -480,71 +482,70 @@
   :metabase/missing-test-expr-requires-in-cljs       {:level :warning}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
-  clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
-  clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
-  honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
-  honeysql.util/defalias                                                               clojure.core/def
-  metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
-  metabase.actions.test-util/with-actions                                              clojure.core/let
-  metabase.api.common/let-404                                                          clojure.core/let
-  metabase.api.search-test/do-test-users                                               clojure.core/let
-  metabase.async.api-response-test/with-response                                       clojure.core/let
-  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
-  metabase.db.custom-migrations/define-migration                                       clj-kondo.lint-as/def-catch-all
-  metabase.db.custom-migrations/define-reversible-migration                            clj-kondo.lint-as/def-catch-all
-  metabase.db.data-migrations/defmigration                                             clojure.core/def
-  metabase.db.liquibase/with-liquibase                                                 clojure.core/let
-  metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
-  metabase.domain-entities.malli/defn                                                  schema.core/defn
-  metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
-  metabase.driver.mongo.util/with-mongo-connection                                     clojure.core/let
-  metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
-  metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
-  metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
-  metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
-  metabase.models.collection-test/with-collection-in-location                          clojure.core/let
-  metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
-  metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
-  metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/defenterprise-schema                       clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
-  metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
-  metabase.query-processor.error-type/deferror                                         clojure.core/def
-  metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
-  metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
-  metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
-  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  clojure.core/->
-  metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
-  metabase.sync.util/sum-for                                                           clojure.core/for
-  metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let
-  metabase.test.data.interface/defdataset                                              clojure.core/def
-  metabase.test.data.interface/defdataset-edn                                          clojure.core/def
-  metabase.test/defdataset                                                             clojure.core/def
-  metabase.test/let-url                                                                clojure.core/let
-  metabase.test/with-actions                                                           clojure.core/let
-  metabase.test/with-open-channels                                                     clojure.core/let
-  metabase.test/with-single-admin-user                                                 clojure.core/fn
-
-  metabase.test/with-temp-dir                                                          clojure.core/let
-  metabase.test/with-temp-file                                                         clojure.core/let
-  metabase.test/with-user-in-groups                                                    clojure.core/let
-  metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.malli.defn/defn                                                        schema.core/defn
-  metabase.util.malli.fn/fn                                                            schema.core/fn
-  metabase.util.malli/defmethod                                                        schema.core/defmethod
-  metabase.util.malli/defn                                                             schema.core/defn
-  metabase.util.malli/fn                                                               schema.core/fn
-  metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
-  monger.operators/defoperator                                                         clojure.core/def
-  potemkin.types/defprotocol+                                                          clojure.core/defprotocol
-  potemkin.types/defrecord+                                                            clojure.core/defrecord
-  potemkin.types/deftype+                                                              clojure.core/deftype
-  potemkin/defprotocol+                                                                clojure.core/defprotocol
-  potemkin/defrecord+                                                                  clojure.core/defrecord
-  potemkin/deftype+                                                                    clojure.core/deftype
-  toucan.db/with-call-counting                                                         clojure.core/fn
-  toucan2.core/with-call-count                                                         clojure.core/fn}
+ {clojure.core.logic/defne                                                              clj-kondo.lint-as/def-catch-all
+  clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
+  clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
+  honeysql.helpers/defhelper                                                            clj-kondo.lint-as/def-catch-all
+  honeysql.util/defalias                                                                clojure.core/def
+  metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+  metabase.actions.test-util/with-actions                                               clojure.core/let
+  metabase.api.common/let-404                                                           clojure.core/let
+  metabase.api.search-test/do-test-users                                                clojure.core/let
+  metabase.async.api-response-test/with-response                                        clojure.core/let
+  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
+  metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
+  metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
+  metabase.db.data-migrations/defmigration                                              clojure.core/def
+  metabase.db.liquibase/with-liquibase                                                  clojure.core/let
+  metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
+  metabase.domain-entities.malli/defn                                                   schema.core/defn
+  metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let
+  metabase.driver.mongo.util/with-mongo-connection                                      clojure.core/let
+  metabase.driver.sql-jdbc.actions/with-jdbc-transaction                                clojure.core/let
+  metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
+  metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
+  metabase.integrations.ldap/with-ldap-connection                                       clojure.core/fn
+  metabase.models.collection-test/with-collection-in-location                           clojure.core/let
+  metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
+  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
+  metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
+  metabase.pulse-test/with-pulse-for-card                                               clojure.core/let
+  metabase.query-processor.error-type/deferror                                          clojure.core/def
+  metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
+  metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
+  metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
+  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
+  metabase.shared.util.namespaces/import-fns                                            potemkin/import-vars
+  metabase.sync.util/sum-for                                                            clojure.core/for
+  metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
+  metabase.test.data.interface/defdataset                                               clojure.core/def
+  metabase.test.data.interface/defdataset-edn                                           clojure.core/def
+  metabase.test/defdataset                                                              clojure.core/def
+  metabase.test/let-url                                                                 clojure.core/let
+  metabase.test/with-actions                                                            clojure.core/let
+  metabase.test/with-open-channels                                                      clojure.core/let
+  metabase.test/with-single-admin-user                                                  clojure.core/fn
+  metabase.test/with-temp-dir                                                           clojure.core/let
+  metabase.test/with-temp-file                                                          clojure.core/let
+  metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.util.files/with-open-path-to-resource                                        clojure.core/let
+  metabase.util.malli.defn/defn                                                         schema.core/defn
+  metabase.util.malli.fn/fn                                                             schema.core/fn
+  metabase.util.malli/defmethod                                                         schema.core/defmethod
+  metabase.util.malli/defn                                                              schema.core/defn
+  metabase.util.malli/fn                                                                schema.core/fn
+  metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
+  monger.operators/defoperator                                                          clojure.core/def
+  potemkin.types/defprotocol+                                                           clojure.core/defprotocol
+  potemkin.types/defrecord+                                                             clojure.core/defrecord
+  potemkin.types/deftype+                                                               clojure.core/deftype
+  potemkin/defprotocol+                                                                 clojure.core/defprotocol
+  potemkin/defrecord+                                                                   clojure.core/defrecord
+  potemkin/deftype+                                                                     clojure.core/deftype
+  toucan.db/with-call-counting                                                          clojure.core/fn
+  toucan2.core/with-call-count                                                          clojure.core/fn}
 
  :hooks
  {:analyze-call
@@ -615,12 +616,14 @@
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg
+   metabase.test.util.setting/discard-setting-changes                                                                        hooks.common/with-ignored-first-arg
+   metabase.test.util.setting/with-temporary-setting-values                                                                  hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.util.setting/with-temporary-setting-values!                                                                 hooks.metabase.test.util/with-temporary-setting-values
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
-   metabase.test.util/with-temporary-setting-values!                                                                         hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
    metabase.test/dataset                                                                                                     hooks.metabase.test.data/dataset
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
@@ -666,9 +669,13 @@
    metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value                                   macros.metabase.test.util/with-temp-env-var-value
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test.util.setting/with-temp-env-var-value                           macros.metabase.test.util/with-temp-env-var-value
+   metabase.test.util.setting/with-temp-env-var-value!                          macros.metabase.test.util/with-temp-env-var-value
+   metabase.test.util.setting/with-temporary-raw-setting-values                 macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
+   metabase.test/with-temp-env-var-value!                                       macros.metabase.test.util/with-temp-env-var-value
    metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
 
  :config-in-comment
@@ -784,10 +791,10 @@
   qp-and-driver-source-namespaces
   {:linters
    {:discouraged-namespace
-    {toucan.db         {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.models     {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.util.test  {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan2.core      {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
+    {toucan.db        {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan.models    {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan.util.test {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan2.core     {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
     {metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}

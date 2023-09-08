@@ -7,7 +7,7 @@
    [buddy.core.kdf :as kdf]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
-   [environ.core :as env]
+   [metabase.config.env :as config.env]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -35,7 +35,7 @@
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
-  (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
+  (validate-and-hash-secret-key (config.env/*env* :mb-encryption-secret-key)))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*

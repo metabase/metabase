@@ -1,7 +1,6 @@
 (ns metabase.api.common.internal-test
   (:require
    [cheshire.core :as json]
-   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
@@ -11,17 +10,16 @@
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
    [metabase.logger :as mb.logger]
+   [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as jetty])
-  (:import
-   (org.eclipse.jetty.server Server)))
+   [ring.mock.request :as ring.mock]))
 
 (set! *warn-on-reflection* true)
 
-(def TestAddress
+(def ^:private TestAddress
   [:map
    {:title "Address"}
    [:id :string]
@@ -33,7 +31,7 @@
      [:zip :int]
      [:lonlat [:tuple :double :double]]]]])
 
-(def ClosedTestAddress
+(def ^:private ClosedTestAddress
   (mut/closed-schema TestAddress))
 
 (api/defendpoint POST "/post/any" [:as {body :body :as _request}]
@@ -99,161 +97,162 @@
 
 (defn- json-mw [handler]
   (fn [req]
-    (update
-     (handler
-      (update req :body #(-> % slurp (json/parse-string true))))
-     :body json/generate-string)))
+    (handler
+     (update req :body #(-> % slurp (json/parse-string true))))))
 
 (defn exception-mw [handler]
   (fn [req] (try
               (handler req)
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
-(deftest defendpoint-test
-  (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
-        port   (.. server getURI getPort)
-        post!  (fn [route body]
-                 (http/post (str "http://localhost:" port route)
-                            {:throw-exceptions false
-                             :accept           :json
-                             :as               :json
-                             :coerce           :always
-                             :body             (json/generate-string body)}))]
-    (testing "validation"
-      (is (= {:a 1 :b 2} (:body (post! "/post/any" {:a 1 :b 2}))))
+(def ^:private handler
+  (json-mw (exception-mw routes)))
 
-      (is (= {:id 1} (:body (post! "/post/id-int" {:id 1}))))
+(defn- mock-post-request [route body]
+  (->> body
+       json/generate-string
+       (ring.mock/request :post route)
+       handler
+       :body))
 
-      ;; this is coercable now!
-      (is (= {:id "1"} (:body (post! "/post/id-int" {:id "1"}))))
+(deftest ^:parallel defendpoint-validation-test
+  (testing "validation"
+    (is (= {:a 1 :b 2} (mock-post-request "/post/any" {:a 1 :b 2})))
+    (is (= {:id 1} (mock-post-request "/post/id-int" {:id 1})))
+    ;; this is coercable now!
+    (is (= {:id "1"} (mock-post-request "/post/id-int" {:id "1"})))))
 
-      (mt/with-log-level [metabase.api.common :warn]
-        (is (= {:id      "myid"
-                :tags    ["abc"]
-                :address {:street "abc" :city "sdasd" :zip 2999 :lonlat [0.0 0.0]}}
-               (:body (post! "/post/test-address"
-                             {:id      "myid"
-                              :tags    ["abc"]
-                              :address {:street "abc"
-                                        :city   "sdasd"
-                                        :zip    2999
-                                        :lonlat [0.0 0.0]}}))))
-        (is (some (fn [{message :msg, :as entry}]
-                    (when (str/includes? (str message)
-                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
-                                              "Please add them to the schema or remove them from the API client"))
-                      entry))
-                  (mb.logger/messages))))
+(deftest defendpoint-validation-test-2
+  (mt/with-log-level [metabase.api.common :warn]
+    (is (= {:id      "myid"
+            :tags    #{:abc}
+            :address {:street "abc" :city "sdasd" :zip 2999 :lonlat [0.0 0.0]}}
+           (mock-post-request "/post/test-address"
+                              {:id      "myid"
+                               :tags    ["abc"]
+                               :address {:street "abc"
+                                         :city   "sdasd"
+                                         :zip    2999
+                                         :lonlat [0.0 0.0]}})))
+    (is (some (fn [{message :msg, :as entry}]
+                (when (str/includes? (str message)
+                                     (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                          "Please add them to the schema or remove them from the API client"))
+                  entry))
+              (mb.logger/messages)))))
 
-      (is (= {:errors
-              {:address
-               "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
-              :specific-errors
-              {:address
-               {:id ["missing required key, received: nil"],
-                :tags ["missing required key, received: nil"],
-                :address ["missing required key, received: nil"]}}}
-             (:body (post! "/post/test-address" {:x "1"}))))
+(deftest ^:parallel defendpoint-validation-test-3
+  (is (= {:errors
+          {:address
+           "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+          :specific-errors
+          {:address
+           {:id ["missing required key, received: nil"],
+            :tags ["missing required key, received: nil"],
+            :address ["missing required key, received: nil"]}}}
+         (mock-post-request "/post/test-address" {:x "1"}))))
 
-      (is (= {:errors
-              {:address
-               "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
-              :specific-errors
-              {:address
-               {:id ["should be a string, received: 1288"],
-                :tags ["invalid type, received: \"a,b,c\""],
-                :address {:street ["missing required key, received: nil"]}}}}
-             (:body (post! "/post/test-address" {:id      1288
-                                                 :tags    "a,b,c"
-                                                 :address {:streeqt "abc"
-                                                           :city    "sdasd"
-                                                           :zip     "12342"
-                                                           :lonlat  [0.0 0.0]}}))))
+(deftest ^:parallel defendpoint-validation-test-4
+  (is (= {:errors
+          {:address
+           "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>}>}"},
+          :specific-errors
+          {:address
+           {:id ["should be a string, received: 1288"],
+            :tags ["invalid type, received: \"a,b,c\""],
+            :address {:street ["missing required key, received: nil"]}}}}
+         (mock-post-request "/post/test-address" {:id      1288
+                                                  :tags    "a,b,c"
+                                                  :address {:streeqt "abc"
+                                                            :city    "sdasd"
+                                                            :zip     "12342"
+                                                            :lonlat  [0.0 0.0]}})))
 
-      (is (= {:errors
-              {:address
-               "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
-              :specific-errors
-              {:address
-               {:address ["missing required key, received: nil"],
-                :a ["disallowed key, received: 1"],
-                :b ["disallowed key, received: 2"]}}}
-             (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
+  (is (= {:errors
+          {:address
+           "map (titled: ‘Address’) where {:id -> <string>, :tags -> <set of keyword>, :address -> <map where {:street -> <string>, :city -> <string>, :zip -> <integer>, :lonlat -> <vector with exactly 2 items of type: double, double>} with no other keys>} with no other keys"},
+          :specific-errors
+          {:address
+           {:address ["missing required key, received: nil"],
+            :a ["disallowed key, received: 1"],
+            :b ["disallowed key, received: 2"]}}}
+         (mock-post-request "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
 
-      (testing "malli schema message are localized"
-        (mt/with-mock-i18n-bundles  {"es" {:messages
-                                           {"value must be a non-blank string."
-                                            "el valor debe ser una cadena que no esté en blanco."}}}
-          (mt/with-temporary-setting-values [site-locale "es"]
-            (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
-                                                                                            ;; TODO remove .'s from ms schemas
-                                                                                            ;; TODO translate received (?)
-                    :specific-errors
-                    {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
-                   (:body (post! "/test-localized-error" {:address ""}))))))))
+(deftest ^:parallel defendpoint-validation-test-5
+  (testing "malli schema message are localized"
+    (mt/with-mock-i18n-bundles {"es" {:messages
+                                      {"value must be a non-blank string."
+                                       "el valor debe ser una cadena que no esté en blanco."}}}
+      (mt/with-temporary-setting-values [site-locale "es"]
+        (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
+                ;; TODO remove .'s from ms schemas
+                ;; TODO translate received (?)
+                :specific-errors
+                {:address ["should be a string, received: {:address \"\"}"
+                           "non-blank string, received: {:address \"\"}"]}}
+               (mock-post-request "/test-localized-error" {:address ""})))))))
 
-    (testing "auto-coercion"
+(deftest ^:parallel defendpoint-auto-coercion-test
+  (testing "auto-coercion"
+    (is (= 16 (mock-post-request "/auto-coerce-pos-square/4" {})))
 
-      (is (= 16 (:body (post! "/auto-coerce-pos-square/4" {}))))
-
-      ;; Does not match route, since we expected a regex matching an int:
-      (is (= nil (:body (post! "/auto-coerce-pos-square/-4" {}))))
-
+    (testing "Does not match route, since we expected a regex matching an int:"
+      (is (= nil (mock-post-request "/auto-coerce-pos-square/-4" {})))
       (is (= nil
              ;; Does not match route, since we expected a regex matching an int:
-             (:body (post! "/auto-coerce-pos-square/not-an-int" {}))))
+             (mock-post-request "/auto-coerce-pos-square/not-an-int" {}))))
 
-      (is (= "chirp! chirp!"
-             (:body (post! "/auto-coerce-string-repeater" {:n 2 :str "chirp!" :join " "}))))
+    (is (= "chirp! chirp!"
+           (mock-post-request "/auto-coerce-string-repeater" {:n 2 :str "chirp!" :join " "})))
 
-      (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
-              :specific-errors {:body {:n ["should be a positive int, received: -3"]}}}
-             (:body (post! "/auto-coerce-string-repeater"
-                           {:n -3 :str "chirp!" :join " "}))))
+    (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
+            :specific-errors {:body {:n ["should be a positive int, received: -3"]}}}
+           (mock-post-request "/auto-coerce-string-repeater"
+                              {:n -3 :str "chirp!" :join " "})))
 
-      (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
-              :specific-errors {:body {:str ["should be a string, received: 123"]}}}
-             (:body (post! "/auto-coerce-string-repeater"
-                           {:n 3 :str 123 :join " "}))))
+    (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
+            :specific-errors {:body {:str ["should be a string, received: 123"]}}}
+           (mock-post-request "/auto-coerce-string-repeater"
+                              {:n 3 :str 123 :join " "})))
 
-      (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
-              :specific-errors {:body {:str ["missing required key, received: nil"],
-                                       :n ["missing required key, received: nil"],
-                                       :join ["missing required key, received: nil"]}}}
-             (:body (post! "/auto-coerce-string-repeater" {}))))
+    (is (= {:errors {:body "map where {:str -> <string>, :n -> <integer greater than 0>, :join -> <nullable string>}"}
+            :specific-errors {:body {:str ["missing required key, received: nil"],
+                                     :n ["missing required key, received: nil"],
+                                     :join ["missing required key, received: nil"]}}}
+           (mock-post-request "/auto-coerce-string-repeater" {})))
 
-      (is (= {;; in the defendpoint body, it is coerced properly:
-              :pr-strd "#{:c :d/e :b :a}",
-              ;; but it gets turned back into json in the request, of course.
-              :api-returns ["c" "d/e" "b" "a"]}
-             (:body (post! "/auto-coerce-destructure" {:set-of-kw ["a" "b" "c" "d/e"]}))))
+    (is (= { ;; in the defendpoint body, it is coerced properly:
+            :pr-strd "#{:c :d/e :b :a}",
+            :api-returns #{:c :d/e :b :a}}
+           (mock-post-request "/auto-coerce-destructure" {:set-of-kw ["a" "b" "c" "d/e"]})))
 
-      (is (= {:errors {:set-of-kw "set of keyword"}
-              :specific-errors {:set-of-kw ["invalid type, received: \"This wont work\""]}}
-             (:body (post! "/auto-coerce-destructure" {:set-of-kw "This wont work"}))))
+    (is (= {:errors {:set-of-kw "set of keyword"}
+            :specific-errors {:set-of-kw ["invalid type, received: \"This wont work\""]}}
+           (mock-post-request "/auto-coerce-destructure" {:set-of-kw "This wont work"})))
 
-      (is (= {:errors {:set-of-kw "set of keyword"}
-              :specific-errors {:set-of-kw ["invalid type, received: nil"]}}
-             (:body (post! "/auto-coerce-destructure" {}))))
+    (is (= {:errors {:set-of-kw "set of keyword"}
+            :specific-errors {:set-of-kw ["invalid type, received: nil"]}}
+           (mock-post-request "/auto-coerce-destructure" {})))
 
-      (is (= {:errors
-              {:body "map where {:user-state -> <string>, :po-box -> <string with length between 1 and 10 inclusive>, :archipelago -> <string>} with no other keys"},
-              :specific-errors {:body {:ser-state ["should be spelled :user-state, received: \"my state\""],
-                                       :o-box ["should be spelled :po-box, received: \"my po-box\""],
-                                       :rchipelago ["should be spelled :archipelago, received: \"my archipelago\""]}}}
-             (:body (post! "/closed-map-spellcheck" {:ser-state "my state"
-                                                     :o-box "my po-box"
-                                                     :rchipelago "my archipelago"})))))
+    (is (= {:errors
+            {:body "map where {:user-state -> <string>, :po-box -> <string with length between 1 and 10 inclusive>, :archipelago -> <string>} with no other keys"},
+            :specific-errors {:body {:ser-state ["should be spelled :user-state, received: \"my state\""],
+                                     :o-box ["should be spelled :po-box, received: \"my po-box\""],
+                                     :rchipelago ["should be spelled :archipelago, received: \"my archipelago\""]}}}
+           (mock-post-request "/closed-map-spellcheck" {:ser-state "my state"
+                                                        :o-box "my po-box"
+                                                        :rchipelago "my archipelago"})))))
 
-    (testing "routes need to not be arbitrarily chosen"
-      (is (= "hit route for a." (:body (post! "/accept-thing/a123" {}))))
-      (is (= "hit route for b." (:body (post! "/accept-thing/b123" {}))))
-      (is (= "hit route for c." (:body (post! "/accept-thing/c123" {}))))
-      (is (= "hit route for d." (:body (post! "/accept-thing/d123" {}))))
-      (is (= "hit route for e." (:body (post! "/accept-thing/e123" {}))))
-      (is (= nil (:body (post! "/accept-thing/f123" {})))))))
+(deftest ^:parallel defendpoint-routes-test
+  (testing "routes need to not be arbitrarily chosen"
+    (is (= "hit route for a." (mock-post-request "/accept-thing/a123" {})))
+    (is (= "hit route for b." (mock-post-request "/accept-thing/b123" {})))
+    (is (= "hit route for c." (mock-post-request "/accept-thing/c123" {})))
+    (is (= "hit route for d." (mock-post-request "/accept-thing/d123" {})))
+    (is (= "hit route for e." (mock-post-request "/accept-thing/e123" {})))
+    (is (= nil (mock-post-request "/accept-thing/f123" {})))))
 
-(deftest route-fn-name-test
+(deftest ^:parallel route-fn-name-test
   (are [method route expected] (= expected
                                   (internal/route-fn-name method route))
     'GET "/"                    'GET_
@@ -261,7 +260,7 @@
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
-(deftest arg-type-test
+(deftest ^:parallel arg-type-test
   (are [param expected] (= expected
                            (internal/arg-type param))
     :fish    nil
@@ -279,7 +278,7 @@
                                                      internal/*auto-parse-types*)]
      ~@body))
 
-(deftest route-param-regex-test
+(deftest ^:parallel route-param-regex-test
   (no-route-regexes
    (are [param expected] (= expected
                             (internal/route-param-regex param))
@@ -287,7 +286,7 @@
      :id      [:id "#[0-9]+"]
      :card-id [:card-id "#[0-9]+"])))
 
-(deftest route-arg-keywords-test
+(deftest ^:parallel route-arg-keywords-test
   (no-route-regexes
    (are [route expected] (= expected
                             (internal/route-arg-keywords route))
@@ -297,7 +296,7 @@
      "/:id/etc/:org" [:id :org]
      "/:card-id"     [:card-id])))
 
-(deftest type-args-test
+(deftest ^:parallel type-args-test
   (no-route-regexes
    (are [args expected] (= expected
                            (#'internal/typify-args args))
@@ -308,7 +307,7 @@
      [:id :fish]    [:id "#[0-9]+"]
      [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
 
-(deftest add-route-param-schema-test
+(deftest ^:parallel add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
                                          {'id ms/PositiveInt
@@ -335,7 +334,7 @@
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
 
-(deftest add-route-param-regexes-test
+(deftest ^:parallel add-route-param-regexes-test
   (no-route-regexes
    (are [route expected] (= expected
                             (internal/add-route-param-regexes route))
@@ -350,7 +349,7 @@
      ;; Check :uuid args
      "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)])))
 
-(deftest let-form-for-arg-test
+(deftest ^:parallel let-form-for-arg-test
   (are [arg expected] (= expected
                          (internal/let-form-for-arg arg))
     'id           '[id (clojure.core/when id (metabase.api.common.internal/parse-int id))]
@@ -360,7 +359,7 @@
     :as           nil
     '{body :body} nil))
 
-(deftest auto-parse-test
+(deftest ^:parallel auto-parse-test
   (are [args expected] (= expected
                           (macroexpand-1 `(internal/auto-parse ~args '~'body)))
     ;; when auto-parse gets an args form where arg is present in *autoparse-types*
@@ -389,10 +388,10 @@
     '[id :as {body :body}]
     '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
 
-(deftest enterprise-endpoint-name-test
+(deftest ^:parallel enterprise-endpoint-name-test
   (when config/ee-available?
     (testing "Make sure the route name for enterprise API endpoints is somewhat correct"
-      (require 'metabase-enterprise.advanced-permissions.api.application)
+      (classloader/require 'metabase-enterprise.advanced-permissions.api.application)
       (is (= "GET /api/ee/advanced-permissions/application/graph"
              (#'internal/endpoint-name (the-ns 'metabase-enterprise.advanced-permissions.api.application)
                                        'GET

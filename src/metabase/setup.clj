@@ -1,7 +1,7 @@
 (ns metabase.setup
   (:require
-   [environ.core :as env]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
@@ -31,7 +31,7 @@
   ;;
   ;; TODO -- 95% sure we can just use [[setup-token]] directly now and not worry about manually fetching the env var
   ;; value or setting DB values and the like
-  (or (when-let [mb-setup-token (env/env :mb-setup-token)]
+  (or (when-let [mb-setup-token (config.env/*env* :mb-setup-token)]
         (setting/set-value-of-type! :string :setup-token mb-setup-token))
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))

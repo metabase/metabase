@@ -60,7 +60,7 @@
           our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url) (nil? host) (= host our-host))))
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf e "Invalid redirect URL %s" (pr-str redirect-url))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code 400
                        :redirect-url redirect-url})))))

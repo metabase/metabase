@@ -316,7 +316,7 @@
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
 
-(deftest ^:parallel syncable-schemas-test
+(deftest syncable-schemas-test
   (mt/test-driver :h2
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db

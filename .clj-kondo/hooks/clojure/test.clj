@@ -22,6 +22,7 @@
      metabase.actions.test-util/with-actions-test-data
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
+     metabase.actions.test-util/with-empty-db
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
      metabase.test.data.users/with-group
@@ -31,6 +32,8 @@
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
      metabase.test.util.timezone/with-system-timezone-id
+     metabase.test.util.setting/discard-setting-changes
+     metabase.test.util/discard-setting-changes
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
@@ -38,10 +41,10 @@
      metabase.test.util/with-locale
      metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test.util/with-non-admin-groups-no-root-collection-perms
-     metabase.test.util/with-temp-env-var-value
      metabase.test.util/with-temp-vals-in-db
      metabase.test.util/with-temporary-raw-setting-values
      metabase.test.util/with-user-in-groups
+     metabase.test/discard-setting-changes
      metabase.test/with-actions
      metabase.test/with-actions-disabled
      metabase.test/with-actions-enabled
@@ -51,6 +54,7 @@
      metabase.test/with-all-users-permission
      metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-empty-db
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
      metabase.test/with-fake-inbox
@@ -65,7 +69,6 @@
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
      metabase.test/with-temp
-     metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-user-in-groups

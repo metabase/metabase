@@ -7,9 +7,9 @@
    #_:clj-kondo/ignore
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
-   [environ.core :refer [env]]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -34,7 +34,7 @@
   (or
    ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
    (when config/is-dev?
-     (some-> (env :metastore-dev-server-url)
+     (some-> (config.env/*env* :metastore-dev-server-url)
              ;; remove trailing slashes
              (str/replace  #"/$" "")))
    "https://token-check.metabase.com"))

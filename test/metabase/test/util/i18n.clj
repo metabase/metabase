@@ -2,13 +2,23 @@
   (:require
    [clojure.test :as t]
    [metabase.util.i18n :as i18n]
-   [metabase.util.i18n.impl :as i18n.impl]))
+   [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.malli :as mu]))
 
-(defn do-with-mock-i18n-bundles [bundles thunk]
+(mu/defn do-with-mock-i18n-bundles
+  [bundles :- [:map-of
+               [:or
+                [:string {:min 2, :max 2}]  ; e.g. en
+                [:string {:min 5, :max 5}]] ; e.g. en-US
+               [:map
+                [:messages [:map-of :string :string]]
+                [:headers {:optional true} [:map
+                                            ["Plural-Forms" {:optional true} :string]]]]]
+   thunk   :- [:=> [:cat] :any]]
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
     (let [locale->bundle (into {} (for [[locale-name bundle] bundles]
                                     [(i18n/locale locale-name) bundle]))]
-      (with-redefs [i18n.impl/translations (comp locale->bundle i18n/locale)]
+      (binding [i18n.impl/*translations* (comp locale->bundle i18n/locale)]
         (thunk)))))
 
 (defmacro with-mock-i18n-bundles

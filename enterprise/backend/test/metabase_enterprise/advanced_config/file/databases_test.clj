@@ -62,7 +62,7 @@
 (deftest disable-sync-test
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"
     ;; make sure we're actually testing something if it was already set to false locally.
-    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+    (mt/with-temporary-setting-values! [config-from-file-sync-databases true]
       (try
         (binding [advanced-config.file/*config* {:version 1
                                                  :config  {:settings  {:config-from-file-sync-databases false}

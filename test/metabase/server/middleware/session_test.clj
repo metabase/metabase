@@ -3,10 +3,10 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [environ.core :as env]
    [java-time :as t]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -29,29 +29,30 @@
 
 (set! *warn-on-reflection* true)
 
-
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 (def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
-(deftest session-cookie-test
+(deftest ^:parallel session-cookie-test
   (testing "`SameSite` value is read from config (env)"
-    (is (= :lax ; Default value
-           (with-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
+    (is (= :lax                         ; Default value
+           (binding [config.env/*env* (dissoc config.env/*env* :mb-session-cookie-samesite)]
              (#'config/mb-session-cookie-samesite*))))
 
     (is (= :strict
-           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
+           (binding [config.env/*env* (assoc config.env/*env* :mb-session-cookie-samesite "StRiCt")]
              (#'config/mb-session-cookie-samesite*))))
 
     (is (= :none
-           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
+           (binding [config.env/*env* (assoc config.env/*env* :mb-session-cookie-samesite "NONE")]
              (#'config/mb-session-cookie-samesite*))))
 
-    (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_SESSION_COOKIE_SAMESITE"
-          (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-            (#'config/mb-session-cookie-samesite*))))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Invalid value for MB_SESSION_COOKIE_SAMESITE"
+         (binding [config.env/*env* (assoc config.env/*env* :mb-session-cookie-samesite "invalid value")]
+           (#'config/mb-session-cookie-samesite*))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
@@ -126,7 +127,7 @@
 (deftest session-expired-test
   (init-status/set-complete!)
   (testing "Session expiration time = 1 minute"
-    (with-redefs [env/env (assoc env/env :max-session-age "1")]
+    (binding [config.env/*env* (assoc config.env/*env* :max-session-age "1")]
       (doseq [[created-at expected msg]
               [[:%now                                                               false "brand-new session"]
                [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
@@ -154,8 +155,8 @@
    :anti_csrf_token  test-anti-csrf-token
    :type             :full-app-embed})
 
-(deftest set-full-app-embedding-session-cookie-test
-  (with-redefs [env/env (assoc env/env :max-session-age "1")]
+(deftest ^:parallel set-full-app-embedding-session-cookie-test
+  (binding [config.env/*env* (assoc config.env/*env* :max-session-age "1")]
     (mt/with-temporary-setting-values [session-timeout nil]
       (testing "test that we can set a full-app-embedding session cookie"
         (is (= {:body    {}
@@ -170,7 +171,11 @@
                (mw.session/set-session-cookies {}
                                                {}
                                                test-full-app-embed-session
-                                               (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
+                                               (t/zoned-date-time "2022-07-06T02:00Z[UTC]"))))))))
+
+(deftest ^:parallel set-full-app-embedding-session-cookie-test-2
+  (binding [config.env/*env* (assoc config.env/*env* :max-session-age "1")]
+    (mt/with-temporary-setting-values [session-timeout nil]
       (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
         (is (= {:body    {}
                 :status  200
@@ -495,28 +500,29 @@
         (is (= [[:warn nil "Session timeout must be less than 100 years."]]
                (mt/with-log-messages-for-level :warn (set-and-get timeout))))))))
 
-(deftest session-timeout-test
+(deftest ^:parallel session-timeout-test
+  (testing "`session-timeout` setting conversion to seconds"
+    (is (= 10800
+           (mw.session/session-timeout->seconds {:amount 180
+                                                 :unit   "minutes"})))
+    (is (= 60
+           (mw.session/session-timeout->seconds {:amount 60
+                                                 :unit   "seconds"})))
+    (is (= 3600
+           (mw.session/session-timeout->seconds {:amount 1
+                                                 :unit   "hours"})))))
+
+(deftest ^:parallel session-timeout-test-2
+  (testing "The session timeout should be a minimum of 30 seconds"
+    (is (= 60
+           (mw.session/session-timeout->seconds {:amount 0
+                                                 :unit   "minutes"})))))
+
+(deftest ^:parallel session-timeout-test-3
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
         session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
-
-    (testing "`session-timeout` setting conversion to seconds"
-      (is (= 10800
-             (mw.session/session-timeout->seconds {:amount 180
-                                                   :unit   "minutes"})))
-      (is (= 60
-             (mw.session/session-timeout->seconds {:amount 60
-                                                   :unit   "seconds"})))
-      (is (= 3600
-             (mw.session/session-timeout->seconds {:amount 1
-                                                   :unit   "hours"}))))
-
-    (testing "The session timeout should be a minimum of 30 seconds"
-      (is (= 60
-             (mw.session/session-timeout->seconds {:amount 0
-                                                   :unit   "minutes"}))))
-
     (testing "non-nil `session-timeout-seconds` should set the expiry of the timeout cookie relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
@@ -541,18 +547,27 @@
                     :cookies {session-timeout-cookie {:value     "alive"
                                                       :path      "/"
                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
-                   (mw.session/reset-session-timeout* request response request-time)))))))
+                   (mw.session/reset-session-timeout* request response request-time)))))))))
 
+(deftest ^:parallel session-timeout-test-4
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If the request does not have session cookies (because they have expired), they should not be reset."
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
-                 (mw.session/reset-session-timeout* request response request-time))))))
+                 (mw.session/reset-session-timeout* request response request-time))))))))
 
+(deftest ^:parallel session-timeout-test-5
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
               should have a max age attribute."
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (binding [config.env/*env* (assoc config.env/*env* :max-session-age "1")]
         (mt/with-temporary-setting-values [session-timeout nil
                                            public-settings/session-cookies false]
           (let [request {:body                  {:remember true}
@@ -572,11 +587,16 @@
                                                   :path      "/"
                                                   :max-age   60
                                                   :http-only true}}}
-                   (mw.session/set-session-cookies request response session request-time)))))))
+                   (mw.session/set-session-cookies request response session request-time)))))))))
 
+(deftest ^:parallel session-timeout-test-6
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If [[public-settings/session-cookies]] is true and the `:remember` flag is set, then the session cookie
               shouldn't have a max age attribute."
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (binding [config.env/*env* (assoc config.env/*env* :max-session-age "1")]
         (mt/with-temporary-setting-values [session-timeout nil
                                            public-settings/session-cookies true]
           (let [request {:metabase-session-id   session-id

@@ -78,10 +78,10 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.config.env :as config.env]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -90,6 +90,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -124,12 +125,6 @@
   This is normally bound automatically by session middleware, in
   [[metabase.server.middleware.session/do-with-current-user]]."
   (delay (atom nil)))
-
-(def ^:dynamic *thread-local-values*
-  "Mostly for tests, e.g. [[metabase.test/with-temporary-setting-values]]. A map of setting-name =>
-  already-deserialized value. If this is bound, values from this map are used preferentially over ones in the cache or
-  app DB."
-  nil)
 
 (def ^:private retired-setting-names
   "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not
@@ -412,7 +407,7 @@
            (fn [old-settings] (if value
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
-    (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+    (t2/update! :model/User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -475,16 +470,9 @@
                  u/upper-case-en)))
 
 (defn setting-env-map-name
-  "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
+  "Correctly translate a setting to the keyword it will be found at in [[metabase.config.env/*env*]]."
   [setting-definition-or-name]
   (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
-
-(defn- thread-local-value
-  "Get the thread-local value from [[*thread-local-values*]] if they are being bound for
-  tests (see [[metabase.test/with-temporary-setting-values]]). This value is already deserialized."
-  [setting-definition-or-name]
-  (when *thread-local-values*
-    (core/get *thread-local-values* (keyword (setting-name setting-definition-or-name)))))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
@@ -495,9 +483,8 @@
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (allows-site-wide-values? setting)
-      (let [v (env/env (setting-env-map-name setting))]
-        (when (seq v)
-          v)))))
+      (when-let [v (not-empty (config.env/*env* (setting-env-map-name setting)))]
+        v))))
 
 (def ^:private ^:dynamic *disable-cache* false)
 
@@ -530,10 +517,15 @@
   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
     default))
 
-(def ^:private raw-value-source-fns
+(def ^:dynamic *sources*
+  "Sequence of source functions of the shape
+
+    (f resolved-setting) => value
+
+  to try to get values of a Setting from, tried in order. To represent a `nil` value that should override other
+  values, these functions can return `::nil`."
   [#'user-local-value
    #'database-local-value
-   #'thread-local-value
    #'env-var-value
    #'db-or-cache-value
    #'default-value])
@@ -544,7 +536,8 @@
 
   1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
   2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
-  3. From [[*thread-local-values*]] which is used to mock Settings in tests with [[metabase.test/with-temporary-setting-values]]
+  3. From [[metabase.test.util.setting/*thread-local-values*]] which is used to mock Settings in tests
+     with [[metabase.test/with-temporary-setting-values]] (tests only)
   4. From the corresponding env var (excluding empty string values)
   5. From the application database (i.e., set via the admin panel) (excluding empty string values)
   6. The default value, if one was specified
@@ -559,6 +552,7 @@
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   [setting-definition-or-name pred parse-fn]
   (let [setting (resolve-setting setting-definition-or-name)]
+    (log/tracef "Getting value of setting %s" (setting-name setting))
     (letfn [(parse-string-value [v]
               (try
                 (when-some [parsed (parse-fn v)]
@@ -575,14 +569,21 @@
                          (u/qualified-name (:name setting))
                          (:type setting))
               nil)]
-      (loop [[f & more] raw-value-source-fns]
-        (if-some [v (f setting)]
+      (loop [[f & more] *sources*]
+        (log/tracef "Trying source %s" (pr-str f))
+        (let [v (when-some [v (f setting)]
+                  (log/tracef "=> %s" (pr-str v))
+                  (cond
+                    (= v ::nil) ::nil
+                    (pred v)    v
+                    (string? v) (parse-string-value v)
+                    :else       (warn-about-invalid-value v)))]
+          (when (some? v)
+            (log/tracef "parsed => %s" (pr-str v)))
           (cond
-            (pred v)    v
-            (string? v) (parse-string-value v)
-            :else       (warn-about-invalid-value v))
-          (when (seq more)
-            (recur more)))))))
+            (= v ::nil) nil
+            (some? v)   v
+            (seq more)  (recur more)))))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
@@ -700,8 +701,8 @@
   (fn [setting-type _ _]
     (keyword setting-type)))
 
-(s/defmethod set-value-of-type! :string
-  [_setting-type setting-definition-or-name new-value :- (s/maybe s/Str)]
+(defn ^:dynamic ^:private *set-string-value!*
+  [setting-definition-or-name new-value]
   (let [new-value                         (when (seq new-value)
                                             new-value)
         {:keys [sensitive? deprecated]
@@ -714,8 +715,8 @@
       (do
         (when (and deprecated (not (nil? new-value)))
           (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
-                         setting-name
-                         deprecated)))
+                      setting-name
+                      deprecated)))
         (when (and
                (= :only (:user-local setting))
                (not (should-set-user-local-value? setting)))
@@ -752,6 +753,10 @@
               (setting.cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
+
+(mu/defmethod set-value-of-type! :string
+  [_setting-type setting-definition-or-name new-value :- [:maybe :string]]
+  (*set-string-value!* setting-definition-or-name new-value))
 
 (defmethod set-value-of-type! :keyword
   [_setting-type setting-definition-or-name new-value]
@@ -1158,11 +1163,13 @@
   values of Settings, for example."
   [setting-definition-or-name & {:keys [getter], :or {getter get}}]
   (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-definition-or-name)
-        unparsed-value                                                (get-value-of-type :string k)
         parsed-value                                                  (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
         value-is-default?                                             (= parsed-value default)
-        value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
+        source                                                        (m/find-first (fn [f]
+                                                                                      (f setting))
+                                                                                    *sources*)
+        value-is-from-env-var?                                        (= source #'env-var-value)]
     (cond
       (not (current-user-can-access-setting? setting))
       (throw (ex-info (tru "You do not have access to the setting {0}" k) setting))

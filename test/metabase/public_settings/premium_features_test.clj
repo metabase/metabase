@@ -17,24 +17,36 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn do-with-premium-features [features f]
+(defn do-with-premium-features
+  [features {:keys [thread-safe?], :or {thread-safe? true}, :as _opts} f]
   (let [features (set (map name features))]
-    (testing (format "\nWith premium token features = %s" (pr-str features))
-      (binding [premium-features/*token-features* (constantly features)]
-        (f)))))
+    (testing (format "\nWith premium token features (%s) = %s\n"
+                     (if thread-safe? "current thread" "global")
+                     (pr-str features))
+      (if thread-safe?
+        (binding [premium-features/*token-features* (constantly features)]
+          (f))
+        (with-redefs [premium-features/*token-features* (constantly features)]
+          (f))))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
 ;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
 (defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
-  feature-flagging.
+  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use
+  testing feature-flagging.
 
     (with-premium-features #{:audit-app}
       ;; audit app will be enabled for body, but no other premium features
       ...)"
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features ~features (fn [] ~@body)))
+  `(do-with-premium-features ~features {:thread-safe? true} (fn [] ~@body)))
+
+(defmacro with-premium-features!
+  "Thread-unsafe version of [[with-premium-features]]."
+  {:style/indent 1}
+  [features & body]
+  `(do-with-premium-features ~features {:thread-safe? false} (fn [] ~@body)))
 
 (defmacro with-additional-premium-features
   "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
@@ -47,6 +59,7 @@
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
+                             {:thread-safe? true}
                              (fn [] ~@body)))
 
 (defn- token-status-response

@@ -10,7 +10,7 @@
     (is (contains? (set (i18n/available-locales-with-names))
                    ["pt_BR", "Portuguese (Brazil)"]))))
 
-(deftest tru-test
+(deftest ^:parallel tru-test
   (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
                                                "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"tru"
@@ -42,7 +42,7 @@
                 (is (= "deben tener 140 caracteres o menos"
                        (f)))))))))))
 
-(deftest trs-test
+(deftest ^:parallel trs-test
   (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
                                                "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"trs"
@@ -69,7 +69,7 @@
                 (is (= "deben tener 140 caracteres o menos"
                        (f)))))))))))
 
-(deftest trun-test
+(deftest ^:parallel trun-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
     (doseq [[message f]
@@ -101,7 +101,7 @@
                    (f 2)))))))))
 
 
-(deftest trsn-test
+(deftest ^:parallel trsn-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
     (doseq [[message f]
@@ -210,3 +210,13 @@
          AssertionError
          #"only supports a single \{0\} placeholder"
          (#'i18n/validate-n "{0} {1}" "{0} {1}")))))
+
+(deftest ^:parallel with-temporary-setting-values-mock-bundles-test
+  (mt/with-mock-i18n-bundles {"es" {:messages
+                                     {"value must be a non-blank string."
+                                      "el valor debe ser una cadena que no esté en blanco."}}}
+    (mt/with-temporary-setting-values [site-locale "es"]
+      (is (= #locale "es"
+             (i18n/user-locale)))
+      (is (= "el valor debe ser una cadena que no esté en blanco."
+             (i18n/tru "value must be a non-blank string."))))))

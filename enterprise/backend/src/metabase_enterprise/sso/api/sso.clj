@@ -27,7 +27,7 @@
   (try
     (sso.i/sso-get req)
     (catch Throwable e
-      (log/error #_e (trs "Error returning SSO entry point"))
+      (log/error e (trs "Error returning SSO entry point: {0}" (ex-message e)))
       (throw e))))
 
 (defn- sso-error-page [^Throwable e]

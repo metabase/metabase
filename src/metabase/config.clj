@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [environ.core :as env]
+   [metabase.config.env :as config.env]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log])
   (:import
@@ -71,7 +71,7 @@
    3.  hard coded `app-defaults`"
   [k]
   (let [k       (keyword k)
-        env-val (k env/env)]
+        env-val (k config.env/*env*)]
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
@@ -164,5 +164,5 @@
 (defn mb-user-defaults
   "Default user details provided as a JSON string at launch time for first-user setup flow."
   []
-  (when-let [user-json (env/env :mb-user-defaults)]
+  (when-let [user-json (config.env/*env* :mb-user-defaults)]
     (json/parse-string user-json true)))
