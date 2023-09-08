@@ -17,6 +17,12 @@ type SearchResultsSetupProps = {
   footer?: ((metadata: Omit<SearchResultsType, "data">) => JSX.Element) | null;
 };
 
+const TEST_FOOTER = (metadata: Omit<SearchResultsType, "data">) => (
+  <div data-testid="footer">
+    <div data-testid="test-total">{metadata.total}</div>
+  </div>
+);
+
 const TEST_SEARCH_RESULTS = [1, 2, 3].map((id, index) =>
   createMockSearchResult({
     id,
@@ -65,10 +71,13 @@ describe("SearchResults", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
+
   it("should display the empty state when no results are found", async () => {
     await setup({ searchResults: [] });
+
     expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
   });
+
   it("should display results when results are found", async () => {
     await setup();
 
@@ -80,6 +89,7 @@ describe("SearchResults", () => {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
   });
+
   it("should allow for keyboard navigation through the results", async () => {
     await setup();
 
@@ -94,11 +104,14 @@ describe("SearchResults", () => {
       expect(filteredElement).toHaveAttribute("data-is-selected", "true");
     }
   });
+
   it("should trigger the onEntitySelect callback when forceEntitySelect=true and an entity is selected", async () => {
     const { history, onEntitySelect } = await setup({
       forceEntitySelect: true,
     });
+
     userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
+
     expect(onEntitySelect).toHaveBeenCalled();
     expect(onEntitySelect.mock.lastCall[0].name).toEqual(
       TEST_SEARCH_RESULTS[0].name,
@@ -113,7 +126,9 @@ describe("SearchResults", () => {
     const { history, onEntitySelect } = await setup({
       forceEntitySelect: false,
     });
+
     userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
+
     expect(onEntitySelect).not.toHaveBeenCalled();
     expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-0");
   });
@@ -130,6 +145,7 @@ describe("SearchResults", () => {
       searchResults: [indexedEntityResult],
     });
     userEvent.click(screen.getByText(indexedEntityResult.name));
+
     expect(onEntitySelect).toHaveBeenCalled();
     expect(onEntitySelect.mock.lastCall[0].name).toEqual(
       indexedEntityResult.name,
@@ -141,12 +157,8 @@ describe("SearchResults", () => {
   });
 
   it("should render the footer with metadata", async () => {
-    const footer = (metadata: Omit<SearchResultsType, "data">) => (
-      <div data-testid="footer">
-        <div data-testid="test-total">{metadata.total}</div>
-      </div>
-    );
-    await setup({ footer });
+    await setup({ footer: TEST_FOOTER });
+
     expect(screen.getByTestId("footer")).toBeInTheDocument();
     expect(screen.getByTestId("test-total")).toHaveTextContent(
       TEST_SEARCH_RESULTS.length.toString(),

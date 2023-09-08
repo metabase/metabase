@@ -18,11 +18,6 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
   ${breakpointMinSmall} {
     max-height: 400px;
   }
-
-  ul {
-    overflow-y: auto;
-    padding: 0.5rem 0;
-  }
 `;
 
 export const SearchDropdownFooter = styled(Group)`

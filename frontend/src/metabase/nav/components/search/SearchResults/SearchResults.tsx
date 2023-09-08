@@ -19,7 +19,10 @@ import type {
   CollectionItem,
   SearchModelType,
 } from "metabase-types/api";
-import { EmptyStateContainer } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
+import {
+  EmptyStateContainer,
+  SearchResultsList,
+} from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 
 type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
@@ -102,7 +105,7 @@ export const SearchResults = ({
 
   return (
     <>
-      <ul data-testid="search-results-list">
+      <SearchResultsList data-testid="search-results-list">
         {hasResults ? (
           list.map((item, index) => {
             const isIndexedEntity = item.model === "indexed-entity";
@@ -129,7 +132,7 @@ export const SearchResults = ({
             <EmptyState message={t`Didn't find anything`} icon="search" />
           </EmptyStateContainer>
         )}
-      </ul>
+      </SearchResultsList>
       {showFooter && footer(metadata)}
     </>
   );

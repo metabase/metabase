@@ -51,11 +51,17 @@ const setup = async ({
 };
 
 describe("SearchResultsDropdown", () => {
-  it("should redirect to item's page when an item is selected", async () => {
-    const { history } = await setup();
-    const searchItem = screen.getByText("Test 1");
+  it("should redirect to item's page when a item is selected", async () => {
+    const { history } = await setup({ searchText: "Test 1" });
+    const searchItem = screen.getByTestId("search-result-item");
+
+    expect(searchItem).toHaveTextContent("Test 1");
+
+    const href = checkNotNull(searchItem.getAttribute("href"));
+
     userEvent.click(searchItem);
-    expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
+
+    expect(history.getCurrentLocation().pathname).toEqual(href);
   });
 
   it("should call goToSearchApp when the footer is clicked", async () => {
