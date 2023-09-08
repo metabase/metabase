@@ -279,7 +279,7 @@ describe("QueryBuilder", () => {
         ).toBeInTheDocument();
       });
 
-      it("don't render time-series grouping widget for custom date field breakout (metabase#33504)", async () => {
+      it("doesn't render time-series grouping widget for custom date field breakout (metabase#33504)", async () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
         });
