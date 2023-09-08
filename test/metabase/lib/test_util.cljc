@@ -396,40 +396,43 @@
      metadata-provider)))
 
 (defmacro with-testing-against-standard-queries [sym & body]
-  `(let [queries#
-         '[(-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-               (lib/append-stage))
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-               (lib/join (meta/table-metadata :people))
-               (lib/join (meta/table-metadata :products))
-               (lib/append-stage))
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-               (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :people))))
-               (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :products))))
-               (lib/append-stage))
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-               (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
-                                            meta/metadata-provider
-                                            (lib.tu/mock-cards :people))
-                                          [(lib/= (meta/field-metadata :orders :user-id)
-                                                  (meta/field-metadata :people :id))]))
-               (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
-                                            meta/metadata-provider
-                                            (lib.tu/mock-cards :products))
-                                          [(lib/= (meta/field-metadata :orders :product-id)
-                                                  (meta/field-metadata :products :id))]))
-               (lib/append-stage))
-
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-               (lib/join (lib/join-clause (lib.tu/mock-cards :people)
-                                          [(lib/= (meta/field-metadata :orders :user-id)
-                                                  (meta/field-metadata :people :id))]))
-               (lib/join (lib/join-clause (lib.tu/mock-cards :products)
-                                          [(lib/= (meta/field-metadata :orders :product-id)
-                                                  (meta/field-metadata :products :id))]))
-               (lib/append-stage))]]
-     (testing "Against set of standard queries"
-       (doseq [[idx# q#] (map-indexed vector queries#)
-               :let [~(symbol sym) (eval q#)]]
-         (testing (str "Query " idx# ":\n" (u/pprint-to-str q#))
+  `(let [queries# [:query-with-implicit-joins
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/append-stage))
+                   :query-with-explicit-table-joins
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (meta/table-metadata :people))
+                       (lib/join (meta/table-metadata :products))
+                       (lib/append-stage))
+                   :query-with-explicit-sub-query-joins
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :people))))
+                       (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :products))))
+                       (lib/append-stage))
+                   :query-with-table-joins-from-cards
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (query-with-stage-metadata-from-card
+                                                    meta/metadata-provider
+                                                    (mock-cards :people))
+                                                  [(lib/= (meta/field-metadata :orders :user-id)
+                                                          (meta/field-metadata :people :id))]))
+                       (lib/join (lib/join-clause (query-with-stage-metadata-from-card
+                                                    meta/metadata-provider
+                                                    (mock-cards :products))
+                                                  [(lib/= (meta/field-metadata :orders :product-id)
+                                                          (meta/field-metadata :products :id))]))
+                       (lib/append-stage))
+                   :query-with-source-card-joins
+                   (-> (lib/query metadata-provider-with-mock-cards (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (mock-cards :people)
+                                                  [(lib/= (meta/field-metadata :orders :user-id)
+                                                          (meta/field-metadata :people :id))]))
+                       (lib/join (lib/join-clause (mock-cards :products)
+                                                  [(lib/= (meta/field-metadata :orders :product-id)
+                                                          (meta/field-metadata :products :id))]))
+                       (lib/append-stage))]]
+     (testing "Against set of standard queries."
+       (doseq [[idx# [query-name# q#]] (map-indexed vector (partition-all 2 queries#))
+               :let [~(symbol sym) q#]]
+         (testing (str query-name# " (" idx# ")")
            ~@body)))))
