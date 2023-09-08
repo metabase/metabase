@@ -1,8 +1,10 @@
+import type { EnabledSearchModelType } from "metabase-types/api";
+
 export const SearchFilterKeys = {
   Type: "type",
 } as const;
 
-export const enabledSearchTypes = [
+export const enabledSearchTypes: EnabledSearchModelType[] = [
   "collection",
   "dashboard",
   "card",
