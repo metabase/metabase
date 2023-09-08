@@ -345,7 +345,7 @@
                   base-context       (#'magic/make-base-context root)
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)
-                  boundval            #(->> % candidate-bindings (#'magic/most-specific-definition) ffirst)]
+                  boundval            #(->> % candidate-bindings (#'magic/most-specific-matched-dimension) ffirst)]
               (is (= #{"State"} (bindset (mt/id :people :state))))
               (is (= "State" (boundval (mt/id :people :state))))
               (is (= #{"GenericNumber" "Long"} (bindset (mt/id :people :longitude))))
@@ -374,13 +374,13 @@
                           "Timestamp"             {:field_type [:type/DateTime]}}]
           (is (= #{(mt/id :people :created_at)
                    (mt/id :orders :created_at)}
-                 (set (map :id (#'magic/field-candidates context (dimensions "Timestamp"))))))
+                 (set (map :id (#'magic/matching-fields context (dimensions "Timestamp"))))))
           (is (= #{(mt/id :people :created_at)
                    (mt/id :orders :created_at)}
-                 (set (map :id (#'magic/field-candidates context (dimensions "CreateTimestamp"))))))
+                 (set (map :id (#'magic/matching-fields context (dimensions "CreateTimestamp"))))))
           ;; This does not match any of our fabricated context fields (even (mt/id :people :latitude)) because the
           ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
-          (is (= #{} (set (map :id (#'magic/field-candidates context (dimensions "Lat"))))))))))
+          (is (= #{} (set (map :id (#'magic/matching-fields context (dimensions "Lat"))))))))))
   (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -417,18 +417,18 @@
                                 "Long"                  {:field_type [:entity/GenericTable :type/Longitude]}
                                 "State"                 {:field_type [:entity/GenericTable :type/State]}}]
               (is (= #{(mt/id :people :state)}
-                     (->> (#'magic/field-candidates base-context (dimensions "State")) (map :id) set)))
+                     (->> (#'magic/matching-fields base-context (dimensions "State")) (map :id) set)))
               (is (= #{(mt/id :products :category)
                        (mt/id :people :source)}
-                     (->> (#'magic/field-candidates base-context (dimensions "GenericCategoryMedium")) (map :id) set)))
+                     (->> (#'magic/matching-fields base-context (dimensions "GenericCategoryMedium")) (map :id) set)))
               (is (= #{(mt/id :products :price)
                        (mt/id :people :longitude)
                        (mt/id :people :latitude)}
-                     (->> (#'magic/field-candidates base-context (dimensions "GenericNumber")) (map :id) set)))
+                     (->> (#'magic/matching-fields base-context (dimensions "GenericNumber")) (map :id) set)))
               (is (= #{(mt/id :people :latitude)}
-                     (->> (#'magic/field-candidates base-context (dimensions "Lat")) (map :id) set)))
+                     (->> (#'magic/matching-fields base-context (dimensions "Lat")) (map :id) set)))
               (is (= #{(mt/id :people :longitude)}
-                     (->> (#'magic/field-candidates base-context (dimensions "Long")) (map :id) set))))))))))
+                     (->> (#'magic/matching-fields base-context (dimensions "Long")) (map :id) set))))))))))
 
 (defn- ensure-card-sourcing
   "Ensure that destination data is only derived from source data.
@@ -908,7 +908,7 @@
   (testing "Identity"
     (is (= :d1
            (-> [{:d1 {:field_type [:type/Category] :score 100}}]
-               (#'magic/most-specific-definition)
+               (#'magic/most-specific-matched-dimension)
                first
                key)))))
 
@@ -917,7 +917,7 @@
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
                 {:d2 {:field_type [:type/State] :score 100}}]
-               (#'magic/most-specific-definition)
+               (#'magic/most-specific-matched-dimension)
                first
                key)))))
 
@@ -929,7 +929,7 @@
                 {:d3 {:field_type [:type/State]
                       :named      "foo"
                       :score      100}}]
-               (#'magic/most-specific-definition)
+               (#'magic/most-specific-matched-dimension)
                first
                key)))))
 
@@ -939,7 +939,7 @@
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
                 {:d2 {:field_type [:type/State] :score 100}}
                 {:d3 {:field_type [:type/State] :score 90}}]
-               (#'magic/most-specific-definition)
+               (#'magic/most-specific-matched-dimension)
                first
                key)))))
 
@@ -951,7 +951,7 @@
                 {:d3 {:field_type [:type/State]
                       :named      "foo"
                       :score      0}}]
-               (#'magic/most-specific-definition)
+               (#'magic/most-specific-matched-dimension)
                first
                key)))))
 
@@ -1117,20 +1117,20 @@
       (testing "A match occurs when the dimension field_type tablespec and fieldspec
                 match the table entity_type and field semantic_type."
         (is (=? [matching-field]
-                (#'magic/field-candidates
+                (#'magic/matching-fields
                   context
                   gt-quantity-dimension))))
       (testing "When the table entity_type does not match the dimension, nothing is returned."
-        (is (empty? (#'magic/field-candidates
+        (is (empty? (#'magic/matching-fields
                       (assoc-in context [:tables 0 :entity_type] :entity/Whatever)
                       gt-quantity-dimension))))
       (testing "When the dimension spec does not contain a table spec and no :source is provided
                 in the context nothing is returned."
-        (is (empty? (#'magic/field-candidates
+        (is (empty? (#'magic/matching-fields
                       context
                       generic-number-dimension))))
       (testing "Even if the field and dimension semantic types match, a match will not occur without a table spec."
-        (is (empty? (#'magic/field-candidates
+        (is (empty? (#'magic/matching-fields
                       context
                       quantity-dimension)))))))
 
@@ -1152,17 +1152,17 @@
       (testing "A match occurs when the dimension field_type tablespec and fieldspec
                 match the table entity_type and field semantic_type."
         (is (=? [quantity-field]
-                (#'magic/field-candidates
+                (#'magic/matching-fields
                   context
                   quantity-dimension))))
       (testing "When a table spec is provided in the dimension and the source contains no tables there is no match."
-        (is (empty? (#'magic/field-candidates
+        (is (empty? (#'magic/matching-fields
                       context
                       gt-quantity-dimension))))
       (testing "Multiple fields of the same type will match"
         (is (=? [generic-number-field
                  another-field]
-                (#'magic/field-candidates
+                (#'magic/matching-fields
                   (update-in context [:source :fields] conj another-field)
                   generic-number-dimension)))))))
 
@@ -1580,32 +1580,32 @@
                             (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
                         (-> (mt/id :people :latitude)
                             candidate-bindings
-                            (#'magic/most-specific-definition)))))
+                            (#'magic/most-specific-matched-dimension)))))
                 (testing "Longitude binds to GenericNumber since there is no more specific Lon dimension definition."
                   (is (=?
                         (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
                             (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
                         (-> (mt/id :people :longitude)
                             candidate-bindings
-                            (#'magic/most-specific-definition)))))
+                            (#'magic/most-specific-matched-dimension)))))
                 (testing "City and State both have semantic types that descend from type/Location"
                   (is (=?
                         (-> {"Loc" {:field_type [:type/Location], :score 60}}
                             (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
                         (-> (mt/id :people :city)
                             candidate-bindings
-                            (#'magic/most-specific-definition))))
+                            (#'magic/most-specific-matched-dimension))))
                   (is (=?
                         (-> {"Loc" {:field_type [:type/Location], :score 60}}
                             (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
                         (-> (mt/id :people :state)
                             candidate-bindings
-                            (#'magic/most-specific-definition)))))
+                            (#'magic/most-specific-matched-dimension)))))
                 (testing "Although type/ZipCode exists, in this table that classification wasn't made, so Zip doesn't
                           bind to anything since there isn't a more generic dimension definition to bind to."
                   (is (nil? (-> (mt/id :people :zip)
                                 candidate-bindings
-                                (#'magic/most-specific-definition)))))))))))))
+                                (#'magic/most-specific-matched-dimension)))))))))))))
 
 (deftest bind-dimensions-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from bind-dimensions"

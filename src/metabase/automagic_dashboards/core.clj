@@ -531,7 +531,7 @@
                               (root attribute)
                               (->reference template-type entity))))))))
 
-(defn- field-candidates
+(defn- matching-fields
   "Given a context and a dimension definition, find all fields from the context
    that match the definition of this dimension."
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -540,7 +540,7 @@
                        (keep :link)
                        set)
                   u/the-id)
-            (field-candidates context (dissoc constraints :links_to)))
+            (matching-fields context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
         (mapcat (fn [table]
@@ -574,9 +574,9 @@
                (:score definition)]))]
     (map (juxt (comp score first) identity) candidate-binding-values)))
 
-(defn- most-specific-definition
-  "Return the most specific definition among `definitions`.
-   Specificity is determined based on:
+(defn- most-specific-matched-dimension
+  "Return the most specific dimension from one or more dimensions that all
+   match the same field. Specificity is determined based on:
    1) how many ancestors `field_type` has (if field_type has a table prefix,
       ancestors for both table and field are counted);
    2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
@@ -618,19 +618,21 @@
   ;; Just rack and stack the bindings then return that with the field or something.
   (let [all-bindings (for [dimension dimension-specs
                            :let [[identifier definition] (first dimension)]
-                           candidate (field-candidates context definition)]
+                           matching-field (matching-fields context definition)]
                        {(name identifier)
-                        (assoc definition :matches [(merge candidate definition)])})]
+                        (assoc definition :matches [(merge matching-field definition)])})]
     (group-by (comp id-or-name first :matches val first) all-bindings)))
 
 (defn- bind-dimensions
-  "Bind fields to dimensions and resolve overloading.
+  "Bind fields to dimensions from the dashboard template and resolve overloaded cases
+  in which multiple fields match the dimension specification.
+
    Each field will be bound to only one dimension. If multiple dimension definitions
    match a single field, the field is bound to the most specific definition used
    (see `most-specific-definition` for details)."
   [context dimension-specs]
   (->> (candidate-bindings context dimension-specs)
-       (map (comp most-specific-definition val))
+       (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
                              1  a
@@ -687,6 +689,10 @@
    :database (-> context :root :database)})
 
 (defn- has-matches?
+  "Does the dimension match the metric or filter definition?
+  The metric or filter definition will have named dimensions (e.g. [\"dimension\" \"Lat\"]) and the dimensions are a map
+  of dimension name to dimension data. has-matches? checks that every dimension detected in the definition item is also
+  found in the keys of the dimensions map."
   [dimensions definition]
   (->> definition
        dashboard-templates/collect-dimensions
