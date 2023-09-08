@@ -92,6 +92,7 @@ describe("updateParametersWidgetStickiness", () => {
     beforeEach(() => {
       simulateSmallScreen();
     });
+
     it("makes filters not sticky if too many parameters", () => {
       const setState = jest.fn();
 
