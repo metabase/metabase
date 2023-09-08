@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import produce from "immer";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 
 import {
@@ -25,7 +26,20 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...tableColumnSettings,
+    ...produce(tableColumnSettings, draft => {
+      draft["table.columns"].getDefault = params => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = params;
+        return cols.map(col => ({
+          name: col.name,
+          fieldRef: col.field_ref,
+          enabled: true,
+        }));
+      };
+    }),
   },
   columnSettings: column => {
     const settings = {
