@@ -31,7 +31,7 @@
             (u/step "found IA Content zip file: Deleting now..."
               (io/delete-file (io/file ia-zip-file)))
             (u/step "IA Content zip file not found => skipping delete")))
-        (u/step "Zipping Instance Analytics to ia-zip-file"
+        (u/step (str "Zipping Instance Analytics to " ia-zip-file)
           (u/zip-directory->file "resources/instance_analytics"
                                  "resources/instance_analytics.zip"))))
     (u/announce "Instance Analytics (IA) Content packaged successfully.")))
