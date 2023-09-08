@@ -515,7 +515,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         popover().findByText("Gizmo").click();
         popover().contains("Add filter").click();
 
-        cy.intercept("PUT", "/api/pulse/1").as("pulsePut");
+        cy.intercept("PUT", "/api/pulse/*").as("pulsePut");
 
         clickButton("Done");
         cy.wait("@pulsePut");
