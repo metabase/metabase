@@ -18,13 +18,13 @@
 
 (defenterprise default-audit-db-id
   "Default audit db id."
-  :feature :audit-app
+  :feature :none
   []
   13371337)
 
 (defenterprise default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
-  :feature :audit-app
+  :feature :none
   []
   "vG58R8k-QddHWA7_47umn")
 
