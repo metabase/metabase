@@ -1,7 +1,6 @@
 (ns metabase.db.connection-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
@@ -60,8 +59,8 @@
       (t2/with-connection [^java.sql.Connection conn]
         (t2/with-transaction [_t-conn conn]
           ;; dummy op
-          (inc 1))
-        (is (true? (.getAutoCommit  conn)))))
+          (is (false? (.getAutoCommit conn))))
+        (is (true? (.getAutoCommit conn)))))
 
     (testing "throw error when trying to create nested transaction when nested-transaction-rule=:prohibit"
       (t2/with-connection [conn]
