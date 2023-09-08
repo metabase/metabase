@@ -252,7 +252,8 @@
  [lib.normalize
   normalize]
  [lib.query
-  query]
+  query
+  with-different-table]
  [lib.ref
   ref]
  [lib.remove-replace
