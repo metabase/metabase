@@ -1,4 +1,4 @@
-import type { EnabledSearchModelType } from "metabase/search/types";
+import type { EnabledSearchModelType } from "metabase-types/api";
 
 export const SearchFilterKeys = {
   Type: "type",
