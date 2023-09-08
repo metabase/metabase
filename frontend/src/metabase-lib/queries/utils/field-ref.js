@@ -98,7 +98,7 @@ export function getFieldTarget(fieldClause, tableDef, path = []) {
     const fkFieldDef = Table.getField(tableDef, fkFieldId);
     const targetTableDef = fkFieldDef && fkFieldDef.target.table;
     return getFieldTarget(
-      dimension.withoutOptions("source-field").mbql(),
+      dimension.withoutSourceField().mbql(),
       targetTableDef,
       path.concat(fkFieldDef),
     );

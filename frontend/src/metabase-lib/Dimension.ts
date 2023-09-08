@@ -549,6 +549,14 @@ export default class Dimension {
     return this.withoutOptions("join-alias");
   }
 
+  withoutBinning(): Dimension {
+    return this.withoutOptions("binning");
+  }
+
+  withoutSourceField(): Dimension {
+    return this.withoutOptions("source-field");
+  }
+
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */

@@ -27,5 +27,5 @@ function canonicalFieldRef(ref) {
   if (!dimension) {
     return ref;
   }
-  return dimension.withoutOptions("binning").mbql();
+  return dimension.withoutBinning().mbql();
 }
