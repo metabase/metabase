@@ -151,6 +151,11 @@
   [file]
   (.isAbsolute (io/file file)))
 
+(defn directory?
+  "Whether `file` is a directory."
+  [file]
+  (.isDirectory (io/file file)))
+
 (defn zip-directory->file
   "Given a source directory and a destination zip file path,
    zip the directory and writes it to the destination"
@@ -164,8 +169,8 @@
      (with-open [fos (FileOutputStream. ^String zip-file)
                  zos (ZipOutputStream. fos)]
        (doseq [^File file (file-seq source-path)]
-         (when verbose (out/safe-println "Zipping file:" file))
-         (when (not (.isDirectory ^File file))
+         (when (not (directory? file))
+           (when verbose (out/safe-println "Zipping file:" file))
            (let [file-path (.getAbsolutePath file)
                  _ (out/announce (pr-str ["file path" file-path]))
                  _ (out/announce (pr-str ["source dir path" (.getAbsolutePath source-path)]))
