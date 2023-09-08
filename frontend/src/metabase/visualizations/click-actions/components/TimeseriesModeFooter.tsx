@@ -13,10 +13,11 @@ export const TimeseriesModeFooter = (props: Props): JSX.Element => {
   };
   // The first breakout is always a date.
   // See https://github.com/metabase/metabase/blob/e7363d97d6ed0ec8f5288a642e4990e85df57e79/frontend/src/metabase/visualizations/click-actions/Mode/utils.ts#L41-L44
+  // Except when users modify a time series question that results in a non time series question.
   const [dateBreakout] = props.query.breakouts();
   const shouldHideTimeseriesGroupingWidget = dateBreakout
-    .dimension()
-    .isExpression();
+    ? dateBreakout.dimension().isExpression()
+    : false;
 
   return (
     <div className="flex layout-centered" data-testid="time-series-mode-footer">
