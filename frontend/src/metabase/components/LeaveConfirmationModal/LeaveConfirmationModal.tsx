@@ -1,18 +1,28 @@
+import type { Location } from "history";
 import { useEffect, useState } from "react";
+import type { InjectedRouter, Route } from "react-router";
+import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useDispatch } from "metabase/lib/redux";
 
-export const useLeaveConfirmation = ({
-  router,
-  route,
-  onConfirm,
-  isEnabled,
-}) => {
+interface Props {
+  isEnabled: boolean;
+  route: Route;
+  router: InjectedRouter;
+}
+
+const LeaveConfirmationModalBase = ({ isEnabled, route, router }: Props) => {
+  const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
-  const [nextLocation, setNextLocation] = useState(null);
+  const [nextLocation, setNextLocation] = useState<Location>();
+
+  useBeforeUnload(isEnabled);
 
   useEffect(() => {
     const removeLeaveHook = router.setRouteLeaveHook(route, location => {
@@ -28,9 +38,9 @@ export const useLeaveConfirmation = ({
 
   useEffect(() => {
     if (isConfirmed && nextLocation) {
-      onConfirm(nextLocation);
+      dispatch(push(nextLocation));
     }
-  }, [isConfirmed, onConfirm, nextLocation]);
+  }, [dispatch, isConfirmed, nextLocation]);
 
   const handleClose = () => {
     setIsConfirmationVisible(false);
@@ -53,3 +63,5 @@ export const useLeaveConfirmation = ({
     </Modal>
   );
 };
+
+export const LeaveConfirmationModal = withRouter(LeaveConfirmationModalBase);
