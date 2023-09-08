@@ -77,8 +77,8 @@
    The above example, starting from the dashboard template, works backwards from the actual x-ray generation algorithm
    but should provide clarity as to the terminology and how everything fits together.
 
-   In practice, we gather the entity data (including fields), the dasboard templates, attempt to bind dimensions to
-   fields, then build metrics, filters, and finally cards based on the bound dimensions.
+   In practice, we gather the entity data (including fields), the dashboard templates, attempt to bind dimensions to
+   fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions.
   "
   (:require
    [buddy.core.codecs :as codecs]
