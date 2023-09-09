@@ -14,7 +14,8 @@ jobs:
       matrix:
         edition: [oss, ee]
     outputs:
-      version: ${{ steps.version-properties.outputs.version }}
+      ee_version: ${{ steps.version-properties.outputs.ee_version }}
+      oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
       - name: Checkout repository
@@ -42,8 +43,16 @@ jobs:
       - name: Reveal Metabase ${{ matrix.edition }} properties
         id: version-properties
         run: |
-          echo "version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          cat ./resources/version.properties
           echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
+
+          version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)
+
+          if [[ "${{ matrix.edition }}" == "ee" ]]; then
+            echo "ee_version=$version" >> $GITHUB_OUTPUT
+          else
+            echo "oss_version=$version" >> $GITHUB_OUTPUT
+          fi
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
         uses: actions/upload-artifact@v3
@@ -59,6 +68,13 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
+    - name: Get the version
+      run: |
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
+        else
+          echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
+        fi
     - name: Ensure that the intended version ($VERSION) was never released before
       run: |
         echo "Checking if $VERSION conflicts with a past release..."
@@ -81,8 +97,6 @@ jobs:
             exit -1
           fi
         fi
-      env:
-        VERSION: ${{ needs.release-artifact.outputs.version }}
 
     - name: Check out the code to verify the release branch
       uses: actions/checkout@v3
@@ -212,6 +226,13 @@ jobs:
     outputs:
       container-image: ${{ steps.target.outputs.image }}
     steps:
+    - name: Get the version
+      run: |
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
+        else
+          echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
+        fi
     - name: Check out the code
       uses: actions/checkout@v3
       with:
@@ -233,12 +254,12 @@ jobs:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ needs.release-artifact.outputs.version }}
+        tags: localhost:5000/local-metabase:${{ env.VERSION }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ needs.release-artifact.outputs.version }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.VERSION }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -270,7 +291,6 @@ jobs:
       shell: bash
       env:
         COMMIT: ${{ needs.release-artifact.outputs.commit }}
-        VERSION: ${{ needs.release-artifact.outputs.version }}
 
   verify-docker-pull:
     runs-on: ubuntu-22.04
