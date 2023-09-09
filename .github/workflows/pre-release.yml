@@ -270,14 +270,14 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Retag and push container image to ${{ github.repository_owner }} staging Docker Hub repo
+    - name: Retag and push container image to ${{ vars.DOCKERHUB_OWNER }} staging Docker Hub repo
       id: target
       run: |
         # SHA-1 truncated to 7 digits should be enough
         SHORT_HASH=${COMMIT:0:7}
 
-        CONTAINER_IMAGE=${{ github.repository_owner }}/${{ secrets.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
         IMAGE_TAG=$VERSION-$SHORT_HASH
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
 
         echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
@@ -309,11 +309,14 @@ jobs:
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Pull the container image
       run: |
-        echo "Pulling container image ${{ needs.containerize.outputs.container-image }} ..."
-        docker pull ${{ needs.containerize.outputs.container-image }}
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+        echo "Pulling container image $CONTAINER_IMAGE ..."
+        docker pull $CONTAINER_IMAGE
         echo "Successful!"
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.container-image }}
+      run: |
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+        docker run --rm -dp 3000:3000 $CONTAINER_IMAGE
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
