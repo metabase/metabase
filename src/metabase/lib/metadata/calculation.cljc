@@ -1,7 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
