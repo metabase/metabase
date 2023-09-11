@@ -139,7 +139,7 @@
 
 (def equality-comparable-types
   "Set of base types that can be campared with equality."
-   #{:type/Boolean :type/Text :type/Number :type/Temporal})
+   #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID})
 
 (mr/def ::equality-comparable
   [:maybe
