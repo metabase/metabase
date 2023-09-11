@@ -21,6 +21,8 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 `;
 
 export const SearchDropdownFooter = styled(Group)`
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
   border-top: 1px solid ${({ theme }) => theme.colors.border[0]};
 
   &:hover {
