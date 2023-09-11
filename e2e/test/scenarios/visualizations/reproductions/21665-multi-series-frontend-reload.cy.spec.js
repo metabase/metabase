@@ -25,13 +25,14 @@ describe("issue 21665", () => {
     cy.createNativeQuestionAndDashboard({
       questionDetails: Q1,
       dashboardDetails: { name: "21665D" },
-    }).then(({ body: { id } }) => {
+    }).then(({ body: { id }, questionId }) => {
       cy.intercept(
         "GET",
         `/api/dashboard/${id}`,
         cy.spy().as("dashboardLoaded"),
       ).as("getDashboard");
 
+      cy.wrap(questionId).as("questionId");
       cy.wrap(id).as("dashboardId");
 
       cy.createNativeQuestion(Q2);
@@ -54,7 +55,9 @@ describe("issue 21665", () => {
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
-    editQ2NativeQuery("select order by --");
+    cy.get("@questionId").then(questionId => {
+      editQ2NativeQuery("select order by --", questionId);
+    });
 
     cy.get("@dashboardId").then(id => {
       visitDashboard(id);
@@ -68,8 +71,8 @@ describe("issue 21665", () => {
   });
 });
 
-function editQ2NativeQuery(query) {
-  cy.request("PUT", "/api/card/5", {
+function editQ2NativeQuery(query, questionId) {
+  cy.request("PUT", `/api/card/${questionId}`, {
     dataset_query: {
       type: "native",
       native: { query },

@@ -1,0 +1,80 @@
+name: Build for the official Metabase release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        required: true
+
+jobs:
+  build-uberjar-for-release:
+    if: ${{ github.repository }} != 'metabase/metabase'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      INTERACTIVE: false
+    steps:
+    - name: Fail early on the incorrect version format
+      if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
+      run: |
+        echo "The version format is invalid!"
+        echo "It must start with either 'v0.' or 'v1.'."
+        echo "Please, try again."
+        exit 1
+
+    # EE is always v1.x.y, OSS is always v0.x.y
+    - name: Determine the canonical version
+      uses: actions/github-script@v6
+      id: canonical_version
+      env:
+        VERSION: ${{ inputs.version }}
+        EDITION: ${{ matrix.edition }}
+      with:
+        result-encoding: string
+        script: |
+          var canonical_version;
+          const ver = process.env.VERSION;
+          if (process.env.EDITION === "ee") {
+            canonical_version = ver.replace(/^v0\./, "v1."); // always e.g. v1.47.2
+          } else {
+            canonical_version = ver.replace(/^v1\./, "v0."); // always e.g. v0.45.6
+          }
+          console.log("The canonical version of this Metabase", process.env.EDITION, "edition is", canonical_version);
+          return canonical_version;
+
+    - name: Check out the code
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
+
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+
+    - name: Build Metabase ${{ steps.canonical_version.outputs.result }}
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
+
+    - name: Store commit's SHA-1 hash
+      run:  echo ${{ inputs.commit }} > COMMIT-ID
+      shell: bash
+    - name: Calculate SHA256 checksum
+      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+      shell: bash
+    - name: Upload JARs as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+        path: |
+          ./target/uberjar/metabase.jar
+          ./COMMIT-ID
+          ./SHA256.sum
