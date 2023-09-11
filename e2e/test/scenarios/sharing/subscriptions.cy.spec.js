@@ -16,6 +16,7 @@ import {
   setupSubscriptionWithRecipient,
   openPulseSubscription,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
 
 const { admin, normal } = USERS;
@@ -157,7 +158,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         const nonUserEmail = "non-user@example.com";
         const dashboardName = "Orders in a dashboard";
 
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
         setupSubscriptionWithRecipient(nonUserEmail);
 
@@ -181,7 +182,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       it("should allow non-user to undo-unsubscribe from subscription", () => {
         const nonUserEmail = "non-user@example.com";
         const dashboardName = "Orders in a dashboard";
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
         setupSubscriptionWithRecipient(nonUserEmail);
 
@@ -359,7 +360,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should include text cards (metabase#15744)", () => {
       const TEXT_CARD = "FooBar";
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       addTextBox(TEXT_CARD);
       cy.button("Save").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -426,7 +427,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
       cy.onlyOn(isOSS);
-      cy.visit(`/dashboard/1`);
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       setupSMTP();
     });
 
@@ -451,7 +452,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       setTokenFeatures("all");
       setupSMTP();
-      cy.visit(`/dashboard/1`);
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
 
     it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {
@@ -514,7 +515,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         popover().findByText("Gizmo").click();
         popover().contains("Add filter").click();
 
-        cy.intercept("PUT", "/api/pulse/1").as("pulsePut");
+        cy.intercept("PUT", "/api/pulse/*").as("pulsePut");
 
         clickButton("Done");
         cy.wait("@pulsePut");

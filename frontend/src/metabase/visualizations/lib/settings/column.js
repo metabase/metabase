@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import { ChartSettingOrderedColumns } from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -507,7 +507,7 @@ export const tableColumnSettings = {
   "table.columns": {
     section: t`Columns`,
     title: t`Columns`,
-    widget: ChartSettingOrderedColumns,
+    widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
       const columns = card.visualization_settings["table.columns"];
@@ -544,15 +544,7 @@ export const tableColumnSettings = {
 
       return {
         columns: cols,
-        getColumnName: columnSetting => {
-          const columnIndex = findColumnIndexForColumnSetting(
-            cols,
-            columnSetting,
-          );
-          if (columnIndex >= 0) {
-            return getTitleForColumn(cols[columnIndex], series, settings);
-          }
-        },
+        getColumnName: column => getTitleForColumn(column, series, settings),
       };
     },
   },

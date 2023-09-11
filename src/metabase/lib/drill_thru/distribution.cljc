@@ -4,7 +4,6 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -33,13 +32,15 @@
      :type      :drill-thru/distribution
      :column    column}))
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/distribution
-  [query stage-number {:keys [column] :as _drill-thru} & _]
+(mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/distribution :- ::lib.schema/query
+  [query                            :- ::lib.schema/query
+   stage-number                     :- :int
+   {:keys [column] :as _drill-thru} :- ::lib.schema.drill-thru/drill-thru.distribution]
   (when (lib.drill-thru.common/mbql-stage? query stage-number)
     (let [breakout (cond
-                     (lib.types.isa/date? column)    (lib.temporal-bucket/with-temporal-bucket column :month)
-                     (lib.types.isa/numeric? column) (lib.binning/with-binning column (lib.binning/default-auto-bin))
-                     :else                           (lib.ref/ref column))]
+                     (lib.types.isa/temporal? column) (lib.temporal-bucket/with-temporal-bucket column :month)
+                     (lib.types.isa/numeric? column)  (lib.binning/with-binning column (lib.binning/default-auto-bin))
+                     :else                            column)]
       (-> query
           ;; Remove most of the target stage.
           (lib.util/update-query-stage stage-number dissoc :aggregation :breakout :limit :order-by)

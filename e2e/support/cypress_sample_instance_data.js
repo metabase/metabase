@@ -34,3 +34,45 @@ export const NORMAL_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Robert Tableton's Personal Collection" },
 ).id;
+
+export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "No Data Tableton's Personal Collection" },
+).id;
+
+export const FIRST_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "First collection" },
+).id;
+
+export const SECOND_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "Second collection" },
+).id;
+
+export const THIRD_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "Third collection" },
+).id;
+
+export const ORDERS_DASHBOARD_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.dashboards,
+  { name: "Orders in a dashboard" },
+).id;
+
+export const ORDERS_DASHBOARD_DASHCARD_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.dashboards,
+  { name: "Orders in a dashboard" },
+).ordered_cards[0].id;
+
+export const ADMIN_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  email: "admin@metabase.test",
+}).id;
+
+export const NORMAL_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  email: "normal@metabase.test",
+}).id;
+
+export const NODATA_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  email: "nodata@metabase.test",
+}).id;

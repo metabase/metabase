@@ -9,14 +9,17 @@
    [filter])
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as convert]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -62,7 +65,7 @@
       <>
       (assoc <> :type :query))
     (mbql.normalize/normalize <>)
-    (convert/->pMBQL <>)))
+    (lib.convert/->pMBQL <>)))
 
 (defn ^:export metadataProvider
   "Convert metadata to a metadata provider if it is not one already."
@@ -95,7 +98,7 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> query-map lib.convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new blank stage to the end of the pipeline"
@@ -474,6 +477,61 @@
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
   (lib.core/find-column-for-legacy-ref a-query stage-number legacy-ref columns))
 
+;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
+;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
+;; FE logic using it should be ported to MLv2 behind more meaningful names.
+(defn ^:export visible-columns
+  "Return a sequence of column metadatas for columns visible at the given stage of the query.
+
+  Does not pass any options to [[visible-columns]], so it uses the defaults."
+  [a-query stage-number]
+  (let [stage          (lib.util/query-stage a-query stage-number)
+        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
+        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (to-array (lib.equality/mark-selected-columns
+                a-query stage-number vis-columns ret-columns {:keep-join? true}))))
+
+(defn ^:export legacy-field-ref
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+  [column]
+  (-> column
+      lib.core/ref
+      lib.convert/->legacy-MBQL
+      (update 2 update-vals #(if (qualified-keyword? %)
+                               (u/qualified-name %)
+                               %))
+      clj->js))
+
+(defn- legacy-ref->pMBQL [legacy-ref]
+  (-> legacy-ref
+      (js->clj :keywordize-keys true)
+      (update 0 keyword)
+      lib.convert/->pMBQL))
+
+(defn- ->column-or-ref [column]
+  (if-let [^js legacy-column (when (object? column) column)]
+    (if (.-field_ref legacy-column)
+      ;; Prefer the attached field_ref if provided.
+      (legacy-ref->pMBQL (.-field_ref legacy-column))
+      ;; Fall back to converting like metadata.
+      (js.metadata/parse-column legacy-column))
+    ;; It's already a :metadata/column map
+    column))
+
+(defn ^:export find-column-indexes-from-legacy-refs
+  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
+  corresponding index into the list of columns.
+
+  Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found."
+  [a-query stage-number legacy-columns legacy-refs]
+  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
+  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+    (let [haystack (mapv ->column-or-ref legacy-columns)
+          needles  (map legacy-ref->pMBQL legacy-refs)]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
@@ -802,3 +860,9 @@
   "Returns an array of pivotable columns of the specified type."
   [a-drill-thru pivot-type]
   (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
+
+(defn ^:export with-different-table
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [a-query table-id]
+  (lib.core/with-different-table a-query table-id))

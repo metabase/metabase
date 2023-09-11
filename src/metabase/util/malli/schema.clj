@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -54,9 +55,7 @@
 ;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
-  (mu/with-api-error-message
-    [:string {:min 1}]
-    (deferred-tru "value must be a non-blank string.")))
+  (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -195,7 +194,7 @@
   (mu/with-api-error-message
     [:and
      :string
-     [:fn u.password/is-valid?]]
+     [:fn (every-pred string? #'u.password/is-valid?)]]
     (deferred-tru "password is too common.")))
 
 (def IntString
@@ -229,7 +228,7 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
-    [:enum "true" "false"]
+    [:enum "true" "false" "TRUE" "FALSE"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def TemporalString
