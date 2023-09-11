@@ -81,17 +81,20 @@
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
 (defmethod query-method :mbql/query
-  [metadata-providerable query]
+  [metadata-providerable {converted? :lib.convert/converted? :as query}]
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-        query (assoc query :lib/metadata metadata-provider)]
-    (mbql.u/replace query
-      [:field (opts :guard (complement :effective-type)) field-id]
-      (or (some->
-               (lib.metadata/field metadata-provider field-id)
-               lib.ref/ref
-               (update 1 merge opts))
-          ;; Fallback if metadata is missing
-          [:field opts field-id]))))
+        query (-> query
+                  (assoc :lib/metadata metadata-provider)
+                  (dissoc :lib.convert/converted?))]
+    (cond-> query
+      converted?
+      (mbql.u/replace [:field (opts :guard (complement :effective-type)) field-id]
+                      (or (some->
+                            (lib.metadata/field metadata-provider field-id)
+                            lib.ref/ref
+                            (update 1 merge opts))
+                          ;; Fallback if metadata is missing
+                          [:field opts field-id])))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

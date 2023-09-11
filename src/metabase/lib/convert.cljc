@@ -217,6 +217,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
 
@@ -499,7 +500,7 @@
                         :native
                         :query)]
       (merge (-> base
-                 (dissoc :stages :parameters)
+                 (dissoc :stages :parameters :lib.convert/converted?)
                  (update-vals ->legacy-MBQL))
              (cond-> {:type query-type query-type inner-query}
                (seq parameters) (assoc :parameters parameters))))
