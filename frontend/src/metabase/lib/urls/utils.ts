@@ -23,7 +23,7 @@ export function extractQueryParams(query: Record<string, unknown>) {
 export function getURLIncludingSubpath(path: string) {
   const siteURL = trimLastSlash(MetabaseSettings.get("site-url") ?? "");
 
-  if (isSubpath(siteURL)) {
+  if (siteURL && isSubpath(siteURL)) {
     return `${siteURL}${path}`;
   }
 
