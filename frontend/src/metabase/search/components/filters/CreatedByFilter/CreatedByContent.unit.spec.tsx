@@ -46,6 +46,7 @@ describe("CreatedByContent", () => {
     await setup();
 
     userEvent.type(screen.getByRole("textbox"), "Alice");
+
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.queryByText("Bob")).not.toBeInTheDocument();
   });
@@ -54,6 +55,7 @@ describe("CreatedByContent", () => {
     const { mockOnChange } = await setup();
 
     userEvent.click(screen.getByText("Alice"));
+
     expect(mockOnChange).toHaveBeenCalledWith(["1"]);
   });
 });

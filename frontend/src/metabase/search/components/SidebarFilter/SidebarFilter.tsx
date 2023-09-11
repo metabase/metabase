@@ -36,7 +36,7 @@ export const SidebarFilter = ({
   const isSmallScreen = useIsSmallScreen();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [popoverWidth, setPopoverWidth] = useState<string | null>(null);
+  const [popoverWidth, setPopoverWidth] = useState<string>();
 
   const fieldHasValue = !isEmpty(value);
 
@@ -125,13 +125,8 @@ export const SidebarFilter = ({
         ignoreTrigger
         autoWidth
       >
-        <SearchPopoverContent spacing={0}>
-          <Stack
-            spacing="sm"
-            w={popoverWidth ?? "100%"}
-            h="100%"
-            style={{ overflow: "hidden" }}
-          >
+        <SearchPopoverContent w={popoverWidth ?? "100%"} spacing={0}>
+          <Stack spacing="sm" h="100%" w="100%" style={{ overflow: "hidden" }}>
             <ContentComponent
               value={selectedValues}
               onChange={selected => setSelectedValues(selected)}
