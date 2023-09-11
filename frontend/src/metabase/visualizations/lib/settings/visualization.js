@@ -54,9 +54,9 @@ function getSettingDefintionsForSeries(series) {
     ...(visualization.settings || {}),
   };
 
-  return produce(definitions, draft => {
-    for (const id in draft) {
-      draft[id].id = id;
+  return produce(definitions, draftDefinitions => {
+    for (const id in draftDefinitions) {
+      draftDefinitions[id].id = id;
     }
   });
 }
