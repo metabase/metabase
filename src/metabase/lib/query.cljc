@@ -88,13 +88,14 @@
                   (dissoc :lib.convert/converted?))]
     (cond-> query
       converted?
-      (mbql.u/replace [:field (opts :guard (complement :effective-type)) field-id]
-                      (or (some->
-                            (lib.metadata/field metadata-provider field-id)
-                            lib.ref/ref
-                            (update 1 merge opts))
-                          ;; Fallback if metadata is missing
-                          [:field opts field-id])))))
+      (mbql.u/replace
+        [:field (opts :guard (complement (some-fn :base-type :effective-type))) field-id]
+        (or (some->
+              (lib.metadata/field metadata-provider field-id)
+              lib.ref/ref
+              (update 1 merge opts))
+          ;; Fallback if metadata is missing
+          [:field opts field-id])))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
