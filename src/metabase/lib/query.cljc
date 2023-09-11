@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -89,13 +88,13 @@
     (cond-> query
       converted?
       (mbql.u/replace
-        [:field (opts :guard (complement (some-fn :base-type :effective-type))) field-id]
-        (or (some->
-              (lib.metadata/field metadata-provider field-id)
-              lib.ref/ref
-              (update 1 merge opts))
+        [:field
+         (opts :guard (complement (some-fn :base-type :effective-type)))
+         (field-id :guard (every-pred number? pos?))]
+        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                            (select-keys [:base-type :effective-type]))]
           ;; Fallback if metadata is missing
-          [:field opts field-id])))))
+          [:field (merge found-ref opts) field-id])))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
