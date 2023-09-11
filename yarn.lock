@@ -7539,13 +7539,6 @@
   resolved "https://registry.yarnpkg.com/@types/minimatch/-/minimatch-5.1.2.tgz#07508b45797cb81ec3f273011b054cd0755eddca"
   integrity sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==
 
-"@types/mockdate@^3.0.0":
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/@types/mockdate/-/mockdate-3.0.0.tgz#ed140c46c4542964621e553d181faf62cadc973a"
-  integrity sha512-p2mDrXSBlcpz1JFRTzeF12g4yGpHgh8HKoOWUw6gE/+W/s+oXPfip/n1Z+qLyE7wU1NSWCslexEEd1FAlNCWPQ==
-  dependencies:
-    mockdate "*"
-
 "@types/ms@*":
   version "0.7.31"
   resolved "https://registry.yarnpkg.com/@types/ms/-/ms-0.7.31.tgz#31b7ca6407128a3d2bbc27fe2d21b345397f6197"
@@ -18677,11 +18670,6 @@ mochawesome@^7.1.3:
     mochawesome-report-generator "^6.2.0"
     strip-ansi "^6.0.1"
     uuid "^8.3.2"
-
-mockdate@*:
-  version "3.0.5"
-  resolved "https://registry.yarnpkg.com/mockdate/-/mockdate-3.0.5.tgz#789be686deb3149e7df2b663d2bc4392bc3284fb"
-  integrity sha512-iniQP4rj1FhBdBYS/+eQv7j1tadJ9lJtdzgOpvsOHng/GbcDh2Fhdeq+ZRldrPYdXvCyfFUmFeEwEGXZB5I/AQ==
 
 mockdate@^2.0.2:
   version "2.0.5"
