@@ -70,7 +70,7 @@
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.1"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
-  clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
+  clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.524"}
   io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.524"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
@@ -140,7 +140,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.15"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.3"}             ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "4.11.0"              ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "4.21.1"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver

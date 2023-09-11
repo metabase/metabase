@@ -21,7 +21,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.test :as mt])
   (:import
    (liquibase Contexts Liquibase)
    (liquibase.changelog ChangeSet DatabaseChangeLog)))
@@ -178,12 +179,20 @@
               :when                 (migration-id-in-range? start-id id end-id range-options)]
         (.addChangeSet subset-change-log change-set))
       ;; now create a new instance of Liquibase that will run just the subset change log
-      (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))]
+      (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))
+            wrtr (java.io.StringWriter.)]
         (when-let [unrun (not-empty (.listUnrunChangeSets subset-liquibase nil))]
           (log/debugf "Running migrations %s...%s (inclusive)"
                       (.getId ^ChangeSet (first unrun)) (.getId ^ChangeSet (last unrun))))
         ;; run the migrations
-        (.update subset-liquibase (Contexts.))))))
+        (.update subset-liquibase (Contexts.) wrtr)
+        (log/debug "output" (str wrtr))
+        (throw (ex-info "last change set ID"
+                        {:last-id
+                         (-> {:connection (.getConnection liquibase subset-change-log)}
+                             (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                             first
+                             :id)}))))))
 
 (defn- test-migrations-for-driver [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))

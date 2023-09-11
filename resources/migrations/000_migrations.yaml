@@ -2735,9 +2735,10 @@ databaseChangeLog:
             tableName: setting
             columnName: value
             newDataType: TEXT
-        - addNotNullContstraint:
+        - addNotNullConstraint:
             tableName: setting
-            columnNames: value
+            columnName: value
+      validCheckSum: 8:91b72167fca724e6b6a94b64f886cf09
   - changeSet:
       id: 36
       author: agilliland

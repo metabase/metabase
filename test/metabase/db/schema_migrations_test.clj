@@ -73,6 +73,12 @@
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
     (impl/test-migrations 165 [migrate!]
+      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            last-id (-> {:connection (.getConnection data-source)}
+                        (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                        first
+                        :id)]
+        (throw (ex-info (format "last-id: %s" last-id) {:last-id last-id})))
       ;; create a Database with a Table with 2 Fields
       (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
       (t2/insert! (t2/table-name Table) {:name "Table", :db_id 1, :created_at :%now, :updated_at :%now, :active true})
