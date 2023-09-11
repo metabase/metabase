@@ -109,17 +109,17 @@
 
 (deftest ^:parallel use-escape-alias-test
   (testing (str "we should use [[driver/escape-alias]] on the generated aggregation names in case the "
-                "drivers need to tweak the default names we generate.")
-    (is (= {:database (mt/id)
-            :type     :query
-            :query    {:source-table (mt/id :venues)
-                       :aggregation  [[:aggregation-options [:+ 20 [:sum [:field (mt/id :venues :price) nil]]] {:name "_expression"}]
-                                      [:aggregation-options [:count] {:name "_count"}]]}}
-           (driver/with-driver ::test-driver
-             (qp.store/with-metadata-provider meta/metadata-provider
-               (qp.pre-alias-aggregations/pre-alias-aggregations
-                 {:database (mt/id)
-                  :type     :query
-                  :query    {:source-table (mt/id :venues)
-                             :aggregation  [[:+ 20 [:sum [:field (mt/id :venues :price) nil]]]
-                                            [:count]]}})))))))
+                "drivers need to tweak the default names we generate."))
+  (is (= {:database 1
+          :type     :query
+          :query    {:source-table 1
+                     :aggregation  [[:aggregation-options [:+ 20 [:sum [:field 2 nil]]] {:name "_expression"}]
+                                    [:aggregation-options [:count] {:name "_count"}]]}}
+         (driver/with-driver ::test-driver
+           (qp.store/with-metadata-provider meta/metadata-provider
+             (qp.pre-alias-aggregations/pre-alias-aggregations
+              {:database 1
+               :type     :query
+               :query    {:source-table 1
+                          :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
+                                         [:count]]}}))))))
