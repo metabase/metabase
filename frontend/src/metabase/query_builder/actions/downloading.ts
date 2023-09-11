@@ -68,7 +68,9 @@ const getDatasetParams = ({
   if (isSecureDashboardEmbedding) {
     return {
       method: "GET",
-      url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+      url: Urls.getURLIncludingSubpath(
+        `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+      ),
       params: new URLSearchParams(Urls.extractQueryParams(params)),
     };
   }
@@ -77,7 +79,9 @@ const getDatasetParams = ({
   if (isDashboard) {
     return {
       method: "POST",
-      url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
+      url: Urls.getURLIncludingSubpath(
+        `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
+      ),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
@@ -110,7 +114,7 @@ const getDatasetParams = ({
   if (isSavedQuery) {
     return {
       method: "POST",
-      url: `/api/card/${cardId}/query/${type}`,
+      url: Urls.getURLIncludingSubpath(`/api/card/${cardId}/query/${type}`),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
@@ -118,7 +122,7 @@ const getDatasetParams = ({
   }
 
   return {
-    url: `/api/dataset/${type}`,
+    url: Urls.getURLIncludingSubpath(`/api/dataset/${type}`),
     method: "POST",
     params: new URLSearchParams({
       query: JSON.stringify(_.omit(result?.json_query ?? {}, "constraints")),
