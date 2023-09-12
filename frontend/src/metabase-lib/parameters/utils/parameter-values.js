@@ -6,11 +6,26 @@ import {
   getSourceType,
 } from "./parameter-source";
 
+export const PULSE_PARAM_EMPTY = null;
+export const PULSE_PARAM_USE_DEFAULT = undefined;
+
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameters.map(parameter => ({
     ...parameter,
     value: parameterValues?.[parameter.id] ?? null,
   }));
+}
+export function getDefaultValuePopulatedParameters(
+  parameters,
+  parameterValues,
+) {
+  return parameters.map(parameter => {
+    const value = parameterValues?.[parameter.id];
+    return {
+      ...parameter,
+      value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
+    };
+  });
 }
 
 export function hasDefaultParameterValue(parameter) {
@@ -43,11 +58,22 @@ export function normalizeParameters(parameters) {
     }));
 }
 
+export function isParameterValueEmpty(value) {
+  return (
+    value === PULSE_PARAM_EMPTY ||
+    (Array.isArray(value) && value.length === 0) ||
+    value === ""
+  );
+}
+
 export function normalizeParameterValue(type, value) {
   const fieldType = getParameterType(type);
-
-  if (["string", "number"].includes(fieldType)) {
-    return value == null ? null : [].concat(value);
+  if (value === PULSE_PARAM_USE_DEFAULT) {
+    return PULSE_PARAM_USE_DEFAULT;
+  } else if (isParameterValueEmpty(value)) {
+    return PULSE_PARAM_EMPTY;
+  } else if (["string", "number"].includes(fieldType)) {
+    return [].concat(value);
   } else {
     return value;
   }
