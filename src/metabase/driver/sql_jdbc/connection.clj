@@ -89,7 +89,10 @@
   :default 15)
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout
-  "This should be the same as the query timeout in [[metabase.query-processor.context.default/query-timeout-ms]]."
+  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
+  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
+  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
+  timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
   :visibility :internal
   :type       :integer
   :getter     (constantly context.default/query-timeout-ms)
