@@ -23,7 +23,7 @@
   ;; should get ignored
   (assoc event ::test-topic true))
 
-(deftest ^:parallel publish-event-test!
+(deftest publish-event-test!
   (binding [*method-calls* (atom {})]
     (testing "we should get back our originally posted object no matter what happens"
       (is (= {:some :object}

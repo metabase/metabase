@@ -173,10 +173,10 @@
                                      :auto_run_queries {:default true}}
               v                     [true false nil]]
         (let [db-name (mt/random-name)]
-          (with-setup! {:database {:engine  "h2"}
-                                  :name    db-name
-                                  :details details
-                                  k        v}
+          (with-setup! {:database {:engine  "h2"
+                                   :name    db-name
+                                   :details details
+                                   k        v}}
             (testing "Database should be created"
               (is (t2/exists? Database :name db-name)))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
