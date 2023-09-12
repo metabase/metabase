@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
+   [metabase.query-processor.context.default :as context.default]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -76,7 +77,7 @@
                (testing "the pool has been destroyed"
                  (is @destroyed?))))))))))
 
-(deftest c3p0-datasource-name-test
+(deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "The dataSourceName c3p0 property is set properly for a database"
       (let [db         (mt/db)
@@ -87,7 +88,7 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
-(deftest same-connection-details-result-in-equal-specs-test
+(deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
@@ -201,3 +202,8 @@
         (is (= first-pool second-pool))
         (is (= ::audit-db-not-in-cache!
                (get @#'sql-jdbc.conn/database-id->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
+
+(deftest ^:parallel include-unreturned-connection-timeout-test
+  (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
+    (is (=? {"unreturnedConnectionTimeout" context.default/query-timeout-ms}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
