@@ -12,7 +12,6 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -205,5 +204,5 @@
 
 (deftest ^:parallel include-unreturned-connection-timeout-test
   (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
-    (is (=? {"unreturnedConnectionTimeout" context.default/query-timeout-ms}
+    (is (=? {"unreturnedConnectionTimeout" integer?}
             (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))

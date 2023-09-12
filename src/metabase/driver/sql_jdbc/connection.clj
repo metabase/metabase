@@ -88,14 +88,15 @@
   :type :integer
   :default 15)
 
-(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout
+(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
   will kill connections that time out, but in practice it seems that connections disappear into the ether every once
   in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
   timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
   :visibility :internal
   :type       :integer
-  :getter     (constantly context.default/query-timeout-ms)
+  :getter     (fn []
+                (long (/ context.default/query-timeout-ms 1000)))
   :setter     :none)
 
 (defmethod data-warehouse-connection-pool-properties :default
@@ -135,7 +136,7 @@
    ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
    ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
    ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
-   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout)
+   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
