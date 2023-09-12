@@ -96,7 +96,7 @@ const MetadataTable = ({
 
   const handleChangeVisibility = useCallback(
     (visibility: TableVisibilityType) => {
-      onUpdateTable(table, "visibility_type", visibility, true);
+      onUpdateTable(table, "visibility property", visibility, true);
     },
     [table, onUpdateTable],
   );
