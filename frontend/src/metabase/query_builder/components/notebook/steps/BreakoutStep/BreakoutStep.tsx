@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";

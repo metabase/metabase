@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 
 import * as Lib from "metabase-lib";
 
