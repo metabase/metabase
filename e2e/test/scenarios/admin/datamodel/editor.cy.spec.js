@@ -94,7 +94,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Table visibility_type").should("be.visible");
+      cy.findByText("Updated Table visibility property").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("5 Hidden Tables").should("be.visible");
 
