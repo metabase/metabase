@@ -860,3 +860,9 @@
   "Returns an array of pivotable columns of the specified type."
   [a-drill-thru pivot-type]
   (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
+
+(defn ^:export with-different-table
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [a-query table-id]
+  (lib.core/with-different-table a-query table-id))

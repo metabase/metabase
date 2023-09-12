@@ -721,6 +721,8 @@
                                card
                                (map (comp bindings second) dimensions)
                                metrics)
+                      ;; TODO - split this out into two functions.
+                      ;; build-query and build-native query. This is just being too clever.
                       query   (if query
                                 (build-query context bindings query)
                                 (build-query context bindings
@@ -744,6 +746,7 @@
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules {:keys [source entity]}]
+  ;; Should this be here or lifted to the calling context. It's a magic step.
   (let [table-type (or (:entity_type source) :entity/GenericTable)]
     (->> rules
          (filter (fn [{:keys [applies_to]}]
@@ -832,7 +835,9 @@
         (constantly source-fields)))))
 
 (s/defn ^:private make-base-context
-  "Create the underlying context to which we will add metrics, dimensions, and filters."
+  "Create the underlying context to which we will add metrics, dimensions, and filters.
+
+  This is applicable to all 'rules'."
   [{:keys [source] :as root}]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? Table source)
