@@ -14,11 +14,13 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.memoize :as memoize]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -102,8 +104,7 @@
     :else           (clojure.core/= x y)))
 
 (defn- update-options-remove-namespaced-keys [a-ref]
-  (lib.options/update-options a-ref (fn [options]
-                                      (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
+  (lib.options/update-options a-ref lib.schema.util/remove-namespaced-keys))
 
 (defn- field-id-ref? [a-ref]
   (mbql.u.match/match-one a-ref
@@ -358,9 +359,9 @@
                  ;; Perhaps any collision should be an error?
                  (merge matches result)))))))
 
-(mu/defn closest-matches-in-metadata :- [:map-of
-                                         lib.metadata/ColumnMetadata
-                                         ::lib.schema.common/int-greater-than-or-equal-to-zero]
+(mu/defn closest-matches-in-metadata* :- [:map-of
+                                          lib.metadata/ColumnMetadata
+                                          ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Like [[find-closest-matches-for-refs]], but finds the closest match for each element of `needles` from a haystack of
   Column `metadatas` rather than a haystack of refs. This allows us to do more sophisticated fuzzy matching than
   [[find-closest-matches-for-refs]], because column metadatas inherently have more information than they do after they
@@ -371,7 +372,7 @@
 
   If you only have a single `needle` ref to look up, use [[closest-matching-metadata]]."
   ([needles haystack-metadatas]
-   (closest-matches-in-metadata needles haystack-metadatas {}))
+   (closest-matches-in-metadata* needles haystack-metadatas {}))
 
   ([needles haystack-metadatas opts]
    (when (seq haystack-metadatas)
@@ -401,7 +402,7 @@
               metadata       lib.ref/ref)))])))
 
   ([query stage-number needles haystack-metadatas]
-   (closest-matches-in-metadata query stage-number needles haystack-metadatas {}))
+   (closest-matches-in-metadata* query stage-number needles haystack-metadatas {}))
 
   ([query                 :- [:maybe ::lib.schema/query]
     stage-number          :- :int
@@ -409,12 +410,12 @@
     haystack-metadatas    :- [:sequential lib.metadata/ColumnMetadata]
     opts                  :- [:map [:keep-join? {:optional true} :boolean]]]
    ;; This could be more efficient if the second pass were run on the un-matched subset, like cascading-matches.
-   (let [basic   (closest-matches-in-metadata needles haystack-metadatas opts)
+   (let [basic   (closest-matches-in-metadata* needles haystack-metadatas opts)
          ;; In case that fails, we need to fall back and try matching any integer IDs by name like the four-arity
          ;; version of [[find-closest-matching-ref]].
          by-name (when (and query
                             (some field-id-ref? needles))
-                   (closest-matches-in-metadata
+                   (closest-matches-in-metadata*
                      (for [[_field _opts field-id] needles]
                        (when (pos-int? field-id)
                          (lib.ref/ref (resolve-field-id query stage-number field-id))))
@@ -422,6 +423,14 @@
                      opts))]
      ;; Prefer the more precise integer ID matches over the name-based ones.
      (merge by-name basic))))
+
+(def ^{:arglists '([needles haystack-metadatas]
+                   [needles haystack-metadatas opts]
+                   [query stage-number needles haystack-metadatas]
+                   [query stage-number needles haystack-metadatas opts])}
+  closest-matches-in-metadata
+  "The cached version of [[closest-matches-in-metadata*]]."
+  (memoize/lru closest-matches-in-metadata* :lru/threshold 8))
 
 (mu/defn closest-matching-metadata :- [:maybe lib.metadata/ColumnMetadata]
   "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
