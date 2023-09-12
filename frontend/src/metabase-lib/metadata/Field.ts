@@ -352,16 +352,16 @@ class FieldInner extends Base {
     return getFilterOperators(this, this.table, selected);
   }
 
-  filterOperatorsLookup() {
+  filterOperatorsLookup = _.once(() => {
     return createLookupByProperty(this.filterOperators(), "name");
-  }
+  });
 
   filterOperator(operatorName) {
     return this.filterOperatorsLookup()[operatorName];
   }
 
   // AGGREGATIONS
-  aggregationOperators() {
+  aggregationOperators = _.once(() => {
     return this.table
       ? this.table
           .aggregationOperators()
@@ -371,11 +371,11 @@ class FieldInner extends Base {
               aggregation.validFieldsFilters[0]([this]).length === 1,
           )
       : null;
-  }
+  });
 
-  aggregationOperatorsLookup() {
+  aggregationOperatorsLookup = _.once(() => {
     return createLookupByProperty(this.aggregationOperators(), "short");
-  }
+  });
 
   aggregationOperator(short) {
     return this.aggregationOperatorsLookup()[short];
@@ -592,9 +592,6 @@ class FieldInner extends Base {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Field extends memoizeClass<FieldInner>(
-  "filterOperators",
-  "filterOperatorsLookup",
-  "aggregationOperators",
-  "aggregationOperatorsLookup",
-)(FieldInner) {}
+export default class Field extends memoizeClass<FieldInner>("filterOperators")(
+  FieldInner,
+) {}
