@@ -78,7 +78,7 @@
 
 (defn- build-fk-map
   [fks field]
-  (if (and (seq fks) (:id field))
+  (if (:id field)
     (->> fks
          (filter (comp #{(:table_id field)} :table_id :target))
          (group-by :table_id)

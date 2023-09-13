@@ -102,7 +102,17 @@
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
                     (lib/visible-columns nil)))))
-
+  (testing "Include multiple implicitly joinable columns pointing to the same table and field (##33451)"
+    (is (= ["id"
+            "created_by"
+            "updated_by"
+            "ic_accounts__via__created_by__id"
+            "ic_accounts__via__created_by__name"
+            "ic_accounts__via__updated_by__id"
+            "ic_accounts__via__updated_by__name"]
+           (->> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                lib/visible-columns
+                (map :lib/desired-column-alias)))))
   (testing "multiple aggregations"
     (lib.metadata.calculation/visible-columns
      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

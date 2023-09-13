@@ -24,7 +24,6 @@ function _AddEditSlackSidebar({
   channel,
   channelSpec,
   parameters,
-  defaultParametersById,
   dashboard,
   // form callbacks
   handleSave,
@@ -93,13 +92,11 @@ function _AddEditSlackSidebar({
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
-            defaultParametersById={defaultParametersById}
           />
         ) : (
           <DefaultParametersSection
             className="py3 mt2 border-top"
             parameters={parameters}
-            defaultParametersById={defaultParametersById}
           />
         )}
         <div className="text-bold py2 flex justify-between align-center border-top">
@@ -130,7 +127,6 @@ _AddEditSlackSidebar.propTypes = {
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
