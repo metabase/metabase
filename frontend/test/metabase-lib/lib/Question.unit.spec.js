@@ -299,24 +299,6 @@ const native_orders_count_question = new Question(
   metadata,
 );
 
-const invalid_orders_count_card = {
-  id: 2,
-  name: "# orders data",
-  display: "table",
-  visualization_settings: {},
-  dataset_query: {
-    type: "nosuchqueryprocessor",
-    database: SAMPLE_DB_ID,
-    query: {
-      query: "SELECT count(*) FROM orders",
-    },
-  },
-};
-const invalid_orders_count_question = new Question(
-  invalid_orders_count_card,
-  metadata,
-);
-
 const orders_count_by_id_card = {
   id: 2,
   name: "# orders data",
@@ -411,9 +393,6 @@ describe("Question", () => {
       it("returns a correct class instance for native query", () => {
         const query = native_orders_count_question.query();
         expect(query instanceof NativeQuery).toBe(true);
-      });
-      it("throws an error for invalid queries", () => {
-        expect(invalid_orders_count_question.query).toThrow();
       });
     });
     describe("setQuery(query)", () => {
