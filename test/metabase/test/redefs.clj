@@ -44,7 +44,7 @@
      (t2.with-temp/with-temp ~@args)))
 
 (defmacro with-ensure-with-temp-no-transaction!
-  "Run body with [[*with-temp-use-transaction*]] bound to false ensuring all nested [[mt/with-temp]] will not runs in a transaction."
+  "Run body with [[*with-temp-use-transaction*]] bound to false, ensuring all nested [[mt/with-temp]] will not rln in a transaction."
   [& body]
   `(binding [*with-temp-use-transaction* false]
      ~@body))

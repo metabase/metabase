@@ -1398,46 +1398,47 @@
 
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-       (t2.with-temp/with-temp
-         [Dashboard               {dashboard-id :id}  {}
-          Card                    {card-id-1 :id}     {}
-          Card                    {card-id-2 :id}     {}
-          :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
-          :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
-          :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
-          DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
-          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
-          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
+    (mt/with-ensure-with-temp-no-transaction!
+      (t2.with-temp/with-temp
+        [Dashboard               {dashboard-id :id}  {}
+         Card                    {card-id-1 :id}     {}
+         Card                    {card-id-2 :id}     {}
+         :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+         :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+         :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
+         DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
+         DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
+         DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                         {:ordered_tabs  [{:id   dashtab-id-1
-                                                                           :name "Tab 1 edited"}
-                                                                          {:id   dashtab-id-2
-                                                                           :name "Tab 2"}
-                                                                          {:id   -1
-                                                                           :name "New tab"}]
-                                                          :cards [{:id     dashcard-id-1
-                                                                   :size_x 4
-                                                                   :size_y 4
-                                                                   :col    1
-                                                                   :row    1
-                                                                   ;; initialy was in tab1, now in tab 2
-                                                                   :dashboard_tab_id dashtab-id-2
-                                                                   :card_id card-id-1}
-                                                                  {:id     dashcard-id-2
-                                                                   :dashboard_tab_id dashtab-id-2
-                                                                   :size_x 2
-                                                                   :size_y 2
-                                                                   :col    2
-                                                                   :row    2}
-                                                                  ;; remove the dashcard3 and create a new card using negative numbers
-                                                                  ;; and assign into the newly created dashcard
-                                                                  {:id     -1
-                                                                   :size_x 1
-                                                                   :size_y 1
-                                                                   :col    3
-                                                                   :row    3
-                                                                   :dashboard_tab_id -1
-                                                                   :card_id card-id-2}]})]
+                                         {:ordered_tabs  [{:id   dashtab-id-1
+                                                           :name "Tab 1 edited"}
+                                                          {:id   dashtab-id-2
+                                                           :name "Tab 2"}
+                                                          {:id   -1
+                                                           :name "New tab"}]
+                                          :cards [{:id     dashcard-id-1
+                                                   :size_x 4
+                                                   :size_y 4
+                                                   :col    1
+                                                   :row    1
+                                                   ;; initialy was in tab1, now in tab 2
+                                                   :dashboard_tab_id dashtab-id-2
+                                                   :card_id card-id-1}
+                                                  {:id     dashcard-id-2
+                                                   :dashboard_tab_id dashtab-id-2
+                                                   :size_x 2
+                                                   :size_y 2
+                                                   :col    2
+                                                   :row    2}
+                                                  ;; remove the dashcard3 and create a new card using negative numbers
+                                                  ;; and assign into the newly created dashcard
+                                                  {:id     -1
+                                                   :size_x 1
+                                                   :size_y 1
+                                                   :col    3
+                                                   :row    3
+                                                   :dashboard_tab_id -1
+                                                   :card_id card-id-2}]})]
           (testing "tabs got updated correctly "
             (is (=? [{:id           dashtab-id-1
                       :dashboard_id dashboard-id
@@ -1479,11 +1480,11 @@
                         :card_id           card-id-2}]
                       (:cards resp))))
             (testing "dashcard 3 got deleted"
-             (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
+              (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))))
 
 (deftest e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-    (t2.with-temp/with-temp
+    (mt/with-temp!
       [Dashboard           {dashboard-id :id}  {}
        Card                {card-id-1 :id}     {}
        Card                {card-id-2 :id}     {}

@@ -6,6 +6,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -89,11 +90,11 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (t2/select-fn-set :active Field :id age-field-id))))))
+        (is (t2/select-one-fn :active Field :id age-field-id))))))
 
 (deftest reactivate-nested-field-when-parent-is-reactivated-test
   (testing "Nested fields get reactivated if the parent field gets reactivated"
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp! [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
@@ -105,7 +106,7 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (t2/select-fn-set :active Field :id age-field-id))))))
+        (is (t2/select-one-fn :active Field :id age-field-id))))))
 
 (deftest mark-nested-field-inactive-test
   (testing "Nested fields can be marked inactive"
