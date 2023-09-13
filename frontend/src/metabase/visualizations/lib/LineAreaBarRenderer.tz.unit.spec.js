@@ -12,6 +12,10 @@ import {
   getFormattedTooltips,
 } from "__support__/visualizations";
 
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
+
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;
 const HEIGHT = 1000;

@@ -187,8 +187,8 @@ function onRenderVoronoiHover(chart, { hasDrills }) {
 
   // HACK Atte Keinänen 8/8/17: For some reason the parent node is not present in Jest/Enzyme tests
   // so simply return empty width and height for preventing the need to do bigger hacks in test code
-  const axisRect = axis?.node()?.getBBox() ?? { width: 0, height: 0 };
-  const parentRect = parent.node()?.getBBox() ?? { width: 0, height: 0 };
+  const axisRect = axis?.node()?.getBBox?.() ?? { width: 0, height: 0 };
+  const parentRect = parent.node()?.getBBox?.() ?? { width: 0, height: 0 };
 
   const voronoi = d3.geom.voronoi().clipExtent([
     [0, 0],

@@ -1,4 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn } from "__support__/visualizations";

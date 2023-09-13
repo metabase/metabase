@@ -12,6 +12,9 @@ import {
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 import type {
   DashboardOrderedCard,

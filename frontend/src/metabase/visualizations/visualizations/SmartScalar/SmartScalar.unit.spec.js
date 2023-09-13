@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import registerVisualizations from "metabase/visualizations/register";
+registerVisualizations();
 
 import { renderWithProviders, screen } from "__support__/ui";
 
