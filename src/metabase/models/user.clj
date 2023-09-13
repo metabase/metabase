@@ -20,6 +20,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
@@ -196,9 +198,10 @@
 (def UserGroupMembership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  {:id                                su/IntGreaterThanZero
+  [:map
+   [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (schema/optional-key :is_group_manager) schema/Bool})
+   [:is_group_manager {:optional true} :boolean]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -283,8 +286,8 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (su/with-api-error-message
-    {su/KeywordOrString schema/Any}
+  (mu/with-api-error-message
+    [:map-of ms/KeywordOrString :any]
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
