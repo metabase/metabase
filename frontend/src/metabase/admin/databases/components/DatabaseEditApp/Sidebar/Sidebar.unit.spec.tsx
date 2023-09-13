@@ -140,7 +140,6 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(
         within(getModal()).getByRole("button", { name: "Cancel" }),
       );
-      await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
       expect(discardSavedFieldValues).not.toHaveBeenCalled();
@@ -304,7 +303,6 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(
         await within(modal).findByRole("button", { name: "Cancel" }),
       );
-      await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
       expect(deleteDatabase).not.toHaveBeenCalled();
