@@ -10,14 +10,18 @@ import {
 } from "metabase/forms";
 import { render, screen, waitFor } from "__support__/ui";
 
+interface FormValues {
+  name: string | null;
+}
+
 interface SetupOpts {
-  initialValue?: string | null;
+  initialValues?: FormValues;
   validationSchema?: AnySchema;
   nullable?: boolean;
 }
 
 const setup = ({
-  initialValue = "",
+  initialValues = { name: "" },
   validationSchema,
   nullable,
 }: SetupOpts = {}) => {
@@ -25,7 +29,7 @@ const setup = ({
 
   render(
     <FormProvider
-      initialValues={{ name: initialValue }}
+      initialValues={initialValues}
       validationSchema={validationSchema}
       onSubmit={onSubmit}
     >
@@ -41,7 +45,9 @@ const setup = ({
 
 describe("FormTextInput", () => {
   it("should show the initial value", async () => {
-    setup({ initialValue: "Test" });
+    setup({
+      initialValues: { name: "Test" },
+    });
 
     expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
   });
@@ -61,7 +67,9 @@ describe("FormTextInput", () => {
   });
 
   it("should submit an empty value", async () => {
-    const { onSubmit } = setup({ initialValue: "Test" });
+    const { onSubmit } = setup({
+      initialValues: { name: "Test" },
+    });
 
     userEvent.clear(screen.getByLabelText("Name"));
     userEvent.click(screen.getByText("Submit"));
@@ -75,7 +83,10 @@ describe("FormTextInput", () => {
   });
 
   it("should submit an empty nullable value", async () => {
-    const { onSubmit } = setup({ initialValue: "Test", nullable: true });
+    const { onSubmit } = setup({
+      initialValues: { name: "Test" },
+      nullable: true,
+    });
 
     userEvent.clear(screen.getByLabelText("Name"));
     userEvent.click(screen.getByText("Submit"));
@@ -90,7 +101,24 @@ describe("FormTextInput", () => {
       name: Yup.string().default("").required(requiredErrorMessage),
     });
 
-    setup({ validationSchema });
+    setup({ initialValues: validationSchema.getDefault(), validationSchema });
+    expect(screen.queryByText("Required")).not.toBeInTheDocument();
+
+    userEvent.type(screen.getByLabelText("Name"), "Test");
+    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.tab();
+    expect(screen.getByText("Required")).toBeInTheDocument();
+  });
+
+  it("should show validation errors with nullable values", () => {
+    const validationSchema = Yup.object({
+      name: Yup.string()
+        .nullable()
+        .default(null)
+        .required(requiredErrorMessage),
+    });
+
+    setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
     userEvent.type(screen.getByLabelText("Name"), "Test");
