@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
-import produce from "immer";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 
 import {
+  buildTableColumnSettings,
   columnSettings,
-  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 
 import { formatColumn } from "metabase/lib/formatting";
@@ -26,20 +25,7 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...produce(tableColumnSettings, draft => {
-      draft["table.columns"].getDefault = params => {
-        const [
-          {
-            data: { cols },
-          },
-        ] = params;
-        return cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: true,
-        }));
-      };
-    }),
+    ...buildTableColumnSettings({ getIsColumnVisible: () => true }),
   },
   columnSettings: column => {
     const settings = {
