@@ -921,12 +921,12 @@ saved later when it is ready."
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/collections"
+(api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
-  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  {card_ids      [:sequential ms/PositiveInt]
+   collection_id [:maybe ms/PositiveInt]}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 

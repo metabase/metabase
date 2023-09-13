@@ -33,11 +33,11 @@
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (apply s/enum (map name table/visibility-types)))
+  (into [:enum] (map name table/visibility-types)))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (apply s/enum (map name table/field-orderings)))
+  (into [:enum] (map name table/field-orderings)))
 
 (api/defendpoint GET "/"
   "Get all `Tables`."
@@ -102,34 +102,33 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)
-   field_order             (s/maybe FieldOrder)}
+  {id                      ms/PositiveInt
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   field_order             [:maybe FieldOrder]}
   (first (update-tables! [id] body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/"
+(api/defendpoint PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
-  {ids                     (su/non-empty [su/IntGreaterThanZero])
-   display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)}
+  {ids                     [:sequential ms/PositiveInt]
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]}
   (update-tables! ids body))
 
 
@@ -322,12 +321,10 @@
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
-  (if (Boolean/parseBoolean include-editable-data-model?)
+  (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (let [db                        (t2/select-one Database :id (:db_id table))
-        include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
-        include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
+  (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
         (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -339,8 +336,7 @@
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/query_metadata"
+(api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
@@ -352,9 +348,9 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {include_sensitive_fields    [:maybe ms/BooleanValue]
+   include_hidden_fields       [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]}
   (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
@@ -420,8 +416,7 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card__:id/query_metadata"
+(api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
   (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description

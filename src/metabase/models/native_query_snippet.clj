@@ -6,6 +6,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
@@ -68,11 +69,13 @@
 
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
-  (su/with-api-error-message
-    (s/pred (every-pred
+  (mu/with-api-error-message
+    [:fn (fn [x]
+           ((every-pred
              string?
              (complement #(boolean (re-find #"^\s+" %)))
-             (complement #(boolean (re-find #"}" %)))))
+             (complement #(boolean (re-find #"}" %))))
+            x))]
     (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
