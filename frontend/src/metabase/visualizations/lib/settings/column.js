@@ -551,5 +551,3 @@ export const buildTableColumnSettings = ({
     },
   },
 });
-
-export const tableColumnSettings = buildTableColumnSettings();
