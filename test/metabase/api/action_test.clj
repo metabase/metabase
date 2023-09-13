@@ -222,7 +222,7 @@
         (mt/with-actions-test-data-tables #{"users" "categories"}
           (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
                             {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
-            (doseq [initial-action (take 1 (all-actions-default card-id))]
+            (doseq [initial-action (all-actions-default card-id)]
               (let [update-fn      (fn [m]
                                      (cond-> (assoc m :name "New name")
                                        (= (:type initial-action) "implicit")
