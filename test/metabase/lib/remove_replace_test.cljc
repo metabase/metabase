@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -26,7 +27,7 @@
                   (lib/order-bys))))))
 
 (deftest ^:parallel remove-clause-filters-test
-  (lib.tu/with-testing-against-standard-queries query
+  (lib.tu.macros/with-testing-against-standard-queries query
     (let [query (-> query
                     (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
                     (lib/filter (lib/= (meta/field-metadata :venues :name) "x")))

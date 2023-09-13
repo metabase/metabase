@@ -1,4 +1,4 @@
-(ns hooks.metabase.lib.test-util
+(ns hooks.metabase.lib.test-util.macros
   (:require [clj-kondo.hooks-api :as hooks]))
 
 (defn with-testing-against-standard-queries [{{[_ & args] :children} :node}]
