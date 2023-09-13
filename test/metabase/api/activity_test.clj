@@ -207,10 +207,12 @@
                            [(mt/user->id :rasta) "card"      (:id dataset)]
                            [(mt/user->id :rasta) "table"     (:id table1)]
                            [(mt/user->id :rasta) "card"      (:id card1)]]))
-          (is (partial= [{:model "dashboard" :model_id (:id dash1)}
-                         {:model "dashboard" :model_id (:id dash2)}
-                         {:model "card"      :model_id (:id card1)}
-                         {:model "dataset"   :model_id (:id dataset)}
-                         {:model "table"     :model_id (:id table1)}]
+          (is (= [["dashboard" (:id dash1)]
+                  ["dashboard" (:id dash2)]
+                  ["card"      (:id card1)]
+                  ["dataset"   (:id dataset)]
+                  ["table"     (:id table1)]]
                         ;; all views are from :rasta, but :crowberto can still see popular items
-                        (mt/user-http-request :crowberto :get 200 "activity/popular_items"))))))))
+                 (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
+                      (filter #(test-ids (:model_id %)))
+                      (map (juxt :model :model_id))))))))))
