@@ -15,8 +15,6 @@ import FormSectionWidget from "./widgets/FormSectionWidget";
 import FormSelectWidget from "./widgets/FormSelectWidget";
 import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
 import FormBooleanWidget from "./widgets/FormBooleanWidget";
-import FormCollectionWidget from "./widgets/FormCollectionWidget";
-import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
@@ -33,8 +31,6 @@ const WIDGETS = {
   select: FormSelectWidget,
   integer: FormNumericInputWidget,
   boolean: FormBooleanWidget,
-  collection: FormCollectionWidget,
-  snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
 };
