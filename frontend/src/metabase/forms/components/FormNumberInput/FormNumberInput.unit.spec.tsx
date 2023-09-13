@@ -5,13 +5,13 @@ import {
   Form,
   FormProvider,
   FormSubmitButton,
-  FormTextInput,
+  FormNumberInput,
   requiredErrorMessage,
 } from "metabase/forms";
 import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
-  name: string | null | undefined;
+  goal: number | null | undefined;
 }
 
 interface SetupOpts {
@@ -21,7 +21,7 @@ interface SetupOpts {
 }
 
 const setup = ({
-  initialValues = { name: "" },
+  initialValues = { goal: undefined },
   validationSchema,
   nullable,
 }: SetupOpts = {}) => {
@@ -34,7 +34,7 @@ const setup = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormTextInput name="name" label="Name" nullable={nullable} />
+        <FormNumberInput name="goal" label="Goal" nullable={nullable} />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -43,40 +43,37 @@ const setup = ({
   return { onSubmit };
 };
 
-describe("FormTextInput", () => {
+describe("FormNumberInput", () => {
   it("should show the initial value", async () => {
     setup({
-      initialValues: { name: "Test" },
+      initialValues: { goal: 25 },
     });
 
-    expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("25")).toBeInTheDocument();
   });
 
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
+    userEvent.type(screen.getByLabelText("Goal"), "20");
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(
-        { name: "Test" },
-        expect.anything(),
-      );
+      expect(onSubmit).toHaveBeenCalledWith({ goal: 20 }, expect.anything());
     });
   });
 
   it("should submit an empty value", async () => {
     const { onSubmit } = setup({
-      initialValues: { name: "Test" },
+      initialValues: { goal: 20 },
     });
 
-    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.clear(screen.getByLabelText("Goal"));
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
-        { name: undefined },
+        { goal: undefined },
         expect.anything(),
       );
     });
@@ -84,28 +81,28 @@ describe("FormTextInput", () => {
 
   it("should submit an empty nullable value", async () => {
     const { onSubmit } = setup({
-      initialValues: { name: "Test" },
+      initialValues: { goal: 20 },
       nullable: true,
     });
 
-    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.clear(screen.getByLabelText("Goal"));
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ name: null }, expect.anything());
+      expect(onSubmit).toHaveBeenCalledWith({ goal: null }, expect.anything());
     });
   });
 
   it("should show validation errors", async () => {
     const validationSchema = Yup.object({
-      name: Yup.string().default("").required(requiredErrorMessage),
+      goal: Yup.number().default(undefined).required(requiredErrorMessage),
     });
 
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
-    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.type(screen.getByLabelText("Goal"), "20");
+    userEvent.clear(screen.getByLabelText("Goal"));
     userEvent.tab();
 
     await waitFor(() => {
@@ -115,7 +112,7 @@ describe("FormTextInput", () => {
 
   it("should show validation errors with nullable values", async () => {
     const validationSchema = Yup.object({
-      name: Yup.string()
+      goal: Yup.number()
         .nullable()
         .default(null)
         .required(requiredErrorMessage),
@@ -124,8 +121,8 @@ describe("FormTextInput", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
-    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.type(screen.getByLabelText("Goal"), "20");
+    userEvent.clear(screen.getByLabelText("Goal"));
     userEvent.tab();
 
     await waitFor(() => {
