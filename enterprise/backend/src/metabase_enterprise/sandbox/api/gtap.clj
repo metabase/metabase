@@ -31,16 +31,15 @@
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
 #_(def ^:private AttributeRemappings
-   (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
+   (mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
      "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new GTAP."
   [:as {{:keys [table_id card_id group_id attribute_remappings]} :body}]
-  {table_id             su/IntGreaterThanZero
-   card_id              (s/maybe su/IntGreaterThanZero)
-   group_id             su/IntGreaterThanZero
+  {table_id             ms/PositiveInt
+   card_id              [:maybe ms/PositiveInt]
+   group_id             ms/PositiveInt
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (first (t2/insert-returning-instances! GroupTableAccessPolicy
                                          {:table_id             table_id
@@ -48,13 +47,12 @@
                                           :group_id             group_id
                                           :attribute_remappings attribute_remappings})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
-  {card_id              (s/maybe su/IntGreaterThanZero)
+  {card_id              [:maybe ms/PositiveInt]
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
