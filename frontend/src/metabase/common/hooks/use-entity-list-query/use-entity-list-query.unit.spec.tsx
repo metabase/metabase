@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core/core";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { useDispatch } from "metabase/lib/redux";

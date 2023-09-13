@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core/core";
 import { render, screen } from "@testing-library/react";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";

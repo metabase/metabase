@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core/core";
 import { getDataTypes } from "metabase/containers/DataPicker";
 
 describe("DataPicker > utils", () => {

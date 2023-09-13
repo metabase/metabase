@@ -1,3 +1,4 @@
+import "metabase/plugins/builtin";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import MetabaseSettings from "metabase/lib/settings";

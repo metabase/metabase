@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core/core";
 import fetchMock from "fetch-mock";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";

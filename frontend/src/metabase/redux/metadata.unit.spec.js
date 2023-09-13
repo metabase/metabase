@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core/core";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import { fetchField, loadMetadataForQuery } from "./metadata";
