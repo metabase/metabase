@@ -21,11 +21,13 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.test :as mt])
+   [metabase.util.log :as log])
   (:import
-   (liquibase Contexts Liquibase)
-   (liquibase.changelog ChangeSet DatabaseChangeLog)))
+   (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
+   (liquibase.changelog ChangeLogIterator ChangeLogHistoryServiceFactory)
+   (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)
+   (liquibase.changelog.visitor UpdateVisitor)
+   (liquibase.lockservice LockService LockServiceFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -157,6 +159,13 @@
     (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
     (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
+(defn- run-in-scope
+  [^Liquibase liquibase f]
+  (let [scope-objects {(.name Scope$Attr/database) (.getDatabase liquibase)
+                       (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
+    (Scope/child ^java.util.Map scope-objects (reify Scope$ScopedRunner
+                                                (run [_] (f))))))
+
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
@@ -164,35 +173,35 @@
                                 [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (liquibase/with-liquibase [liquibase conn]
-    (let [change-log        (.getDatabaseChangeLog liquibase)
-          ;; create a new change log that only has the subset of migrations we want to run.
-          subset-change-log (doto (DatabaseChangeLog.)
-                              ;; we don't actually use this for anything but if we don't set it then Liquibase barfs
-                              (.setPhysicalFilePath (.getPhysicalFilePath change-log)))]
-      ;; add the relevant migrations (change sets) to our subset change log
-      (doseq [^ChangeSet change-set (.getChangeSets change-log)
-              :let                  [id (.getId change-set)
-                                     _ (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
-                                                   id start-id end-id
-                                                   (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
-                                                   (migration-id-in-range? start-id id end-id range-options))]
-              :when                 (migration-id-in-range? start-id id end-id range-options)]
-        (.addChangeSet subset-change-log change-set))
-      ;; now create a new instance of Liquibase that will run just the subset change log
-      (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))
-            wrtr (java.io.StringWriter.)]
-        (when-let [unrun (not-empty (.listUnrunChangeSets subset-liquibase nil))]
-          (log/debugf "Running migrations %s...%s (inclusive)"
-                      (.getId ^ChangeSet (first unrun)) (.getId ^ChangeSet (last unrun))))
-        ;; run the migrations
-        (.update subset-liquibase (Contexts.) wrtr)
-        (log/debug "output" (str wrtr))
-        (throw (ex-info "last change set ID"
-                        {:last-id
-                         (-> {:connection (.getConnection liquibase subset-change-log)}
-                             (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
-                             first
-                             :id)}))))))
+    (let [change-log         (.getDatabaseChangeLog liquibase)
+          database           (.getDatabase liquibase)
+          update-visitor     (UpdateVisitor. database nil)
+          change-set-filter  (reify ChangeSetFilter
+                               (accepts [this change-set]
+                                 (let [id      (.getId change-set)
+                                       accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
+                                   (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                               id start-id end-id
+                                               (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                               accept?)
+                                   (ChangeSetFilterResult. accept? "decision according to range" (class this)))))
+          log-iterator       (ChangeLogIterator. change-log (into-array ChangeSetFilter [change-set-filter]))
+          runtime-env        (RuntimeEnvironment. database (Contexts.) nil)
+          change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
+      (run-in-scope
+       liquibase
+       (fn []
+         (let [^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)]
+           (.waitForLock lock-service)
+           (try
+             ;; this has the side effect of initializing checksums the way the production
+             ;; migrations work
+             (.listUnrunChangeSets liquibase nil (LabelExpression.))
+             (.init change-log-service)
+             (.generateDeploymentId change-log-service)
+             (.run ^ChangeLogIterator log-iterator update-visitor runtime-env)
+             (finally
+               (.releaseLock lock-service)))))))))
 
 (defn- test-migrations-for-driver [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))

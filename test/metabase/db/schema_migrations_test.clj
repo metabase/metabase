@@ -73,12 +73,6 @@
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
     (impl/test-migrations 165 [migrate!]
-      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            last-id (-> {:connection (.getConnection data-source)}
-                        (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
-                        first
-                        :id)]
-        (throw (ex-info (format "last-id: %s" last-id) {:last-id last-id})))
       ;; create a Database with a Table with 2 Fields
       (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
       (t2/insert! (t2/table-name Table) {:name "Table", :db_id 1, :created_at :%now, :updated_at :%now, :active true})
@@ -1056,7 +1050,7 @@
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (testing "forward migration migrate correclty"
+      (testing "forward migration migrate correctly"
         (migrate! :up)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                 :model/DashboardCard :id [:in dashcard-ids]
