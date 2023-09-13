@@ -127,7 +127,6 @@ describe("FormTextInput", () => {
     userEvent.type(screen.getByLabelText("Name"), "Test");
     userEvent.clear(screen.getByLabelText("Name"));
     userEvent.tab();
-
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });

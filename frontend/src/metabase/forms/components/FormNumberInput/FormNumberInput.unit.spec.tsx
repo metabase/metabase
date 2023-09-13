@@ -124,7 +124,6 @@ describe("FormNumberInput", () => {
     userEvent.type(screen.getByLabelText("Goal"), "20");
     userEvent.clear(screen.getByLabelText("Goal"));
     userEvent.tab();
-
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });
