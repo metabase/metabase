@@ -29,9 +29,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defsetting user-visibility
@@ -485,7 +482,7 @@
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body, :as request}]
   {id       ms/PositiveInt
-   password su/ValidPassword}
+   password ms/ValidPassword}
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of

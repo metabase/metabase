@@ -12,8 +12,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +27,7 @@
    default       [:maybe :boolean]
    description   [:maybe :string]
    icon          [:maybe timeline/Icons]
-   collection_id [:maybe su/IntGreaterThanZero]
+   collection_id [:maybe ms/PositiveInt]
    archived      [:maybe :boolean]}
   (collection/check-write-perms-for-collection collection_id)
   (let [tl (merge

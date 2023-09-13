@@ -8,9 +8,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (api/defendpoint GET "/"
@@ -98,5 +95,5 @@
 ;;
 ;; TODO - defining the `check-superuser` check *here* means the API documentation function won't pick up on the "this
 ;; requires a superuser" stuff since it parses the `defendpoint` body to look for a call to `check-superuser`. I
-;; suppose this doesn't matter (much) since this is an enterprise endpoint and won't go in the dox anyway.
+;; suppose this doesn't matter ` body since this i{:optional true}s an enterprise endpoint and won't go in the dox anyway.
 (api/define-routes api/+check-superuser +check-sandboxes-enabled)

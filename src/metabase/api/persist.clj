@@ -18,9 +18,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -58,8 +57,7 @@
                     :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time])))
            results))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (validation/check-has-application-permission :monitoring)
@@ -77,35 +75,30 @@
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:persisted-info-id"
+(api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
-  {persisted-info-id (s/maybe su/IntGreaterThanZero)}
+  {persisted-info-id [:maybe ms/PositiveInt]}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:card-id"
+(api/defendpoint GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
-  {card-id (s/maybe su/IntGreaterThanZero)}
+  {card-id [:maybe ms/PositiveInt]}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
   "Schema representing valid cron schedule for refreshing persisted models."
-  (su/with-api-error-message
-    (s/constrained s/Str (fn [t]
-                           (let [parts (str/split t #" ")]
-                             (= 7 (count parts))))
-                   (deferred-tru "String representing a cron schedule"))
+  (mu/with-api-error-message
+    [:and ms/NonBlankString
+     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (str/split % #" "))]]
     (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/set-refresh-schedule"
+(api/defendpoint POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.
    Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
   [:as {{:keys [cron], :as _body} :body}]
@@ -121,8 +114,7 @@
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/enable"
+(api/defendpoint POST "/enable"
   "Enable global setting to allow databases to persist models."
   []
   (validation/check-has-application-permission :setting)
@@ -145,8 +137,7 @@
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/disable"
+(api/defendpoint POST "/disable"
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []

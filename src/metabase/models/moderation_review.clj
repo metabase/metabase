@@ -6,8 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -18,18 +18,18 @@
 
 (def Statuses
   "Schema of valid statuses"
-  (apply s/enum statuses))
+  (into [:enum] statuses))
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
   (def ReviewChanges
     "Schema for a ModerationReview that's being updated (so most keys are optional)"
-    {(s/optional-key :id)                  su/IntGreaterThanZero
-     (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+    {(s/optional-key :id)                  mu/IntGreaterThanZero
+     (s/optional-key :moderated_item_id)   mu/IntGreaterThanZero
      (s/optional-key :moderated_item_type) moderation/moderated-item-types
      (s/optional-key :status)              Statuses
-     (s/optional-key :text)                (s/maybe s/Str)
-     s/Any                                 s/Any}))
+     (s/optional-key :text)                [:maybe :string]
+     s/Any                                 :any}))
 
 (def ModerationReview
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -70,14 +70,15 @@
     (when (seq ids)
       (t2/delete! ModerationReview :id [:in ids]))))
 
-(s/defn create-review!
+(mu/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   {:moderated_item_id       su/IntGreaterThanZero
-    :moderated_item_type     moderation/moderated-item-types
-    :moderator_id            su/IntGreaterThanZero
-    (s/optional-key :status) Statuses
-    (s/optional-key :text)   (s/maybe s/Str)}]
+   [:map
+    [:moderated_item_id       ms/PositiveInt]
+    [:moderated_item_type     moderation/moderated-item-types]
+    [:moderator_id            ms/PositiveInt]
+    [:status              {:optional true} Statuses]
+    [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)

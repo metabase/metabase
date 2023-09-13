@@ -4,16 +4,13 @@
    [metabase.api.common :as api]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.moderation :as moderation]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli.schema :as ms]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]
-  {text                (s/maybe s/Str)
-   moderated_item_id   su/IntGreaterThanZero
+  {text                [:maybe :string]
+   moderated_item_id   ms/PositiveInt
    moderated_item_type moderation/moderated-item-types
    status              moderation-review/Statuses}
   (api/check-superuser)
