@@ -2,31 +2,31 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import * as Errors from "metabase/core/utils/errors";
 import {
   Form,
   FormProvider,
   FormTextInput,
   FormSubmitButton,
   FormErrorMessage,
+  requiredErrorMessage,
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { UserPasswordData } from "../../types";
 
 const USER_PASSWORD_SCHEMA = Yup.object({
-  old_password: Yup.string().default("").required(Errors.required),
+  old_password: Yup.string().default("").required(requiredErrorMessage),
   password: Yup.string()
     .default("")
-    .required(Errors.required)
+    .required(requiredErrorMessage)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
     .default("")
-    .required(Errors.required)
-    .oneOf([Yup.ref("password")], t`passwords do not match`),
+    .required(requiredErrorMessage)
+    .oneOf([Yup.ref("password")], t`Passwords do not match`),
 });
 
 export interface UserPasswordFormProps {
