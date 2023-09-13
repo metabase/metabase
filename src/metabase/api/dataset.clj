@@ -91,7 +91,7 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum export-formats))
+  (into [:enum] export-formats))
 
 (mu/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
