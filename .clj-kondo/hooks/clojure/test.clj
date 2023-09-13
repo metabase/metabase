@@ -50,6 +50,7 @@
      metabase.test/with-all-users-permission
      metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-ensure-with-temp-no-transaction!
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
      metabase.test/with-fake-inbox
@@ -63,13 +64,12 @@
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
      metabase.test/with-system-timezone-id
-     metabase.test/with-temp
+     metabase.test/with-temp!
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
-     metabase.test/with-user-in-groups
-     toucan2.tools.with-temp/with-temp})
+     metabase.test/with-user-in-groups})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
 
