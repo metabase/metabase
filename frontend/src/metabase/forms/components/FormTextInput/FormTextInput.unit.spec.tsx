@@ -96,7 +96,7 @@ describe("FormTextInput", () => {
     });
   });
 
-  it("should show validation errors", () => {
+  it("should show validation errors", async () => {
     const validationSchema = Yup.object({
       name: Yup.string().default("").required(requiredErrorMessage),
     });
@@ -107,10 +107,13 @@ describe("FormTextInput", () => {
     userEvent.type(screen.getByLabelText("Name"), "Test");
     userEvent.clear(screen.getByLabelText("Name"));
     userEvent.tab();
-    expect(screen.getByText("Required")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Required")).toBeInTheDocument();
+    });
   });
 
-  it("should show validation errors with nullable values", () => {
+  it("should show validation errors with nullable values", async () => {
     const validationSchema = Yup.object({
       name: Yup.string()
         .nullable()
@@ -124,6 +127,9 @@ describe("FormTextInput", () => {
     userEvent.type(screen.getByLabelText("Name"), "Test");
     userEvent.clear(screen.getByLabelText("Name"));
     userEvent.tab();
-    expect(screen.getByText("Required")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Required")).toBeInTheDocument();
+    });
   });
 });
