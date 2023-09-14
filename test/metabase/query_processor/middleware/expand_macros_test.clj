@@ -451,3 +451,39 @@
 
 
   )
+
+(deftest simple-metric-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {id :id}
+       {:name "venues, count"
+        :description "Metric doing count with no filtering."
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}]
+      (testing "Query containing metric returns correct results"
+        (testing "no query filter, no breakout"
+          (is (= [[100]]
+                 (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]})
+                      (mt/formatted-rows [int])))))
+        (testing "no filter, with breakout"
+          (is (= [[2 8] [3 2] [4 2] [5 7] [6 2]]
+                 (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]
+                                                 :breakout [$category_id]
+                                                 :order-by [[:asc $category_id]]
+                                                 :limit 5})
+                      (mt/formatted-rows [int int])))))
+        (testing "with query filter, with breakout"
+          (is (= [[11 4] [12 1] [13 1] [14 1] [15 1]]
+                 (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]
+                                                 :filter [:> $category_id 10]
+                                                 :breakout [$category_id]
+                                                 :order-by [[:asc $category_id]]
+                                                 :limit 5})
+                      (mt/formatted-rows [int int])))))
+        (testing "with query filter, no breakout"
+          (is (= [[67]]
+                 (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]
+                                                 :filter [:> $category_id 10]})
+                      (mt/formatted-rows [int int])))))))))
+
