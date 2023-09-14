@@ -1,7 +1,6 @@
 (ns metabase.lib.native-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]
-              [metabase.test.util.js :as test.js]))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.native :as lib.native]
@@ -124,44 +123,6 @@
                 {"foo"                   (assoc v1 :id (str (random-uuid)))
                  "#123-card-1"           (assoc c1 :id (str (random-uuid)))
                  "snippet:first snippet" (assoc s1 :id (str (random-uuid)))}))))))
-
-#?(:cljs
-   (deftest ^:parallel converters-test
-            (let [clj-tags {"a"  {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
-                                  :name         "a"
-                                  :display-name "A"
-                                  :type         :text}
-                     "#123-foo"  {:id           "7e58e086-5d63-4986-8fe7-87e05dfa4089"
-                                  :name         "#123-foo"
-                                  :display-name "#123-foo"
-                                  :type         :card
-                                  :card-id      123}
-                     "snippet:b" {:id           "604131d0-a74c-4822-b113-8e9515b1a985"
-                                  :name         "snippet:b"
-                                  :display-name "Snippet B"
-                                  :type         :snippet
-                                  :snippet-name "b"}}
-           js-tags  #js {"a"         #js {"id"           "c5ad010c-632a-4498-b667-9188fbe965f9"
-                                          "name"         "a"
-                                          "display-name" "A"
-                                          "type"         "text"}
-                         "#123-foo"  #js {"id"           "7e58e086-5d63-4986-8fe7-87e05dfa4089"
-                                          "name"         "#123-foo"
-                                          "display-name" "#123-foo"
-                                          "type"         "card"
-                                          "card-id"      123}
-                         "snippet:b" #js {"id"           "604131d0-a74c-4822-b113-8e9515b1a985"
-                                          "name"         "snippet:b"
-                                          "display-name" "Snippet B"
-                                          "type"         "snippet"
-                                          "snippet-name" "b"}}]
-       (testing "incoming converter works"
-         (is (= clj-tags (#'lib.native/->TemplateTags js-tags))))
-       (testing "outgoing converter works"
-         (is (test.js/= js-tags (#'lib.native/TemplateTags-> clj-tags))))
-       (testing "round trips work"
-         (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
-         (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query

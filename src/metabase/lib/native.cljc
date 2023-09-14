@@ -1,7 +1,6 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
   (:require
-   #?@(:cljs ([metabase.domain-entities.converters :as converters]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -10,6 +9,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
@@ -23,6 +23,7 @@
    [:name ::common/non-blank-string]
    [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
    [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
+   [:snippet-id {:js/prop "snippet-id" :optional true} ::lib.schema.id/snippet]
    [:card-id {:js/prop "card-id" :optional true} :int]
    [:dimension {:optional true} :any]
    [:widget-type {:js/prop "widget-type" :optional true} :string]])
@@ -126,16 +127,6 @@
        (unify-template-tags query-tag-names existing-tags existing-tag-names)
        ;; Otherwise just an empty map, no tags.
        {}))))
-
-#?(:cljs
-   (do
-     (def ->TemplateTags
-       "Converter to a map of `TemplateTag`s keyed by their string names."
-       (converters/incoming TemplateTags))
-
-     (def TemplateTags->
-       "Converter from a map of `TemplateTag`s keyed by their string names to vanilla JS."
-       (converters/outgoing TemplateTags))))
 
 (defn- assert-native-query! [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
