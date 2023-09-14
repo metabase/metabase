@@ -31,7 +31,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- should-execute-change? []
+(defn should-execute-change?
+  "Check if the change is supposed to be executed.
+  This is a work around. The rollback method is called twice: once
+  for generating MDC data and once for actually making the change.
+  The same problem has been fixed for forward changes in Liquibase
+  but for rollback it has not."
+  []
   (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
