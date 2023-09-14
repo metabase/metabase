@@ -27,6 +27,7 @@ export const SearchResultsDropdown = ({
         position="apart"
         align="center"
         px="lg"
+        py="0.625rem"
         onClick={goToSearchApp}
       >
         <Text
