@@ -10,6 +10,7 @@ import {
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { normal, admin, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -202,7 +203,7 @@ describe("scenarios > admin > people", () => {
 
     it("should allow admin to deactivate and reactivate other admins/users", () => {
       // Turn a random existing user into an admin
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         is_superuser: true,
       }).then(({ body: user }) => {
         const FULL_NAME = getFullName(user);

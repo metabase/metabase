@@ -878,8 +878,10 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (t2/delete! Dashboard :id (u/the-id response)))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))))
 
+(deftest copy-dashboard-test-2
+  (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure name / description / user set when copying"
       (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
                                                      :description "An old description"}]
@@ -899,8 +901,9 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (t2/delete! Dashboard :id (u/the-id response))))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))))
 
+(deftest copy-dashboard-test-3
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp [Collection source-coll {:name "Source collection"}
@@ -984,7 +987,11 @@
                     "Should preserve the titles of the original cards"))
               (testing "Should not deep-copy models"
                 (is (every? (comp false? :dataset) copied-cards)
-                    "Copied a model"))))))
+                    "Copied a model")))))))))
+
+(deftest copy-dashboard-test-4
+  (testing "Deep copy: POST /api/dashboard/:id/copy"
+    (mt/dataset sample-dataset
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Collection no-read-coll {:name "Crowberto lacks write coll"}
@@ -1062,7 +1069,11 @@
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
                   ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count)))))))))
+                  (is (= 2 (->> resp :uncopied count))))))))))))
+
+(deftest copy-dashboard-test-5
+  (testing "Deep copy: POST /api/dashboard/:id/copy"
+    (mt/dataset sample-dataset
       (testing "When source and destination are the same"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Dashboard  dashboard {:name          "Dashboard to be Copied"

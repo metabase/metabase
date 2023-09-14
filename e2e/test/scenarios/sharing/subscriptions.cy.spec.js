@@ -15,6 +15,7 @@ import {
   openEmailPage,
   setupSubscriptionWithRecipient,
   openPulseSubscription,
+  sendEmailAndVisitIt,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
@@ -173,7 +174,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           ).should("exist");
         });
 
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         openPulseSubscription();
 
         sidebar().findByText(nonUserEmail).should("not.exist");
@@ -207,7 +208,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           ).should("exist");
         });
 
-        openDashboardSubscriptions(1);
+        openDashboardSubscriptions();
         openPulseSubscription();
 
         sidebar().findByText(nonUserEmail).should("exist");
@@ -438,12 +439,52 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .as("subscriptionBar")
+          .findByText("Text is Corbin Mertz");
         clickButton("Done");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Corbin Mertz")
+          .click();
+
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text").next().findByText("Corbin Mertz");
+          cy.findByText("Text 1").should("not.exist");
+        });
+
+        // change default text to sallie
+        cy.visit(`/dashboard/1`);
+        cy.icon("pencil").click();
+        cy.findByTestId("edit-dashboard-parameters-widget-container")
+          .findByText("Text")
+          .click();
+        cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
+        popover()
+          .findByText("Corbin Mertz")
+          .closest("li")
+          .icon("close")
+          .click();
+        popover().find("input").type("Sallie");
+        popover().findByText("Sallie Flatley").click();
+        popover().contains("Update filter").click();
+        cy.button("Save").click();
+
+        // verify existing subscription shows new default in UI
+        openDashboardSubscriptions();
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Sallie Flatley")
+          .click();
+
+        // verify existing subscription show new default in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text").next().findByText("Sallie Flatley");
+          cy.findByText("Text 1").should("not.exist");
+        });
       });
     });
   });
@@ -495,8 +536,51 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is Corbin Mertz");
+        // verify defaults are listed correctly in UI
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Corbin Mertz")
+          .click();
+
+        // verify defaults are listed correctly in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text").next().findByText("Corbin Mertz");
+          cy.findByText("Text 1").should("not.exist");
+        });
+
+        // change default text to sallie
+        cy.visit(`/dashboard/1`);
+        cy.icon("pencil").click();
+        cy.findByTestId("edit-dashboard-parameters-widget-container")
+          .findByText("Text")
+          .click();
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .findByText("Corbin Mertz")
+          .click();
+        popover()
+          .findByText("Corbin Mertz")
+          .closest("li")
+          .icon("close")
+          .click();
+        popover().find("input").type("Sallie");
+        popover().findByText("Sallie Flatley").click();
+        popover().contains("Update filter").click();
+        cy.button("Save").click();
+
+        // verify existing subscription shows new default in UI
+        openDashboardSubscriptions();
+        cy.get("[aria-label='Pulse Card']")
+          .findByText("Text is Sallie Flatley")
+          .click();
+
+        // verify existing subscription show new default in email
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text").next().findByText("Sallie Flatley");
+          cy.findByText("Text 1").should("not.exist");
+        });
       });
 
       it("should allow for setting parameters in subscription", () => {
@@ -515,25 +599,38 @@ describe("scenarios > dashboard > subscriptions", () => {
         popover().findByText("Gizmo").click();
         popover().contains("Add filter").click();
 
-        cy.intercept("PUT", "/api/pulse/1").as("pulsePut");
+        cy.intercept("PUT", "/api/pulse/*").as("pulsePut");
 
         clickButton("Done");
         cy.wait("@pulsePut");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text is 2 selections and 1 more filter");
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .next("aside")
+          .findByText("Text is 2 selections and 1 more filter")
+          .click();
+
+        sendEmailAndVisitIt();
+        cy.get("table.header").within(() => {
+          cy.findByText("Text")
+            .next()
+            .findByText("Corbin Mertz and Bobby Kessler");
+          cy.findByText("Text 1").next().findByText("Gizmo");
+        });
       });
     });
   });
 });
 
 // Helper functions
-function openDashboardSubscriptions(dashboard_id = 1) {
+function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
   cy.findByLabelText("subscriptions").click();
 }
 
-function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {
+function assignRecipient({
+  user = admin,
+  dashboard_id = ORDERS_DASHBOARD_ID,
+} = {}) {
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")

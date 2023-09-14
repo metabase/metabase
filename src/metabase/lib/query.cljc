@@ -124,3 +124,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(mu/defn with-different-table :- ::lib.schema/query
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [original-query :- ::lib.schema/query
+   table-id :- [:or ::lib.schema.id/table :string]]
+  (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
+   (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
