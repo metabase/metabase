@@ -131,7 +131,8 @@
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
             :as   body} :body}]
-  {caveats            [:maybe ms/NonBlankString]
+  {id                 ms/PositiveInt
+   caveats            [:maybe ms/NonBlankString]
    description        [:maybe ms/NonBlankString]
    display_name       [:maybe ms/NonBlankString]
    fk_target_field_id [:maybe ms/PositiveInt]
@@ -193,6 +194,7 @@
 (api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
+  {id ms/PositiveInt}
   (let [field (api/read-check Field id)]
     [[:count     (metadata-queries/field-count field)]
      [:distincts (metadata-queries/field-distinct-count field)]]))
@@ -205,7 +207,7 @@
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
   {id                      ms/PositiveInt
    dimension-type          [:enum "internal" "external"]
-   dimension-name          [:enum ms/NonBlankString]
+   dimension-name          ms/NonBlankString
    human_readable_field_id [:maybe ms/PositiveInt]}
   (api/write-check Field id)
   (api/check (or (= dimension-type "internal")
@@ -316,7 +318,7 @@
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
   {id          ms/PositiveInt
-   value-pairs [:sequential [:tuple :any ms/NonBlankString]]}
+   value-pairs [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "

@@ -76,7 +76,8 @@
 (api/defendpoint PUT "/:id"
   "Update an existing `NativeQuerySnippet`."
   [id :as {{:keys [archived content description name collection_id] :as body} :body}]
-  {archived      [:maybe :boolean]
+  {id            ms/PositiveInt
+   archived      [:maybe :boolean]
    content       [:maybe :string]
    description   [:maybe :string]
    name          [:maybe native-query-snippet/NativeQuerySnippetName]

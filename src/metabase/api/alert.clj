@@ -163,7 +163,8 @@
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
-  {alert_condition  [:maybe pulse/AlertConditions]
+  {id               ms/PositiveInt
+   alert_condition  [:maybe pulse/AlertConditions]
    alert_first_only [:maybe :boolean]
    alert_above_goal [:maybe :boolean]
    card             [:maybe pulse/CardRef]

@@ -75,7 +75,7 @@
                             (not= arg 'body))]
              {arg nil})))
 
-(defn- malli-dox-for-schema
+(defn- dox-for-schema
   "Generate the docstring for `schema` for use in auto-generated API documentation."
   [schema route-str]
   (try (umd/describe schema)
@@ -96,7 +96,7 @@
         (:api-param-name schema))
       (name param-symb)))
 
-(defn- malli-format-route-schema-dox
+(defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
@@ -107,15 +107,15 @@
                    (for [[param-symb schema] param-symb->schema]
                      (format "*  **`%s`** %s"
                              (param-name param-symb schema)
-                             (malli-dox-for-schema schema route-str)))))))
+                             (dox-for-schema schema route-str)))))))
 
-(defn- malli-format-route-dox
+(defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
   (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" (u/add-period docstr)))
-       (malli-format-route-schema-dox param->schema route-str)))
+       (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
@@ -124,14 +124,14 @@
     (or (contains? body '(check-superuser))
         (contains? body '(api/check-superuser)))))
 
-(defn malli-route-dox
+(defn route-dox
   "Prints a markdown route doc for defendpoint"
   [method route docstr args param->schema body]
-  (malli-format-route-dox (endpoint-name method route)
-                          (str (u/add-period docstr) (when (contains-superuser-check? body)
-                                                       "\n\nYou must be a superuser to do this."))
-                          (merge (args-form-symbols args)
-                                 param->schema)))
+  (format-route-dox (endpoint-name method route)
+                    (str (u/add-period docstr) (when (contains-superuser-check? body)
+                                                 "\n\nYou must be a superuser to do this."))
+                    (merge (args-form-symbols args)
+                           param->schema)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
@@ -307,7 +307,7 @@
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn malli-validate-param
+(defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
   (when-not (mc/validate schema value)
@@ -320,11 +320,11 @@
                                            me/with-spell-checking
                                            (me/humanize {:wrap mu/humanize-include-value}))}}))))
 
-(defn malli-validate-params
-  "Generate a series of `malli-validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
+(defn validate-params
+  "Generate a series of `validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
   [param->schema]
   (for [[param schema] param->schema]
-    `(malli-validate-param '~param ~param ~schema)))
+    `(validate-param '~param ~param ~schema)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |

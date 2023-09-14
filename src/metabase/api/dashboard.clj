@@ -65,7 +65,7 @@
   *  `mine`     - Return Dashboards created by the current user.
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
-  {f [:maybe [:enun "all" "mine" "archived"]]}
+  {f [:maybe [:enum "all" "mine" "archived"]]}
   (let [dashboards (dashboards-list f)
         edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
@@ -935,17 +935,12 @@
               [:+ ms/IntGreaterThanOrEqualToZero]]
    filtering [:maybe [:or ms/IntGreaterThanOrEqualToZero
                       [:+ ms/IntGreaterThanOrEqualToZero]]]}
-  ;; parse IDs for filtered/filtering
-  (letfn [(parse-ids [s]
-            (set (cond
-                  (string? s)     [(Integer/parseUnsignedInt s)]
-                  (sequential? s) (map (fn [i] (Integer/parseUnsignedInt i)) s))))]
-    (let [filtered-field-ids  (parse-ids filtered)
-          filtering-field-ids (parse-ids filtering)]
-      (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
-        (api/read-check Field field-id))
-      (into {} (for [field-id filtered-field-ids]
-                 [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
+  (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
+        filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
+    (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
+      (api/read-check Field field-id))
+    (into {} (for [field-id filtered-field-ids]
+               [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
@@ -987,7 +982,10 @@
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
-  {parameters [:maybe [:sequential ParameterWithID]]}
+  {dashboard-id  ms/PositiveInt
+   dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   parameters    [:maybe [:sequential ParameterWithID]]}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body
@@ -1002,7 +1000,10 @@
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
-  {parameters    [:maybe ms/JSONString]
+  {dashboard-id  ms/PositiveInt
+   dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
@@ -1026,7 +1027,10 @@
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
-  {parameters [:maybe [:sequential ParameterWithID]]}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   card-id      ms/PositiveInt
+   parameters   [:maybe [:sequential ParameterWithID]]}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body

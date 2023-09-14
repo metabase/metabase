@@ -18,7 +18,7 @@
 
 (def Statuses
   "Schema of valid statuses"
-  (into [:enum] statuses))
+  [:maybe (into [:enum] statuses)])
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment

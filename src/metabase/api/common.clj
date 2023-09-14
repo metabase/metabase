@@ -9,8 +9,8 @@
    [metabase.api.common.internal
     :refer [add-route-param-schema
             auto-coerce
-            malli-route-dox
-            malli-validate-params
+            route-dox
+            validate-params
             route-fn-name
             wrap-response-if-needed]]
    [metabase.config :as config]
@@ -238,7 +238,7 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (malli-route-dox method route docstr args
+          docstr                                              (route-dox method route docstr args
                                                                                (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
                                                                                body)]
       ;; Don't i18n this, it's dev-facing only
@@ -314,7 +314,7 @@
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-coerce ~args ~arg->schema
-                                                ~@(malli-validate-params arg->schema)
+                                                ~@(validate-params arg->schema)
                                                 (wrap-response-if-needed
                                                  (do ~@body))))))))
 
@@ -326,7 +326,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(malli-validate-params arg->schema)
+                                     ~@(validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns

@@ -61,13 +61,14 @@
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
-  {name         ms/NonBlankString
+  {id           ms/PositiveInt
+   name         [:maybe ms/NonBlankString]
    description  [:maybe :string]
-   timestamp    ms/TemporalString
+   timestamp    [:maybe ms/TemporalString]
    time_matters [:maybe :boolean]
-   timezone     :string
+   timezone     [:maybe :string]
    icon         [:maybe timeline/Icons]
-   timeline_id  ms/PositiveInt
+   timeline_id  [:maybe ms/PositiveInt]
    archived     [:maybe :boolean]}
   (let [existing (api/write-check TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates

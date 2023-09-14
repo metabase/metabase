@@ -35,7 +35,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -507,7 +506,7 @@
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:sequential :map]]]]
+                [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :pulse-create (retrieve-pulse pulse-id))))
@@ -521,18 +520,18 @@
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :alert-create (retrieve-alert id))))
 
-(s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
+(mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
     :pulse_id (u/the-id notification-or-id)
     {:order-by [[:position :asc]]}))
 
-(s/defn ^:private card-refs-have-changed? :- s/Bool
-  [notification-or-id, new-card-refs :- [CardRef]]
+(mu/defn ^:private card-refs-have-changed? :- :boolean
+  [notification-or-id new-card-refs :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
-(s/defn ^:private update-notification-cards-if-changed! [notification-or-id new-card-refs]
+(mu/defn ^:private update-notification-cards-if-changed! [notification-or-id new-card-refs]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))
 
@@ -550,7 +549,7 @@
                     [:cards               {:optional true} [:sequential CoercibleToCardRef]]
                     [:channels            {:optional true} [:sequential :map]]
                     [:archived            {:optional true} boolean?]
-                    [:parameters          {:optional true} [:sequential :map]]]]
+                    [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (t2/update! Pulse (u/the-id notification)
     (u/select-keys-when notification
       :present [:collection_id :collection_position :archived]

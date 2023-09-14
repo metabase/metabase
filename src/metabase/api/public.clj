@@ -37,7 +37,6 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
@@ -186,9 +185,9 @@
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
-  {uuid       ms/UUIDString
+  {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
-   parameters [:maybe ms/JSONString]}
+   parameters    [:maybe ms/JSONString]}
   (run-query-for-card-with-public-uuid-async
    uuid
    export-format
@@ -289,8 +288,8 @@
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
   {uuid        ms/UUIDString
-   card-id     ms/PositiveInt
    dashcard-id ms/PositiveInt
+   card-id     ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
@@ -304,7 +303,8 @@
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
-  {dashcard-id ms/PositiveInt
+  {uuid        ms/UUIDString
+   dashcard-id ms/PositiveInt
    parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
@@ -482,20 +482,26 @@
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
   [uuid field-id search-field-id value limit]
-  {value ms/NonBlankString
-   limit [:maybe ms/IntStringGreaterThanZero]}
+  {uuid            ms/UUIDString
+   field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (validation/check-public-sharing-enabled)
   (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
-    (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
+    (search-card-fields card-id field-id search-field-id value limit)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id search-field-id value limit]
-  {value ms/NonBlankString
-   limit [:maybe ms/IntStringGreaterThanZero]}
+  {uuid            ms/UUIDString
+   field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
+    (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
 
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------

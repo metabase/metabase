@@ -27,11 +27,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -116,7 +113,7 @@
    collection_id       [:maybe ms/PositiveInt]
    collection_position [:maybe ms/PositiveInt]
    dashboard_id        [:maybe ms/PositiveInt]
-   parameters          [:sequential :map]}
+   parameters          [:maybe [:sequential :map]]}
   (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
@@ -174,13 +171,14 @@
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
-  {name          [:maybe su/NonBlankString]
+  {id            ms/PositiveInt
+   name          [:maybe ms/NonBlankString]
    cards         [:maybe [:+ pulse/CoercibleToCardRef]]
    channels      [:maybe [:+ :map]]
    skip_if_empty [:maybe :boolean]
    collection_id [:maybe ms/PositiveInt]
    archived      [:maybe :boolean]
-   parameters    [:sequential su/Map]}
+   parameters    [:maybe [:sequential ms/Map]]}
   ;; do various perms checks
   (try
    (validation/check-has-application-permission :monitoring)

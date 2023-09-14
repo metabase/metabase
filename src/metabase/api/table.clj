@@ -345,7 +345,8 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields    [:maybe ms/BooleanValue]
+  {id                          ms/PositiveInt
+   include_sensitive_fields    [:maybe ms/BooleanValue]
    include_hidden_fields       [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]}
   (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
@@ -416,9 +417,11 @@
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                       :collection_id :database_id]
-                                         :id id)
+  {id ms/PositiveInt}
+  (let [{:keys [database_id] :as card} (api/check-404
+                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                        :collection_id :database_id]
+                                                       :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
                                                              :where    [:and
@@ -439,7 +442,8 @@
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  []
+  [id]
+  {id ms/PositiveInt}
   []) ; return empty array
 
 (api/defendpoint GET "/:id/fks"

@@ -78,7 +78,8 @@
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
                    show_in_getting_started]
             :as   body} :body}]
-  {name                    [:maybe ms/NonBlankString]
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
    definition              [:maybe :map]
    revision_message        ms/NonBlankString
    archived                [:maybe :boolean]

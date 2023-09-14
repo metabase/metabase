@@ -400,10 +400,11 @@
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {email                  [:maybe ms/Email]
+  {id                     ms/PositiveInt
+   email                  [:maybe ms/Email]
    first_name             [:maybe ms/NonBlankString]
    last_name              [:maybe ms/NonBlankString]
-   user_group_memberships [:maybe [user/UserGroupMembership]]
+   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
    is_superuser           [:maybe :boolean]
    is_group_manager       [:maybe :boolean]
    login_attributes       [:maybe user/LoginAttributes]
@@ -506,7 +507,7 @@
 (api/defendpoint DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
-  {id       ms/PositiveInt}
+  {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
@@ -519,7 +520,7 @@
 (api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
-  {id       ms/PositiveInt}
+  {id ms/PositiveInt}
   (check-self-or-superuser id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}

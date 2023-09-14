@@ -292,12 +292,13 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
-   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
-   :email                                  su/Email
-   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
-   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
+  [:map
+   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
+   [:email                             ms/Email]
+   [:password         {:optional true} [:maybe ms/NonBlankString]]
+   [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
 
 (def DefaultUser
   "Standard form of a user (for consumption by the frontend and such)"
@@ -313,11 +314,11 @@
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  {:email      su/Email
-   :first_name (schema/maybe su/NonBlankString)
-   schema/Any  schema/Any})
+  [:map
+   [:email      ms/Email]
+   [:first_name [:maybe ms/NonBlankString]]])
 
-(schema/defn ^:private insert-new-user!
+(mu/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -328,14 +329,14 @@
   [new-user]
   (insert-new-user! new-user))
 
-(schema/defn create-and-invite-user!
+(mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
+  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(schema/defn create-new-google-auth-user!
+(mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -345,7 +346,7 @@
       (classloader/require 'metabase.email.messages)
       ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
-(schema/defn create-new-ldap-auth-user!
+(mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]

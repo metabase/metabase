@@ -89,7 +89,8 @@
   [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
                    points_of_interest show_in_getting_started]
             :as   body} :body}]
-  {name                    [:maybe ms/NonBlankString]
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
    definition              [:maybe :map]
    revision_message        ms/NonBlankString
    archived                [:maybe :boolean]
@@ -97,14 +98,15 @@
    description             [:maybe :string]
    how_is_this_calculated  [:maybe :string]
    points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :string]}
+   show_in_getting_started [:maybe :boolean]}
   (write-check-and-update-metric! id body))
 
 (api/defendpoint PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
-  {important_field_ids [:sequential ms/PositiveInt]}
+  {id                  ms/PositiveInt
+   important_field_ids [:sequential ms/PositiveInt]}
   (api/check-superuser)
   (api/write-check Metric id)
   (api/check (<= (count important_field_ids) 3)
