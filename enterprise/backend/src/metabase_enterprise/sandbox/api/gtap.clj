@@ -49,7 +49,8 @@
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
-  {card_id              [:maybe ms/PositiveInt]
+  {id                   ms/PositiveInt
+   card_id              [:maybe ms/PositiveInt]
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
