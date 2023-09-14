@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
+   (java.util List)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
    (liquibase.changelog ChangeLogIterator ChangeLogHistoryServiceFactory)
    (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)
@@ -176,16 +177,16 @@
     (let [change-log         (.getDatabaseChangeLog liquibase)
           database           (.getDatabase liquibase)
           update-visitor     (UpdateVisitor. database nil)
-          change-set-filter  (reify ChangeSetFilter
-                               (accepts [this change-set]
-                                 (let [id      (.getId change-set)
-                                       accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
-                                   (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
-                                               id start-id end-id
-                                               (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
-                                               accept?)
-                                   (ChangeSetFilterResult. accept? "decision according to range" (class this)))))
-          log-iterator       (ChangeLogIterator. change-log (into-array ChangeSetFilter [change-set-filter]))
+          change-set-filters [(reify ChangeSetFilter
+                                (accepts [this change-set]
+                                  (let [id      (.getId change-set)
+                                        accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
+                                    (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                                id start-id end-id
+                                                (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                                accept?)
+                                    (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
+          log-iterator       (ChangeLogIterator. change-log ^List change-set-filters)
           runtime-env        (RuntimeEnvironment. database (Contexts.) nil)
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
       (run-in-scope
