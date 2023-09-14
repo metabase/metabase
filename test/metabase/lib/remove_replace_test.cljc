@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -26,19 +27,20 @@
                   (lib/order-bys))))))
 
 (deftest ^:parallel remove-clause-filters-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-                  (lib/filter (lib/= (meta/field-metadata :venues :name) "x")))
-        filters (lib/filters query)]
-    (is (= 2 (count filters)))
-    (is (= 1 (-> query
-                 (lib/remove-clause (first filters))
-                 (lib/filters)
-                 count)))
-    (is (nil? (-> query
-                  (lib/remove-clause (first filters))
-                  (lib/remove-clause (second filters))
-                  (lib/filters))))))
+  (lib.tu.macros/with-testing-against-standard-queries query
+    (let [query (-> query
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                    (lib/filter (lib/= (meta/field-metadata :venues :name) "x")))
+          filters (lib/filters query)]
+      (is (= 2 (count filters)))
+      (is (= 1 (-> query
+                   (lib/remove-clause (first filters))
+                   (lib/filters)
+                   count)))
+      (is (nil? (-> query
+                    (lib/remove-clause (first filters))
+                    (lib/remove-clause (second filters))
+                    (lib/filters)))))))
 
 (deftest ^:parallel remove-clause-join-conditions-test
   (let [query (-> lib.tu/venues-query
