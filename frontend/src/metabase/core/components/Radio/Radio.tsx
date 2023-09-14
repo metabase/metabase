@@ -55,7 +55,10 @@ export interface RadioOption<TValue> {
   value: TValue;
 }
 
-const Radio = forwardRef(function Radio<TValue, TOption = RadioOption<TValue>>(
+const BaseRadio = forwardRef(function Radio<
+  TValue,
+  TOption = RadioOption<TValue>,
+>(
   {
     name,
     value,
@@ -205,8 +208,10 @@ function isDefaultOption<TValue>(
   return typeof option === "object";
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Radio, {
+/**
+ * @deprecated: use Radio from "metabase/ui"
+ */
+const Radio = Object.assign(BaseRadio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
   RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
   RadioLabelText: RadioLabelText,
@@ -216,3 +221,6 @@ export default Object.assign(Radio, {
     RadioContainerUnderlined,
   ],
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Radio;

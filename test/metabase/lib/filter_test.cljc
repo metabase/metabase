@@ -1,14 +1,15 @@
 (ns metabase.lib.filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -296,6 +297,12 @@
       (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
               filter-clause)))))
 
+(deftest ^:parallel filter-clause-support-keywords-and-strings-test
+  (are [tag] (=? [:= {} [:field {} (meta/id :venues :id)] 1]
+                 (lib/filter-clause tag (meta/field-metadata :venues :id) 1))
+    :=
+    "="))
+
 (deftest ^:parallel filter-operator-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
@@ -319,34 +326,6 @@
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
         (is (= op
                (lib/filter-operator query filter-clause)))))))
-
-(deftest ^:parallel filter-parts-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :user-id)
-                                                   (meta/field-metadata :users :id))])
-                                (lib/with-join-fields :all)))
-                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
-                                                 [(lib/=
-                                                   (meta/field-metadata :checkins :venue-id)
-                                                   (meta/field-metadata :venues :id))])
-                                (lib/with-join-fields :all))))]
-    (doseq [col (lib/filterable-columns query)
-            op (lib/filterable-column-operators col)
-            :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col 123 456)
-                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
-                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
-                                  :inside (lib/filter-clause op col 12 34 56 78 90)
-                                  (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (lib.types.isa/field-type col))
-        (is (=? {:lib/type :mbql/filter-parts
-                 :operator op
-                 :column {:lib/type :metadata/column
-                          :operators (comp vector? not-empty)}
-                 :args vector?}
-                (lib/filter-parts query filter-clause)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
@@ -389,11 +368,15 @@
                                             (first (lib/filterable-column-operators expr-col))
                                             expr-col
                                             (meta/field-metadata :users :last-login))))
-          filter-clauses (lib/filters query)]
+          filter-clauses  (lib/filters query)]
       (testing "existing clauses"
-        (doseq [filter-clause filter-clauses]
-          (is (= filter-clause
-                 (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
+        (doseq [filter-clause filter-clauses
+                :let          [legacy-clause (lib.convert/->legacy-MBQL filter-clause)]
+                legacy-clause [legacy-clause
+                               (update legacy-clause 0 u/qualified-name)]]
+          (testing (pr-str legacy-clause)
+            (is (= filter-clause
+                   (lib/find-filter-for-legacy-filter query legacy-clause))))))
       (testing "missing clause"
         (let [filter-clause (assoc first-filter 2 43)]
           (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
@@ -404,3 +387,16 @@
           (is (thrown-with-msg?
                #?(:clj Exception :cljs :default) #"Multiple matching filters found"
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
+
+(deftest ^:parallel find-filterable-column-for-legacy-ref-test
+  (let [query (lib/filter lib.tu/venues-query (lib/= (meta/field-metadata :venues :name) "BBQ"))]
+    (are [legacy-ref] (=? {:name      "NAME"
+                           :id        (meta/id :venues :name)
+                           :operators seq}
+                          (lib/find-filterable-column-for-legacy-ref query legacy-ref))
+      [:field (meta/id :venues :name) nil]
+      [:field (meta/id :venues :name) {}]
+      ["field" (meta/id :venues :name) nil]
+      #?@(:cljs
+          [#js ["field" (meta/id :venues :name) nil]
+           #js ["field" (meta/id :venues :name) #js {}]]))))

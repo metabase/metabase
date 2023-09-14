@@ -75,27 +75,51 @@
              (secret/get-secret-string
               {:secret-prop-id      id
                :secret-prop-options "uploaded"}
-              "secret-prop")))))
+              "secret-prop")))
+      (testing "but prefer value if both value and id are given (#33452)"
+        (are [value] (= "psszt!"
+                        (secret/get-secret-string
+                         {:secret-prop-id      id
+                          :secret-prop-value   value
+                          :secret-prop-options "uploaded"}
+                         "secret-prop"))
+          "psszt!"
+          (.getBytes "psszt!" "UTF-8")
+          (let [encoder (java.util.Base64/getEncoder)]
+            (str "data:application/octet-stream;base64,"
+                 (.encodeToString encoder
+                                  (.getBytes "psszt!" "UTF-8"))))))))
 
-  (mt/with-temp-file [file "-key.pem"]
-    (spit file "titok")
-    (testing "get-secret-string from local file in value"
-      (is (= "titok"
-             (secret/get-secret-string
-              {:secret-prop-path    file
-               :secret-prop-options "local"}
-              "secret-prop"))))
+  (testing "get-secret-string from local file"
+    (mt/with-temp-file [file-db "-1-key.pem"
+                        file-value "-2-key.pem"]
+      (spit file-db "titok")
+      (spit file-value "psszt!")
 
-    (testing "get-secret-string from local file in the database"
-      (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
-                                                :kind       ::secret/pem-cert
-                                                :value      file
-                                                :creator_id (mt/user->id :crowberto)}]
+      (testing "from value"
         (is (= "titok"
                (secret/get-secret-string
-                {:secret-prop-id      id
+                {:secret-prop-path    file-db
                  :secret-prop-options "local"}
-                "secret-prop")))))))
+                "secret-prop"))))
+
+      (testing "from the database"
+        (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
+                                                  :kind       ::secret/pem-cert
+                                                  :value      file-db
+                                                  :creator_id (mt/user->id :crowberto)}]
+          (is (= "titok"
+                 (secret/get-secret-string
+                  {:secret-prop-id      id
+                   :secret-prop-options "local"}
+                  "secret-prop")))
+          (testing "but prefer value if both value and id are given (#33452)"
+            (is (= "psszt!"
+                   (secret/get-secret-string
+                    {:secret-prop-id      id
+                     :secret-prop-value   file-value
+                     :secret-prop-options "local"}
+                    "secret-prop")))))))))
 
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
