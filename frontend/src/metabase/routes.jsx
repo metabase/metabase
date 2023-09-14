@@ -85,6 +85,7 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
+import { Playground } from "metabase/ui/Playground";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -95,6 +96,7 @@ import {
 
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
+    <Route path="playground" component={Playground} />
     {/* SETUP */}
     <Route
       path="/setup"
