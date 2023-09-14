@@ -194,10 +194,9 @@
          (let [^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)]
            (.waitForLock lock-service)
            (try
-             ;; this has the side effect of initializing checksums the way the production
-             ;; migrations work
+             ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
+             ;; and initializing checksums so that they match the ones generated in production.
              (.listUnrunChangeSets liquibase nil (LabelExpression.))
-             (.init change-log-service)
              (.generateDeploymentId change-log-service)
              (.run ^ChangeLogIterator log-iterator update-visitor runtime-env)
              (finally
