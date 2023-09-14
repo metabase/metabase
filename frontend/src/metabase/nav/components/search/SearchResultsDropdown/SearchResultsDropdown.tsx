@@ -1,9 +1,9 @@
 import { jt } from "ttag";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import type { SearchResults as SearchResultsType } from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+import type { SearchResultsProps } from "metabase/nav/components/search/SearchResults/SearchResults";
 import {
   SearchDropdownFooter,
   SearchResultsContainer,
@@ -20,7 +20,7 @@ export const SearchResultsDropdown = ({
   onSearchItemSelect,
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
-  const renderFooter = (metadata: Omit<SearchResultsType, "data">) =>
+  const renderFooter: SearchResultsProps["footerComponent"] = metadata =>
     metadata.total > 0 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
@@ -47,7 +47,7 @@ export const SearchResultsDropdown = ({
       <SearchResults
         searchText={searchText.trim()}
         onEntitySelect={onSearchItemSelect}
-        footer={renderFooter}
+        footerComponent={renderFooter}
       />
     </SearchResultsContainer>
   );

@@ -48,7 +48,7 @@ const setup = async ({
           onEntitySelect={onEntitySelect}
           forceEntitySelect={forceEntitySelect}
           searchText={searchText}
-          footer={footer}
+          footerComponent={footer}
         />
       )}
     />,

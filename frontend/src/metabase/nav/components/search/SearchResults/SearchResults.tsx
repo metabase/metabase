@@ -24,13 +24,13 @@ import {
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 
-type SearchResultsProps = {
+export type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
   models?: SearchModelType[];
-  footer?:
+  footerComponent?:
     | ((metadata: Omit<SearchResultsType, "data">) => JSX.Element | null)
     | null;
 };
@@ -41,7 +41,7 @@ export const SearchResults = ({
   searchText,
   searchFilters = {},
   models,
-  footer,
+  footerComponent,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
@@ -90,7 +90,7 @@ export const SearchResults = ({
   }, [searchText, reset]);
 
   const hasResults = list.length > 0;
-  const showFooter = hasResults && footer && metadata;
+  const showFooter = hasResults && footerComponent && metadata;
 
   if (isLoading) {
     return (
@@ -133,7 +133,7 @@ export const SearchResults = ({
           </EmptyStateContainer>
         )}
       </SearchResultsList>
-      {showFooter && footer(metadata)}
+      {showFooter && footerComponent(metadata)}
     </>
   );
 };
