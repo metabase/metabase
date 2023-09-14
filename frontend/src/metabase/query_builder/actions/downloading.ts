@@ -68,9 +68,7 @@ const getDatasetParams = ({
   if (isSecureDashboardEmbedding) {
     return {
       method: "GET",
-      url: Urls.getURLIncludingSubpath(
-        `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      ),
+      url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
       params: new URLSearchParams(Urls.extractQueryParams(params)),
     };
   }
@@ -79,9 +77,7 @@ const getDatasetParams = ({
   if (isDashboard) {
     return {
       method: "POST",
-      url: Urls.getURLIncludingSubpath(
-        `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-      ),
+      url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
@@ -114,7 +110,7 @@ const getDatasetParams = ({
   if (isSavedQuery) {
     return {
       method: "POST",
-      url: Urls.getURLIncludingSubpath(`/api/card/${cardId}/query/${type}`),
+      url: `/api/card/${cardId}/query/${type}`,
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
@@ -122,7 +118,7 @@ const getDatasetParams = ({
   }
 
   return {
-    url: Urls.getURLIncludingSubpath(`/api/dataset/${type}`),
+    url: `/api/dataset/${type}`,
     method: "POST",
     params: new URLSearchParams({
       query: JSON.stringify(_.omit(result?.json_query ?? {}, "constraints")),
@@ -131,15 +127,20 @@ const getDatasetParams = ({
   };
 };
 
+// remove trailing slash
+const BASENAME = (window.MetabaseRoot ?? "").replace(/\/+$/, "");
+
 const getDatasetResponse = ({
   url,
   method,
   params,
 }: DownloadQueryResultsParams) => {
+  const requestUrl = new URL(BASENAME + url, location.origin);
+
   if (method === "POST") {
-    return fetch(url, { method, body: params });
+    return fetch(requestUrl.href, { method, body: params });
   } else {
-    return fetch(`${url}?${params}`);
+    return fetch(`${requestUrl.href}?${params}`);
   }
 };
 

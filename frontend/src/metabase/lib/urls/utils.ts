@@ -1,5 +1,3 @@
-import MetabaseSettings from "metabase/lib/settings";
-
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
 }
@@ -18,22 +16,4 @@ function flattenParam([key, value]: [string, unknown]) {
 
 export function extractQueryParams(query: Record<string, unknown>) {
   return Object.entries(query).map(flattenParam).flat();
-}
-
-export function getURLIncludingSubpath(path: string) {
-  const siteURL = trimLastSlash(MetabaseSettings.get("site-url") ?? "");
-
-  if (siteURL && isSubpath(siteURL)) {
-    return `${siteURL}${path}`;
-  }
-
-  return path;
-}
-
-export function isSubpath(url: string) {
-  return new URL(url).origin !== trimLastSlash(url);
-}
-
-export function trimLastSlash(url: string) {
-  return url.replace(/\/+$/, "");
 }
