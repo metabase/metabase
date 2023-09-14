@@ -221,20 +221,20 @@
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false})))
 
-  (is (= {:errors {:channels "sequence of map"} :specific-errors {:channels ["invalid type, received: nil"]}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels ["invalid type, received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
                                     :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}})))
 
-  (is (= {:errors {:channels "sequence of map"} :specific-errors {:channels ["invalid type, received: \"foobar\""]}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels ["invalid type, received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
                                     :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                     :channels         "foobar"})))
 
-  (is (= {:errors {:channels "sequence of map"} :specific-errors {:channels [["invalid type, received: \"abc\""]]}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels [["invalid type, received: \"abc\""]]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
@@ -430,7 +430,7 @@
                                      :alert_first_only false
                                      :card             "foobar"})))
 
-  (is (= {:errors {:channels "nullable sequence of map"}
+  (is (= {:errors {:channels "nullable one or more map"}
           :specific-errors {:channels ["invalid type, received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
@@ -438,7 +438,7 @@
                                      :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                      :channels         "foobar"})))
 
-  (is (= {:errors {:channels "nullable sequence of map"}
+  (is (= {:errors {:channels "nullable one or more map"}
           :specific-errors {:channels [["invalid type, received: \"abc\""]]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:name             "abc"

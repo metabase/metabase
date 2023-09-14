@@ -95,5 +95,5 @@
 ;;
 ;; TODO - defining the `check-superuser` check *here* means the API documentation function won't pick up on the "this
 ;; requires a superuser" stuff since it parses the `defendpoint` body to look for a call to `check-superuser`. I
-;; suppose this doesn't matter ` body since this i{:optional true}s an enterprise endpoint and won't go in the dox anyway.
+;; suppose this doesn't matter (much) body since this is an enterprise endpoint and won't go in the dox anyway.
 (api/define-routes api/+check-superuser +check-sandboxes-enabled)

@@ -138,7 +138,7 @@
    alert_first_only :boolean
    alert_above_goal [:maybe :boolean]
    card             pulse/CardRef
-   channels         [:sequential :map]}
+   channels         [:+ :map]}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check Card (u/the-id card))
@@ -168,7 +168,7 @@
    alert_first_only [:maybe :boolean]
    alert_above_goal [:maybe :boolean]
    card             [:maybe pulse/CardRef]
-   channels         [:maybe [:sequential [:map]]]
+   channels         [:maybe [:+ [:map]]]
    archived         [:maybe :boolean]}
   (try
    (validation/check-has-application-permission :monitoring)

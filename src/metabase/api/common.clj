@@ -228,7 +228,7 @@
    :arg->schema (s/? (s/map-of symbol? any?)) ;; any? is either a plumatic or malli schema
    :body        (s/* any?)))
 
-(defn- malli-parse-defendpoint-args [args]
+(defn- parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
@@ -311,7 +311,7 @@
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-coerce ~args ~arg->schema
                                                 ~@(validate-params arg->schema)
@@ -322,7 +322,7 @@
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
