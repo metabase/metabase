@@ -3,7 +3,7 @@ import { normalize } from "normalizr";
 
 import { createSelector } from "@reduxjs/toolkit";
 import { createEntity } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls/browse";
 import { color } from "metabase/lib/colors";
 import {
   fetchData,

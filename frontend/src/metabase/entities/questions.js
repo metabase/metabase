@@ -16,7 +16,7 @@ import Collections, {
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
+} from "metabase/query_builder/actions/core/core";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";

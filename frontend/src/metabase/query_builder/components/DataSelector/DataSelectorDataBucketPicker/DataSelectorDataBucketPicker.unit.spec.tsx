@@ -1,4 +1,3 @@
-import "metabase/query_builder/actions/core/core";
 import { render, screen } from "@testing-library/react";
 
 import type { DataTypeInfoItem } from "metabase/containers/DataPicker";
