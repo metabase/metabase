@@ -11,7 +11,7 @@ import {
   withNormalize,
 } from "metabase/lib/redux";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls/questions";
 import { color } from "metabase/lib/colors";
 
 import { MetabaseApi } from "metabase/services";

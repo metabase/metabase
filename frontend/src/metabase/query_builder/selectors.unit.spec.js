@@ -1,3 +1,4 @@
+import "metabase/query_builder/actions/core";
 import { assoc, assocIn } from "icepick";
 import {
   getQuestion,

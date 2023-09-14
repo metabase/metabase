@@ -70,7 +70,8 @@ const MAX_SEARCH_RESULTS = 100;
 
 const mapDispatchToProps = {
   addRemappings,
-  fetchFieldValues: Fields.objectActions.fetchFieldValues,
+  fetchFieldValues: (...args: any) =>
+    Fields.objectActions.fetchFieldValues(...args),
   fetchParameterValues,
   fetchCardParameterValues,
   fetchDashboardParameterValues,
