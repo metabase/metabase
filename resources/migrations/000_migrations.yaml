@@ -2737,6 +2737,7 @@ databaseChangeLog:
             newDataType: TEXT
         - addNotNullConstraint:
             tableName: setting
+            columnDataType: text
             columnName: value
       validCheckSum: 8:91b72167fca724e6b6a94b64f886cf09
   - changeSet:
