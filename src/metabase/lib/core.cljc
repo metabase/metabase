@@ -242,6 +242,7 @@
   native-extras
   with-native-extras
   with-different-database
+  has-write-permission
   extract-template-tags]
  [lib.order-by
   change-direction
