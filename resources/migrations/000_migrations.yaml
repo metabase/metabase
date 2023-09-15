@@ -5626,6 +5626,7 @@ databaseChangeLog:
   - changeSet:
       id: 98
       author: camsaul
+      validCheckSum: 8:f036d20a4dc86fb60ffb64ea838ed6b9
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
@@ -5656,6 +5657,7 @@ databaseChangeLog:
   - changeSet:
       id: 99
       author: camsaul
+      validCheckSum: 8:274bb516dd95b76c954b26084eed1dfe
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
@@ -8213,6 +8215,7 @@ databaseChangeLog:
   - changeSet:
       id: 282
       author: camsaul
+      validCheckSum: 8:d4b8566ee11d9f8a3d6c8c9539f6526d
       comment: Added 0.39.0
       changes:
         - sql:
@@ -8235,6 +8238,7 @@ databaseChangeLog:
   - changeSet:
       id: 283
       author: camsaul
+      validCheckSum: 8:2220e1b1cdb57212820b96fa3107f7c3
       comment: Added 0.39.0
       changes:
         - sql:
