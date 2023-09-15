@@ -6,9 +6,11 @@
 
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up.
-   
+
+   TODO: Remove, reuse, refine text between ---
+   --- 
    # On metrics expansion
-   
+
    Metrics clauses are represented in query as [:metric id], where id is integer greater than 0. Metric is defined 
    by its id, name, and definition that contains aggregation and possibly filter.
 
@@ -33,6 +35,7 @@
    Solution is designed so original query filter is `:and` merged with metrics filter. That implies the original query's
    source dataset will conitain at least all rows from metrics query dataset. Because of that, left join can be used
    to join metrics query rows.
+   ---
 
    # Metrics and joins
 
@@ -57,12 +60,66 @@
 
    Same holds for segments. Containing query's segments should get expanded before metric expansion takes place.
 
-   TODO
-   - describe why and how joins work
-   - describe picking name for column
-   - describe metrics query generation
-   - root query transformation
-   "
+   # Solution overview
+
+   This section contains descriptions of steps of the expansion as they follow.
+
+   ## Metrics are groupped by filters and generation of `metrics-query`s
+
+   Metrics are groupped by filters. [TODO For reasons why refer to metrics and filter section] For every group `metrics-query` is created. It is a sub query:
+   1. Filter of which is result of combining filters of containing (original) query and filter that is common for 
+      metrics group.
+   2. Breakout is the same as in containing (original) query.*
+   3. Aggregations are taken from metric definitions of the group.
+
+   * As metrics can be defined recursively, `metrics-query` can contain `:metric` clauses after the first round of
+     expansion. If that is the case, metrics are expanded further, hence final `:breakout` of `metrics-query` may be
+     different from breakout of containing (original) query. [TODO For details refer to...]
+
+   ### Rationale on combining filters
+
+   Not to confuse with groupping. [[mbql.u/combine-filter-clauses]] is used to combine containing (original) query's
+   filter with metrics group filter. `metrics-query` row set is same or smaller than of the containing (original)
+   query. That is taken advantage of when joining `metrics-query` back to the containing (original) query.
+
+   Alternative designs could involve giving user ability to choose which filters are applied to the metric - both, ony
+   metric filter or only containing (original) query filter. But that would require also FE modifications, that are 
+   out of the scope of this bug fix.
+
+   ## `metrics-query`s are joined to the containing (original) query
+
+   First question to naturally arise is how to model join conditions for the `metrics-query`. Original query breakout
+   fields are used in metrics queries. Because of that, every row of result of `metrics-query` contain unique
+   combination of breakout fields' values and columns with computed metrics aggregations. In sql terms, groupping and
+   aggregation functions are performed after joins. So while joining the `metrics-query` to the original query,
+   equality of original breakout fields in original query and in `metrics-query` is taken advantage of.
+
+   Join condition checks for the equality of breakout values in original query and `metrics-query`. So one row from
+   `metrics-query`, and its values of metrics columns, corresponds to the rows of original query with equivalent
+   breakout set.
+
+   Original query is then adjusted to use fields from joined `metrics-query`s instead of `:metric` clauses. More on
+   that in following sections.
+
+   ### Using left join operator
+
+   As explained in [### Rationale on combining filters] and [## `metrics-query`s are joined to the containing 
+   (original) query], it is guaranteed that every row of `metrics-query` result set will correspond to at least one
+   row of original query by its breakout. To phrase it differently, left join can be used because every row in
+   joined data (rhs) corresponds to at least one row in data that is being joined to (lhs), hence no results are
+   discarded.
+
+   This way, if some breakout combination is contained in original query's source data and is missing in 
+   `metrics-query`'s results because of more strict filtering, left join will result in NULL value field for this
+   breakout combination.
+
+   ## Transformation of original query
+
+   TBD
+
+   # Naming of metrics columns
+
+   TBD"
   (:require
    [clojure.walk :as walk]
    [malli.core :as mc]
