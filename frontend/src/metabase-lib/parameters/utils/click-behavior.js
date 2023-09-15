@@ -2,7 +2,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
+import { formatDateToRangeForParameter } from "metabase/lib/formatting/date";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
@@ -262,11 +262,17 @@ export function formatSourceForTarget(
         );
       }
     } else {
-      // If the target is a dimension or variable,, we serialize as a date to remove the timestamp.
+      // If the target is a dimension or variable, we serialize as a date to remove the timestamp.
       // TODO: provide better serialization for field filter widget types
-      return formatDateForParameterType(datum.value, "date/single");
+
+      if (["default", "day"].includes(datum.column.unit)) {
+        return formatDateForParameterType(datum.value, "date/single");
+      }
+
+      return formatDateToRangeForParameter(datum.value, datum.column.unit);
     }
   }
+
   return datum.value;
 }
 
@@ -275,6 +281,7 @@ function formatDateForParameterType(value, parameterType, unit) {
   if (!m.isValid()) {
     return String(value);
   }
+
   if (parameterType === "date/month-year") {
     return m.format("YYYY-MM");
   } else if (parameterType === "date/quarter-year") {
@@ -282,8 +289,9 @@ function formatDateForParameterType(value, parameterType, unit) {
   } else if (parameterType === "date/single") {
     return m.format("YYYY-MM-DD");
   } else if (parameterType === "date/all-options") {
-    return formatDateTimeForParameter(value, unit);
+    return formatDateToRangeForParameter(value, unit);
   }
+
   return value;
 }
 
