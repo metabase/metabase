@@ -26,6 +26,8 @@ describe("FileUploadStatus", () => {
         name: "Second Collection",
       }),
     ]);
+
+    fetchMock.get("path:/api/field/:id/values", {});
   });
 
   afterEach(() => {
