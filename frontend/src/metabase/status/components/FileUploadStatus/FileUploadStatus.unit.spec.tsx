@@ -5,8 +5,12 @@ import { Route } from "react-router";
 import { createMockUpload, createMockState } from "metabase-types/store/mocks";
 
 import { renderWithProviders } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockFieldValues,
+} from "metabase-types/api/mocks";
 import CollectionHeader from "metabase/collections/containers/CollectionHeader";
+import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import FileUploadStatus from "./FileUploadStatus";
 
 describe("FileUploadStatus", () => {
@@ -27,7 +31,9 @@ describe("FileUploadStatus", () => {
       }),
     ]);
 
-    fetchMock.get("path:/api/field/:id/values", {});
+    setupFieldValuesEndpoints(
+      createMockFieldValues({ field_id: secondCollectionId }),
+    );
   });
 
   afterEach(() => {
