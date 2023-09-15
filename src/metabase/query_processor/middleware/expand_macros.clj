@@ -39,9 +39,8 @@
 
    # Metrics and joins
 
-   Metrics, when created, are bound to specific database table, hence query that uses metric aggregations should not
-   contain any joins. Only joins in resulting query are internal [TODO link to section on that]. On the other hand,
-   query that conatins metric aggregations can be joined as any other query.
+   Metrics, when created, are bound to specific database table, hence query that uses metric aggregations should use
+   corresponding source table. Query can then contain any joins or be used as join source.
 
    # Metrics and \"groupped by\"
 
