@@ -48,6 +48,15 @@
    expected to have no `:breakout` set and it is up to query that is using the metrics to set `:breakout` that will be
    common for all metrics contained in that query.
 
+   # Metrics and filters or segments
+
+   Metric and query containing it can have `:filter` set. Those filters can differ. Query can contain multiple metrics
+   with a different filters. That implies metrics in one query could aggregate on a different sets of rows. This
+   problem is handled by groupping metrics by filters, computing common filter metrics value in sub query. [TODO Refer
+   this for further explanation].
+
+   Same holds for segments. Containing query's segments should get expanded before metric expansion takes place.
+
    TODO
    - describe why and how joins work
    - describe picking name for column
