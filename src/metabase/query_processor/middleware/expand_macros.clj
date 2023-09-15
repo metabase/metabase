@@ -337,6 +337,13 @@
    any unforseen circumstances."
   0)
 
+(def ^:private metrics-query-keys
+  "Keys that are copied from original query into metrics query.
+   `:source-query`, `:source-table` and `:filter` impact source data before aggregation. `:breakout` is also same as in
+   original query. `:breakout` or `:filter` could also contain expressions, so those are included too. `:joins` are
+   left out. Reasons are explained in namespace's docstring, section [# Metrics and joins]."
+  [:source-query :source-table :breakout :filter :expressions])
+
 (declare expand-metrics*)
 
 (mu/defn ^:private metrics-query :- mbql.s/MBQLQuery
@@ -346,8 +353,7 @@
         metrics-query-expanded-this-level
         (loop [[metric-info & ms] metric-infos
                index 0
-               query (-> (select-keys original-query
-                                      [:source-query :source-table :breakout :filter :joins :expressions])
+               query (-> (select-keys original-query metrics-query-keys)
                          (m/assoc-some :filter filter))]
           (if (some? metric-info)
             (recur ms (inc index) (-> query
