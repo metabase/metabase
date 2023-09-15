@@ -525,3 +525,46 @@
                                                  :filter [:< $category_id 6]})
                       (mt/formatted-rows [int int])))))))))
 
+;;;; TODO: Check correctness of results by comparing with equivalent aggregation query.
+;;;; TODO: Here make more tests for expansion rather then query execution.
+;;;; NOTE: Prev testing: Filter in query is correctly combined with segment filter in metric
+(deftest metric-with-segment-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+  (t2.with-temp/with-temp
+    [:model/Segment
+     {segment->2 :id}
+     {:definition (mt/$ids venues {:filter [:> $category_id 2]})}
+
+     :model/Segment
+     {segment-<6 :id}
+     {:definition (mt/$ids venues {:filter [:< $category_id 6]})}
+
+     :model/Metric
+     {metric-id :id}
+     {:name "venues, count"
+      :description "Metric doing count with no filtering."
+      :definition (mt/$ids venues {:source-table $$venues
+                                   :aggregation [[:count]]
+                                   :filter [:segment segment->2]})}]
+    (testing "Query with metric that uses segment returns expected results"
+      (testing "No query filter, No breakout"
+        (is (= [[92]]
+               (mt/rows (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]})))))
+      (testing "With segment query filter, No breakout"
+        (is (= [[11]]
+               (mt/rows (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
+                                                   :filter [:segment segment-<6]})))))
+      (testing "With segment query filter, with breakout"
+        (is (= [[2 nil] [3 2] [4 2] [5 7]]
+               (mt/rows (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
+                                                   :filter [:segment segment-<6]
+                                                   :breakout [$category_id]
+                                                   :order-by [[:asc $category_id]]
+                                                   :limit 5})))))
+      (testing "No query filter, with breakout"
+        (is (= [[2 nil] [3 2] [4 2] [5 7] [6 2]]
+               (mt/rows (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
+                                                   :breakout [$category_id]
+                                                   :order-by [[:asc $category_id]]
+                                                   :limit 5})))))))))
+
