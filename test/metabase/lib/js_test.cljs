@@ -88,20 +88,19 @@
            (js->clj extras)))))
 
 (deftest ^:parallel template-tags-test
-  (let [db                meta/database
-        metadata-provider (lib.tu/mock-metadata-provider {:snippets {"my snippet" {:snippet-id 19
-                                                                                   :content "where 1 = 1"}}})
-        snippets {"snippet: my snippet"
-                  {:type :snippet
-                   :name "snippet: my snippet",
-                   :id "fd5e96f7-08f8-486b-9919-b2ab72857db4",
-                   :display-name "Snippet: My Snippet",
-                   :snippet-name "my snippet",
-                   :snippet-id 1}}
-        query (lib.js/with-template-tags
-                (lib.js/native-query (:id db) metadata-provider "select * from foo {{snippet: my snippet}}")
-                (clj->js snippets))]
-    (is (= snippets
-           (get-in query [:stages 0 :template-tags])))
-    (is (test.js/= (clj->js snippets)
-                   (lib.js/template-tags query)))))
+  (testing "Snippets in template tags round trip correctly (#33546)"
+    (let [db meta/database
+          snippets {"snippet: my snippet"
+                    {:type :snippet
+                     :name "snippet: my snippet",
+                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4",
+                     :display-name "Snippet: My Snippet",
+                     :snippet-name "my snippet",
+                     :snippet-id 1}}
+          query (lib.js/with-template-tags
+                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                  (clj->js snippets))]
+      (is (= snippets
+             (get-in query [:stages 0 :template-tags])))
+      (is (test.js/= (clj->js snippets)
+                     (lib.js/template-tags query))))))
