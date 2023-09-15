@@ -602,6 +602,8 @@
 ;;; |                                                   MIDDLEWARE                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;;;; TODO?: Factor out following function? With current, and probably upcomming state of this module, I think it is 
+;;;;        redundant.
 (mu/defn ^:private expand-metrics-and-segments  :- mbql.s/Query
   "Expand the macros (`segment`, `metric`) in a `query`."
   [query  :- mbql.s/Query]
