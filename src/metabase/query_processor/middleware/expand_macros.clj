@@ -491,7 +491,9 @@
      :source-metadata metadatas}))
 
 (mu/defn expand-metrics :- mbql.s/Query
-  "Expand metric macros. Wrap in ordering query in case expansion would reorder result's fields. Expects expanded segments. We want to expand only if toplevel contained metrics. Qp presumably handles ordering somewhere deeper. TODO elaborate on this"
+  ;;;; TODO: Proper docstring!
+  "Expand metric macros. Expects expanded segments. If query contained metrics and expansion occured, query is wrapped
+   into ordering query. Details on that in namespace docstring."
   [query :- mbql.s/Query]
   (let [expanded (walk/postwalk
                   (fn [{:keys [source-query source-table condition]
@@ -500,8 +502,9 @@
                       (and (some some? [source-query source-table]) (nil? condition))
                       expand-metrics*))
                   (:query query))]
-    ;;;; actually here im interested in ordering only if ROOT query contained metrics. If metrics were
-    ;;;; used deeper no need for that.
+    ;;;; TODO: Condition should probably check whether query is modified, but ignoring source-query and joins. Metircs
+    ;;;;       could apper at deeper levels, but column ordering there is insignificant, as not presented to user and
+    ;;;;       upper level query uses sub query's results by some identifier (ie. column name) and not by column order.
     (if (= expanded (:query query))
       query
       (assoc query :query (into-ordering-query expanded)))))
