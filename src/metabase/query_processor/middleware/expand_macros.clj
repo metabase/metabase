@@ -491,6 +491,8 @@
         (update :breakout #(conj (vec %1) %2) field)
         (update ::orig-ag-index->clause assoc orig-ag-index [:breakout (+ (::orig-breakout-count query) moved-count)]))))
 
+;;;; TODO: removal of internal data, ::metric, ::metric-id->field
+;;;; TODO: order-by, limit
 (mu/defn ^:private transform-aggregations
   "1 replace metric with fields
    2 mention ordering problems handled in into-ordering-query
@@ -530,8 +532,18 @@
                  (update query ::orig-ag-index->clause assoc
                          orig-ag-index [:aggregation (- orig-ag-index moved-count)])))))
 
+(defn- metric-infos->metrics-queries
+  "Transforms metric info into metrics query. Groupping (partitioning in practice) of metrics is further described
+   in namespace docstring, section [# Metrics and filters or segments]."
+  [original-query metric-infos]
+  (->> metric-infos
+       (map (partial expand-and-combine-filters original-query))
+       (sort-by (comp :filter :definition))
+       (partition-by (comp :filter :definition))
+       (mapv (partial metrics-query original-query))))
+
 (mu/defn ^:private expand-metrics*
-  ""
+  "Recursively expand metrics."
   [query :- mbql.s/MBQLQuery]
   (when (= *expansion-depth* 41)
     (throw (ex-info (tru "Exceeded recursion limit for metric expansion.")
@@ -540,17 +552,10 @@
                      :depth *expansion-depth*})))
   (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
-    (let [metrics-queries (->> metric-infos
-                               (map (partial expand-and-combine-filters query))
-                               (sort-by (comp :filter :definition))
-                               (partition-by (comp :filter :definition))
-                               (map (partial metrics-query query)))]
-      ;;;; TODO: removal of internal data, ::metric, ::metric-id->field
-      ;;;; TODO: order-by, limit
-      (-> (reduce join-metrics-query query metrics-queries)
-          transform-aggregations
-          #_(doto (as-> $ (tap> ["after transform" $])))
-          #_remove-metric-metadata))
+    (->> metric-infos
+         (metric-infos->metrics-queries query)
+         (reduce join-metrics-query query)
+         (transform-aggregations))
     query))
 
 ;;;; TODO: Could this be simplified with use of options in metadata??? (that works only for fields..)
