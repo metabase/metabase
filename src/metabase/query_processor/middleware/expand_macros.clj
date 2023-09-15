@@ -368,6 +368,7 @@
 (defn- query->join-alias [query]
   (->> query :filter hash Integer/toHexString (str "metric__")))
 
+;;;; TODO: Refactor this, which fields and why? Should tackle while refactoring query transformations!
 (defn- remove-metric-metadata
   "Removes from ap-opts field options"
   [form]
