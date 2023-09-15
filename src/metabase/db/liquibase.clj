@@ -194,7 +194,9 @@
          log-iterator   (ChangeLogIterator. change-log change-set-filters)
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
          runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
-     (.run ^ChangeLogIterator log-iterator update-visitor runtime-env))))
+     (run-in-scope-locked
+      liquibase
+      #(.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
 
 (s/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
