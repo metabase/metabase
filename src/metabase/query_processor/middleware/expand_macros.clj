@@ -338,12 +338,13 @@
    any unforseen circumstances."
   0)
 
+;;;; TODO: Leave it in the back of your head for now. :source-query is redundant, :joins are necessary.
+;;;; TODO: Elaborate on why :limit and :order-by can be left out!
 (def ^:private metrics-query-keys
   "Keys that are copied from original query into metrics query.
-   `:source-query`, `:source-table` and `:filter` impact source data before aggregation. `:breakout` is also same as in
-   original query. `:breakout` or `:filter` could also contain expressions, so those are included too. `:joins` are
-   left out. Reasons are explained in namespace's docstring, section [# Metrics and joins]."
-  [:source-query :source-table :breakout :filter :expressions])
+   `:source-table`, `:joins and `:filter` impact source data before aggregation. `:breakout` is also same as in
+   original query. `:breakout` or `:filter` could also contain expressions, so those are included too."
+  [:source-table :joins :filter :breakout :expressions])
 
 (declare expand-metrics*)
 
@@ -537,8 +538,7 @@
                     {:type qp.error-type/invalid-query
                      :query query
                      :depth *expansion-depth*})))
-  (assert (empty? (mapcat metrics (vals (select-keys query [:joins :source-query]))))
-          "Joins or source query contains unexpanded metrics.")
+  (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
     (let [metrics-queries (->> metric-infos
                                (map (partial expand-and-combine-filters query))
@@ -584,10 +584,9 @@
    into ordering query. Details on that in namespace docstring."
   [query :- mbql.s/Query]
   (let [expanded (walk/postwalk
-                  (fn [{:keys [source-query source-table condition]
-                        :as form}]
+                  (fn [{:keys [source-table condition] :as form}]
                     (cond-> form
-                      (and (some some? [source-query source-table]) (nil? condition))
+                      (and (some? source-table) (nil? condition))
                       expand-metrics*))
                   (:query query))]
     ;;;; TODO: Condition should probably check whether query is modified, but ignoring source-query and joins. Metircs
