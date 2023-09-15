@@ -40,6 +40,14 @@
    contain any joins. Only joins in resulting query are internal [TODO link to section on that]. On the other hand,
    query that conatins metric aggregations can be joined as any other query.
 
+   # Metrics and \"groupped by\"
+
+   Even though interface for metric modelling contains \"groupped by\" column, there is no groupping functionality
+   in place as per [flamber's comment](https://discourse.metabase.com/t/cannot-use-grouped-by-in-metrics/11339/2).
+   Related issue can be found [here](https://github.com/metabase/metabase/issues/13167). Because of that, metric is
+   expected to have no `:breakout` set and it is up to query that is using the metrics to set `:breakout` that will be
+   common for all metrics contained in that query.
+
    TODO
    - describe why and how joins work
    - describe picking name for column
