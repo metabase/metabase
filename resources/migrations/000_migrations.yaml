@@ -12485,6 +12485,7 @@ databaseChangeLog:
       id: v45.00-032
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12517,6 +12518,7 @@ databaseChangeLog:
       id: v45.00-034
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12626,6 +12628,7 @@ databaseChangeLog:
       id: v45.00-038
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12658,6 +12661,7 @@ databaseChangeLog:
       id: v45.00-040
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
