@@ -8729,6 +8729,7 @@ databaseChangeLog:
       id: 312
       author: noahmoss
       comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
+      validCheckSum: 8:77ef89ba2e7bc19231d9364492091764
       changes:
         - sql:
             dbms: mariadb,mysql
@@ -8959,6 +8960,7 @@ databaseChangeLog:
       id: v42.00-001
       author: camsaul
       comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
+      validCheckSum: 8:9952153cbff16147bcb47b4a26e02089
       # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
       failOnError: false
       # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
@@ -12793,6 +12795,7 @@ databaseChangeLog:
       id: v45.00-049
       author: camsaul
       comment: Added 0.45.0 -- set Collection.created_at to User.date_joined for Personal Collections
+      validCheckSum: 8:df2097d176fad99c142c5dd75ce8a3db
       changes:
         - sql:
             dbms: postgresql
@@ -14852,6 +14855,7 @@ databaseChangeLog:
       id: v47.00-031
       author: qnkhuat
       comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24
+      validCheckSum: 8:ad9bdb62df65cf26a5a9892a82779ea7
       changes:
           # new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
           # new_col    = col + ((col + 1) // 3)
