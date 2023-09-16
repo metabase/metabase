@@ -391,6 +391,24 @@
                   [:field (or display_name name) {:base-type base_type}])
     breakout))
 
+;;;; TODO: Following code is super-hairy. Make it pleasure to read!
+;;;; TODO: Proper docstring!
+(defn metrics-query-join-condition
+  "Generate join condition used to join [[metrics-query]] into original query.
+   "
+  [join-alias joining-query metrics-query-metadata]
+  ;;;; TODO: When expressions are "pushed-down" join condition is not udpated correctly
+  (let [conditions (for [[orig-breakout-clause metrics-breakout-clause]
+                         (map vector
+                              (:breakout joining-query)
+                              (map (partial breakout->field metrics-query-metadata)
+                                   (:breakout joining-query)))]
+                     [:= orig-breakout-clause (mbql.u/update-field-options metrics-breakout-clause 
+                                                                           assoc :join-alias join-alias)])]
+    (cond (zero? (count conditions)) [:= 1 1]
+          (= 1 (count conditions)) (first conditions)
+          :else (into [:and] conditions))))
+
 (mu/defn ^:private metrics-join
   "`inner-query` = query into which `metrics-query` is joined.
    
@@ -407,13 +425,7 @@
                                    qp.add-source-metadata/mbql-source-query->metadata)]
     {:alias join-alias
      :strategy :left-join
-     :condition (let [conditions (-> (for [clause (:breakout query)
-                                           #_(map (partial breakout->field metrics-query-metadata)
-                                                  (:breakout query))]
-                                       [:= clause (mbql.u/update-field-options clause assoc :join-alias join-alias)]))]
-                  (cond (zero? (count conditions)) [:= 1 1]
-                        (= 1 (count conditions)) (first conditions)
-                        :else (apply vector :and conditions)))
+     :condition (metrics-query-join-condition join-alias query metrics-query-metadata)
      :source-query metrics-query
      :source-metadata metrics-query-metadata
      :fields :all}))

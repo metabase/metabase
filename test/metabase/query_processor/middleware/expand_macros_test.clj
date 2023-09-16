@@ -580,15 +580,15 @@
         :definition (mt/$ids venues {:source-table $$venues
                                      :aggregation [[:count]]})}]
       (testing "Query containing metrics and expressions returns correct results"
-        (testing ""
-          (is (= [[12 1] [12 2] [12 3] [12 4] [12 5]]
-                 ;; problem -- make this work tomorrow! I probably do not add expression to breakout...?
-                 @(def x (mt/rows (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]}
-                                                             :aggregation [[:metric metric-id]]
-                                                             :breakout [[:expression "cat+10"]]
-                                                             :order-by [[:asc $category_id]]
-                                                             :limit 5}))))))
-        (testing ""
+        (testing "Expression in breakout"
+          (is (= [[12 8] [13 2] [14 2] [15 7] [16 2]] ;; data ok
+                 (mt/rows (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]
+                                                                   "redundant expression" [:+ $category_id 111]}
+                                                     :aggregation [[:metric metric-id]]
+                                                     :breakout [[:expression "cat+10"]]
+                                                     :order-by [[:asc $category_id]]
+                                                     :limit 5})))))
+        (testing "Expression in breakout with other fields"
           (is (= [[2 12 8] [3 13 2] [4 14 2] [5 15 7] [6 16 2]] ;; data ok
                  @(def x (mt/rows (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]}
                                                              :aggregation [[:metric metric-id]]
