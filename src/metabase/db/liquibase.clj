@@ -15,7 +15,7 @@
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
-   (java.util List)
+   (java.util List Map)
    (liquibase Contexts LabelExpression Liquibase Scope Scope$Attr Scope$ScopedRunner RuntimeEnvironment)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
@@ -173,7 +173,7 @@
         ^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)
         scope-objects {(.name Scope$Attr/database) database
                        (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
-    (Scope/child ^java.util.Map scope-objects
+    (Scope/child ^Map scope-objects
                  (reify Scope$ScopedRunner
                    (run [_]
                      (.waitForLock lock-service)
@@ -219,24 +219,24 @@
     (let [change-log     (.getDatabaseChangeLog liquibase)
           fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
                                (.getChangeSets change-log))
-          exec-listener (proxy [AbstractChangeExecListener] []
-                          (willRun [^ChangeSet change-set _database-change-log _database _run-status]
-                            (when (instance? ChangeSet change-set)
-                              (log/info (format "Start executing migration with id %s" (.getId change-set)))))
+          exec-listener  (proxy [AbstractChangeExecListener] []
+                           (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                             (when (instance? ChangeSet change-set)
+                               (log/info (format "Start executing migration with id %s" (.getId change-set)))))
 
-                          (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
-                            (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+                           (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
+                             (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
 
-                          (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
-                            (when (instance? ChangeSet change-set)
-                              (condp = exec-type
-                                ChangeSet$ExecType/EXECUTED
-                                (log/info (u/format-color 'green "[SUCCESS]"))
+                           (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
+                             (when (instance? ChangeSet change-set)
+                               (condp = exec-type
+                                 ChangeSet$ExecType/EXECUTED
+                                 (log/info (u/format-color 'green "[SUCCESS]"))
 
-                                ChangeSet$ExecType/FAILED
-                                (log/error (u/format-color 'red "[ERROR]"))
+                                 ChangeSet$ExecType/FAILED
+                                 (log/error (u/format-color 'red "[ERROR]"))
 
-                                (log/info (format "[%s]" (.name exec-type)))))))]
+                                 (log/info (format "[%s]" (.name exec-type)))))))]
       (try
         (doseq [^ChangeSet change-set (.getChangeSets change-log)]
           (.setFailOnError change-set false))
