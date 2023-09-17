@@ -587,13 +587,14 @@
                      :depth *expansion-depth*})))
   (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
+    ;;;; TODO: Robust expressions handling!
     (-> metric-infos
         (->> (metric-infos->metrics-queries query))
         ;;;; TODO: join-metrics-queries -- with cleanup?
         (->> (reduce join-metrics-query query))
         (swap-metric-clauses)
+        (dissoc ::metric-id->field)
         (infer-ordered-clauses-for-fields)
-        ;;;; TODO: expressions!!! -- this is going to be a bit complex
         (update-aggregation-references)
         (adjust-aggregation-and-breakout))
     query))
