@@ -479,65 +479,89 @@
     (doto (t2/select :model/Metric :id [:in metrics-ids])
       (as-> $ (assert (= (count metrics-ids) (count $)) "Metric id and fetched metric model count mismatch.")))))
 
-(defn- one-and-only-metric?
-  "Used in [[update-aggregation-and-breakout]] to determine if aggregation becomes breakout during transformation.
-   That is the case if aggregation is just one metric, or just one metric wrapped in aggregation options, eg.
-   [:aggregation-options [:metric 10000] {:display-name \"x\"}]."
-  [ag]
-  (mbql.u/match-one ag
-                    [:metric _]
-                    (or (empty? &parents)
-                        (= [:aggregation-options] &parents))))
+(defn- swap-metric-clauses-in-aggregation
+  "Transform one aggregation.
+   Swap [:metric <id>] clauses for fields inside and aggregation. If aggregation contains just one metric returns
+   corresponding field clause."
+  [query ag]
+  (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second) distinct)
+        multiple-metrics? (some? other-metric-ids)
+        one-and-only-metric? (and (some? first-metric-id) (nil? other-metric-ids))]
+    (cond multiple-metrics?
+          (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))
 
-(defn into-breakout
-  "Transform `query` such that aggregation of `ag-index` is removed from `:aggregation`, transformed to field and moved
-   into `:breakout`. "
-  [query moved-count orig-ag-index]
-  (let [real-index (- orig-ag-index moved-count)
-        ag (get-in query [:aggregation real-index])
-        metric-id (mbql.u/match-one ag [:metric id] id)
-        field (get-in query [::metric-id->field metric-id])]
-    (-> query
-        (update :aggregation #(into (subvec (vec %1) 0 real-index) (subvec (vec %1) (inc real-index))))
-        (as-> $ (if (-> $ :aggregation empty?) (dissoc $ :aggregation) $))
-        (update :breakout #(conj (vec %1) %2) field)
-        (update ::orig-ag-index->clause assoc orig-ag-index [:breakout (+ (::orig-breakout-count query) moved-count)]))))
+          one-and-only-metric?
+          (get-in query [::metric-id->field first-metric-id])
 
-;;;; TODO: removal of internal data, ::metric, ::metric-id->field
-;;;; TODO: order-by, limit
-(mu/defn ^:private transform-aggregations
-  "1 replace metric with fields
-   2 mention ordering problems handled in into-ordering-query
-   3 update order-by to point to the right 'field' -- THIS IS TODO"
-  [original-query :- mbql.s/MBQLQuery]
-  (loop [[[orig-ag-index ag] & ags] (map vector (range) (:aggregation original-query))
-         moved-count 0
-         query (assoc original-query
-                      ::orig-breakout-count (-> original-query :breakout count))]
-    (cond (nil? ag)
-          query
+          :else
+          ag)))
 
-          (one-and-only-metric? ag)
-          (recur ags (inc moved-count) (into-breakout query moved-count orig-ag-index))
+(defn- swap-metric-clauses
+  ;;;; It is guaranteed that :aggregations are non-nil because query containing metrics must contain aggregation
+  ;;;; TODO: This should also do the cleanup of ::metric-id->field
+  ;;;; TODO: Nested partial looks weird!
+  [query]
+  (update query :aggregation (partial mapv (partial swap-metric-clauses-in-aggregation query))))
 
-          (some? (mbql.u/match ag [:metric _]))
-          (recur ags
-                 ;;;; TODO: here !!!
-                 (+ moved-count (-> (mbql.u/match (get-in query [:aggregation (- orig-ag-index moved-count)])
-                                      [:metric id])
-                                    distinct
-                                    count))
-                 (-> query
-                     (update ::orig-ag-index->clause assoc orig-ag-index [:aggregation (- orig-ag-index moved-count)])
-                     (mbql.u/replace-in [:aggregation (- orig-ag-index moved-count)]
-                                        [:metric id]
-                       (get-in query [::metric-id->field id]))
-                     ;;;; TODO: check if this is correct... it solves the expressions problem
-                     (update :breakout
-                             #(into (vec %1)
-                                    (mbql.u/match (get-in query [:aggregation (- orig-ag-index moved-count)])
-                                      [:metric id]
-                                      (get-in query [::metric-id->field id]))))))
+(defn- ordered-clauses-for-fields
+  [breakout-idx ag-idx [[type :as ag] & ags] acc]
+  (cond (nil? ag)
+        acc
+
+        ;;;; TODO: May there be anything else but field?
+        (= :field type)
+        (recur (inc breakout-idx) ag-idx ags (conj acc [:breakout breakout-idx]))
+
+        :else
+        (recur breakout-idx (inc ag-idx) ags (conj acc [:aggregation ag-idx]))))
+
+(defn- infer-ordered-clauses-for-fields
+  "Generate sequence containing ordered clauses of form [:breakout index] or [:aggregation idx]
+   Those are used to preserve original column order after [[transform-aggregations]].
+   "
+  ;;;; TODO: DOcstring, original breakout, aggregation with metrics transformed
+  ;;;; TODO: Add docsrting why is this key necessary and where it is to be used.
+  [query]
+  (let [clauses-from-orig-breakout (mapv #(vector :breakout %) (range (count (:breakout query))))
+        orig-breakout-count (count clauses-from-orig-breakout)]
+    (assoc query ::ordered-clauses-for-fields 
+           (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
+
+(defn- adjust-aggregation-and-breakout
+  ;;;; TODO: docstring, all fields from aggregation are to be moved to breakout
+  ;;;; TODO: Aggregation can be left empty, Breakout can be empty at also
+  [query]
+  (let [{:keys [aggregation breakout]}
+        (group-by (fn [[type]]
+                    (if (= :field type) :breakout :aggregation))
+                  (:aggregation query))]
+    ;;;; TODO: isn't implementation with cond-> cleaner?
+    (as-> query $
+        (if (seq aggregation)
+          (assoc $ :aggregation aggregation)
+          (dissoc $ :aggregation))
+        (if (seq breakout)
+          (update $ :breakout #(into (vec %1) %2) breakout)
+          $))))
+
+(defn- update-aggregation-references
+  ;;;; TODO: doc: expects ordred-clauses-for-fields
+  ;;;; TODO: references can be in order-bys and where else?
+  ;;;; TODO: ! expressions
+  [{breakout :breakout
+    ordered-clauses-for-fields ::ordered-clauses-for-fields
+    :as query}]
+  (let [ordered-ag-clauses (subvec ordered-clauses-for-fields (count breakout))
+        orig-ag-idx->breakout-idx (into {}
+                                        (map-indexed (fn [orig-ag-idx [_type breakout-idx]]
+                                                       [orig-ag-idx breakout-idx]))
+                                        ordered-ag-clauses)]
+    ;;;; TODO: references in places other than order-bys
+    (mbql.u/replace-in query [:order-by]
+      [:aggregation idx]
+      (if (contains? orig-ag-idx->breakout-idx idx)
+        [:breakout (orig-ag-idx->breakout-idx idx)]
+        &match))))
 
           :else
           (recur ags moved-count
@@ -564,10 +588,15 @@
                      :depth *expansion-depth*})))
   (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
-    (->> metric-infos
-         (metric-infos->metrics-queries query)
-         (reduce join-metrics-query query)
-         (transform-aggregations))
+    (-> metric-infos
+        (->> (metric-infos->metrics-queries query))
+        ;;;; TODO: join-metrics-queries -- with cleanup?
+        (->> (reduce join-metrics-query query))
+        (swap-metric-clauses)
+        (infer-ordered-clauses-for-fields)
+        ;;;; TODO: expressions!!! -- this is going to be a bit complex
+        (update-aggregation-references)
+        (adjust-aggregation-and-breakout))
     query))
 
 ;;;; TODO: Could this be simplified with use of options in metadata??? (that works only for fields..)
@@ -609,9 +638,10 @@
     ;;;; TODO: Condition should probably check whether query is modified, but ignoring source-query and joins. Metircs
     ;;;;       could apper at deeper levels, but column ordering there is insignificant, as not presented to user and
     ;;;;       upper level query uses sub query's results by some identifier (ie. column name) and not by column order.
-    (if (= expanded (:query query))
+    #_(if (= expanded (:query query))
       query
-      (assoc query :query (into-ordering-query expanded)))))
+      (assoc query :query (into-ordering-query expanded)))
+    (assoc query :query expanded)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIDDLEWARE                                                   |
