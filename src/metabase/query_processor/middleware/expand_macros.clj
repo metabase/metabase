@@ -604,20 +604,42 @@
     display-name :display_name}]
   [:field (or name display-name) {:base-type base-type}])
 
+(defn- clause->field
+  ;;;; TODO: docstring!
+  [{:keys [breakout] :as _query} metadatas [clause-type index]]
+  (case clause-type
+    :aggregation (metadata->field (metadatas index))
+    :breakout (breakout index)))
+
 (defn- maybe-wrap-in-ordering-query
   ;;;; TODO: doc, at this point, only `::ordered-clauses-for-fields` should be present and no other custom keys
-  [{{:keys [ordered-clauses-for-fields] :as inner-query} :query :as outer-query}]
+  [{ordered-clauses-for-fields ::ordered-clauses-for-fields :as inner-query}]
   (if (some? ordered-clauses-for-fields)
-    (let [inner-query* (dissoc inner-query ::ordered-clauses-for-fields)
-          metadatas (qp.add-source-metadata/mbql-source-query->metadata inner-query*)
-          ref->field (into {} (map (fn [{field-ref :field_ref :as metadata}]
-                                     [field-ref (metadata->field metadata)]))
-                           metadatas)]
-      (assoc outer-query :query
-             {:fields (mapv #(get ref->field %) ordered-clauses-for-fields)
-              :source-query inner-query*
-              :source-metadata metadatas}))
-    outer-query))
+    ;;;; TODO: current problem may be because of some keys that were not remove ---- TODO HERE cont
+    (do #_(tap> ["xix" inner-query])
+        (def ocff ordered-clauses-for-fields)
+        (doto (let [inner-query* @(def iq (remove-metric-metadata inner-query))
+                    #_(dissoc inner-query ::ordered-clauses-for-fields)
+                    ;;;; TODO: Following call does not like nameapced keys in field opts!
+                    metadatas @(def mm (qp.add-source-metadata/mbql-source-query->metadata inner-query*))]
+                {:fields (mapv (partial clause->field inner-query* metadatas) ordered-clauses-for-fields)
+                 :source-query inner-query*
+                 :source-metadata metadatas})
+          #_(as-> $ (tap> ["xix result" $]))))
+    inner-query))
+
+(comment
+  (def iq-x (remove-metric-metadata iq))
+  (qp.add-source-metadata/mbql-source-query->metadata iq-x)
+  (metabase.test/with-driver :h2
+    (metabase.test/with-everything-store
+      (qp.add-source-metadata/mbql-source-query->metadata iq-x)))
+  (maybe-wrap-in-ordering-query qqq)
+  rf
+  mm
+  (def qqq (-> @dev.nocommit.playground/taps (nth 11) second))
+  qqq
+  )
 
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
