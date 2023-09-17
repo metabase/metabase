@@ -599,30 +599,26 @@
         (adjust-aggregation-and-breakout))
     query))
 
-;;;; TODO: Could this be simplified with use of options in metadata??? (that works only for fields..)
-(mu/defn ^:private into-ordering-query
-  [{:keys [breakout aggregation]
-    ::keys [orig-ag-index->clause orig-breakout-count]
-    :as query} :- mbql.s/MBQLQuery]
-  #_(tap> ["into-ordering-query query" query])
-  query
-  (let [without-metric-metadata (remove-metric-metadata query)
-        metadatas @(def mm (qp.add-source-metadata/mbql-source-query->metadata without-metric-metadata))
-        fields (into []
-                     (comp cat
-                           ;;;; following maybe redundant -- done elsewhere... top level
-                           (map remove-metric-metadata))
-                     [(map (fn [{:keys [base_type name]}] [:field name {:base-type base_type}])
-                           (take orig-breakout-count metadatas))
-                      (reduce (fn [acc [_orig-ag-index [clause index]]]
-                                (conj acc (case clause
-                                            :breakout (nth breakout index)
-                                            :aggregation (ag-index->field query metadatas index :use-name? true))))
-                              []
-                              (sort orig-ag-index->clause))])]
-    {:fields fields
-     :source-query without-metric-metadata
-     :source-metadata metadatas}))
+(defn- metadata->field
+  [{base-type :base_type
+    name :name
+    display-name :display_name}]
+  [:field (or name display-name) {:base-type base-type}])
+
+(defn- maybe-wrap-in-ordering-query
+  ;;;; TODO: doc, at this point, only `::ordered-clauses-for-fields` should be present and no other custom keys
+  [{{:keys [ordered-clauses-for-fields] :as inner-query} :query :as outer-query}]
+  (if (some? ordered-clauses-for-fields)
+    (let [inner-query* (dissoc inner-query ::ordered-clauses-for-fields)
+          metadatas (qp.add-source-metadata/mbql-source-query->metadata inner-query*)
+          ref->field (into {} (map (fn [{field-ref :field_ref :as metadata}]
+                                     [field-ref (metadata->field metadata)]))
+                           metadatas)]
+      (assoc outer-query :query
+             {:fields (mapv #(get ref->field %) ordered-clauses-for-fields)
+              :source-query inner-query*
+              :source-metadata metadatas}))
+    outer-query))
 
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
