@@ -313,7 +313,7 @@
   (mbql.u/match-one aggregation
     [:aggregation-options [:metric examined-id] (opts :guard #(contains? % :display-name))]
     (when (= id examined-id)
-          (:display-name opts))))
+      (:display-name opts))))
 
 (mu/defn ^:private metric-info->aggregation :- mbql.s/Aggregation
   [query :- mbql.s/MBQLQuery
@@ -403,7 +403,7 @@
                               (:breakout joining-query)
                               (map (partial breakout->field metrics-query-metadata)
                                    (:breakout joining-query)))]
-                     [:= orig-breakout-clause (mbql.u/update-field-options metrics-breakout-clause 
+                     [:= orig-breakout-clause (mbql.u/update-field-options metrics-breakout-clause
                                                                            assoc :join-alias join-alias)])]
     (cond (zero? (count conditions)) [:= 1 1]
           (= 1 (count conditions)) (first conditions)
@@ -454,8 +454,7 @@
 (defn- join-metrics-query
   "Does actual join"
   [query metrics-query]
-  (let [{:keys [alias source-metadata source-query] :as join} (metrics-join query metrics-query)
-        {:keys [aggregation breakout]} source-query]
+  (let [{:keys [alias source-metadata source-query] :as join} (metrics-join query metrics-query)]
     (-> query
         (update :joins #(conj (vec %1) %2) (remove-metric-metadata join))
         (update ::metric-id->field merge (provides source-query source-metadata alias)))))
@@ -623,21 +622,20 @@
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
   "Expand metric macros. Expects expanded segments. If query contained metrics and expansion occured, query is wrapped
-   into ordering query. Details on that in namespace docstring."
-  [query :- mbql.s/Query]
-  (let [expanded (walk/postwalk
-                  (fn [{:keys [source-table condition] :as form}]
-                    (cond-> form
-                      (and (some? source-table) (nil? condition))
-                      expand-metrics*))
-                  (:query query))]
-    ;;;; TODO: Condition should probably check whether query is modified, but ignoring source-query and joins. Metircs
+   into ordering query. Details on that in namespace docstring.
+       ;;;; TODO: Condition should probably check whether query is modified, but ignoring source-query and joins. Metircs
     ;;;;       could apper at deeper levels, but column ordering there is insignificant, as not presented to user and
     ;;;;       upper level query uses sub query's results by some identifier (ie. column name) and not by column order.
-    #_(if (= expanded (:query query))
-      query
-      (assoc query :query (into-ordering-query expanded)))
-    (assoc query :query expanded)))
+   "
+  [{inner-query :query :as outer-query} :- mbql.s/Query]
+  (-> outer-query
+      (assoc :query (walk/postwalk
+                     (fn [{:keys [source-table condition] :as form}]
+                       (cond-> form
+                         (and (some? source-table) (nil? condition))
+                         expand-metrics*))
+                     inner-query))
+      (update :query maybe-wrap-in-ordering-query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIDDLEWARE                                                   |
