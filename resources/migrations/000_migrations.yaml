@@ -15201,6 +15201,21 @@ databaseChangeLog:
                   CREATE INDEX IF NOT EXISTS idx_timeline_creator_id ON timeline (creator_id);
                   CREATE INDEX IF NOT EXISTS idx_timeline_event_creator_id ON timeline_event (creator_id);
       rollback: # no need
+                      
+  - changeSet:
+      id: v48.00-014
+      author: calherries
+      comment: Added 0.48.0 - Change the type of collection.slug to varchar(510)
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(510)
+      rollback: 
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(254)
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
