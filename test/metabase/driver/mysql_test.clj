@@ -732,7 +732,7 @@
                      :update false
                      :insert false
                      :delete false}]
-                   (get-privileges)))) 
+                   (get-privileges))))
           (testing "should return privileges on the database"
             (jdbc/execute! spec (str "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'"))
             (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
