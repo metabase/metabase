@@ -94,6 +94,12 @@ export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   has_more_values: false,
 };
 
+export const PEOPLE_STATE_VALUES: FieldValuesResult = {
+  field_id: PEOPLE.STATE,
+  values: [["CA"], ["NY"], ["TX"], ["FL"], ["IL"]],
+  has_more_values: false,
+};
+
 const DEFAULT_NUMERIC_BINNING_OPTION: FieldDimensionOption = {
   name: "Auto bin",
   mbql: ["field", null, { binning: { strategy: "default" } }],

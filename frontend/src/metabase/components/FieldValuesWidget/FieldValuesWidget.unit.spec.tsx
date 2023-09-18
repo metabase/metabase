@@ -5,7 +5,11 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupFieldSearchValuesEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
+import Fields from "metabase/entities/fields";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
@@ -17,6 +21,7 @@ import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
+  PEOPLE_STATE_VALUES,
 } from "metabase-types/api/mocks/presets";
 import type Field from "metabase-lib/metadata/Field";
 
@@ -42,7 +47,12 @@ async function setup({
 } & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
     payload: fields.filter(checkNotNull).find(f => f?.id === id),
+    type: "__MOCK__",
   }));
+
+  jest
+    .spyOn(Fields.objectActions, "fetchFieldValues")
+    .mockImplementation(fetchFieldValues);
 
   if (searchValue) {
     fields.forEach(field => {
@@ -50,16 +60,17 @@ async function setup({
     });
   }
 
+  setupFieldsValuesEndpoints([
+    PRODUCT_CATEGORY_VALUES,
+    PEOPLE_SOURCE_VALUES,
+    PEOPLE_STATE_VALUES,
+  ]);
+
   renderWithProviders(
     <FieldValuesWidget
       value={[]}
       fields={fields.filter(checkNotNull)}
       onChange={jest.fn()}
-      fetchFieldValues={fetchFieldValues as any}
-      fetchParameterValues={jest.fn()}
-      fetchDashboardParameterValues={jest.fn()}
-      fetchCardParameterValues={jest.fn()}
-      addRemappings={jest.fn()}
       prefix={prefix}
       {...props}
     />,

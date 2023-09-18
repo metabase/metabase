@@ -31,18 +31,13 @@ import Fields from "metabase/entities/fields";
 import type { State } from "metabase-types/store";
 
 import type {
-  CardId,
   Dashboard,
-  DashboardId,
   Parameter,
-  FieldId,
-  FieldReference,
   FieldValue,
   RowValue,
-  Field as APIField,
-  ParameterValues,
 } from "metabase-types/api";
 
+import { useDispatch } from "metabase/lib/redux";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
@@ -68,14 +63,6 @@ import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 
 const MAX_SEARCH_RESULTS = 100;
 
-const mapDispatchToProps = {
-  addRemappings,
-  fetchFieldValues: Fields.objectActions.fetchFieldValues,
-  fetchParameterValues,
-  fetchCardParameterValues,
-  fetchDashboardParameterValues,
-};
-
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
     fields: fields.map(
@@ -83,18 +70,6 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
     ),
   };
-}
-
-type FieldValuesResponse = {
-  payload: APIField;
-};
-
-interface FetcherOptions {
-  query?: string;
-  parameter?: Parameter;
-  parameters?: Parameter[];
-  dashboardId?: DashboardId;
-  cardId?: CardId;
 }
 
 export interface IFieldValuesWidgetProps {
@@ -111,24 +86,6 @@ export interface IFieldValuesWidgetProps {
   disablePKRemappingForSearch?: boolean;
   alwaysShowOptions?: boolean;
   showOptionsInPopover?: boolean;
-
-  fetchFieldValues: ({
-    id,
-  }: {
-    id: FieldId | FieldReference;
-  }) => Promise<FieldValuesResponse>;
-  fetchParameterValues: (options: FetcherOptions) => Promise<ParameterValues>;
-  fetchCardParameterValues: (
-    options: FetcherOptions,
-  ) => Promise<ParameterValues>;
-  fetchDashboardParameterValues: (
-    options: FetcherOptions,
-  ) => Promise<ParameterValues>;
-
-  addRemappings: (
-    value: FieldReference | FieldId,
-    options: FieldValue[],
-  ) => void;
 
   parameter?: Parameter;
   parameters?: Parameter[];
@@ -165,11 +122,6 @@ export function FieldValuesWidgetInner({
   disableSearch = false,
   disablePKRemappingForSearch,
   showOptionsInPopover = false,
-  fetchFieldValues: fetchFieldValuesProp,
-  fetchParameterValues: fetchParameterValuesProp,
-  fetchCardParameterValues: fetchCardParameterValuesProp,
-  fetchDashboardParameterValues: fetchDashboardParameterValuesProp,
-  addRemappings,
   parameter,
   parameters,
   fields,
@@ -199,6 +151,7 @@ export function FieldValuesWidgetInner({
       disablePKRemappingForSearch,
     }),
   );
+  const dispatch = useDispatch();
 
   useMount(() => {
     if (shouldList({ parameter, fields, disableSearch })) {
@@ -220,19 +173,18 @@ export function FieldValuesWidgetInner({
     let newValuesMode = valuesMode;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } = await fetchDashboardParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await _fetchDashboardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } = await fetchCardParameterValues(
+        const { values, has_more_values } = await _fetchCardParameterValues(
           query,
         );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await fetchParameterValues(query);
+        const { values, has_more_values } = await _fetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else {
@@ -259,7 +211,9 @@ export function FieldValuesWidgetInner({
       const nonVirtualFields = getNonVirtualFields(fields);
 
       const results = await Promise.all(
-        nonVirtualFields.map(field => fetchFieldValuesProp({ id: field.id })),
+        nonVirtualFields.map(field =>
+          dispatch(Fields.objectActions.fetchFieldValues({ id: field.id })),
+        ),
       );
 
       // extract the field values from the API response(s)
@@ -296,28 +250,50 @@ export function FieldValuesWidgetInner({
     }
   };
 
-  const fetchParameterValues = async (query?: string) => {
-    return fetchParameterValuesProp({
-      parameter,
-      query,
-    });
+  const _fetchParameterValues = async (query?: string) => {
+    if (!parameter) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchParameterValues({
+        parameter,
+        query,
+      }),
+    );
   };
 
-  const fetchCardParameterValues = async (query?: string) => {
-    return fetchCardParameterValuesProp({
-      cardId: question?.id(),
-      parameter,
-      query,
-    });
+  const _fetchCardParameterValues = async (query?: string) => {
+    const cardId = question?.id();
+
+    if (!cardId || !parameter) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchCardParameterValues({
+        cardId,
+        parameter,
+        query,
+      }),
+    );
   };
 
-  const fetchDashboardParameterValues = async (query?: string) => {
-    return fetchDashboardParameterValuesProp({
-      dashboardId: dashboard?.id,
-      parameter,
-      parameters,
-      query,
-    });
+  const _fetchDashboardParameterValues = async (query?: string) => {
+    const dashboardId = dashboard?.id;
+
+    if (!dashboardId || !parameter || !parameters) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchDashboardParameterValues({
+        dashboardId,
+        parameter,
+        parameters,
+        query,
+      }),
+    );
   };
 
   // ? this may rely on field mutations
@@ -327,7 +303,7 @@ export function FieldValuesWidgetInner({
       if (
         field.remappedField() === field.searchField(disablePKRemappingForSearch)
       ) {
-        addRemappings(field.id, options);
+        dispatch(addRemappings(field.id, options));
       }
     }
   };
@@ -551,7 +527,7 @@ const EveryOptionState = () => (
 );
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+export default connect(mapStateToProps)(FieldValuesWidget);
 
 interface RenderOptionsProps {
   alwaysShowOptions: boolean;
