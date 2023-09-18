@@ -710,14 +710,14 @@
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
         (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              lower-db-name  (u/lower-case-en (:name (mt/db)))
+              db-name        (:name (mt/db))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                  [spec [:mysql (assoc (:details (mt/db)) :user "table_privileges_test_user" :password "password")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
           (try
-            (doseq [stmt [(str "USE `" lower-db-name "`;")
+            (doseq [stmt [(str "USE `" db-name "`;")
                           "CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
                           "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
@@ -733,7 +733,7 @@
                        :delete false}]
                      (get-privileges))))
             (testing "should return privileges on the database"
-              (jdbc/execute! conn-spec (str "GRANT UPDATE ON `" lower-db-name "`.* TO 'table_privileges_test_user'"))
+              (jdbc/execute! conn-spec (str "GRANT UPDATE ON `" db-name "`.* TO 'table_privileges_test_user'"))
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
