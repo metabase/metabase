@@ -709,13 +709,15 @@
   (mt/test-driver :mysql
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (drop-if-exists-and-create-db! "table_privileges_test")
-      (let [details        (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
-            spec           (sql-jdbc.conn/connection-details->spec :mysql details)
-            get-privileges (fn []
-                             (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                               [spec [:mysql (assoc details :user "table_privileges_test_user" :password "password")]]
-                               (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                 (driver/current-user-table-privileges driver/*driver* (assoc (mt/db) :name "table_privileges_test")))))]
+      (let [details         (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
+            spec            (sql-jdbc.conn/connection-details->spec :mysql details)
+            supports-roles? (or (-> (mt/db) :dbms_version :flavor (= "MariaDB"))
+                                (<= (get-db-version spec) 8))
+            get-privileges  (fn []
+                              (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                [spec [:mysql (assoc details :user "table_privileges_test_user" :password "password")]]
+                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                  (driver/current-user-table-privileges driver/*driver* (assoc (mt/db) :name "table_privileges_test")))))]
         (try
           (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                         "CREATE TABLE `baz` (id INTEGER);"
@@ -736,7 +738,7 @@
             (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                     {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                    (get-privileges))))
-          (when (<= (get-db-version spec) 8)
+          (when supports-roles?
             (testing "should return privileges on roles that the user has been granted"
               (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
                             (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
@@ -768,7 +770,7 @@
                      (get-privileges)))))
           (finally
             (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
-            (when (<= (get-db-version spec) 8)
+            (when supports-roles?
               (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
