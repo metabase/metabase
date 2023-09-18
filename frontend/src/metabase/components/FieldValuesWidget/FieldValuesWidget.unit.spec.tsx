@@ -5,10 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import {
-  setupFieldSearchValuesEndpoints,
-  setupFieldsValuesEndpoints,
-} from "__support__/server-mocks";
+import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import Fields from "metabase/entities/fields";
 
 import { checkNotNull } from "metabase/core/utils/types";
@@ -21,7 +18,6 @@ import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
-  PEOPLE_STATE_VALUES,
 } from "metabase-types/api/mocks/presets";
 import type Field from "metabase-lib/metadata/Field";
 
@@ -59,12 +55,6 @@ async function setup({
       setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
     });
   }
-
-  setupFieldsValuesEndpoints([
-    PRODUCT_CATEGORY_VALUES,
-    PEOPLE_SOURCE_VALUES,
-    PEOPLE_STATE_VALUES,
-  ]);
 
   renderWithProviders(
     <FieldValuesWidget
