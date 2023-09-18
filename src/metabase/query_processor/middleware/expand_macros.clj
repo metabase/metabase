@@ -409,15 +409,6 @@
      :source-metadata metrics-query-metadata
      :fields :all}))
 
-(defn- ag-index->field
-  [query metadata ag-index & {:keys [use-name?] :or {use-name? true}}]
-  (let [{:keys [base_type display_name name]}
-        (some #(when (= [:aggregation ag-index] (-> % :field_ref)) %) metadata)]
-    [:field
-     (if use-name? name display_name)
-     (merge {:base-type base_type}
-            (select-keys (get-in query [:aggregation ag-index 2]) [::metric]))]))
-
 ;;;; TODO: Move definition here!
 (declare metadata->field)
 
