@@ -478,7 +478,7 @@
    aggregation that field is being swapped for was also coming from metric, ::metric opt is updated. That is
    necessary, so field can be correctly provided using [[provides]] when swapping metric uplevel."
   [[_ _ {metric ::metric}] field]
-  (if (pos? metric)
+  (if (some? metric)
     (update field 2 assoc ::metric metric)
     field))
 
