@@ -743,6 +743,13 @@
    (map u/qualified-name
         (lib.core/required-native-extras (metadataProvider database-id metadata)))))
 
+(defn ^:export has-write-permission
+  "Returns whether the database has native write permissions.
+   This is only filled in by [[metabase.api.database/add-native-perms-info]]
+   and added to metadata when pulling a database from the list of dbs in js."
+  [a-query]
+  (lib.core/has-write-permission a-query))
+
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
