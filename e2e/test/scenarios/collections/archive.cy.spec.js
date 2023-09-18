@@ -1,4 +1,4 @@
-import { restore } from "e2e/support/helpers";
+import { restore, getArchiveListItem } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -50,18 +50,18 @@ describe("scenarios > collections > archive", () => {
     cy.visit("/archive");
 
     // test individual archive and undo
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
+    getArchiveListItem(DASHBOARD_NAME)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("unarchive icon")
       .click();
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
+    getArchiveListItem(DASHBOARD_NAME).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
+    getArchiveListItem(DASHBOARD_NAME).should("exist");
 
     // test bulk archive and undo
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).within(() => {
+    getArchiveListItem(COLLECTION_NAME).within(() => {
       cy.findByLabelText("archive-item-swapper").realHover().click();
     });
 
@@ -71,27 +71,27 @@ describe("scenarios > collections > archive", () => {
       cy.findByText("Unarchive").click();
     });
 
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("not.exist");
-    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
+    getArchiveListItem(DASHBOARD_NAME).should("not.exist");
+    getArchiveListItem(COLLECTION_NAME).should("not.exist");
+    getArchiveListItem(QUESTION_NAME).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
-    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
+    getArchiveListItem(DASHBOARD_NAME).should("exist");
+    getArchiveListItem(COLLECTION_NAME).should("exist");
+    getArchiveListItem(QUESTION_NAME).should("exist");
 
     // test individual delete
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
+    getArchiveListItem(DASHBOARD_NAME)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("trash icon")
       .click();
-    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
+    getArchiveListItem(DASHBOARD_NAME).should("not.exist");
 
     cy.findByTestId("toast-undo").should("not.exist");
 
     // test bulk delete
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`)
+    getArchiveListItem(COLLECTION_NAME)
       .findByLabelText("archive-item-swapper")
       .realHover()
       .click();
@@ -102,8 +102,8 @@ describe("scenarios > collections > archive", () => {
       cy.findByText("Delete").click();
     });
 
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist"); // cannot delete collections
-    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
+    getArchiveListItem(COLLECTION_NAME).should("exist"); // cannot delete collections
+    getArchiveListItem(QUESTION_NAME).should("not.exist");
   });
 
   it("should load initially hidden archived items on scroll (metabase#24213)", () => {

@@ -14,6 +14,7 @@ import {
   createModelFromTableName,
   queryWritableDB,
   setTokenFeatures,
+  getArchiveListItem,
 } from "e2e/support/helpers";
 
 import {
@@ -928,10 +929,6 @@ function disableSharingFor(actionName) {
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
-}
-
-function getArchiveListItem(itemName) {
-  return cy.findByTestId(`archive-item-${itemName}`);
 }
 
 function resetAndVerifyScoreValue(dialect) {

@@ -125,3 +125,9 @@ export const undoToast = () => {
 export function dashboardCards() {
   return cy.get("#Dashboard-Cards-Container");
 }
+
+export function getArchiveListItem(itemName) {
+  return cy.findByTestId(
+    `archive-item-${itemName.replaceAll(" ", "-").toLowerCase()}`,
+  );
+}

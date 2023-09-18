@@ -36,7 +36,7 @@ export const ArchivedItem = ({
 }: ArchivedItemProps) => (
   <div
     className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
-    data-testid={`archive-item-${name}`}
+    data-testid={`archive-item-${name.replaceAll(" ", "-").toLowerCase()}`}
   >
     <Swapper
       aria-label={"archive-item-swapper"}
