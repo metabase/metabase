@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import api from "metabase/lib/api";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import type {
@@ -127,15 +128,12 @@ const getDatasetParams = ({
   };
 };
 
-// remove trailing slash
-const BASENAME = (window.MetabaseRoot ?? "").replace(/\/+$/, "");
-
 const getDatasetResponse = ({
   url,
   method,
   params,
 }: DownloadQueryResultsParams) => {
-  const requestUrl = new URL(BASENAME + url, location.origin);
+  const requestUrl = new URL(api.basename + url, location.origin);
 
   if (method === "POST") {
     return fetch(requestUrl.href, { method, body: params });
