@@ -1,17 +1,22 @@
-import * as Yup from "yup";
 import type { AnySchema } from "yup";
+import * as Yup from "yup";
 import userEvent from "@testing-library/user-event";
 import {
   Form,
   FormProvider,
+  FormSelect,
   FormSubmitButton,
-  FormNumberInput,
   requiredErrorMessage,
 } from "metabase/forms";
 import { render, screen, waitFor } from "__support__/ui";
 
+const OPTIONS = [
+  { value: "line", label: "Line" },
+  { value: "area", label: "Area" },
+];
+
 interface FormValues {
-  goal: number | null | undefined;
+  display: string | null | undefined;
 }
 
 interface SetupOpts {
@@ -21,7 +26,7 @@ interface SetupOpts {
 }
 
 const setup = ({
-  initialValues = { goal: undefined },
+  initialValues = { display: undefined },
   validationSchema,
   nullable,
 }: SetupOpts = {}) => {
@@ -34,7 +39,17 @@ const setup = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormNumberInput name="goal" label="Goal" nullable={nullable} />
+        <FormSelect
+          name="display"
+          label="Display"
+          data={OPTIONS}
+          placeholder="No display type"
+          nullable={nullable}
+          clearable
+          clearButtonProps={{
+            "aria-label": "Clear",
+          }}
+        />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -43,37 +58,41 @@ const setup = ({
   return { onSubmit };
 };
 
-describe("FormNumberInput", () => {
-  it("should show the initial value", async () => {
+describe("FormSelect", () => {
+  it("should show the initial value", () => {
     setup({
-      initialValues: { goal: 25 },
+      initialValues: { display: "line" },
     });
 
-    expect(screen.getByDisplayValue("25")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Line")).toBeInTheDocument();
   });
 
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
+    userEvent.click(screen.getByLabelText("Display"));
+    userEvent.click(screen.getByText("Line"));
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ goal: 20 }, expect.anything());
+      expect(onSubmit).toHaveBeenCalledWith(
+        { display: "line" },
+        expect.anything(),
+      );
     });
   });
 
   it("should submit an empty value", async () => {
     const { onSubmit } = setup({
-      initialValues: { goal: 20 },
+      initialValues: { display: "line" },
     });
 
-    userEvent.clear(screen.getByLabelText("Goal"));
+    userEvent.click(screen.getByLabelText("Clear"));
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
-        { goal: undefined },
+        { display: undefined },
         expect.anything(),
       );
     });
@@ -81,27 +100,32 @@ describe("FormNumberInput", () => {
 
   it("should submit an empty nullable value", async () => {
     const { onSubmit } = setup({
-      initialValues: { goal: 20 },
+      initialValues: { display: "line" },
       nullable: true,
     });
 
-    userEvent.clear(screen.getByLabelText("Goal"));
+    userEvent.click(screen.getByLabelText("Clear"));
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ goal: null }, expect.anything());
+      expect(onSubmit).toHaveBeenCalledWith(
+        { display: null },
+        expect.anything(),
+      );
     });
   });
 
   it("should show validation errors", async () => {
     const validationSchema = Yup.object({
-      goal: Yup.number().default(undefined).required(requiredErrorMessage),
+      display: Yup.string().required(requiredErrorMessage),
     });
+
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
-    userEvent.clear(screen.getByLabelText("Goal"));
+    userEvent.click(screen.getByPlaceholderText("No display type"));
+    userEvent.click(screen.getByText("Line"));
+    userEvent.click(screen.getByLabelText("Clear"));
     userEvent.tab();
 
     await waitFor(() => {
@@ -111,7 +135,7 @@ describe("FormNumberInput", () => {
 
   it("should show validation errors with nullable values", async () => {
     const validationSchema = Yup.object({
-      goal: Yup.number()
+      display: Yup.string()
         .nullable()
         .default(null)
         .required(requiredErrorMessage),
@@ -123,9 +147,11 @@ describe("FormNumberInput", () => {
     });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
-    userEvent.clear(screen.getByLabelText("Goal"));
+    userEvent.click(screen.getByPlaceholderText("No display type"));
+    userEvent.click(screen.getByText("Line"));
+    userEvent.click(screen.getByLabelText("Clear"));
     userEvent.tab();
+
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });
