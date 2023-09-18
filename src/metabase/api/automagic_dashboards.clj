@@ -21,7 +21,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.transforms.dashboard :as transform.dashboard]
    [metabase.transforms.materialize :as tf.materialize]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
