@@ -761,73 +761,104 @@
          (map filters/field-reference->id)
          set)))
 
+(defn- potential-card-dimension-bindings
+  "Compute all potential assignments (bindings) of identified fields (assigned to dimensions) to
+  required dimensions in the card definition."
+  [{context-dimensions :dimensions
+    :keys              [tables]}
+   {card-query :query}
+   {:keys [common-dimensions common-metrics common-filters]}]
+  (let [dimension-locations [common-dimensions common-metrics common-filters card-query]
+        used-dimensions     (dashboard-templates/collect-dimensions dimension-locations)
+        matched-dimensions  (map (some-fn #(get-in context-dimensions [% :matches])
+                                          (comp #(filter-tables % tables) dashboard-templates/->entity))
+                                 used-dimensions)]
+    (->> matched-dimensions
+         (apply math.combo/cartesian-product)
+         (map (partial zipmap used-dimensions)))))
+
+(defn- build-dashcard
+  "Build a dashcard from the given context, card template, common entities, and field bindings.
+
+  As used, multiple candidate dashcards may be built from the same card template if multiple combinations of valid
+  bindings are provided. E.g. if X is mapped over Y and multiple fields are candidates for dimension Y, you will end
+  up with a dashcard for each potential valid X and Y combination."
+  [context
+   {card-query :query :keys [limit] :as card-template}
+   {:keys [score common-dimensions common-metrics common-filters]}
+   bindings]
+  (let [metrics        (for [metric common-metrics]
+                         {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                          :metric (:metric metric)
+                          :op     (-> metric :metric metric-op)})
+        dashcard       (visualization/expand-visualization
+                        card-template
+                        (map (comp bindings second) common-dimensions)
+                        metrics)
+        dashcard-query (if card-query
+                         (build-native-query context bindings card-query)
+                         (build-mbql-query context
+                                           bindings
+                                           common-filters
+                                           metrics
+                                           common-dimensions
+                                           limit
+                                           (build-order-by dashcard)))]
+    (-> dashcard
+        (instantiate-metadata context (->> (map :name metrics)
+                                           (zipmap (:metrics dashcard))
+                                           (merge bindings)))
+        (assoc :dataset_query dashcard-query
+               :metrics metrics
+               :dimensions (map (comp :name bindings second) common-dimensions)
+               :score score))))
+
+(defn- valid-bindings? [{:keys [root]} common-dimensions bindings]
+  (let [cell-dimension? (singular-cell-dimensions root)]
+    (->> common-dimensions
+         (map (fn [[_ identifier opts]]
+                (merge (bindings identifier) opts)))
+         (every? (every-pred valid-breakout-dimension?
+                             (complement (comp cell-dimension? id-or-name)))))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [{context-dimensions :dimensions
     context-metrics    :metrics
     context-filters    :filters
-    :keys              [tables query-filter]
+    :keys              [query-filter]
     :as                context}
    {card-dimensions :dimensions
     card-metrics    :metrics
     card-filters    :filters
-    :keys           [score limit query] :as card}]
-  (let [metrics            (map (partial get context-metrics) card-metrics)
-        filters            (cond-> (map (partial get context-filters) card-filters)
-                             query-filter
-                             (conj {:filter query-filter}))
-        score           (if query
-                          score
-                          (* (or (->> card-dimensions
-                                      (map (partial get context-dimensions))
-                                      (concat filters metrics)
-                                      (transduce (keep :score) stats/mean))
-                                 dashboard-templates/max-score)
-                             (/ score dashboard-templates/max-score)))
-        dimensions         (map (comp (partial into [:dimension]) first) card-dimensions)
-        used-dimensions (dashboard-templates/collect-dimensions [dimensions metrics filters query])
-        cell-dimension? (->> context :root singular-cell-dimensions)
-        matched-dimensions (map (some-fn #(get-in context-dimensions [% :matches])
-                                         (comp #(filter-tables % tables) dashboard-templates/->entity))
-                                used-dimensions)]
-    (->> matched-dimensions
-         (apply math.combo/cartesian-product)
-         (map (partial zipmap used-dimensions))
-         (filter (fn [bindings]
-                   (->> dimensions
-                        (map (fn [[_ identifier opts]]
-                               (merge (bindings identifier) opts)))
-                        (every? (every-pred valid-breakout-dimension?
-                                            (complement (comp cell-dimension? id-or-name)))))))
-         (map (fn [bindings]
-                (let [metrics (for [metric metrics]
-                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
-                                 :metric (:metric metric)
-                                 :op     (-> metric :metric metric-op)})
-                      card    (visualization/expand-visualization
-                               card
-                               (map (comp bindings second) dimensions)
-                               metrics)
-                      ;; TODO - split this out into two functions.
-                      ;; build-query and build-native query. This is just being too clever.
-                      query   (if query
-                                (build-native-query context bindings query)
-                                (build-mbql-query context bindings
-                                             filters
-                                             metrics
-                                             dimensions
-                                             limit
-                                             (build-order-by card)))]
-                  (-> card
-                      (instantiate-metadata context (->> metrics
-                                                         (map :name)
-                                                         (zipmap (:metrics card))
-                                                         (merge bindings)))
-                      (assoc :dataset_query query
-                             :metrics metrics
-                             :dimensions (map (comp :name bindings second) dimensions)
-                             :score score))))))))
+    card-query      :query
+    card-score      :score
+    :as             card-template}]
+  (let [common-metrics    (map (partial get context-metrics) card-metrics)
+        common-filters    (cond-> (map (partial get context-filters) card-filters)
+                            query-filter
+                            (conj {:filter query-filter}))
+        common-dimensions (map (comp (partial into [:dimension]) first) card-dimensions)
+        ;; This is only used in build-dashcard so could be computed there, but it is a
+        ;; common value for all cards produced by this binding set (which is kind of weird
+        ;; as it provides no differentiation if multiple cards are produced from this set
+        ;; of dimensions.
+        score             (if card-query
+                            card-score
+                            (* (or (->> card-dimensions
+                                        (map (partial get context-dimensions))
+                                        (concat common-filters common-metrics)
+                                        (transduce (keep :score) stats/mean))
+                                   dashboard-templates/max-score)
+                               (/ card-score dashboard-templates/max-score)))
+        common-values     {:common-dimensions common-dimensions
+                           :common-metrics    common-metrics
+                           :common-filters    common-filters
+                           :score             score}]
+    (->> (potential-card-dimension-bindings context card-template common-values)
+         (filter (partial valid-bindings? context common-dimensions))
+         (map (partial build-dashcard context card-template common-values)))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -851,9 +882,9 @@
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (t2/select Field
-                                :table_id           (u/the-id table)
-                                :fk_target_field_id [:not= nil]
-                                :active             true))
+                                         :table_id           (u/the-id table)
+                                         :fk_target_field_id [:not= nil]
+                                         :active             true))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
@@ -903,10 +934,10 @@
   (let [db (source->db source)]
     (if (mi/instance-of? Table source)
       (comp (->> (t2/select Field
-                   :table_id [:in (map u/the-id tables)]
-                   :visibility_type "normal"
-                   :preview_display true
-                   :active true)
+                            :table_id [:in (map u/the-id tables)]
+                            :visibility_type "normal"
+                            :preview_display true
+                            :active true)
                  field/with-targets
                  (map #(assoc % :db db))
                  (group-by :table_id))
@@ -958,11 +989,11 @@
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context {:keys [cards]}]
-  (some->> cards
+  [context {card-templates :cards}]
+  (some->> card-templates
            (map first)
-           (map-indexed (fn [position [identifier card]]
-                          (some->> (assoc card :position position)
+           (map-indexed (fn [position [identifier card-template]]
+                          (some->> (assoc card-template :position position)
                                    (card-candidates context)
                                    not-empty
                                    (hash-map (name identifier)))))
@@ -973,7 +1004,7 @@
 (defn- make-dashboard
   ([root dashboard-template]
    (make-dashboard root dashboard-template {:tables [(:source root)]
-                              :root   root}))
+                                            :root   root}))
   ([root dashboard-template context]
    (-> dashboard-template
        (select-keys [:title :description :transient_title :groups])
@@ -991,8 +1022,8 @@
   [root
    {:keys [dashboard-template-name] :as dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [context   (make-context root dashboard-template)
-        cards     (make-cards context dashboard-template)]
+  (let [context (make-context root dashboard-template)
+        cards   (make-cards context dashboard-template)]
     (when (or (not-empty cards)
               (-> dashboard-template :cards nil?))
       [(assoc (make-dashboard root dashboard-template context)

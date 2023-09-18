@@ -41,33 +41,27 @@
             (testing "Looking up the field by name does not work"
               (is (nil? (magic/->field root "DISCOUNT"))))
             (testing "Looking up the field by id or id-field ref works."
-              (is (=?
-                    {:id (mt/id :orders :discount)}
-                    (magic/->field root (mt/id :orders :discount))))
-              (is (=?
-                    {:id (mt/id :orders :discount)}
-                    (magic/->field root [:field (mt/id :orders :discount) nil]))))))
+              (is (=? {:id (mt/id :orders :discount)}
+                      (magic/->field root (mt/id :orders :discount))))
+              (is (=? {:id (mt/id :orders :discount)}
+                      (magic/->field root [:field (mt/id :orders :discount) nil]))))))
         (testing "->field checks for a model-based context"
           (let [query (mt/native-query {:query "select * from orders"})]
             (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
-              (let [root  (#'magic/->root card)]
+              (let [root (#'magic/->root card)]
                 (testing "Looking up the field by id or id-field ref works"
-                  (is (=?
-                        {:id (mt/id :orders :discount)}
-                        (magic/->field root (mt/id :orders :discount))))
-                  (is (=?
-                        {:id (mt/id :orders :discount)}
-                        (magic/->field root [:field (mt/id :orders :discount) nil]))))
+                  (is (=? {:id (mt/id :orders :discount)}
+                          (magic/->field root (mt/id :orders :discount))))
+                  (is (=? {:id (mt/id :orders :discount)}
+                          (magic/->field root [:field (mt/id :orders :discount) nil]))))
                 (testing "Looking up the field by name or named field ref works,
                           returning the metadata description of the field."
-                  (is (=?
-                        {:name      "DISCOUNT"
+                  (is (=? {:name      "DISCOUNT"
+                           :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
+                          (magic/->field root "DISCOUNT"))))
+                (is (=? {:name      "DISCOUNT"
                          :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
-                        (magic/->field root "DISCOUNT"))))
-                (is (=?
-                      {:name      "DISCOUNT"
-                       :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
-                      (magic/->field root [:field "DISCOUNT" {:base-type :type/Float}])))))))))))
+                        (magic/->field root [:field "DISCOUNT" {:base-type :type/Float}])))))))))))
 
 ;;; ------------------- `->reference` -------------------
 
@@ -358,9 +352,9 @@
       (mt/with-temp
         [Collection {collection-id :id} {}
          Card       {source-id :id}     {:table_id        (mt/id :venues)
-                                               :collection_id   collection-id
-                                               :dataset_query   source-query
-                                               :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
          Card       {card-id :id}     {:table_id      (mt/id :venues)
                                        :collection_id collection-id
                                        :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
@@ -1295,21 +1289,21 @@
                 match the table entity_type and field semantic_type."
         (is (=? [matching-field]
                 (#'magic/matching-fields
-                  context
-                  gt-quantity-dimension))))
+                 context
+                 gt-quantity-dimension))))
       (testing "When the table entity_type does not match the dimension, nothing is returned."
         (is (empty? (#'magic/matching-fields
-                      (assoc-in context [:tables 0 :entity_type] :entity/Whatever)
-                      gt-quantity-dimension))))
+                     (assoc-in context [:tables 0 :entity_type] :entity/Whatever)
+                     gt-quantity-dimension))))
       (testing "When the dimension spec does not contain a table spec and no :source is provided
                 in the context nothing is returned."
         (is (empty? (#'magic/matching-fields
-                      context
-                      generic-number-dimension))))
+                     context
+                     generic-number-dimension))))
       (testing "Even if the field and dimension semantic types match, a match will not occur without a table spec."
         (is (empty? (#'magic/matching-fields
-                      context
-                      quantity-dimension)))))))
+                     context
+                     quantity-dimension)))))))
 
 (deftest field-candidates-with-no-tablespec-specialization
   (testing "Tests for when only a fieldspec is provided in the dimension definition.
@@ -1330,18 +1324,18 @@
                 match the table entity_type and field semantic_type."
         (is (=? [quantity-field]
                 (#'magic/matching-fields
-                  context
-                  quantity-dimension))))
+                 context
+                 quantity-dimension))))
       (testing "When a table spec is provided in the dimension and the source contains no tables there is no match."
         (is (empty? (#'magic/matching-fields
-                      context
-                      gt-quantity-dimension))))
+                     context
+                     gt-quantity-dimension))))
       (testing "Multiple fields of the same type will match"
         (is (=? [generic-number-field
                  another-field]
                 (#'magic/matching-fields
-                  (update-in context [:source :fields] conj another-field)
-                  generic-number-dimension)))))))
+                 (update-in context [:source :fields] conj another-field)
+                 generic-number-dimension)))))))
 
 (deftest candidate-bindings-1f-3b-test
   (testing "Candidate bindings with one field and multiple bindings"
@@ -1392,11 +1386,11 @@
                 each matching dimension, each of which as associated a `:matches` into the
                 value of the dimension map."
         (is (=? (apply
-                  merge
-                  (for [{field-name :name :as field} [nurnies greebles]]
-                    {field-name
-                     (for [dimension [integer-dim number-dim quantity-dim]]
-                       (update-vals dimension #(assoc % :matches [field])))}))
+                 merge
+                 (for [{field-name :name :as field} [nurnies greebles]]
+                   {field-name
+                    (for [dimension [integer-dim number-dim quantity-dim]]
+                      (update-vals dimension #(assoc % :matches [field])))}))
                 bindings))))))
 
 (deftest candidate-bindings-3f-4d-test
@@ -1571,13 +1565,12 @@
                  "Profit" {:matches [{:name "DISCOUNT"}
                                      {:name "QUANTITY"}]}}
                 (#'magic/bind-dimensions context
-                  (->> dimension-defs cycle (drop 2) (take 4)))))
+                                         (->> dimension-defs cycle (drop 2) (take 4)))))
         (is (=? {"Date"    {:matches [{:name "Date"}]}
                  "Revenue" {:matches [{:name "DISCOUNT"}
                                       {:name "QUANTITY"}]}}
                 (#'magic/bind-dimensions context
-                  (->> dimension-defs cycle (drop 3) (take 4)))))))))
-
+                                         (->> dimension-defs cycle (drop 3) (take 4)))))))))
 
 (deftest candidate-binding-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from candidate-bindings"
@@ -1593,7 +1586,7 @@
                         :result_metadata (mt/with-test-user
                                            :rasta
                                            (result-metadata-for-query
-                                             source-query))
+                                            source-query))
                         :dataset         true}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
@@ -1615,13 +1608,13 @@
                                          (assoc matched-dimension-definition-2 :matches [field 1])
                                          (assoc matched-dimension-definition-3 :matches [field 1])]}"
                 (is (=?
-                      {(mt/id :people :latitude)
-                       (map
-                         (fn [m]
-                           (update-vals m (fn [v]
-                                            (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                         dimensions)}
-                      candidate-bindings)))))))
+                     {(mt/id :people :latitude)
+                      (map
+                       (fn [m]
+                         (update-vals m (fn [v]
+                                          (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                       dimensions)}
+                     candidate-bindings)))))))
       (testing "A model with two fields that each have a high degree of matching."
         (let [source-query {:database (mt/id)
                             :query    {:source-table (mt/id :people)
@@ -1634,7 +1627,7 @@
                         :result_metadata (mt/with-test-user
                                            :rasta
                                            (result-metadata-for-query
-                                             source-query))
+                                            source-query))
                         :dataset         true}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
@@ -1662,21 +1655,21 @@
                                          (assoc matched-dimension-definition-2 :matches [field 2])
                                          (assoc matched-dimension-definition-3 :matches [field 2])]}"
                 (is (=?
-                      {(mt/id :people :latitude)
-                       (map
-                         (fn [m]
-                           (update-vals m (fn [v]
-                                            (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                         (remove (fn [dimension] (= "Lon" (ffirst dimension))) dimensions))}
-                      candidate-bindings))
+                     {(mt/id :people :latitude)
+                      (map
+                       (fn [m]
+                         (update-vals m (fn [v]
+                                          (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                       (remove (fn [dimension] (= "Lon" (ffirst dimension))) dimensions))}
+                     candidate-bindings))
                 (is (=?
-                      {(mt/id :people :longitude)
-                       (map
-                         (fn [m]
-                           (update-vals m (fn [v]
-                                            (assoc v :matches [{:id (mt/id :people :longitude)}]))))
-                         (remove (fn [dimension] (= "Lat" (ffirst dimension))) dimensions))}
-                      candidate-bindings)))))))
+                     {(mt/id :people :longitude)
+                      (map
+                       (fn [m]
+                         (update-vals m (fn [v]
+                                          (assoc v :matches [{:id (mt/id :people :longitude)}]))))
+                       (remove (fn [dimension] (= "Lat" (ffirst dimension))) dimensions))}
+                     candidate-bindings)))))))
       (testing "A table with a more specific entity-type will match to more specific binding definitions."
         (let [table (t2/select-one :model/Table (mt/id :people))]
           (let [{{:keys [entity_type]} :source :as root} (#'magic/->root table)
@@ -1706,13 +1699,13 @@
                       While this looks super weird, it groups a single field to every potential binding in the
                       dimension definition list."
               (is (=?
-                    {(mt/id :people :latitude)
-                     (map
-                       (fn [m]
-                         (update-vals m (fn [v]
-                                          (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                       dimensions)}
-                    (select-keys candidate-bindings [(mt/id :people :latitude)]))))))))))
+                   {(mt/id :people :latitude)
+                    (map
+                     (fn [m]
+                       (update-vals m (fn [v]
+                                        (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                     dimensions)}
+                   (select-keys candidate-bindings [(mt/id :people :latitude)]))))))))))
 
 (deftest most-specific-definition-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from most-specific-definition"
@@ -1753,31 +1746,31 @@
                         "
                 (testing "Latitude is very specific so binds to Lat"
                   (is (=?
-                        (-> (peek dimensions)
-                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                        (-> (mt/id :people :latitude)
-                            candidate-bindings
-                            (#'magic/most-specific-matched-dimension)))))
+                       (-> (peek dimensions)
+                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                       (-> (mt/id :people :latitude)
+                           candidate-bindings
+                           (#'magic/most-specific-matched-dimension)))))
                 (testing "Longitude binds to GenericNumber since there is no more specific Lon dimension definition."
                   (is (=?
-                        (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
-                        (-> (mt/id :people :longitude)
-                            candidate-bindings
-                            (#'magic/most-specific-matched-dimension)))))
+                       (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
+                       (-> (mt/id :people :longitude)
+                           candidate-bindings
+                           (#'magic/most-specific-matched-dimension)))))
                 (testing "City and State both have semantic types that descend from type/Location"
                   (is (=?
-                        (-> {"Loc" {:field_type [:type/Location], :score 60}}
-                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
-                        (-> (mt/id :people :city)
-                            candidate-bindings
-                            (#'magic/most-specific-matched-dimension))))
+                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
+                       (-> (mt/id :people :city)
+                           candidate-bindings
+                           (#'magic/most-specific-matched-dimension))))
                   (is (=?
-                        (-> {"Loc" {:field_type [:type/Location], :score 60}}
-                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
-                        (-> (mt/id :people :state)
-                            candidate-bindings
-                            (#'magic/most-specific-matched-dimension)))))
+                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
+                       (-> (mt/id :people :state)
+                           candidate-bindings
+                           (#'magic/most-specific-matched-dimension)))))
                 (testing "Although type/ZipCode exists, in this table that classification wasn't made, so Zip doesn't
                           bind to anything since there isn't a more generic dimension definition to bind to."
                   (is (nil? (-> (mt/id :people :zip)
@@ -1805,17 +1798,17 @@
                       dimension definitions) to their own definitions with the addition of a `:matches` vector
                       containing the fields that most closely match this particular dimension definition."
               (is (=?
-                    {"Lat"           {:field_type [:entity/UserTable :type/Latitude]
-                                      :matches [{:id (mt/id :people :latitude)}]
-                                      :score 100}
-                     "GenericNumber" {:field_type [:entity/UserTable :type/Number]
-                                      :matches [{:id (mt/id :people :longitude)}]
-                                      :score 85}
-                     "Loc"           {:field_type [:type/Location]
-                                      :matches    (sort-by :id [{:id (mt/id :people :state)}
-                                                                {:id (mt/id :people :city)}])
-                                      :score      60}}
-                    (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id)))))))))))
+                   {"Lat"           {:field_type [:entity/UserTable :type/Latitude]
+                                     :matches [{:id (mt/id :people :latitude)}]
+                                     :score 100}
+                    "GenericNumber" {:field_type [:entity/UserTable :type/Number]
+                                     :matches [{:id (mt/id :people :longitude)}]
+                                     :score 85}
+                    "Loc"           {:field_type [:type/Location]
+                                     :matches    (sort-by :id [{:id (mt/id :people :state)}
+                                                               {:id (mt/id :people :city)}])
+                                     :score      60}}
+                   (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id)))))))))))
 
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
@@ -1830,58 +1823,58 @@
                                                         (mt/with-test-user :rasta)
                                                         (mapv (fn [m]
                                                                 (assoc m
-                                                                  :display_name "Frooby"
-                                                                  :semantic_type :type/Latitude))))}]
-                      (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
-                            base-context        (#'magic/make-base-context root)
-                            dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
-                                                 {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                                 {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                                 {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                                 {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                                 {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
-                                                 {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+                                                                       :display_name "Frooby"
+                                                                       :semantic_type :type/Latitude))))}]
+          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
+                base-context        (#'magic/make-base-context root)
+                dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
+                                     {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                     {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                     {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                     {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                     {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                     {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
                             ;; These will be matched in our tests since this is a generic table entity.
-                            bindable-dimensions (remove
-                                                  #(-> % vals first :field_type first #{:entity/UserTable})
-                                                  dimensions)
-                            candidate-bindings  (#'magic/candidate-bindings base-context dimensions)
-                            bound-dimensions    (#'magic/bind-dimensions base-context dimensions)]
-                        (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
-                          (is (= :entity/GenericTable entity_type)))
-                        (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
-                          (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
-                        (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
+                bindable-dimensions (remove
+                                     #(-> % vals first :field_type first #{:entity/UserTable})
+                                     dimensions)
+                candidate-bindings  (#'magic/candidate-bindings base-context dimensions)
+                bound-dimensions    (#'magic/bind-dimensions base-context dimensions)]
+            (testing "For a plain native query (even on a specialized table), the entity_type is :entity/GenericTable"
+              (is (= :entity/GenericTable entity_type)))
+            (testing "candidate bindings are a map of field identifier (id or name) to dimension matches."
+              (is (= #{"L1" "L2" "L3"} (set (keys candidate-bindings)))))
+            (testing "Everything except for the specialized :entity/GenericTable definitions are candidates.
                                   Note that this is a map of field id -> vector of passing candidate bindings with
                                   the keyed field added to the dimension as a `:matches` vector with just that field.
 
                                   Also note that the actual field names and display name are not used in candidate
                                    selection. Ultimately, the filtering was based on entity_type and semantic_type."
-                          (is (=?
-                                (let [add-matches (fn [col-name]
-                                                    (map
-                                                      (fn [bd]
-                                                        (update-vals
-                                                          bd
-                                                          (fn [v]
-                                                            (assoc v
-                                                              :matches [{:name col-name :display_name "Frooby"}]))))
-                                                      bindable-dimensions))]
-                                  {"L1" (add-matches "L1")
-                                   "L2" (add-matches "L2")
-                                   "L3" (add-matches "L3")})
-                                candidate-bindings)))
-                        (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
+              (is (=?
+                   (let [add-matches (fn [col-name]
+                                       (map
+                                        (fn [bd]
+                                          (update-vals
+                                           bd
+                                           (fn [v]
+                                             (assoc v
+                                                    :matches [{:name col-name :display_name "Frooby"}]))))
+                                        bindable-dimensions))]
+                     {"L1" (add-matches "L1")
+                      "L2" (add-matches "L2")
+                      "L3" (add-matches "L3")})
+                   candidate-bindings)))
+            (testing "Despite binding to 5 potential dimension bindings, all 3 query fields end up binding
                                   to latitude."
-                          (is (= ["Lat"] (keys bound-dimensions))))
-                        (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
+              (is (= ["Lat"] (keys bound-dimensions))))
+            (testing "Finally, after the candidates are scored and sorted, all 3 latitude fields end up
                                   being bound to the Lat dimension."
-                          (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
-                                          :score      100
-                                          :matches    [{:name "L1" :display_name "Frooby"}
-                                                       {:name "L2" :display_name "Frooby"}
-                                                       {:name "L3" :display_name "Frooby"}]}}
-                                  bound-dimensions)))))))))
+              (is (=? {"Lat" {:field_type [:entity/GenericTable :type/Latitude]
+                              :score      100
+                              :matches    [{:name "L1" :display_name "Frooby"}
+                                           {:name "L2" :display_name "Frooby"}
+                                           {:name "L3" :display_name "Frooby"}]}}
+                      bound-dimensions)))))))))
 
 ;;; -------------------- Resolve overloading (metrics and filters) --------------------
 
@@ -1893,28 +1886,28 @@
                       "Day" {:this :does :not :matter}}]
       (testing "has-matches only matches on dimension name. These have no nominal matches to our input dimension names."
         (is (false? (#'magic/has-matches? dimensions
-                      {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
+                                          {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
         (is (false? (#'magic/has-matches? dimensions
-                      {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"]}}))))
+                                          {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"]}}))))
       (testing "Basic single name match will match on dimension names."
         (is (true?
-              (#'magic/has-matches?
-                dimensions
-                {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]]}})))
+             (#'magic/has-matches?
+              dimensions
+              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]]}})))
         (is (true?
-              (#'magic/has-matches?
-                dimensions
-                {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"]}}))))
+             (#'magic/has-matches?
+              dimensions
+              {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"]}}))))
       (testing "Despite one dimension matching (Income) both must match to pass."
         (is (false?
-              (#'magic/has-matches?
-                dimensions
-                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}}))))
+             (#'magic/has-matches?
+              dimensions
+              {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}}))))
       (testing "Once all specified dimensions are present the predicate will pass."
         (is (true?
-              (#'magic/has-matches?
-                (assoc dimensions "Discount" :something)
-                {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}})))))))
+             (#'magic/has-matches?
+              (assoc dimensions "Discount" :something)
+              {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}})))))))
 
 (deftest resolve-overloading-no-dimensions-test
   (testing "Testing cases where no dimensions are present.
@@ -1943,38 +1936,38 @@
             what matters is the ability to match to dimension name first."
     (is (= {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}
            (#'magic/resolve-overloading
-             {:dimensions {"GenericNumber" {}}}
-             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
-              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}]))))
+            {:dimensions {"GenericNumber" {}}}
+            [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
+             {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}]))))
   (testing "When there is a conflict in metric or filter name, we rank on score amongst the matching metrics."
     (is (= {"Avg" {:metric ["/"
                             ["sum" ["dimension" "Discount"]]
                             ["sum" ["dimension" "Income"]]] :score 100}}
            (#'magic/resolve-overloading
-             {:dimensions {"GenericNumber" {}
-                           "Discount"      {}
-                           "Income"        {}}}
-             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
-              {"Avg" {:metric ["/"
-                               ["sum" ["dimension" "Discount"]]
-                               ["sum" ["dimension" "Income"]]] :score 100}}
-              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}])))
+            {:dimensions {"GenericNumber" {}
+                          "Discount"      {}
+                          "Income"        {}}}
+            [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
+             {"Avg" {:metric ["/"
+                              ["sum" ["dimension" "Discount"]]
+                              ["sum" ["dimension" "Income"]]] :score 100}}
+             {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}])))
     (is (= {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}
            (#'magic/resolve-overloading
-             {:dimensions {"Day" {}}}
-             [{"Last30Days" {:filter ["something-made-up" ["dimension" "Day"] -720 "hour"] :score 90}}
-              {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}]))))
+            {:dimensions {"Day" {}}}
+            [{"Last30Days" {:filter ["something-made-up" ["dimension" "Day"] -720 "hour"] :score 90}}
+             {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}]))))
   (testing "When no dimensions match, we rank on score alone"
     (is (= {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
            (#'magic/resolve-overloading
-             {:dimensions {"X" {}}}
-             [{"Avg" {:metric ["/"
-                               ["sum" ["dimension" "Discount"]]
-                               ["sum" ["dimension" "Income"]]] :score 1}}
-              {"Avg" {:metric ["/"
-                               ["sum" ["dimension" "Discount"]]
-                               ["sum" ["dimension" "Income"]]] :score 2}}
-              {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}])))))
+            {:dimensions {"X" {}}}
+            [{"Avg" {:metric ["/"
+                              ["sum" ["dimension" "Discount"]]
+                              ["sum" ["dimension" "Income"]]] :score 1}}
+             {"Avg" {:metric ["/"
+                              ["sum" ["dimension" "Discount"]]
+                              ["sum" ["dimension" "Income"]]] :score 2}}
+             {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}])))))
 
 ;;; -------------------- make-cards and related (e.g. card-candidates) --------------------
 
@@ -1991,11 +1984,11 @@
                                         :result_metadata (mt/with-test-user
                                                            :rasta
                                                            (result-metadata-for-query
-                                                             source-query))
+                                                            source-query))
                                         :dataset         true}]
           (let [dashboard-template (some
-                                     #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
-                                     (dashboard-templates/get-dashboard-templates ["table"]))
+                                    #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
+                                    (dashboard-templates/get-dashboard-templates ["table"]))
                 {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) dashboard-template)]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
@@ -2013,8 +2006,8 @@
               (is (= [["Count" {:metric ["count"] :score 100}]]
                      (->> (seq metrics)
                           (filter
-                            (fn [metric]
-                              (every? dimensions (dashboard-templates/collect-dimensions metric))))))))
+                           (fn [metric]
+                             (every? dimensions (dashboard-templates/collect-dimensions metric))))))))
             (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
               (let [card-def {:title   "A dimensionless quantity card"
                               :metrics ["Count"]
@@ -2084,3 +2077,137 @@
                   (-> related
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
+
+;;; -------------------- card-candidates and subfunctions tests --------------------
+
+(deftest potential-card-dimension-bindings-test
+  (testing "potential-card-dimension-bindings will compute the full cartesian product of every possible combination of
+            fields from the context that can satisfy the dimensions, metrics, and filters that are required per the
+            dimensions, metrics, and filters common to both the context and the card."
+    (is (= [{"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
+            {"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}
+            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
+            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"GenericNumber"
+              {:matches [{:name "TAX"} {:name "SUBTOTAL"}]}
+              "Date"
+              {:matches
+               [{:name "SALES_DATE"} {:name "ENROLL_DATE"}]}
+              "Income"   {:matches [{:name "Income"} {:name "Realized Income"}]}
+              "Discount" {:matches [{:name "Price Discount"}]}}}
+            {:query nil}
+            {:common-dimensions [[:dimension "Date" {}]]
+             :common-metrics    [{"AvgDiscount" {:metric ["/"
+                                                          ["sum" ["dimension" "Discount"]]
+                                                          ["sum" ["dimension" "Income"]]]
+                                                 :name   "Average discount %"}}]
+             :common-filters    []}))))
+  (testing "Dimensionless metrics (e.g. count) still require a dimension to match on.
+            In this case you would be counting the Source dimension field."
+    (is (= [{"Source" {:name "SOURCE"}}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"GenericNumber"         {:matches [{:name "SEATS"}]},
+              "GenericCategoryMedium" {:matches [{:name "PLAN"}
+                                                 {:name "ACTIVE_SUBSCRIPTION"}
+                                                 {:name "TRIAL_CONVERTED"}
+                                                 {:name "LEGACY_PLAN"}]}
+              "Source"                {:matches [{:name "SOURCE"}]}}}
+            {:query nil}
+            {:common-dimensions [[:dimension "Source" {}]]
+             :common-metrics [{:metric ["count"]}]
+             :common-filters    []}))))
+  (testing "Dimensionless metrics (e.g. count) will match all dimensions if present."
+    (is (= [{"Source" {:name "SOURCE"}
+             "GenericNumber" {:name "SEATS"}}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"GenericNumber"         {:matches [{:name "SEATS"}]},
+              "GenericCategoryMedium" {:matches [{:name "PLAN"}
+                                                 {:name "NO MATCH"}
+                                                 {:name "AT ALL"}]}
+              "Source"                {:matches [{:name "SOURCE"}]}}}
+            {:query nil}
+            {:common-dimensions [[:dimension "Source" {}]
+                                 [:dimension "GenericNumber" {}]]
+             :common-metrics    [{:metric ["count"]}]
+             :common-filters    []}))))
+  (testing "Dimensionless metrics (e.g. count) must have some dimension to count on.
+            Count won't just count a source table or anything, a dimension must be provided."
+    (is (= [{}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"GenericNumber"         {:matches [{:name "SEATS"}]},
+              "GenericCategoryMedium" {:matches [{:name "PLAN"}
+                                                 {:name "NO MATCH"}
+                                                 {:name "AT ALL"}]}
+              "Source"                {:matches [{:name "SOURCE"}]}}}
+            {:query nil}
+            {:common-dimensions []
+             :common-metrics    [{:metric ["count"]}]
+             :common-filters    []}))))
+  (testing "Dimension-only matching is also supported (e.g. show points at Lon-Lat locations)."
+    (is (= [{"Lon" {:name "Longitude"}
+             "Lat" {:name "Latitude"}}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"Lon" {:matches [{:name "Longitude"}]},
+              "Lat" {:matches [{:name "Latitude"}]}}}
+            {:query nil}
+            {:common-dimensions [[:dimension "Lon" {}]
+                                 [:dimension "Lat" {}]]
+             :common-metrics    [{:metric ["count"]}]
+             :common-filters    []}))))
+  (testing "Dimensions can be sourced from a query."
+    (is (= [{"QUERY_FIELD" {:name "Query Field"}}]
+           (#'magic/potential-card-dimension-bindings
+            {:dimensions
+             {"QUERY_FIELD" {:matches [{:name "Query Field"}]}}}
+            {:query [:field [:dimension "QUERY_FIELD"]]}
+            {:common-dimensions []
+             :common-metrics    []
+             :common-filters    []})))))
+
+(deftest singular-cell-dimensions-test
+  (testing "Find the cell dimensions for a cell query"
+    (is (= #{1 2 "TOTAL"}
+           (#'magic/singular-cell-dimensions
+            {:cell-query
+             [:and
+              [:= [:field 1 nil]]
+              [:= [:field 2 nil]]
+              [:= [:field "TOTAL" {:base-type :type/Number}]]]})))))
+
+(deftest valid-bindings?-test
+  (testing "Cases in which the bindings are valid."
+    (is (true?
+         (let [context           nil
+               common-dimensions [[:dimension "Date" {}]]
+               bindings          {"Date"     {:name "SALES_DATE"}
+                                  "Discount" {:name "Price Discount"}
+                                  "Income"   {:name "Income"}}]
+           (#'magic/valid-bindings? context common-dimensions bindings))))
+    (is (true?
+         (let [context           nil
+               common-dimensions []
+               bindings          {"X" {:name "Y"}}]
+           (#'magic/valid-bindings? context common-dimensions bindings))))
+    (testing "If there is no context, common dimensions, or bound dimensions, return true.
+              This demonstrates that valid-bindings? is generally permissive."
+      (is (true?
+           (#'magic/valid-bindings? nil [] {})))))
+  (testing "The binding is invalid if the bound field's id or name is in the cell query."
+    (is (false?
+         (let [context           {:root {:cell-query
+                                         [:= [:field 123 {:base-type :type/Integer}]]}}
+               common-dimensions [[:dimension "ID" {}]]
+               bindings          {"ID" {:id 123}}]
+           (#'magic/valid-bindings? context common-dimensions bindings))))
+    (is (false?
+         (let [context           {:root {:cell-query
+                                         [:= [:field "X" {:base-type :type/Integer}]]}}
+               common-dimensions [[:dimension "X" {}]]
+               bindings          {"X" {:name "X"}}]
+           (#'magic/valid-bindings? context common-dimensions bindings))))))
