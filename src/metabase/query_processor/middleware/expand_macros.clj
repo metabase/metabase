@@ -447,7 +447,8 @@
     (m/index-by metric-field-opt fields-to-provide)))
 
 (defn- join-metrics-query
-  "Does actual join"
+  "Joins [[metrics-query]] into original query.
+   Sets `::metric-id->field` which is later used during original query transformations."
   [query metrics-query]
   (let [{:keys [alias source-metadata source-query] :as join} (metrics-join query metrics-query)]
     (-> query
@@ -455,11 +456,9 @@
         (update ::metric-id->field merge (provides source-query source-metadata alias)))))
 
 (mu/defn ^:private expand-and-combine-filters
-  "
-   CONSIDER adding expanded to metric info, not definition
-   
-   Operates on metric, return metric with filter merged with query-filter. Query filter should have all segments
-   expanded prior to calling this..."
+  "Update filter definition in `metric-info` by combining original query's filter with metrics definition filter.
+   Also expand segments in metric info filter definition. For explanation on combining filters refer to namespace's
+   docstring, section [### Rationale on combining filters]."
   [{query-filter :filter} :- mbql.s/MBQLQuery {{metric-filter :filter} :definition :as metric-info} :- MetricInfo]
   (if-let [combined-filter (if (nil? query-filter)
                              (expand-segments metric-filter)
