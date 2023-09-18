@@ -15201,7 +15201,7 @@ databaseChangeLog:
                   CREATE INDEX IF NOT EXISTS idx_timeline_creator_id ON timeline (creator_id);
                   CREATE INDEX IF NOT EXISTS idx_timeline_event_creator_id ON timeline_event (creator_id);
       rollback: # no need
-                      
+
   - changeSet:
       id: v48.00-016
       author: calherries
@@ -15211,7 +15211,7 @@ databaseChangeLog:
             tableName: collection
             columnName: slug
             newDataType: varchar(510)
-      rollback: 
+      rollback:
         - modifyDataType:
             tableName: collection
             columnName: slug
