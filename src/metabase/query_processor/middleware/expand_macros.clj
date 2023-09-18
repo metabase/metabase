@@ -548,11 +548,6 @@
         [:breakout (orig-ag-idx->breakout-idx idx)]
         &match))))
 
-          :else
-          (recur ags moved-count
-                 (update query ::orig-ag-index->clause assoc
-                         orig-ag-index [:aggregation (- orig-ag-index moved-count)])))))
-
 (defn- metric-infos->metrics-queries
   "Transforms metric info into metrics query. Groupping (partitioning in practice) of metrics is further described
    in namespace docstring, section [# Metrics and filters or segments]."
