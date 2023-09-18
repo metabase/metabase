@@ -483,8 +483,8 @@
     field))
 
 (defn- one-and-only-metric?
-  "Determine if aggregation consists of one and only metric, hence will be swapped for a field and moved to breakout
-   during transformation of query containing metrics."
+  "Determine if aggregation consists of one and only metric, hence will later be swapped for a field and moved
+   to breakout during transformation of query containing metrics."
   [ag]
   (mbql.u/match-one ag
     [:metric _]
@@ -493,7 +493,9 @@
 
 (defn- swap-metric-clauses-in-aggregation
   "Transform one aggregation containing metrics clauses.
-   "
+   If aggregation contains only one metric and nothing else it is swapped for field, that will be moved to breakout
+   later. Else metrics in aggregation are swapped for corresponding fields, or if aggregation contains no metric
+   it is left unmodified."
   [query ag]
   (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second) distinct)
         multiple-metrics? (some? other-metric-ids)]
