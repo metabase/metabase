@@ -14,12 +14,25 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
 }
 
 export const FormSubmitButton = forwardRef(function FormSubmitButton(
-  { disabled, ...props }: FormSubmitButtonProps,
+  {
+    label,
+    activeLabel,
+    successLabel,
+    failedLabel,
+    disabled,
+    color,
+    ...props
+  }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
-  const submitLabel = getSubmitButtonLabel(status, props);
-  const submitColor = getSubmitButtonColor(status, props);
+  const submitLabel = getSubmitButtonLabel(status, {
+    label,
+    activeLabel,
+    successLabel,
+    failedLabel,
+  });
+  const submitColor = getSubmitButtonColor(status, { color });
 
   return (
     <Button
@@ -34,19 +47,26 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
   );
 });
 
+type SubmitButtonColorOpts = Pick<FormSubmitButtonProps, "color">;
+
 const getSubmitButtonColor = (
   status: FormStatus | undefined,
-  { color }: FormSubmitButtonProps,
+  { color }: SubmitButtonColorOpts,
 ) => {
   switch (status) {
     case "fulfilled":
-      return "success";
+      return "success.0";
     case "rejected":
-      return "error";
+      return "error.0";
     default:
       return color;
   }
 };
+
+type SubmitButtonLabelOpts = Pick<
+  FormSubmitButtonProps,
+  "label" | "activeLabel" | "successLabel" | "failedLabel"
+>;
 
 const getSubmitButtonLabel = (
   status: FormStatus | undefined,
@@ -55,7 +75,7 @@ const getSubmitButtonLabel = (
     activeLabel = label,
     successLabel = t`Success`,
     failedLabel = t`Failed`,
-  }: FormSubmitButtonProps,
+  }: SubmitButtonLabelOpts,
 ) => {
   switch (status) {
     case "pending":
