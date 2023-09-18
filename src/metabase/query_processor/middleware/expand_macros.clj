@@ -358,28 +358,15 @@
                query (-> (select-keys original-query metrics-query-keys)
                          (m/assoc-some :filter filter))]
           (if (some? metric-info)
-            (recur ms (inc index) (-> query
-                                      (update :aggregation #(conj (vec %1) %2)
-                                              (metric-info->aggregation original-query metric-info))))
+            (recur ms (inc index) (update query :aggregation #(conj (vec %1) %2)
+                                          (metric-info->aggregation original-query metric-info)))
             query))]
     (binding [*expansion-depth* (inc *expansion-depth*)]
-      (expand-metrics* metrics-query-expanded-this-level))))
+      (-> (expand-metrics* metrics-query-expanded-this-level)
+          (dissoc ::ordered-clauses-for-fields)))))
 
 (defn- query->join-alias [query]
   (->> query :filter hash Integer/toHexString (str "metric__")))
-
-;;;; TODO: Refactor this, which fields and why? Should tackle while refactoring query transformations!
-(defn- remove-metric-metadata
-  "Removes from ap-opts field options"
-  [form]
-  (walk/postwalk
-   (fn [form]
-     (if (map? form)
-       ;;;; TODO which keys should I remove?
-       (dissoc form ::metric ::index ::metric-id->field ::metric-id->clause ::ordering
-               ::orig-ag-index->clause ::orig-breakout-count)
-       form))
-   form))
 
 (defn- breakout->field
   "Breakout can contain eg expression references. Modify to field using metadata"
@@ -418,11 +405,10 @@
    why alias is what it is?
    "
   [query :- mbql.s/MBQLQuery metrics-query :- mbql.s/MBQLQuery]
-  (assert (every? #(some #{%} (:breakout metrics-query)) (:breakout query)) "Q.")
+  (assert (every? #(some #{%} (:breakout metrics-query)) (:breakout query))
+    "Original breakout missing in metrics query.")
   (let [join-alias (query->join-alias metrics-query)
-        metrics-query-metadata (-> metrics-query
-                                   remove-metric-metadata
-                                   qp.add-source-metadata/mbql-source-query->metadata)]
+        metrics-query-metadata (qp.add-source-metadata/mbql-source-query->metadata metrics-query)]
     {:alias join-alias
      :strategy :left-join
      :condition (metrics-query-join-condition join-alias query metrics-query-metadata)
@@ -456,7 +442,7 @@
   [query metrics-query]
   (let [{:keys [alias source-metadata source-query] :as join} (metrics-join query metrics-query)]
     (-> query
-        (update :joins #(conj (vec %1) %2) (remove-metric-metadata join))
+        (update :joins #(conj (vec %1) %2) join)
         (update ::metric-id->field merge (provides source-query source-metadata alias)))))
 
 (mu/defn ^:private expand-and-combine-filters
@@ -622,19 +608,6 @@
        :source-query inner-query*
        :source-metadata metadatas})
     inner-query))
-
-(comment
-  (def iq-x (remove-metric-metadata iq))
-  (qp.add-source-metadata/mbql-source-query->metadata iq-x)
-  (metabase.test/with-driver :h2
-    (metabase.test/with-everything-store
-      (qp.add-source-metadata/mbql-source-query->metadata iq-x)))
-  (maybe-wrap-in-ordering-query qqq)
-  rf
-  mm
-  (def qqq (-> @dev.nocommit.playground/taps (nth 11) second))
-  qqq
-  )
 
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
