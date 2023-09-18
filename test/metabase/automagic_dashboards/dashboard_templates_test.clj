@@ -1,7 +1,7 @@
 (ns metabase.automagic-dashboards.dashboard-templates-test
   (:require
-    [clojure.test :refer :all]
-    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]))
+   [clojure.test :refer :all]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]))
 
 (deftest ^:parallel ga-dimension?-test
   (are [x expected] (= expected
@@ -42,3 +42,9 @@
                       {"Foo" {:metric [:avg [:dimension "Foo"]]}}
                       {"Baz" {:metric [:sum ["dimension" "Baz"]]}}]}
            [:dimension "Bar"]]))))
+
+(deftest ^:parallel collect-dimensions-string-form-test
+  (testing "Dimensions can be specified using a double-bracket string form."
+    ;; Is this form of dimension specification actually used anywhere?
+    (is (= ["ABC"] (#'dashboard-templates/collect-dimensions "[[ABC]]")))
+    (is (= ["ABC"] (#'dashboard-templates/collect-dimensions {:metric [:foo "[[ABC]]"]})))))
