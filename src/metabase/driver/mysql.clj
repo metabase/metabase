@@ -228,7 +228,7 @@
   [_driver _coercion-strategy expr]
   (h2x/->datetime expr))
 
-(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->]
+(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   [:convert expr [:raw "DATETIME"]])
 
