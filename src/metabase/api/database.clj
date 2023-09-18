@@ -880,7 +880,7 @@
                                    (upsert-sensitive-fields existing-database))
         ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
         details-changed?  (some-> details (not= (:details existing-database)))
-        engine-changed?   (some-> engine (not= (:engine existing-database)))
+        engine-changed?   (some-> engine keyword (not= (:engine existing-database)))
         conn-error        (when (or details-changed? engine-changed?)
                             (test-database-connection (or engine (:engine existing-database))
                                                       (or details (:details existing-database))))

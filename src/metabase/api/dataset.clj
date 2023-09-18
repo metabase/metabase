@@ -30,7 +30,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -75,11 +74,10 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
-  {database (s/maybe s/Int)}
+  {database [:maybe :int]}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
@@ -91,7 +89,7 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum export-formats))
+  (into [:enum] export-formats))
 
 (mu/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
