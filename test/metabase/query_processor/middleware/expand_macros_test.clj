@@ -595,3 +595,29 @@
                                                              :breakout [$category_id [:expression "cat+10"]]
                                                              :order-by [[:asc $category_id]]
                                                              :limit 5}))))))))))
+
+;;;; TODO: Still WIP, verify correctness, probably rewrite to just transformation checking, w/o execution!
+(deftest recursively-defined-metric-WIP-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {nesting-metric-id :id}
+       {:name "Just nesting"
+        :description "x"}
+
+       :model/Metric
+       {nested-metric-id :id}
+       {:name "venues, count"
+        :description "x"
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}]
+      (t2/update! :model/Metric nesting-metric-id 
+                  {:definition (mt/$ids venues {:source-table $$venues
+                                                :aggregation [[:metric nested-metric-id]]})})
+      (let [query @(def qqq (mt/mbql-query venues {:aggregation [[:metric nesting-metric-id]]
+                                                   :breakout [$category_id]
+                                                   :order-by [[:asc $category_id]]
+                                                   :limit 5}))
+            _ @(def ppp (qp/preprocess query))]
+        (is (= [[2 8] [3 2] [4 2] [5 7] [6 2]]
+               @(def rrr (mt/rows (qp/process-query query)))))))))
