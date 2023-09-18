@@ -49,60 +49,84 @@ describe("scenarios > collections > archive", () => {
 
     cy.visit("/archive");
 
-    // test individual archive and undo
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    cy.intercept("DELETE", "/api/dashboard/*").as("deleteDashboard");
+    cy.intercept("DELETE", "/api/collection/*").as("deleteCollection");
+    cy.intercept("DELETE", "/api/card/*").as("deleteQuestion");
+
+    cy.log("Test individual archive and undo");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("unarchive icon")
       .click();
+    cy.wait("@updateDashboard");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
 
-    // test bulk archive and undo
+    cy.log("Test bulk archive and undo");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).within(() => {
       cy.findByLabelText("archive-item-swapper").realHover().click();
+      cy.get("input").should("be.checked");
     });
 
-    cy.findByTestId("bulk-action-bar", { timeout: 5000 }).should("be.visible");
-    cy.findByTestId("bulk-action-bar").within(() => {
-      cy.findByLabelText("bulk-actions-input").click();
-      cy.findByText("Unarchive").click();
-    });
+    cy.findByTestId("bulk-action-bar", { timeout: 5000 })
+      .should("be.visible")
+      .within(() => {
+        cy.findByLabelText("bulk-actions-input").click();
+        cy.findByText("Unarchive").click();
+        cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+      });
 
+    cy.get("main").findByText("Items you archive will appear here.");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("not.exist");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+    cy.get("main")
+      .findByText("Items you archive will appear here.")
+      .should("not.exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
 
-    // test individual delete
+    cy.log("test individual delete");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("trash icon")
       .click();
+    cy.wait("@deleteDashboard");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
 
     cy.findByTestId("toast-undo").should("not.exist");
 
-    // test bulk delete
+    cy.log("test bulk delete");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`)
       .findByLabelText("archive-item-swapper")
       .realHover()
       .click();
 
-    cy.findByTestId("bulk-action-bar", { timeout: 5000 }).should("be.visible");
-    cy.findByTestId("bulk-action-bar").within(() => {
-      cy.findByLabelText("bulk-actions-input").click();
-      cy.findByText("Delete").click();
-    });
+    cy.findByTestId("bulk-action-bar", { timeout: 5000 })
+      .should("be.visible")
+      .within(() => {
+        cy.findByLabelText("bulk-actions-input").click();
+        cy.findByText("2 items selected");
+        cy.button("Delete").click();
+      });
+    cy.wait("@deleteQuestion");
 
-    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist"); // cannot delete collections
+    cy.log("Cannot delete collections");
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
   });
 
