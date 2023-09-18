@@ -421,34 +421,39 @@
 ;;;; TODO: Move definition here!
 (declare metadata->field)
 
-;;;; TODO: refactor this
+(defn- ag-with-metadata->field
+  ;;;; Doc!
+  [[_ _ {metric ::metric}] metadata]
+  (assert (pos? metric) "Aggregation options should contain ::metric key.")
+  (update (metadata->field metadata) 2
+          assoc ::metric metric))
+
+(defn- metric-field-opt [form]
+  (when (vector? form)
+    (::metric (form 2))))
+
+(defn- clause-with-metric-opt? [form]
+  (and (vector? form)
+       (contains? (form 2) ::metric)))
+
+;;;; TODO: because of expressions I must transform also breakout elements to fields?
+;;;;       -- check later when tackling exprs!
 (defn- provides
-  "Generate map of metric-id -> corresponding field, for [[metrics-query]] joined using [[join-metrics-query]].
-   Metrics are either in aggregations or breakout of `metrics-query`. Aggregations are transformed to fields and
-   breakout elements
-   
-   tbd
-   
-   Aggregations are transformed to fields and breakout elements are left as is."
-  ;;;; TODO: because of expressions I must transform also breakout elements to fields!
-  [metrics-query metadata join-alias]
-  ;;;; TODO: Query should have only aggregation and breakout avail
-  ;;;;       Hence I could iterate metadata
-  ;;;;       And use and for aggregation just pick aggregation and do metadata->field, and for breakout
-  ;;;;       but for breakout, metadata is missing ::metric field opt? lets find out
-  (tap> ["provides metrics-query metadata join-alias" metrics-query metadata join-alias])
-  (doto (into {} (comp cat
-                       (filter #(some? (get-in % [2 ::metric])))
-                       (map #(update % 2 assoc
-                                     :join-alias join-alias
-                                     ::annotate/avoid-display-name-prefix? true))
-                 ;;;; ::metric field option could be left out probably
-                       (map (juxt #(get-in % [2 ::metric]) identity #_#(update % 2 dissoc ::metric))))
-        ;;;; following kinda silly
-              [(map (partial ag-index->field metrics-query metadata)
-                    (range (count (:aggregation metrics-query))))
-               (:breakout metrics-query)])
-    (as-> $ (tap> ["proivdes result" $]))))
+  "Generate mapping of metric id to field.
+   Takes brekout and aggregation of query. Further checks which of those clauses contain `::metric` key in options.
+   Presence of that key signals that clause represents column for some metric. Clauses from aggregations are
+   transformed to fields. `::annotate/avoid-display-name-prefix?` ensures that annotate middleware won't prefix
+   display name with join alias. That is not desired for fields comming from metrics, because they come from internal
+   joins."
+  [{:keys [breakout aggregation] :as _metrics-query} metadatas join-alias]
+  (let [fields-from-ags (doto (map ag-with-metadata->field aggregation (drop (count breakout) metadatas))
+                          (as-> $ (assert (= (count aggregation) (count $)) "Aggregation count mismatch.")))
+        fields-to-provide (->> fields-from-ags
+                               (into (filterv clause-with-metric-opt? breakout))
+                               (map #(update % 2 assoc
+                                              :join-alias join-alias
+                                              ::annotate/avoid-display-name-prefix? true)))]
+    (m/index-by metric-field-opt fields-to-provide)))
 
 (defn- join-metrics-query
   "Does actual join"
