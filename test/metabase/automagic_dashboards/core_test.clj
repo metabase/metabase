@@ -1910,19 +1910,17 @@
               {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}})))))))
 
 (deftest resolve-overloading-no-dimensions-test
-  (testing "Testing cases where no dimensions are present.
-            Note that this may be a bug in the implementation. If no dimensions are present, the overloaded items should
-            potentially be filtered out as they will never be used in cards anyways."
+  (testing "Testing cases where no dimensions are present."
     (let [dimensions nil
-          metrics [{"Count" {:metric ["count"] :score 100}}
-                   {"CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]] :score 100}}
-                   {"Sum" {:metric ["sum" ["dimension" "GenericNumber"]] :score 100}}
-                   {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 1}}]]
+          metrics    [{"Count" {:metric ["count"] :score 100}}
+                      {"CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]] :score 100}}
+                      {"Sum" {:metric ["sum" ["dimension" "GenericNumber"]] :score 100}}
+                      {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 1}}]]
       (testing "When no dimensions are present and there are no conflicts in metric name, the metrics are simply merged."
         (is (= (apply merge metrics)
                (#'magic/resolve-overloading dimensions metrics))))
       (testing "When no dimensions are present and there is a conflict, tie is broken by score."
-        (let [new-metric {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 100}}
+        (let [new-metric          {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 100}}
               conflicting-metrics (into [new-metric] metrics)]
           (testing "A simple merge won't do"
             (is (not= (apply merge conflicting-metrics)
@@ -1931,12 +1929,26 @@
             (is (= (into (apply merge metrics) new-metric)
                    (#'magic/resolve-overloading dimensions conflicting-metrics)))))))))
 
+(deftest resolve-overloading-dimensionless-quantity-test
+  (testing "Testing cases where the metric is dimensionless (e.g. count)."
+    (let [metrics    [{"Count" {:metric ["count"] :score 1}}
+                      {"Count" {:metric ["count" ["dimension" "Stuff"]] :score 100}}]]
+      (testing "Dimensionless metrics are always satisfied and are preferred over a dimensioned metric when no
+                corresponding dimension is present."
+        (is (= {"Count" {:metric ["count"] :score 1}}
+               (#'magic/resolve-overloading nil metrics))))
+      (testing "If the dimension is present, both metrics are satisfied and the metric is resolved by score."
+        (is (= {"Count" {:metric ["count" ["dimension" "Stuff"]] :score 100}}
+               (#'magic/resolve-overloading
+                 {"Stuff" {}}
+                 metrics)))))))
+
 (deftest resolve-overloading-test
   (testing "When there is a conflict in metric or filter name,
             what matters is the ability to match to dimension name first."
     (is (= {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}
            (#'magic/resolve-overloading
-            {:dimensions {"GenericNumber" {}}}
+             {"GenericNumber" {}}
             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 0}}]))))
   (testing "When there is a conflict in metric or filter name, we rank on score amongst the matching metrics."
@@ -1944,9 +1956,9 @@
                             ["sum" ["dimension" "Discount"]]
                             ["sum" ["dimension" "Income"]]] :score 100}}
            (#'magic/resolve-overloading
-            {:dimensions {"GenericNumber" {}
-                          "Discount"      {}
-                          "Income"        {}}}
+             {"GenericNumber" {}
+              "Discount"      {}
+              "Income"        {}}
             [{"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
              {"Avg" {:metric ["/"
                               ["sum" ["dimension" "Discount"]]
@@ -1954,13 +1966,13 @@
              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]] :score 99}}])))
     (is (= {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}
            (#'magic/resolve-overloading
-            {:dimensions {"Day" {}}}
+             {"Day" {}}
             [{"Last30Days" {:filter ["something-made-up" ["dimension" "Day"] -720 "hour"] :score 90}}
              {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"] :score 100}}]))))
   (testing "When no dimensions match, we rank on score alone"
     (is (= {"Avg" {:metric ["avg" ["dimension" "FROOB"]] :score 100}}
            (#'magic/resolve-overloading
-            {:dimensions {"X" {}}}
+             {"X" {}}
             [{"Avg" {:metric ["/"
                               ["sum" ["dimension" "Discount"]]
                               ["sum" ["dimension" "Income"]]] :score 1}}
@@ -1986,10 +1998,20 @@
                                                            (result-metadata-for-query
                                                             source-query))
                                         :dataset         true}]
-          (let [dashboard-template (some
-                                    #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
-                                    (dashboard-templates/get-dashboard-templates ["table"]))
-                {:keys [dimensions metrics] :as context} (#'magic/make-context (#'magic/->root card) dashboard-template)]
+          (let [{template-dimensions :dimensions
+                 template-metrics    :metrics
+                 template-filters    :filters} (some
+                                                 #(when (-> % :dashboard-template-name #{"GenericTable"}) %)
+                                                 (dashboard-templates/get-dashboard-templates ["table"]))
+                base-context (#'magic/make-base-context (#'magic/->root card))
+                dimensions   (#'magic/bind-dimensions base-context template-dimensions)
+                metrics      (#'magic/resolve-overloading dimensions template-metrics)
+                filters      (#'magic/resolve-overloading dimensions template-filters)
+                context      (-> base-context
+                                 (assoc :dimensions dimensions
+                                        :metrics metrics
+                                        :filters filters)
+                                 (#'magic/inject-root card))]
             (testing "In this case, we are only binding to a single dimension, Lat, which matches the LATITUDE field."
               (is (= #{"Lat"} (set (keys dimensions))))
               (is (=? {"Lat" {:matches [{:id (mt/id :people :latitude) :name "LATITUDE"}]}} dimensions)))

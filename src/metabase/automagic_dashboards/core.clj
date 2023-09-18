@@ -695,16 +695,21 @@
   "Does the dimension match the metric or filter definition?
   The metric or filter definition will have named dimensions (e.g. [\"dimension\" \"Lat\"]) and the dimensions are a map
   of dimension name to dimension data. has-matches? checks that every dimension detected in the definition item is also
-  found in the keys of the dimensions map."
+  found in the keys of the dimensions map. Note that it also returns true if there are no dimensions in the definition
+  as every predicate is considered satisfied on an empty collection."
   [dimensions definition]
   (->> definition
        dashboard-templates/collect-dimensions
        (every? (partial get dimensions))))
 
 (defn- resolve-overloading
-  "Find the overloaded definition with the highest `score` for which all referenced dimensions have at least one
-  matching field."
-  [{:keys [dimensions]} definitions]
+  "Merge definitions of the form [{\"Name\" {:score n}}, {...}] into a single map of {\"Name\" {:score n} ...}.
+
+  Conflicts may occur if multiple definitions have the same name. E.g. two definitions named \"Count\".
+  When this happens, priority is given to definitions for which all dimensions named in the definition are contained in
+  the definitions map. This includes dimensionless definitions, which are always satisfied. If neither or both
+  definition names are in the dimension map, priority is given to the definition with the highest score."
+  [dimensions definitions]
   (apply merge-with (fn [a b]
                       (case (map (partial has-matches? dimensions) [a b])
                         [true false] a
@@ -968,24 +973,6 @@
      :query-filter (filters/inject-refinement (:query-filter root)
                                               (:cell-query root))}))
 
-(s/defn ^:private make-context
-  "Create a dashboard-template-oriented context for this item, consisting of its
-   source data along with detected metrics, dimensions, and filters.
-
-   Note that the 'dashboard-template' aspect of this function means the dimensions
-   defined in the dashboard template are used to match to the source data fields.
-
-   This data structure is used to generate cards."
-  [{:keys [source entity] :as root}
-   {:keys [dimensions metrics filters]} :- dashboard-templates/DashboardTemplate]
-  {:pre [source]}
-  (let [base-context (make-base-context root)]
-    (as-> base-context context
-      (assoc context :dimensions (bind-dimensions context dimensions))
-      (assoc context :metrics (resolve-overloading context metrics))
-      (assoc context :filters (resolve-overloading context filters))
-      (inject-root context entity))))
-
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
@@ -1019,17 +1006,29 @@
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [root
-   {:keys [dashboard-template-name] :as dashboard-template} :- dashboard-templates/DashboardTemplate]
+  [{:keys [entity] :as root}
+   {template-dimensions :dimensions
+    template-metrics    :metrics
+    template-filters    :filters
+    :keys               [dashboard-template-name]
+    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [context (make-context root dashboard-template)
+  (let [base-context (make-base-context root)
+        dimensions   (bind-dimensions base-context template-dimensions)
+        metrics      (resolve-overloading dimensions template-metrics)
+        filters      (resolve-overloading dimensions template-filters)
+        context      (-> base-context
+                         (assoc :dimensions dimensions
+                                :metrics metrics
+                                :filters filters)
+                         (inject-root entity))
         cards   (make-cards context dashboard-template)]
     (when (or (not-empty cards)
               (-> dashboard-template :cards nil?))
       [(assoc (make-dashboard root dashboard-template context)
          :filters (->> dashboard-template
                        :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context)))
+                       (mapcat (comp :matches dimensions))
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
          :cards cards)
        dashboard-template
