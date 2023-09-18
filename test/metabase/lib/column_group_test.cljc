@@ -305,19 +305,31 @@
                           (lib/display-info query group))))))))))))
 
 (deftest ^:parallel self-join-grouping-test
-  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/with-fields (for [field [:id :tax]]
-                                       (lib/ref (meta/field-metadata :orders field))))
-                    (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
-                                                   [(lib/= (meta/field-metadata :orders :id)
-                                                           (meta/field-metadata :orders :id))])
-                                  (lib/with-join-fields (for [field [:id :tax]]
-                                                          (lib/ref (meta/field-metadata :orders field)))))))
-        columns (lib/visible-columns query)
-        marked  (metabase.lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))]
-    (is (= 39 (count columns)))
+  (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/with-fields (for [field [:id :tax]]
+                                            (lib/ref (meta/field-metadata :orders field))))
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                        [(lib/= (meta/field-metadata :orders :id)
+                                                                (meta/field-metadata :orders :id))])
+                                       (lib/with-join-fields (for [field [:id :tax]]
+                                                               (lib/ref (meta/field-metadata :orders field)))))))
+        columns      (lib/visible-columns query)
+        marked       (metabase.lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))
+        user-cols    ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
+                      "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
+        product-cols ["ID" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE" "RATING" "CREATED_AT"]
+        implicit     (fn [field-names alias-prefix]
+                       {::lib.column-group/group-type :group-type/join.implicit
+                        :lib/type :metadata/column-group
+                        ::lib.column-group/columns
+                        (for [alias-suffix ["" "_2"]
+                              field-name   field-names]
+                          {:name                     field-name
+                           :lib/desired-column-alias (str alias-prefix field-name alias-suffix)
+                           :lib/source               :source/implicitly-joinable})})]
+    (is (= 60 (count columns)))
     (is (= 4  (count (lib/returned-columns query))))
-    (is (= 39 (count marked)))
+    (is (= 60 (count marked)))
     (is (= 4  (count (filter :selected? marked))))
     (is (=? [{::lib.column-group/group-type :group-type/main
               :lib/type :metadata/column-group
@@ -335,20 +347,6 @@
                 {:name field-name
                  :lib/desired-column-alias (str "Orders__" field-name)
                  :lib/source :source/joins})}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :lib/type :metadata/column-group
-              ::lib.column-group/columns
-              (for [field-name ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
-                                "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]]
-                {:name field-name
-                 :lib/desired-column-alias (str "PEOPLE__via__USER_ID__" field-name)
-                 :lib/source :source/implicitly-joinable})}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :lib/type :metadata/column-group
-              ::lib.column-group/columns
-              (for [field-name ["ID" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE" "RATING" "CREATED_AT"]]
-                {:name field-name
-                 :lib/desired-column-alias (str "PRODUCTS__via__PRODUCT_ID__" field-name)
-                 :lib/source :source/implicitly-joinable})}]
-            (lib/group-columns marked)))
-    ))
+             (implicit user-cols    "PEOPLE__via__USER_ID__")
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__")]
+            (lib/group-columns marked)))))

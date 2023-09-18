@@ -169,6 +169,14 @@
     (testing "with implicit joins"
       (is (=? (concat orders-cols
                       joined-cols
+                      ;; First set of implicit joins
+                      (sort-by :position
+                               (for [field (meta/fields :people)]
+                                 (meta/field-metadata :people field)))
+                      (sort-by :position
+                               (for [field (meta/fields :products)]
+                                 (meta/field-metadata :products field)))
+                      ;; Second set of implicit joins
                       (sort-by :position
                                (for [field (meta/fields :people)]
                                  (meta/field-metadata :people field)))
