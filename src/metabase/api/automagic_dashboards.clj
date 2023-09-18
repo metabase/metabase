@@ -285,7 +285,7 @@
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/dashboard-template/:prefix/:dashboard-template"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-query` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query cell-query prefix dashboard-template show]
