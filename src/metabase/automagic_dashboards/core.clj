@@ -1006,15 +1006,14 @@
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [{:keys [entity] :as root}
+  [{{:keys [entity] :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-filters    :filters
     :keys               [dashboard-template-name]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [base-context (make-base-context root)
-        dimensions   (bind-dimensions base-context template-dimensions)
+  (let [dimensions   (bind-dimensions base-context template-dimensions)
         metrics      (resolve-overloading dimensions template-metrics)
         filters      (resolve-overloading dimensions template-filters)
         context      (-> base-context
@@ -1061,13 +1060,14 @@
 (s/defn ^:private indepth
   [{:keys [dashboard-templates-prefix] :as root}
    {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
-  (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
-       (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
-               (when-let [[dashboard _ _] (apply-dashboard-template root indepth)]
-                 {:title       ((some-fn :short-title :title) dashboard)
-                  :description (:description dashboard)
-                  :url         (format "%s/rule/%s/%s" (:url root) dashboard-template-name indepth-template-name)})))
-       (hash-map :indepth)))
+  (let [base-context (make-base-context root)]
+    (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
+         (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
+                 (when-let [[dashboard _ _] (apply-dashboard-template base-context indepth)]
+                   {:title       ((some-fn :short-title :title) dashboard)
+                    :description (:description dashboard)
+                    :url         (format "%s/rule/%s/%s" (:url root) dashboard-template-name indepth-template-name)})))
+         (hash-map :indepth))))
 
 (defn- drilldown-fields
   [context]
@@ -1213,18 +1213,19 @@
   "Given a 'root' context, apply matching dashboard templates in sequence and return the first application of this
    template that generates cards."
   [{:keys [dashboard-template dashboard-templates-prefix full-name] :as root}]
-  (or (when dashboard-template
-        (apply-dashboard-template root (dashboard-templates/get-dashboard-template dashboard-template)))
-      (some
-        (fn [dashboard-template]
-          (apply-dashboard-template root dashboard-template))
-        (matching-dashboard-templates (dashboard-templates/get-dashboard-templates dashboard-templates-prefix) root))
-      (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                      (let [templates (->> (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
-                                               (dashboard-templates/get-dashboard-templates dashboard-templates-prefix))
-                                           (map :dashboard-template-name))]
-                        {:root                          root
-                         :available-dashboard-templates templates})))))
+  (let [base-context (make-base-context root)]
+    (or (when dashboard-template
+          (apply-dashboard-template base-context (dashboard-templates/get-dashboard-template dashboard-template)))
+        (some
+         (fn [dashboard-template]
+           (apply-dashboard-template base-context dashboard-template))
+         (matching-dashboard-templates (dashboard-templates/get-dashboard-templates dashboard-templates-prefix) root))
+        (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
+                        (let [templates (->> (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
+                                                 (dashboard-templates/get-dashboard-templates dashboard-templates-prefix))
+                                             (map :dashboard-template-name))]
+                          {:root                          root
+                           :available-dashboard-templates templates}))))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
