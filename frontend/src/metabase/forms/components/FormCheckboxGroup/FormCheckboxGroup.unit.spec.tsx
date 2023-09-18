@@ -75,7 +75,6 @@ describe("FormCheckboxGroup", () => {
         .default([])
         .min(1, requiredErrorMessage),
     });
-
     setup({
       initialValues: validationSchema.getDefault(),
       validationSchema: validationSchema,

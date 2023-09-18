@@ -100,7 +100,6 @@ describe("FormTextInput", () => {
     const validationSchema = Yup.object({
       name: Yup.string().default("").required(requiredErrorMessage),
     });
-
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
@@ -120,7 +119,6 @@ describe("FormTextInput", () => {
         .default(null)
         .required(requiredErrorMessage),
     });
-
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 

@@ -75,7 +75,6 @@ describe("FormRadioGroup", () => {
     const validationSchema = Yup.object({
       column: Yup.string().required(requiredErrorMessage),
     });
-
     setup({
       initialValues: validationSchema.getDefault(),
       validationSchema: validationSchema,

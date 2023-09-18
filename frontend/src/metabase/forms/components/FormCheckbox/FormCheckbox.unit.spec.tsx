@@ -68,7 +68,6 @@ describe("FormCheckbox", () => {
     const { onSubmit } = setup({
       initialValues: { remember: true },
     });
-
     userEvent.click(screen.getByLabelText("Remember me"));
     userEvent.click(screen.getByText("Submit"));
 
@@ -84,7 +83,6 @@ describe("FormCheckbox", () => {
     const validationSchema = Yup.object({
       remember: Yup.boolean().default(true).isTrue("Must be checked"),
     });
-
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Must be checked")).not.toBeInTheDocument();
 
