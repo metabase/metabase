@@ -33,7 +33,7 @@
                           e)))))
     zone-id))
 
-(mu/defn sync-timezone! :- [:maybe [:map [:timezone-id [:maybe ::lib.schema.expression.temporal/timezone-id]]]]
+(mu/defn sync-timezone! :- [:map [:timezone-id [:maybe ::lib.schema.expression.temporal/timezone-id]]]
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
   [database :- i/DatabaseInstance]
@@ -43,5 +43,5 @@
     (validate-zone-id driver zone-id)
     (let [zone-id (some-> zone-id str)]
       (when-not (= zone-id (:timezone database))
-        (t2/update! :model/Database (:id database) {:timezone zone-id})))
-    {:timezone-id zone-id}))
+        (t2/update! :model/Database (:id database) {:timezone zone-id}))
+      {:timezone-id zone-id})))
