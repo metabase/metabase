@@ -22,7 +22,6 @@ interface SetupOpts {
 const setup = ({
   initialValues = { remember: false },
   validationSchema,
-  nullable,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
