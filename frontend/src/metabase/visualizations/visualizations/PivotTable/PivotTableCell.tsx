@@ -3,7 +3,7 @@ import cx from "classnames";
 import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import type { VisualizationSettings } from "metabase-types/api";
 

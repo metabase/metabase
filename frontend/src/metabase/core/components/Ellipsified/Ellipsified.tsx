@@ -19,7 +19,7 @@ interface EllipsifiedProps {
   "data-testid"?: string;
 }
 
-const Ellipsified = ({
+export const Ellipsified = ({
   style,
   className,
   showTooltip = true,
@@ -57,6 +57,3 @@ const Ellipsified = ({
     </Tooltip>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Ellipsified;
