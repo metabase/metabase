@@ -15,13 +15,11 @@ interface FormValues {
 interface SetupOpts {
   initialValues?: FormValues;
   validationSchema?: AnySchema;
-  nullable?: boolean;
 }
 
 const setup = ({
   initialValues = { columns: [] },
   validationSchema,
-  nullable,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
