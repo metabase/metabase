@@ -151,7 +151,10 @@
    columns    :- [:sequential lib.metadata/ColumnMetadata]
    generous?  :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
-                               (clojure.core/= (column-join-alias %) join-alias))
+                               ;; Either the join alias must match, or this must be an implicitly joined field.
+                               ;; (The join alias might not match for an implicit join.)
+                               (or (:fk-field-id %)
+                                   (clojure.core/= (column-join-alias %) join-alias)))
                          columns))
       (when generous?
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
