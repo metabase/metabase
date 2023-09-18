@@ -473,31 +473,35 @@
     (doto (t2/select :model/Metric :id [:in metrics-ids])
       (as-> $ (assert (= (count metrics-ids) (count $)) "Metric id and fetched metric model count mismatch.")))))
 
-;;;; TODO: Test this properly!
-(defn- ag->field [ag field]
-  (tap> ["ag->field ag field" ag field])
-  (doto (mbql.u/match-one ag
-                          ;;;; TODO: check not nil val we only want, but this should be ok...
-          [:aggregation-options _ (ag-opts :guard #(contains? % ::metric))]
-          (update field 2 #(assoc % ::metric (::metric ag-opts)))
+(defn- maybe-adjust-metric-opt
+  "Adjust field from `::metric-id->field` to be swappable for aggregation containing only one metric. If the
+   aggregation that field is being swapped for was also coming from metric, ::metric opt is updated. That is
+   necessary, so field can be correctly provided using [[provides]] when swapping metric uplevel."
+  [[_ _ {metric ::metric}] field]
+  (if (pos? metric)
+    (update field 2 assoc ::metric metric)
+    field))
 
-          _
-          field)
-    (as-> $ (tap> ["ag->field result" $]))))
+(defn- one-and-only-metric?
+  "Determine if aggregation consists of one and only metric, hence will be swapped for a field and moved to breakout
+   during transformation of query containing metrics."
+  [ag]
+  (mbql.u/match-one ag
+    [:metric _]
+    (or (empty? &parents)
+        (= [:aggregation-options] &parents))))
 
 (defn- swap-metric-clauses-in-aggregation
-  "Transform one aggregation.
-   Swap [:metric <id>] clauses for fields inside and aggregation. If aggregation contains just one metric returns
-   corresponding field clause."
+  "Transform one aggregation containing metrics clauses.
+   "
   [query ag]
   (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second) distinct)
-        multiple-metrics? (some? other-metric-ids)
-        one-and-only-metric? (and (some? first-metric-id) (nil? other-metric-ids))]
+        multiple-metrics? (some? other-metric-ids)]
     (cond multiple-metrics?
           (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))
 
-          one-and-only-metric?
-          (ag->field ag (get-in query [::metric-id->field first-metric-id]))
+          (one-and-only-metric? ag)
+          (maybe-adjust-metric-opt ag (get-in query [::metric-id->field first-metric-id]))
 
           :else
           ag)))
