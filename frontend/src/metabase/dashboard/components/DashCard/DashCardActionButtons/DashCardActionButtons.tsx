@@ -61,7 +61,7 @@ function DashCardActionButtons({
     supportPreviewing,
     supportsSeries,
     disableClickBehavior,
-  } = getVisualizationRaw(series).visualization;
+  } = getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 

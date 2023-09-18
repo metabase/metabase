@@ -94,6 +94,8 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     canCompareSubstrings(value, v) && v.startsWith(value) ? color : null,
   "ends-with": (value, color) => v =>
     canCompareSubstrings(value, v) && v.endsWith(value) ? color : null,
+  "is-true": (_value, color) => v => v ? color : null,
+  "is-false": (_value, color) => v => v ? null : color,
 };
 
 export function compileFormatter(

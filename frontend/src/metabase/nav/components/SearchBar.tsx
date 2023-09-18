@@ -1,8 +1,9 @@
-import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
 import { Icon } from "metabase/core/components/Icon";
@@ -17,14 +18,14 @@ import { zoomInRow } from "metabase/query_builder/actions";
 import { getSetting } from "metabase/selectors/settings";
 import RecentsList from "metabase/nav/components/RecentsList";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
-import SearchResults from "metabase/nav/components/SearchResults";
 
-import { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/search/utils";
+import { SearchResults } from "metabase/nav/components/SearchResults";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -74,7 +75,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
+    (nextLocation: LocationDescriptorObject | string) =>
+      dispatch(push(nextLocation)),
     [dispatch],
   );
 
@@ -88,7 +90,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    result => {
+    (result: WrappedResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {

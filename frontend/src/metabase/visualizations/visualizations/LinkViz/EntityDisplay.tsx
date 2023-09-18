@@ -9,7 +9,7 @@ import {
   EntityDisplayContainer,
   LeftContainer,
 } from "./EntityDisplay.styled";
-import { WrappedUnrestrictedLinkEntity } from "./types";
+import type { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
   entity,

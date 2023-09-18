@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { IconName } from "metabase/core/components/Icon";
-import { SearchModelType } from "metabase-types/api";
+import type { IconName } from "metabase/core/components/Icon";
+import type { SearchModelType } from "metabase-types/api";
 
 export const SearchFilterKeys = {
   Type: "type",

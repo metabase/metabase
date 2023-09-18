@@ -1,23 +1,19 @@
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
-export function getParameterValueFromQueryParams(
-  parameter,
-  queryParams,
-  metadata,
-) {
+export function getParameterValueFromQueryParams(parameter, queryParams) {
   queryParams = queryParams || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
-  // skip parsing "" because it indicates a forcefully unset parameter
+  // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
-    return "";
-  } else if (hasParameterValue(maybeParameterValue)) {
+    return null;
+  } else if (maybeParameterValue == null) {
+    // try to use the default if the parameter is not present in the query params
+    return parameter.default ?? null;
+  } else {
     const parsedValue = parseParameterValue(maybeParameterValue, parameter);
     return normalizeParameterValueForWidget(parsedValue, parameter);
-  } else {
-    return parameter.default;
   }
 }
 
@@ -87,47 +83,11 @@ function normalizeParameterValueForWidget(value, parameter) {
   return value;
 }
 
-// on dashboards we treat a default parameter with a set value of "" (from a query parameter)
-// to mean that the parameter value is explicitly unset.
-// this is NOT the case elsewhere (native questions, pulses) because default values are
-// automatically used in the query when unset.
-function removeAllEmptyStringParameters(pairs) {
-  return pairs
-    .map(([parameter, value]) => [parameter, value === "" ? undefined : value])
-    .filter(([parameter, value]) => hasParameterValue(value));
-}
-
-function removeUndefaultedEmptyStringParameters(pairs) {
-  return pairs
-    .map(([parameter, value]) => [
-      parameter,
-      value === "" ? parameter.default : value,
-    ])
-    .filter(([, value]) => hasParameterValue(value));
-}
-
-// when `forcefullyUnsetDefaultedParametersWithEmptyStringValue` is true, we treat defaulted parameters with an empty string value as explecitly unset.
-// This CAN'T be used with native questions because defaulted parameters are always applied on the BE when unset on the FE.
-export function getParameterValuesByIdFromQueryParams(
-  parameters,
-  queryParams,
-  metadata,
-  { forcefullyUnsetDefaultedParametersWithEmptyStringValue } = {},
-) {
-  const parameterValuePairs = parameters.map(parameter => [
-    parameter,
-    getParameterValueFromQueryParams(parameter, queryParams, metadata),
-  ]);
-
-  const transformedPairs =
-    forcefullyUnsetDefaultedParametersWithEmptyStringValue
-      ? removeAllEmptyStringParameters(parameterValuePairs)
-      : removeUndefaultedEmptyStringParameters(parameterValuePairs);
-
-  const idValuePairs = transformedPairs.map(([parameter, value]) => [
-    parameter.id,
-    value,
-  ]);
-
-  return Object.fromEntries(idValuePairs);
+export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
+  return Object.fromEntries(
+    parameters.map(parameter => [
+      parameter.id,
+      getParameterValueFromQueryParams(parameter, queryParams),
+    ]),
+  );
 }

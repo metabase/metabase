@@ -84,6 +84,13 @@ A subset of our tests depend on the external services that are available through
 
 Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
 
+### Running tests with Snowplow involved
+
+Tests that depend on Snowplow expect a running server. To run them, you need to:
+
+- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
+- pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.
@@ -154,7 +161,7 @@ Please follow these steps:
 - `710350560` is the artifact id that you'll need in the next step
 
 ### Trigger the stress-test workflow manually
-- Go to `https://github.com/metabase/metabase/actions/workflows/e2e-flake-fix-stress-test.yml`
+- Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
 - Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
 1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
 2. Provide previously obtained artifact id to the related field

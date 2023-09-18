@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 import fetchMock from "fetch-mock";
-import { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -490,7 +490,7 @@ describe("QueryBuilder", () => {
     });
 
     it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
-      const mockDownloadEndpoint = fetchMock.post("/api/dataset/csv", {});
+      const mockDownloadEndpoint = fetchMock.post("path:/api/dataset/csv", {});
       await setup({
         card: TEST_NATIVE_CARD,
         dataset: TEST_NATIVE_CARD_DATASET,
@@ -517,8 +517,10 @@ describe("QueryBuilder", () => {
             urlSearchParams instanceof URLSearchParams
               ? JSON.parse(urlSearchParams.get("query") ?? "{}")
               : {};
+
           return (
-            url === "/api/dataset/csv" && query?.native.query === "SELECT 1"
+            url.includes("/api/dataset/csv") &&
+            query?.native.query === "SELECT 1"
           );
         }),
       ).toBe(true);

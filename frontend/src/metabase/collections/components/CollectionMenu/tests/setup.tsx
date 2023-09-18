@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import { Collection, TokenFeatures } from "metabase-types/api";
+import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,

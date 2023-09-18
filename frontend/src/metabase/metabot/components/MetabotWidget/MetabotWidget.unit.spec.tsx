@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { Card, CollectionItem, Database, User } from "metabase-types/api";
+import type { Card, CollectionItem, Database, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollectionItem,

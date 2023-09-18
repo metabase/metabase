@@ -22,7 +22,7 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -34,9 +34,11 @@ import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 
+import { DashboardTabs } from "../components/DashboardTabs";
 import {
   ItemContent,
   ItemDescription,
+  ItemLink,
   ListRoot,
   SidebarHeader,
   SidebarRoot,
@@ -50,6 +52,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
   isHeaderVisible: getIsHeaderVisible(state),
+  tabs: getTabs(state),
 });
 
 const mapDispatchToProps = {
@@ -121,8 +124,8 @@ class AutomaticDashboardAppInner extends Component {
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
-            <div className="bg-white border-bottom py2">
-              <div className="wrapper flex align-center">
+            <div className="bg-white border-bottom">
+              <div className="wrapper flex align-center py2">
                 <XrayIcon name="bolt" size={24} />
                 <div>
                   <h2 className="text-wrap mr2">
@@ -148,6 +151,11 @@ class AutomaticDashboardAppInner extends Component {
                   </ActionButton>
                 )}
               </div>
+              {this.props.tabs.length > 1 && (
+                <div className="wrapper flex align-center">
+                  <DashboardTabs location={this.props.location} />
+                </div>
+              )}
             </div>
           )}
 
@@ -164,7 +172,7 @@ class AutomaticDashboardAppInner extends Component {
                 />
               </div>
             )}
-            <Dashboard {...this.props} />
+            <Dashboard isXray {...this.props} />
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
@@ -274,10 +282,10 @@ const SuggestionsList = ({ suggestions, section }) => (
         </SuggestionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
-            <Link
+            <ItemLink
               key={itemIndex}
               to={item.url}
-              className="mb1 block hover-parent hover--visibility text-brand-hover"
+              className="hover-parent hover--visibility"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
             >
               <Card className="p2" hoverable>
@@ -295,7 +303,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                   </ItemDescription>
                 </ItemContent>
               </Card>
-            </Link>
+            </ItemLink>
           ))}
       </li>
     ))}

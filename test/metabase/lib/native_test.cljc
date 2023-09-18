@@ -4,7 +4,7 @@
               [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
@@ -188,8 +188,8 @@
 (deftest ^:parallel native-query-suggested-name-test
   (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil)]
     (is (= "Native query"
-           (lib.metadata.calculation/describe-query query)))
-    (is (nil? (lib.metadata.calculation/suggested-name query)))))
+           (lib/describe-query query)))
+    (is (nil? (lib/suggested-name query)))))
 
 (deftest ^:parallel native-query-building
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")]
@@ -297,3 +297,25 @@
         #"Must be a native query"
         (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
             (lib/with-native-extras {:collection "mycollection"})))))
+
+(deftest ^:parallel has-write-permission-test
+  (testing ":native-permissions in database"
+    (is (lib/has-write-permission
+          (lib/native-query (lib.tu/mock-metadata-provider
+                              meta/metadata-provider
+                              {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
+                                                    "select * from x;")))
+    (is (not (lib/has-write-permission
+               (lib/native-query (lib.tu/mock-metadata-provider
+                                   meta/metadata-provider
+                                   {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :none})})
+                                 "select * from x;"))))
+    (is (not (lib/has-write-permission
+               (lib/native-query (lib.tu/mock-metadata-provider
+                                   meta/metadata-provider
+                                   {:database (dissoc (lib.metadata/database meta/metadata-provider) :native-permissions)})
+                                 "select * from x;"))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (lib/has-write-permission lib.tu/venues-query)))))

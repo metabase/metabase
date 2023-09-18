@@ -6,25 +6,30 @@ import {
   getSourceType,
 } from "./parameter-source";
 
+export const PULSE_PARAM_EMPTY = null;
+export const PULSE_PARAM_USE_DEFAULT = undefined;
+
 export function getValuePopulatedParameters(parameters, parameterValues) {
-  return parameterValues
-    ? parameters.map(parameter => {
-        return parameter.id in parameterValues
-          ? {
-              ...parameter,
-              value: parameterValues[parameter.id],
-            }
-          : parameter;
-      })
-    : parameters;
+  return parameters.map(parameter => ({
+    ...parameter,
+    value: parameterValues?.[parameter.id] ?? null,
+  }));
+}
+export function getDefaultValuePopulatedParameters(
+  parameters,
+  parameterValues,
+) {
+  return parameters.map(parameter => {
+    const value = parameterValues?.[parameter.id];
+    return {
+      ...parameter,
+      value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
+    };
+  });
 }
 
 export function hasDefaultParameterValue(parameter) {
   return parameter.default != null;
-}
-
-export function hasParameterValue(value) {
-  return value != null;
 }
 
 export function normalizeParameter(parameter) {
@@ -53,52 +58,34 @@ export function normalizeParameters(parameters) {
     }));
 }
 
+export function isParameterValueEmpty(value) {
+  return (
+    value === PULSE_PARAM_EMPTY ||
+    (Array.isArray(value) && value.length === 0) ||
+    value === ""
+  );
+}
+
 export function normalizeParameterValue(type, value) {
   const fieldType = getParameterType(type);
-
-  if (["string", "number"].includes(fieldType)) {
-    return value == null ? [] : [].concat(value);
+  if (value === PULSE_PARAM_USE_DEFAULT) {
+    return PULSE_PARAM_USE_DEFAULT;
+  } else if (isParameterValueEmpty(value)) {
+    return PULSE_PARAM_EMPTY;
+  } else if (["string", "number"].includes(fieldType)) {
+    return [].concat(value);
   } else {
     return value;
   }
 }
 
-function removeNilValuedPairs(pairs) {
-  return pairs.filter(([, value]) => hasParameterValue(value));
-}
-
-function removeUndefaultedNilValuedPairs(pairs) {
-  return pairs.filter(
-    ([parameter, value]) =>
-      hasDefaultParameterValue(parameter) || hasParameterValue(value),
+export function getParameterValuesBySlug(parameters, parameterValuesById) {
+  parameters = parameters ?? [];
+  parameterValuesById = parameterValuesById ?? {};
+  return Object.fromEntries(
+    parameters.map(parameter => [
+      parameter.slug,
+      parameter.value ?? parameterValuesById[parameter.id] ?? null,
+    ]),
   );
-}
-
-// when `preserveDefaultedParameters` is true, we don't remove defaulted parameters with nil values
-// so that they can be set in the URL query without a value. Used alongside `getParameterValuesByIdFromQueryParams`
-// with `forcefullyUnsetDefaultedParametersWithEmptyStringValue` set to true.
-export function getParameterValuesBySlug(
-  parameters,
-  parameterValuesById,
-  { preserveDefaultedParameters } = {},
-) {
-  parameters = parameters || [];
-  parameterValuesById = parameterValuesById || {};
-  const parameterValuePairs = parameters.map(parameter => [
-    parameter,
-    hasParameterValue(parameter.value)
-      ? parameter.value
-      : parameterValuesById[parameter.id],
-  ]);
-
-  const transformedPairs = preserveDefaultedParameters
-    ? removeUndefaultedNilValuedPairs(parameterValuePairs)
-    : removeNilValuedPairs(parameterValuePairs);
-
-  const slugValuePairs = transformedPairs.map(([parameter, value]) => [
-    parameter.slug,
-    value,
-  ]);
-
-  return Object.fromEntries(slugValuePairs);
 }

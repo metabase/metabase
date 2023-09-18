@@ -8,7 +8,7 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import { Group, GroupsPermissions } from "metabase-types/api";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import type Database from "metabase-lib/metadata/Database";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
@@ -19,7 +19,7 @@ import {
   getRawQueryWarningModal,
 } from "../confirmations";
 import { limitDatabasePermission } from "../../permissions";
-import { DatabaseEntityId } from "../../types";
+import type { DatabaseEntityId } from "../../types";
 
 const buildAccessPermission = (
   entityId: DatabaseEntityId,

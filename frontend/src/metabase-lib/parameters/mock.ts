@@ -1,4 +1,4 @@
-import { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 export const createMockUiParameter = (
   opts?: Partial<UiParameter>,

@@ -11,12 +11,17 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -37,12 +42,16 @@
          lib.column-group/keep-me
          lib.common/keep-me
          lib.database/keep-me
+         lib.drill-thru/keep-me
+         lib.drill-thru.pivot/keep-me
+         lib.equality/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
+         lib.metadata.composed-provider/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -55,193 +64,214 @@
          lib.temporal-bucket/keep-me)
 
 (shared.ns/import-fns
-  [lib.aggregation
-   aggregate
-   aggregation-clause
-   aggregation-ref
-   aggregation-operator-columns
-   aggregations
-   aggregations-metadata
-   available-aggregation-operators
-   selected-aggregation-operators
-   count
-   avg
-   count-where
-   distinct
-   max
-   median
-   min
-   percentile
-   share
-   stddev
-   sum
-   sum-where
-   var
-   cum-count
-   cum-sum]
-  [lib.binning
-   available-binning-strategies
-   binning
-   with-binning]
-  [lib.breakout
-   breakout
-   breakoutable-columns
-   breakouts
-   breakouts-metadata]
-  [lib.column-group
-   columns-group-columns
-   group-columns]
-  [lib.common
-   external-op]
-  [lib.database
-   database-id]
-  [lib.expression
-   expression
-   expressions
-   expressions-metadata
-   expressionable-columns
-   expression-ref
-   +
-   -
-   *
-   /
-   case
-   coalesce
-   abs
-   log
-   exp
-   sqrt
-   ceil
-   floor
-   round
-   power
-   interval
-   relative-datetime
-   time
-   absolute-datetime
-   now
-   convert-timezone
-   get-week
-   get-year
-   get-month
-   get-day
-   get-hour
-   get-minute
-   get-second
-   get-quarter
-   datetime-add
-   datetime-subtract
-   concat
-   substring
-   replace
-   regexextract
-   length
-   trim
-   ltrim
-   rtrim
-   upper
-   lower]
-  [lib.field
-   add-field
-   field-id
-   fieldable-columns
-   fields
-   remove-field
-   with-fields]
-  [lib.filter
-   filter
-   filters
-   filterable-columns
-   filterable-column-operators
-   filter-clause
-   filter-operator
-   and
-   or
-   not
-   = !=
-   < <=
-   > >=
-   between
-   inside
-   is-null not-null
-   is-empty not-empty
-   starts-with ends-with
-   contains does-not-contain
-   time-interval
-   segment]
-  [lib.join
-   available-join-strategies
-   join
-   join-clause
-   join-condition-lhs-columns
-   join-condition-operators
-   join-condition-rhs-columns
-   join-condition-update-temporal-bucketing
-   join-conditions
-   join-fields
-   join-lhs-display-name
-   join-strategy
-   joinable-columns
-   joins
-   raw-join-strategy
-   suggested-join-condition
-   with-join-alias
-   with-join-fields
-   with-join-strategy
-   with-join-conditions]
-  [lib.limit
-   current-limit
-   limit]
-  [lib.metadata.calculation
-   column-name
-   describe-query
-   describe-top-level-key
-   display-name
-   display-info
-   suggested-name
-   type-of]
-  [lib.metric
-   available-metrics]
-  [lib.native
-   #?@(:cljs [->TemplateTags
-              TemplateTags->])
-   native-query
-   raw-native-query
-   with-native-query
-   template-tags
-   with-template-tags
-   required-native-extras
-   native-extras
-   with-native-extras
-   with-different-database
-   extract-template-tags]
-  [lib.order-by
-   change-direction
-   order-by
-   order-by-clause
-   order-bys
-   orderable-columns]
-  [lib.normalize
-   normalize]
-  [lib.query
-   query]
-  [lib.ref
-   ref]
-  [lib.remove-replace
-   remove-clause
-   remove-join
-   rename-join
-   replace-clause
-   replace-join]
-  [lib.segment
-   available-segments]
-  [lib.stage
-   append-stage
-   drop-stage]
-  [lib.temporal-bucket
-   describe-temporal-unit
-   describe-temporal-interval
-   describe-relative-datetime
-   available-temporal-buckets
-   temporal-bucket
-   with-temporal-bucket])
+ [lib.aggregation
+  aggregate
+  aggregation-clause
+  aggregation-ref
+  aggregation-operator-columns
+  aggregations
+  aggregations-metadata
+  available-aggregation-operators
+  selected-aggregation-operators
+  count
+  avg
+  count-where
+  distinct
+  max
+  median
+  min
+  percentile
+  share
+  stddev
+  sum
+  sum-where
+  var
+  cum-count
+  cum-sum]
+ [lib.binning
+  available-binning-strategies
+  binning
+  with-binning]
+ [lib.breakout
+  breakout
+  breakoutable-columns
+  breakouts
+  breakouts-metadata]
+ [lib.column-group
+  columns-group-columns
+  group-columns]
+ [lib.common
+  external-op]
+ [lib.database
+  database-id]
+ [lib.drill-thru
+  available-drill-thrus
+  drill-thru]
+ [lib.drill-thru.pivot
+  pivot-columns-for-type
+  pivot-types]
+ [lib.equality
+  find-column-for-legacy-ref]
+ [lib.expression
+  expression
+  expressions
+  expressions-metadata
+  expressionable-columns
+  expression-ref
+  +
+  -
+  *
+  /
+  case
+  coalesce
+  abs
+  log
+  exp
+  sqrt
+  ceil
+  floor
+  round
+  power
+  interval
+  relative-datetime
+  time
+  absolute-datetime
+  now
+  convert-timezone
+  get-week
+  get-year
+  get-month
+  get-day
+  get-hour
+  get-minute
+  get-second
+  get-quarter
+  datetime-add
+  datetime-subtract
+  concat
+  substring
+  replace
+  regexextract
+  length
+  trim
+  ltrim
+  rtrim
+  upper
+  lower]
+ [lib.fe-util
+  filter-parts]
+ [lib.field
+  add-field
+  field-id
+  fieldable-columns
+  fields
+  find-visible-column-for-legacy-ref
+  find-visible-column-for-ref
+  remove-field
+  with-fields]
+ [lib.filter
+  filter
+  filters
+  filterable-columns
+  filterable-column-operators
+  filter-clause
+  filter-operator
+  find-filter-for-legacy-filter
+  find-filterable-column-for-legacy-ref
+  and
+  or
+  not
+  = !=
+  < <=
+  > >=
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  time-interval
+  segment]
+ [lib.join
+  available-join-strategies
+  join
+  join-clause
+  join-condition-lhs-columns
+  join-condition-operators
+  join-condition-rhs-columns
+  join-condition-update-temporal-bucketing
+  join-conditions
+  join-fields
+  join-lhs-display-name
+  join-strategy
+  joinable-columns
+  joins
+  raw-join-strategy
+  suggested-join-condition
+  with-join-alias
+  with-join-fields
+  with-join-strategy
+  with-join-conditions]
+ [lib.limit
+  current-limit
+  limit]
+ [lib.metadata.calculation
+  column-name
+  describe-query
+  describe-top-level-key
+  display-name
+  display-info
+  metadata
+  returned-columns
+  suggested-name
+  type-of
+  visible-columns]
+ [lib.metadata.composed-provider
+  composed-metadata-provider]
+ [lib.metric
+  available-metrics]
+ [lib.native
+  #?@(:cljs [->TemplateTags
+             TemplateTags->])
+  native-query
+  raw-native-query
+  with-native-query
+  template-tags
+  with-template-tags
+  required-native-extras
+  native-extras
+  with-native-extras
+  with-different-database
+  has-write-permission
+  extract-template-tags]
+ [lib.order-by
+  change-direction
+  order-by
+  order-by-clause
+  order-bys
+  orderable-columns]
+ [lib.normalize
+  normalize]
+ [lib.query
+  query
+  with-different-table]
+ [lib.ref
+  ref]
+ [lib.remove-replace
+  remove-clause
+  remove-join
+  rename-join
+  replace-clause
+  replace-join]
+ [lib.segment
+  available-segments]
+ [lib.stage
+  append-stage
+  drop-stage]
+ [lib.temporal-bucket
+  describe-temporal-unit
+  describe-temporal-interval
+  describe-relative-datetime
+  available-temporal-buckets
+  temporal-bucket
+  with-temporal-bucket])

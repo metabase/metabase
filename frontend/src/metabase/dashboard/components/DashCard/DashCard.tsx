@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
 import { useMount } from "react-use";
-import { IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
 
 import Utils from "metabase/lib/utils";
 
@@ -32,12 +32,12 @@ import type {
 } from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
-import type Mode from "metabase-lib/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-import {
+import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
@@ -69,6 +69,7 @@ export interface DashCardProps {
   isMobile?: boolean;
   isNightMode?: boolean;
   isPublic?: boolean;
+  isXray?: boolean;
 
   headerIcon?: IconProps;
 
@@ -99,6 +100,7 @@ function DashCard({
   isFullscreen = false,
   isMobile = false,
   isPublic = false,
+  isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
@@ -319,6 +321,7 @@ function DashCard({
           error={error}
           isAction={isAction}
           isEmbed={isEmbed}
+          isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}

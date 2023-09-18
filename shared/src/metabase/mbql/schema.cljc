@@ -419,12 +419,12 @@
   aggregation-clause-index :int
   options                  (optional :map))
 
-(mr/def ::FieldOrAggregationReference
+(mr/def ::Reference
   (one-of aggregation expression field))
 
-(def FieldOrAggregationReference
+(def Reference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
-  [:ref ::FieldOrAggregationReference])
+  [:ref ::Reference])
 
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
@@ -736,6 +736,7 @@
 (def ^:private FieldOrExpressionRefOrRelativeDatetime
   [:multi
    {:error/message ":field or :expression reference or :relative-datetime"
+    :error/fn      (constantly ":field or :expression reference or :relative-datetime")
     :dispatch      (fn [x]
                      (if (is-clause? :relative-datetime x)
                        :relative-datetime
@@ -1045,8 +1046,8 @@
 ;;
 ;; Field ID is implicit in these clauses
 
-(defclause asc,  field FieldOrAggregationReference)
-(defclause desc, field FieldOrAggregationReference)
+(defclause asc,  field Reference)
+(defclause desc, field Reference)
 
 (def OrderBy
   "Schema for an `order-by` clause subclause."

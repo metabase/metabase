@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { queryIcon, renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockCard,
@@ -13,7 +13,8 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 
 import { createMockState } from "metabase-types/store/mocks";
-import Dashcard, { DashCardProps } from "./DashCard";
+import type { DashCardProps } from "./DashCard";
+import Dashcard from "./DashCard";
 
 const dashboard = createMockDashboard();
 
@@ -75,6 +76,12 @@ describe("DashCard", () => {
   it("shows a dashcard title", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
+  });
+
+  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
+    setup({ isXray: true });
+
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("shows a table visualization", () => {

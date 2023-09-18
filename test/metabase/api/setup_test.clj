@@ -43,7 +43,7 @@
 ;;; |                                                  POST /setup                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-setup* [request-body thunk]
+(defn- do-with-setup!* [request-body thunk]
   (try
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
       (thunk))
@@ -60,11 +60,11 @@
    :user  {:first_name (mt/random-name)
            :last_name  (mt/random-name)
            :email      (mt/random-email)
-           :password   "anythingUP12!!"}})
+           :password   "anythingUP12!"}})
 
-(defn- do-with-setup [request-body thunk]
+(defn- do-with-setup! [request-body thunk]
   (let [request-body (merge-with merge (default-setup-input) request-body)]
-    (do-with-setup*
+    (do-with-setup!*
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
@@ -76,14 +76,14 @@
          (setup/create-token!)
          (thunk))))))
 
-(defmacro ^:private with-setup [request-body & body]
-  `(do-with-setup ~request-body (fn [] ~@body)))
+(defmacro ^:private with-setup! [request-body & body]
+  `(do-with-setup! ~request-body (fn [] ~@body)))
 
 (deftest create-superuser-test
   (testing "POST /api/setup"
     (testing "Check that we can create a new superuser via setup-token"
       (let [email (mt/random-email)]
-        (with-setup {:user {:email email}}
+        (with-setup! {:user {:email email}}
           (testing "new User should be created"
             (is (t2/exists? User :email email)))
           (testing "Creating a new admin user should set the `admin-email` Setting"
@@ -109,9 +109,9 @@
                 first-name (mt/random-name)
                 last-name (mt/random-name)
                 invitor-first-name (mt/random-name)]
-            (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
-                         :user {:first_name invitor-first-name}
-                         :site_name "Metabase"}
+            (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
+                          :user {:first_name invitor-first-name}
+                          :site_name "Metabase"}
               (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
@@ -123,14 +123,16 @@
                                       (snowplow-test/pop-event-data-and-user-id!))))
                 (is (mt/received-email-body?
                      email
-                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))))))))
+                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))))))))))
 
+(deftest invite-user-test-2
+  (testing "POST /api/setup"
     (testing "No second user is created if email is not set up"
       (mt/with-temporary-setting-values [email-smtp-host nil]
         (let [email (mt/random-email)
               first-name (mt/random-name)
               last-name (mt/random-name)]
-          (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}}
+          (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}}
             (is (not (t2/exists? User :email email)))))))))
 
 (deftest setup-settings-test
@@ -159,7 +161,7 @@
                                                    "es_MX" "es_MX"}}}
               [v expected] vs]
         (testing (format "Set Setting %s to %s" (pr-str setting-name) (pr-str v))
-          (with-setup {:prefs {k v}}
+          (with-setup! {:prefs {k v}}
             (testing "should be set"
               (is (= expected
                      (setting/get setting-name))))))))))
@@ -173,13 +175,12 @@
                                      :auto_run_queries {:default true}}
               v                     [true false nil]]
         (let [db-name (mt/random-name)]
-          (with-setup {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details details
-                                  k        v}}
+          (with-setup! {:database {:engine  "h2"
+                                   :name    db-name
+                                   :details details
+                                   k        v}}
             (testing "Database should be created"
-              (is (= true
-                     (t2/exists? Database :name db-name))))
+              (is (t2/exists? Database :name db-name)))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
                      (t2/select-one-fn k Database :name db-name))))))))))
@@ -190,9 +191,9 @@
       (let [db-name (mt/random-name)]
         (mt/with-open-channels [chan (a/chan)]
           (events/subscribe-to-topics! #{:database-create} chan)
-          (with-setup {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details (:details (mt/db))}}
+          (with-setup! {:database {:engine  "h2"
+                                   :name    db-name
+                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
               (is (schema= {:topic (schema/eq :database-create)
                             :item  {:id            su/IntGreaterThanZero
@@ -230,7 +231,7 @@
                            {:database {:engine  :h2
                                        :details details
                                        :name    db-name}})]
-        (do-with-setup*
+        (do-with-setup!*
          request
          (fn []
            (is (=? {:message "H2 is not supported as a data warehouse"}
@@ -255,32 +256,32 @@
                                             :user  {:first_name (mt/random-name)
                                                     :last_name  (mt/random-name)
                                                     :email      (mt/random-email)
-                                                    :password   "anythingUP12!!"}}
+                                                    :password   "anythingUP12!"}}
           body                             (apply f body args)]
-      (do-with-setup* body #(client/client :post (or expected-status 400) "setup" body)))))
+      (do-with-setup!* body #(client/client :post (or expected-status 400) "setup" body)))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
     (testing ":token"
       (testing "missing"
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (setup! dissoc :token))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (setup! dissoc :token))))
 
       (testing "incorrect"
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (setup! assoc :token "foobar")))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (setup! assoc :token "foobar")))))
 
     (testing "site name"
-      (is (= {:errors {:site_name "value must be a non-blank string."}}
-             (setup! m/dissoc-in [:prefs :site_name]))))
+      (is (=? {:errors {:site_name "value must be a non-blank string."}}
+              (setup! m/dissoc-in [:prefs :site_name]))))
 
     (testing "site locale"
       (testing "invalid format"
-        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                     (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
+        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
-        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                     (setup! assoc-in [:prefs :site_locale] "en-EN")))))
+        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
@@ -294,21 +295,21 @@
 
       (testing "email"
         (testing "missing"
-          (is (= {:errors {:email "value must be a valid email address."}}
-                 (setup! m/dissoc-in [:user :email]))))
+          (is (=? {:errors {:email "value must be a valid email address."}}
+                  (setup! m/dissoc-in [:user :email]))))
 
         (testing "invalid"
-          (is (= {:errors {:email "value must be a valid email address."}}
-                 (setup! assoc-in [:user :email] "anything")))))
+          (is (=? {:errors {:email "value must be a valid email address."}}
+                  (setup! assoc-in [:user :email] "anything")))))
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "password is too common."}}
-                 (setup! m/dissoc-in [:user :password]))))
+          (is (=? {:errors {:password "password is too common."}}
+                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (is (= {:errors {:password "password is too common."}}
-                 (setup! assoc-in [:user :password] "anything"))))))))
+          (is (=? {:errors {:password "password is too common."}}
+                  (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
   (testing "POST /api/setup"
@@ -317,7 +318,7 @@
       (setting.cache-test/reset-last-update-check!)
       (setting.cache-test/clear-cache!)
       (let [db-name (mt/random-name)]
-        (with-setup {:database {:details (:details (mt/db)), :engine "h2", :name db-name}}
+        (with-setup! {:database {:details (:details (mt/db)), :engine "h2", :name db-name}}
           (is (t2/exists? Database :name db-name)))))))
 
 (deftest has-user-setup-setting-test
@@ -342,13 +343,13 @@
         (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-            (is (schema= {:id client/UUIDString}
-                         (client/client :post 200 "setup" body))))
+            (is (schema= {:id su/UUIDString}
+                  (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
           (reset! has-user-setup true)
           (is (setup/has-user-setup))
-          ;; use do-with-setup* to delete the random user that was created
-          (do-with-setup* body
+          ;; use do-with-setup!* to delete the random user that was created
+          (do-with-setup!* body
             #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
                    (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
@@ -369,7 +370,7 @@
                                     :last_name  (mt/random-name)
                                     :email      user-email
                                     :password   "p@ssword1"}}]
-        (do-with-setup*
+        (do-with-setup!*
          body
          (fn []
            (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
@@ -410,14 +411,14 @@
   (testing "POST /api/setup/validate"
     (testing "Should validate token"
       (mt/with-temporary-setting-values [has-user-setup false]
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (api-validate 400 {})))
-        (is (= {:errors {:token "Token does not match the setup token."}}
-               (api-validate 400 {:token "foobar"}))))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (api-validate 400 {})))
+        (is (=? {:errors {:token "Token does not match the setup token."}}
+                (api-validate 400 {:token "foobar"}))))
       ;; make sure we have a valid setup token
       (setup/create-token!)
-      (is (= {:errors {:engine "value must be a valid database engine."}}
-             (api-validate 400 {:token (setup/setup-token)}))))
+      (is (=? {:errors {:engine "value must be a valid database engine."}}
+              (api-validate 400 {:token (setup/setup-token)}))))
 
     (mt/with-temporary-setting-values [has-user-setup false]
       (testing "should validate that database connection works"

@@ -104,10 +104,11 @@ export interface Version {
 }
 
 export interface VersionInfoRecord {
-  version?: string; // tag
+  version: string; // tag
   released?: string; // year-month-day
   patch?: boolean;
   highlights?: string[];
+  announcement_url?: string;
 }
 
 export interface VersionInfo {
@@ -175,6 +176,7 @@ export interface SettingDefinition {
   env_name?: string;
   is_env_setting: boolean;
   value?: unknown;
+  default?: unknown;
 }
 
 export interface OpenAiModel {
@@ -267,6 +269,7 @@ export interface Settings {
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
+  "last-acknowledged-version": string | null;
 }
 
 export type SettingKey = keyof Settings;

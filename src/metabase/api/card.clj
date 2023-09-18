@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -61,8 +62,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
@@ -248,8 +247,8 @@
            false
 
            ;; both or neither primary dimension must be dates
-           (not= (lib.types.isa/date? (first initial-dimensions))
-                 (lib.types.isa/date? (first new-dimensions)))
+           (not= (lib.types.isa/temporal? (first initial-dimensions))
+                 (lib.types.isa/temporal? (first new-dimensions)))
            false
 
            ;; both or neither primary dimension must be numeric
@@ -257,8 +256,8 @@
            (and (not= (lib.types.isa/numeric? (first initial-dimensions))
                       (lib.types.isa/numeric? (first new-dimensions)))
                 (not (and
-                      (lib.types.isa/date? (first initial-dimensions))
-                      (lib.types.isa/date? (first new-dimensions)))))
+                      (lib.types.isa/temporal? (first initial-dimensions))
+                      (lib.types.isa/temporal? (first new-dimensions)))))
            false
 
            :else true))))
@@ -412,7 +411,7 @@
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata dataset?]}]
-  (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
+  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
@@ -558,22 +557,21 @@ saved later when it is ready."
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
-  {name                   su/NonBlankString
-   dataset_query          su/Map
-   parameters             (s/maybe [su/Parameter])
-   parameter_mappings     (s/maybe [su/ParameterMapping])
-   description            (s/maybe su/NonBlankString)
-   display                su/NonBlankString
-   visualization_settings su/Map
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)}
+  {name                   ms/NonBlankString
+   dataset_query          ms/Map
+   parameters             [:maybe [:sequential ms/Parameter]]
+   parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
+   description            [:maybe ms/NonBlankString]
+   display                ms/NonBlankString
+   visualization_settings ms/Map
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe qr/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -785,30 +783,30 @@ saved later when it is ready."
           (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
                    cache_ttl dataset collection_preview]
             :as   card-updates} :body}]
-  {name                   (s/maybe su/NonBlankString)
-   parameters             (s/maybe [su/Parameter])
-   dataset_query          (s/maybe su/Map)
-   dataset                (s/maybe s/Bool)
-   display                (s/maybe su/NonBlankString)
-   description            (s/maybe s/Str)
-   visualization_settings (s/maybe su/Map)
-   archived               (s/maybe s/Bool)
-   enable_embedding       (s/maybe s/Bool)
-   embedding_params       (s/maybe su/EmbeddingParams)
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)
-   collection_preview     (s/maybe s/Bool)}
+  {id                     ms/PositiveInt
+   name                   [:maybe ms/NonBlankString]
+   parameters             [:maybe [:sequential ms/Parameter]]
+   dataset_query          [:maybe ms/Map]
+   dataset                [:maybe :boolean]
+   display                [:maybe ms/NonBlankString]
+   description            [:maybe :string]
+   visualization_settings [:maybe ms/Map]
+   archived               [:maybe :boolean]
+   enable_embedding       [:maybe :boolean]
+   embedding_params       [:maybe ms/EmbeddingParams]
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe qr/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]
+   collection_preview     [:maybe :boolean]}
   (let [card-before-update (t2/hydrate (api/write-check Card id)
-                                    [:moderation_reviews :moderator_details])]
+                                       [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -921,12 +919,12 @@ saved later when it is ready."
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/collections"
+(api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
-  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  {card_ids      [:sequential ms/PositiveInt]
+   collection_id [:maybe ms/PositiveInt]}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 

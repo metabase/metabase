@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
 
-import { AppErrorDescriptor } from "metabase-types/store";
+import type { AppErrorDescriptor } from "metabase-types/store";
 import { createMockAppState } from "metabase-types/store/mocks";
 
 import EmbedFrame from "../../components/EmbedFrame";

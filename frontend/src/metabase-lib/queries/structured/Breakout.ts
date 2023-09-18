@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import type { Breakout as BreakoutObject } from "metabase-types/api";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Dimension from "metabase-lib/Dimension";
-import Field from "metabase-lib/metadata/Field";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Dimension from "metabase-lib/Dimension";
+import type Field from "metabase-lib/metadata/Field";
 import MBQLClause from "./MBQLClause";
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Breakout extends MBQLClause {
@@ -45,14 +45,7 @@ export default class Breakout extends MBQLClause {
    * Predicate function to test if a given breakout clause is valid
    */
   isValid() {
-    const query = this.query();
-    if (!query) {
-      return true;
-    }
-    const dimension = this.dimension().getMLv1CompatibleDimension();
-    return query
-      .breakoutOptions(this, () => true, true)
-      .hasDimension(dimension);
+    return true;
   }
 
   /**

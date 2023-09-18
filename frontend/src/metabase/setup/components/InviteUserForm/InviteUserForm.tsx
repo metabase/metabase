@@ -6,7 +6,7 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import * as Errors from "metabase/core/utils/errors";
-import { InviteInfo, UserInfo } from "metabase-types/store";
+import type { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
 const INVITE_USER_SCHEMA = Yup.object({

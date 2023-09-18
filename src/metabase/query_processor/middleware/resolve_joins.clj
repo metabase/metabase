@@ -46,13 +46,15 @@
 
 (mu/defn ^:private resolve-fields! :- :nil
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
+  (qp.store/bulk-metadata :metadata/column (mbql.u/match joins [:field (id :guard integer?) _] id))
+  nil)
 
 (mu/defn ^:private resolve-tables! :- :nil
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
-  (qp.store/fetch-and-store-tables! (remove nil? (map :source-table joins))))
+  (qp.store/bulk-metadata :metadata/table (remove nil? (map :source-table joins)))
+  nil)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -175,11 +177,8 @@
 (defn- resolve-joins-in-mbql-query-all-levels
   [{:keys [joins source-query], :as query}]
   (cond-> query
-    (seq joins)
-    resolve-joins-in-mbql-query
-
-    source-query
-    (update :source-query resolve-joins-in-mbql-query-all-levels)))
+    (seq joins)  resolve-joins-in-mbql-query
+    source-query (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."

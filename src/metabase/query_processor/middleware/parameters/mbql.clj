@@ -3,12 +3,12 @@
   (:require
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
    [metabase.models.params :as params]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +31,8 @@
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
     (and (#{:id :category} param-type)
          (let [base-type (mbql.u/match-one field-clause
-                           [:field (id :guard integer?) _]  (t2/select-one-fn :base_type Field :id id)
+                           [:field (id :guard integer?) _]  ((some-fn :effective-type :base-type)
+                                                             (lib.metadata.protocols/field (qp.store/metadata-provider) id))
                            [:field (_ :guard string?) opts] (:base-type opts))]
            (isa? base-type :type/Number)))
     (recur :number param-value field-clause)

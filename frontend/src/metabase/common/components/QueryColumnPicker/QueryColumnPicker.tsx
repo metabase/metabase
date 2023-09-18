@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 import type { ColorName } from "metabase/lib/colors/types";
 
@@ -36,7 +37,7 @@ type Sections = {
   icon?: IconName;
 };
 
-function QueryColumnPicker({
+export function QueryColumnPicker({
   className,
   query,
   stageIndex,
@@ -191,6 +192,3 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   }
   return;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryColumnPicker;

@@ -2,17 +2,15 @@ import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
-import {
+import type {
   Channel,
   ChannelSpec,
   NotificationRecipient,
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
 import {
-  hasDefaultParameterValue,
-  hasParameterValue,
+  getDefaultValuePopulatedParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -205,22 +203,11 @@ export function getActivePulseParameters(
   pulse: Pulse,
   parameters: PulseParameter[],
 ) {
-  const pulseParameters = getPulseParameters(pulse);
-  const pulseParametersById = _.indexBy(pulseParameters, "id");
-
-  return parameters
-    .map(parameter => {
-      const pulseParameter = pulseParametersById[parameter.id];
-      if (!pulseParameter && !hasDefaultParameterValue(parameter)) {
-        return;
-      }
-
-      return {
-        ...parameter,
-        value: hasParameterValue(pulseParameter?.value)
-          ? pulseParameter.value
-          : parameter.default,
-      };
-    })
-    .filter(isNotNull);
+  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
+  return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
+    (parameter: any) => parameter.value != null,
+  );
 }

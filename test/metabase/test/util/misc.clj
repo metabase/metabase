@@ -21,7 +21,6 @@
 (set! *warn-on-reflection* true)
 
 (defn do-with-clock [clock thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock

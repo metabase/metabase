@@ -187,7 +187,7 @@ class DashboardGrid extends Component {
   };
 
   getLayoutForDashCard = dashcard => {
-    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
 
@@ -358,6 +358,7 @@ class DashboardGrid extends Component {
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
         isPublic={this.props.isPublic}
+        isXray={this.props.isXray}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(

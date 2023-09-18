@@ -16,8 +16,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -77,17 +78,18 @@
     ;; MSSQL
     #"^syncobj_0x.*"})
 
-(s/defn ^:private is-crufty-table? :- s/Bool
+(mu/defn ^:private is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table :- i/DatabaseMetadataTable]
-  (boolean (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns)))
+  (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns))
 
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
-(s/defn ^:private update-database-metadata!
+(mu/defn ^:private update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
-  [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
+  [database    :- i/DatabaseInstance
+   db-metadata :- i/DatabaseMetadata]
   (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
   (t2/update! Database (u/the-id database)
               {:details
@@ -122,19 +124,20 @@
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(s/defn ^:private create-or-reactivate-tables!
-  "Create NEW-TABLES for database, or if they already exist, mark them as active."
-  [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
+(mu/defn ^:private create-or-reactivate-tables!
+  "Create `new-tables` for database, or if they already exist, mark them as active."
+  [database :- i/DatabaseInstance
+   new-tables :- [:set i/DatabaseMetadataTable]]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
-
-(s/defn ^:private retire-tables!
+(mu/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
-  [database :- i/DatabaseInstance, old-tables :- #{i/DatabaseMetadataTable}]
+  [database   :- i/DatabaseInstance
+   old-tables :- [:set i/DatabaseMetadataTable]]
   (log/info (trs "Marking tables as inactive:")
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
@@ -145,10 +148,10 @@
                        :active true}
                 {:active false})))
 
-
-(s/defn ^:private update-table-description!
+(mu/defn ^:private update-table-description!
   "Update description for any `changed-tables` belonging to `database`."
-  [database :- i/DatabaseInstance, changed-tables :- #{i/DatabaseMetadataTable}]
+  [database       :- i/DatabaseInstance
+   changed-tables :- [:set i/DatabaseMetadataTable]]
   (log/info (trs "Updating description for tables:")
             (for [table changed-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
@@ -160,28 +163,30 @@
                          :description nil}
                   {:description description}))))
 
-
-(s/defn ^:private table-set :- #{i/DatabaseMetadataTable}
+(mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
-  (set (for [table (:tables db-metadata)
-             :when (not (metabase-metadata/is-metabase-metadata-table? table))]
-         table)))
+  (into #{}
+        (remove metabase-metadata/is-metabase-metadata-table?)
+        (:tables db-metadata)))
 
-(s/defn ^:private our-metadata :- #{i/DatabaseMetadataTable}
+(mu/defn ^:private our-metadata :- [:set i/DatabaseMetadataTable]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
-  (set (map (partial into {})
-            (t2/select [Table :name :schema :description]
-              :db_id  (u/the-id database)
-              :active true))))
+  (into #{}
+        (map t2.realize/realize)
+        (t2/select [Table :name :schema :description]
+                   :db_id  (u/the-id database)
+                   :active true)))
 
-(s/defn sync-tables-and-database!
+(mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
-  ([database :- i/DatabaseInstance] (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
+  ([database :- i/DatabaseInstance]
+   (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
+
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)

@@ -1,4 +1,5 @@
-import { forwardRef, HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef } from "react";
 import useFormErrorMessage from "metabase/core/hooks/use-form-error-message";
 import { ErrorMessageRoot } from "./FormErrorMessage.styled";
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import _ from "underscore";
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 

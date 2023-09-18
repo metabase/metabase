@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
-import { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
+import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { testDataset } from "__support__/testDataset";
 import {
   createMockQueryBuilderState,

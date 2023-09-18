@@ -1,4 +1,4 @@
-import { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import Subhead from "metabase/components/type/Subhead";
 import { ViewSectionRoot } from "./ViewSection.styled";
 

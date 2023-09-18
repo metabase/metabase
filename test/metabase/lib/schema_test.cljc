@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]))
 
 (deftest ^:parallel disallow-duplicate-uuids-test
@@ -25,7 +26,7 @@
     2]])
 
 (deftest ^:parallel check-aggregation-references-test
-  (let [bad-ref (str (random-uuid))
+  (let [bad-ref  (str (random-uuid))
         good-ref (:lib/uuid (second valid-ag-1))]
     (are [stage errors] (= errors
                            (me/humanize (mc/explain ::lib.schema/stage stage)))
@@ -45,6 +46,11 @@
        :aggregation  [valid-ag-1]
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
+
+      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
+      {:lib/type                           :mbql.stage/mbql
+       :metabase.lib.stage/cached-metadata {:field-ref [:aggregation 0]}}
+      ["Invalid :aggregation reference: [:aggregation 0]"]
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql
@@ -192,3 +198,19 @@
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]]}]
     nil))
+
+(deftest ^:parallel enforce-distinct-breakouts-and-fields-test
+  (let [duplicate-refs [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]]
+    (testing #'lib.schema.util/distinct-refs?
+      (is (not (#'lib.schema.util/distinct-refs? duplicate-refs))))
+    (testing "breakouts/fields schemas"
+      (are [schema error] (= error
+                             (me/humanize (mc/explain schema duplicate-refs)))
+        ::lib.schema/breakouts ["Breakouts must be distinct"]
+        ::lib.schema/fields    [":fields must be distinct"]))
+    (testing "stage schema"
+      (are [k error] (= error
+                        (me/humanize (mc/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
+        :breakout {:breakout ["Breakouts must be distinct"]}
+        :fields   {:fields [":fields must be distinct"]}))))

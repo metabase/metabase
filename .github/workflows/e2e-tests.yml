@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
       - uses: actions/checkout@v3
@@ -38,9 +39,80 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build:
+  download_uberjar:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.files-changed.outputs.e2e_specs == 'true' &&
+      needs.files-changed.outputs.e2e_all != 'true'
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    outputs:
+      enterprise_download_link: ${{ steps.zip_url.outputs.ee_dl }}
+      oss_download_link: ${{ steps.zip_url.outputs.oss_dl }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Artifact zip URL
+        id: zip_url
+        run: |
+          current_commit="HEAD"
+
+          get_parent () {
+            parent_commit=$(git rev-parse $1^)
+            echo $parent_commit
+          }
+
+          get_download_link () {
+            parent_commit=$(get_parent $1)
+            current_page=${2:-1}
+
+            artifacts=$(curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/metabase/metabase/actions/artifacts?name=metabase-${{ matrix.edition }}-uberjar&per_page=100&page=$current_page")
+
+
+            zip=$(echo $artifacts | jq '[.artifacts[] | {url: .url, dl: .archive_download_url, run: .workflow_run}]' \
+            | jq -c --arg COMMIT "$parent_commit" '[.[] | select(.run.head_sha | contains($COMMIT))'.dl] | jq '.[0] | select (.!=null)')
+
+            if [[ $zip ]]; then
+                echo "Found metabase-${{ matrix.edition }} uberjar for '$parent_commit'!"
+
+                if [[ "${{ matrix.edition }}" == "ee" ]]; then
+                  echo "ee_dl=$(echo $zip)" >> $GITHUB_OUTPUT
+                else
+                  echo "oss_dl=$(echo $zip)" >> $GITHUB_OUTPUT
+                fi
+            elif [[ $current_page -le 3 ]]; then
+                echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
+                current_page=$((++current_page))
+                get_download_link $current_commit $current_page
+            else
+              current_commit=$parent_commit
+              echo "Switching to a new parent"
+              get_download_link $current_commit
+            fi
+          }
+
+          get_download_link $current_commit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: [download_uberjar, files-changed]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.download_uberjar.result == 'skipped' &&
+      needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -65,12 +137,11 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: [build, files-changed, test-run-id, download_uberjar]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+      (needs.download_uberjar.result == 'success' || needs.build.result == 'success')
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
@@ -88,12 +159,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04]
         java-version: [11]
         edition: [ee]
         folder:
-          - "auditing"
           - "actions"
           - "admin"
+          - "admin-2"
           - "binning"
           - "collections"
           - "custom-column"
@@ -114,8 +186,13 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
-            context: grep
+            runner: ubuntu-22.04
+            context: oss-subset
             java-version: 11
+          - edition: ee
+            java-version: 11
+            context: slow
+            runner: buildjet-2vcpu-ubuntu-2204
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -161,6 +238,39 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+      - name: Download Metabase uberjar from a previously stored artifact
+        if: needs.download_uberjar.result == 'success'
+        run: |
+          if [[ "${{ matrix.edition }}" == "ee" ]]; then
+            DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.enterprise_download_link }})"
+          else
+            DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.oss_download_link }})"
+          fi
+
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            $DOWNLOAD_LINK \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+      - name: Unzip Metabase artifact containing an uberjar
+        if: needs.download_uberjar.result == 'success'
+        run: unzip mb.zip
+
+      - uses: actions/download-artifact@v3
+        if: needs.build.result == 'success'
+        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
       - name: Install Chrome v111
         uses: browser-actions/setup-chrome@v1
         with:
@@ -186,30 +296,31 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        with:
-          name: metabase-${{ matrix.edition }}-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags=@OSS \
+          --env grepTags=@OSS,grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        env:
+          TERM: xterm
+
+      - name: Run slow and resource-intensive Cypress tests
+        if: matrix.context == 'slow' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee' && github.event_name != 'schedule'
+        if: matrix.edition == 'ee' && github.event_name != 'schedule' && matrix.context != 'slow'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.folder }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
@@ -224,7 +335,7 @@ jobs:
         if: matrix.edition == 'oss' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags=@OSS \
+          --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser "replay-chromium"
         env:
@@ -234,10 +345,10 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
-        if: matrix.edition == 'ee' && github.event_name == 'schedule'
+        if: matrix.edition == 'ee' && github.event_name == 'schedule' && matrix.context != 'slow'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
           --folder ${{ matrix.folder }} \
           --browser "replay-chromium"
         env:
@@ -264,27 +375,30 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [build, files-changed]
+    needs: [build, files-changed, download_uberjar]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
-    runs-on: ubuntu-22.04
+      needs.build.result == 'skipped' &&
+      needs.download_uberjar.result == 'skipped'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04]
         java-version: [11]
         edition: [ee]
         folder:
-          - "auditing"
           - "actions"
           - "admin"
+          - "admin-2"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
+          - "dashboard-cards"
           - "dashboard-filters"
           - "embedding"
           - "filters"
@@ -300,8 +414,14 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
-            context: grep
+            runner: ubuntu-22.04
             java-version: 11
+            context: oss-subset
+          - edition: ee
+            runner: ubuntu-latest
+            java-version: 11
+            context: slow
+
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
@@ -309,8 +429,11 @@ jobs:
   visual-regression-tests:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    needs: build
-    if: ${{ github.event_name != 'schedule' }}
+    needs: [build, download_uberjar]
+    if: |
+      !cancelled() &&
+      (needs.download_uberjar.result == 'success' || needs.build.result == 'success') &&
+      github.event_name != 'schedule'
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -325,6 +448,36 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Download Metabase uberjar from a previously stored artifact
+        if: needs.download_uberjar.result == 'success'
+        run: |
+          DOWNLOAD_LINK="$(echo ${{ needs.download_uberjar.outputs.enterprise_download_link }})"
+
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            $DOWNLOAD_LINK \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+      - name: Unzip Metabase artifact containing an uberjar
+        if: needs.download_uberjar.result == 'success'
+        run: unzip mb.zip
+
+      - uses: actions/download-artifact@v3
+        if: needs.build.result == 'success'
+        name: Retrieve uberjar artifact for ee
+        with:
+          name: metabase-ee-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+
       - name: Enable Percy recording on master only
         if: github.ref == 'refs/heads/master'
         run: |
@@ -339,14 +492,6 @@ jobs:
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
       - name: Percy Test
         run: yarn run test-visual-run
         env:

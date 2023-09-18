@@ -38,7 +38,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -58,15 +58,14 @@
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
   *  `all`      - Return all Dashboards.
   *  `mine`     - Return Dashboards created by the current user.
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
-  {f (s/maybe (s/enum "all" "mine" "archived"))}
+  {f [:maybe [:enum "all" "mine" "archived"]]}
   (let [dashboards (dashboards-list f)
         edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
@@ -76,16 +75,15 @@
                    dashboard)))
           dashboards)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
-  {name                su/NonBlankString
-   parameters          (s/maybe [su/Parameter])
-   description         (s/maybe s/Str)
-   cache_ttl           (s/maybe su/IntGreaterThanZero)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+  {name                ms/NonBlankString
+   parameters          [:maybe [:sequential ms/Parameter]]
+   description         [:maybe :string]
+   cache_ttl           [:maybe ms/PositiveInt]
+   collection_id       [:maybe ms/PositiveInt]
+   collection_position [:maybe ms/PositiveInt]}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -407,8 +405,7 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a Dashboard.
 
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
@@ -417,19 +414,20 @@
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
                    embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
-  {name                    (s/maybe su/NonBlankString)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)
-   enable_embedding        (s/maybe s/Bool)
-   embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Parameter])
-   position                (s/maybe su/IntGreaterThanZero)
-   archived                (s/maybe s/Bool)
-   collection_id           (s/maybe su/IntGreaterThanZero)
-   collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   enable_embedding        [:maybe :boolean]
+   embedding_params        [:maybe ms/EmbeddingParams]
+   parameters              [:maybe [:sequential ms/Parameter]]
+   position                [:maybe ms/PositiveInt]
+   archived                [:maybe :boolean]
+   collection_id           [:maybe ms/PositiveInt]
+   collection_position     [:maybe ms/PositiveInt]
+   cache_ttl               [:maybe ms/PositiveInt]}
   (let [dash-before-update (api/write-check :model/Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -904,14 +902,14 @@
 
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
-  {id ms/PositiveInt}
+  {id    ms/PositiveInt
+   query ms/NonBlankString}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key query-params query))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/params/valid-filter-fields"
+(api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
   `filtered` Field ID return the subset of `filtering` Field IDs that would actually be used in a chain filter query
@@ -919,43 +917,39 @@
 
   e.g. in a chain filter query like
 
-    GET /api/dashboard/10/params/PARAM_1/values?PARAM_2=100
+  GET /api/dashboard/10/params/PARAM_1/values?PARAM_2=100
 
   Assume `PARAM_1` maps to Field 1 and `PARAM_2` maps to Fields 2 and 3. The underlying MBQL query may or may not
   filter against Fields 2 and 3, depending on whether an FK relationship that lets us create a join against Field 1
   can be found. You can use this endpoint to determine which of those Fields is actually used:
 
-    GET /api/dashboard/params/valid-filter-fields?filtered=1&filtering=2&filtering=3
-    ;; ->
-    {1 [2 3]}
+  GET /api/dashboard/params/valid-filter-fields?filtered=1&filtering=2&filtering=3
+  ;; ->
+  {1 [2 3]}
 
   Results are returned as a map of
 
-    `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
+  `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [:as {{:keys [filtered filtering]} :params}]
-  {filtered  (s/cond-pre su/IntStringGreaterThanZero
-                         (su/non-empty [su/IntStringGreaterThanZero]))
-   filtering (s/maybe (s/cond-pre su/IntStringGreaterThanZero
-                                  (su/non-empty [su/IntStringGreaterThanZero])))}
-    ;; parse IDs for filtered/filtering
-  (letfn [(parse-ids [s]
-            (set (cond
-                   (string? s)     [(Integer/parseUnsignedInt s)]
-                   (sequential? s) (map (fn [i] (Integer/parseUnsignedInt i)) s))))]
-    (let [filtered-field-ids  (parse-ids filtered)
-          filtering-field-ids (parse-ids filtering)]
-      (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
-        (api/read-check Field field-id))
-      (into {} (for [field-id filtered-field-ids]
-                 [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
+  {filtered  [:or ms/IntGreaterThanOrEqualToZero
+              [:+ ms/IntGreaterThanOrEqualToZero]]
+   filtering [:maybe [:or ms/IntGreaterThanOrEqualToZero
+                      [:+ ms/IntGreaterThanOrEqualToZero]]]}
+  (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
+        filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
+    (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
+      (api/read-check Field field-id))
+    (into {} (for [field-id filtered-field-ids]
+               [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
-  (su/with-api-error-message
-    {:id       su/NonBlankString
-     s/Keyword s/Any}
-    "value must be a parameter map with an 'id' key"))
-
+  (mu/with-api-error-message
+    [:and
+     [:map
+      [:id ms/NonBlankString]]
+     [:map-of :keyword :any]]
+    (deferred-tru "value must be a parameter map with an 'id' key")))
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
@@ -970,27 +964,28 @@
    (api/check-404 (dashboard-card/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
   [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters (s/maybe {s/Keyword s/Any})}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   parameters  [:maybe [:map-of :keyword :any]]}
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
   (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
-  {parameters (s/maybe [ParameterWithID])}
+  {dashboard-id  ms/PositiveInt
+   dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   parameters    [:maybe [:sequential ParameterWithID]]}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body
@@ -998,15 +993,17 @@
               :card-id      card-id
               :dashcard-id  dashcard-id})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
-  {parameters    (s/maybe su/JSONString)
+  {dashboard-id  ms/PositiveInt
+   dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
@@ -1027,11 +1024,13 @@
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+(api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
-  {parameters (s/maybe [ParameterWithID])}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   card-id      ms/PositiveInt
+   parameters   [:maybe [:sequential ParameterWithID]]}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body

@@ -9,7 +9,10 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -86,7 +89,7 @@ describe("revision history", () => {
 
             // skipped because it's super flaky in CI
             it.skip("should be able to revert a dashboard (metabase#15237)", () => {
-              visitDashboard(1);
+              visitDashboard(ORDERS_DASHBOARD_ID);
               openRevisionHistory();
               clickRevert(/created this/);
 
@@ -158,7 +161,7 @@ describe("revision history", () => {
             it("should not see question nor dashboard revert buttons (metabase#13229)", () => {
               cy.signIn(user);
 
-              visitDashboard(1);
+              visitDashboard(ORDERS_DASHBOARD_ID);
               openRevisionHistory();
               cy.findAllByRole("button", { name: "Revert" }).should(
                 "not.exist",

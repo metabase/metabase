@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.normalize/normalize :mbql/query
@@ -63,28 +64,34 @@
   (let [query (lib.convert/->pMBQL query)]
     (query-with-stages metadata-providerable (:stages query))))
 
-(defmulti ^:private ->query
+(defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->query :dispatch-type/map
+(defmethod query-method :dispatch-type/map
   [metadata-providerable query]
   (query-from-existing metadata-providerable query))
 
 ;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
 ;;; passed in
-(defmethod ->query :mbql/query
+(defmethod query-method :mbql/query
   [metadata-providerable query]
   (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
 
-(defmethod ->query :metadata/table
+(defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
-                       :source-table (:id table-metadata)}]))
+                       :source-table (u/the-id table-metadata)}]))
+
+(defmethod query-method :metadata/card
+  [metadata-providerable card-metadata]
+  (query-with-stages metadata-providerable
+                     [{:lib/type     :mbql.stage/mbql
+                       :source-card (u/the-id card-metadata)}]))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
@@ -92,7 +99,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (->query metadata-providerable x))
+  (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -102,3 +109,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(mu/defn with-different-table :- ::lib.schema/query
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [original-query :- ::lib.schema/query
+   table-id :- [:or ::lib.schema.id/table :string]]
+  (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
+   (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))

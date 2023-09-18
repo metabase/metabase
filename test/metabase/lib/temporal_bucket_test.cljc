@@ -3,10 +3,12 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel describe-temporal-interval-test
   (doseq [unit [:day nil]]
@@ -151,7 +153,7 @@
             {:unit :week-of-year}
             {:unit :month-of-year}
             {:unit :quarter-of-year}]
-           (->> (lib.metadata.calculation/returned-columns query)
+           (->> (lib/returned-columns query)
                 first
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
@@ -160,6 +162,14 @@
   (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
     (let [query (-> lib.tu/venues-query
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/returned-columns query)
+      (is (empty? (->> (lib/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-temporal-buckets query)))))))
+
+(deftest ^:parallel option-raw-temporal-bucket-test
+  (let [option (m/find-first #(= (:unit %) :month)
+                             (lib.temporal-bucket/available-temporal-buckets lib.tu/venues-query (meta/field-metadata :checkins :date)))]
+    (is (=? {:lib/type :option/temporal-bucketing}
+            option))
+    (is (= :month
+           (lib.temporal-bucket/raw-temporal-bucket option)))))
