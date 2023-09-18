@@ -509,14 +509,11 @@
           ag)))
 
 (defn- swap-metric-clauses
-  ;;;; Following probably false or bug
-  ;;;; It is guaranteed that :aggregations are non-nil because query containing metrics must contain aggregation
-  ;;;; TODO: This should also do the cleanup of ::metric-id->field
-  ;;;; TODO: Nested partial looks weird!
+  "Swap metric clauses in aggregation clauses of `query`. For details refer to [[swap-metric-clauses-in-aggregation]].
+   It is guaranteed that :aggregations are not empty, because this functions is to be called only on query, that
+   contains metric clauses, hence aggregations."
   [query]
-  (tap> ["swap-metric-clauses-in-aggregation query" query])
-  (doto (update query :aggregation (partial mapv (partial swap-metric-clauses-in-aggregation query)))
-    (as-> $ (tap> ["swap..in-aggregation result" $]))))
+  (update query :aggregation (partial mapv #(swap-metric-clauses-in-aggregation query %))))
 
 (defn- ordered-clauses-for-fields
   [breakout-idx ag-idx [[type :as ag] & ags] acc]
