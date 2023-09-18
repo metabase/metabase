@@ -15203,7 +15203,7 @@ databaseChangeLog:
       rollback: # no need
                       
   - changeSet:
-      id: v48.00-014
+      id: v48.00-016
       author: calherries
       comment: Added 0.48.0 - Change the type of collection.slug to varchar(510)
       changes:
