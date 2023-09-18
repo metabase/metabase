@@ -378,11 +378,10 @@
                   [:field (or display_name name) {:base-type base_type}])
     breakout))
 
-;;;; TODO: Following code is super-hairy. Make it pleasure to read!
-;;;; TODO: Proper docstring!
 (defn metrics-query-join-condition
   "Generate join condition used to join [[metrics-query]] into original query.
-   "
+   Used by [[metrics-join]]. For explanation of modelling join on breakout fields equality refer to this ns docstring,
+   section [## `metrics-query`s are joined to the containing (original) query]."
   [join-alias joining-query metrics-query-metadata]
   (let [conditions (for [breakout (:breakout joining-query)]
                      [:= breakout (-> (breakout->field metrics-query-metadata breakout)
