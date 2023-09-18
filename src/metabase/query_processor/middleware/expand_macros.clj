@@ -391,13 +391,10 @@
           :else (into [:and] conditions))))
 
 (mu/defn ^:private metrics-join
-  "`inner-query` = query into which `metrics-query` is joined.
-   
-   TODO FIELDS ALL vs ONE BY ONE?
-
-   why left join
-   why alias is what it is?
-   "
+  "Generate join used to join [[metrics-query]] into query being transformed.
+   It is expected, that all breakout fields from transformed query are used also in `metrics-query`. For further
+   explanation on modelling join as follows, refer to this namespace's docstring, section
+   [## `metrics-query`s are joined to the containing (original) query]."
   [query :- mbql.s/MBQLQuery metrics-query :- mbql.s/MBQLQuery]
   (assert (every? #(some #{%} (:breakout metrics-query)) (:breakout query))
     "Original breakout missing in metrics query.")
