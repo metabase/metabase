@@ -767,8 +767,9 @@
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
                      (get-privileges)))))
           (finally
-            (doseq [stmt ["DROP USER IF EXISTS 'table_privileges_test_user';"
-                          "DROP ROLE IF EXISTS 'table_privileges_test_role';"
-                          "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
-                          "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
-              (jdbc/execute! spec stmt))))))))
+            (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
+            (when (<= (get-db-version spec) 8)
+              (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
+                (jdbc/execute! spec stmt)))))))))
