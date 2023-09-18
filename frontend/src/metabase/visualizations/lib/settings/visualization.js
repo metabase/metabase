@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import { assocIn } from "icepick";
-import produce from "immer";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
@@ -53,12 +52,10 @@ function getSettingDefintionsForSeries(series) {
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),
   };
-
-  return produce(definitions, draftDefinitions => {
-    for (const id in draftDefinitions) {
-      draftDefinitions[id].id = id;
-    }
-  });
+  for (const id in definitions) {
+    definitions[id].id = id;
+  }
+  return definitions;
 }
 
 function normalizeColumnSettings(columnSettings) {
