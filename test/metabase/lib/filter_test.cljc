@@ -297,6 +297,12 @@
       (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
               filter-clause)))))
 
+(deftest ^:parallel filter-clause-support-keywords-and-strings-test
+  (are [tag] (=? [:= {} [:field {} (meta/id :venues :id)] 1]
+                 (lib/filter-clause tag (meta/field-metadata :venues :id) 1))
+    :=
+    "="))
+
 (deftest ^:parallel filter-operator-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)

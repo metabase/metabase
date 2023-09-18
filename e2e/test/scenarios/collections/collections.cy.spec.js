@@ -6,7 +6,6 @@ import {
   popover,
   openOrdersTable,
   navigationSidebar,
-  getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
   visitCollection,
@@ -16,7 +15,12 @@ import {
   moveOpenedCollectionTo,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -112,9 +116,7 @@ describe("scenarios > collection defaults", () => {
         "navigating directly to a collection should expand it and show its children",
       );
 
-      getCollectionIdFromSlug("second_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(SECOND_COLLECTION_ID);
 
       navigationSidebar().within(() => {
         cy.findByText("Second collection");
@@ -127,21 +129,19 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should correctly display deep nested collections with long names", () => {
-      getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-        cy.log("Create two more nested collections");
+      cy.log("Create two more nested collections");
 
-        ["Fourth collection", "Fifth collection with a very long name"].forEach(
-          (collection, index) => {
-            cy.request("POST", "/api/collection", {
-              name: collection,
-              parent_id: THIRD_COLLECTION_ID + index,
-              color: "#509ee3",
-            });
-          },
-        );
+      ["Fourth collection", "Fifth collection with a very long name"].forEach(
+        (collection, index) => {
+          cy.request("POST", "/api/collection", {
+            name: collection,
+            parent_id: THIRD_COLLECTION_ID + index,
+            color: "#509ee3",
+          });
+        },
+      );
 
-        visitCollection(THIRD_COLLECTION_ID);
-      });
+      visitCollection(THIRD_COLLECTION_ID);
 
       // 1. Expand so that deeply nested collection is showing
       navigationSidebar().within(() => {
@@ -189,7 +189,7 @@ describe("scenarios > collection defaults", () => {
   });
 
   it("should support markdown in collection description", () => {
-    cy.request("PUT", "/api/collection/10", {
+    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
 
@@ -282,9 +282,7 @@ describe("scenarios > collection defaults", () => {
     it("should be able to drag an item to the root collection (metabase#16498)", () => {
       moveItemToCollection("Orders", "First collection");
 
-      getCollectionIdFromSlug("first_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(FIRST_COLLECTION_ID);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").as("dragSubject");
@@ -418,9 +416,7 @@ describe("scenarios > collection defaults", () => {
         "when nested child collection is moved to the root collection (metabase#14482)",
       );
 
-      getCollectionIdFromSlug("second_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(SECOND_COLLECTION_ID);
 
       moveOpenedCollectionTo("Our analytics");
 
@@ -568,18 +564,16 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should create new collections within the current collection", () => {
-      getCollectionIdFromSlug("third_collection", collection_id => {
-        visitCollection(collection_id);
-        cy.findByText("New").click();
+      visitCollection(THIRD_COLLECTION_ID);
+      cy.findByTestId("app-bar").findByText("New").click();
 
-        popover().within(() => {
-          cy.findByText("Collection").click();
-        });
+      popover().within(() => {
+        cy.findByText("Collection").click();
+      });
 
-        modal().within(() => {
-          cy.findByText("Collection it's saved in").should("be.visible");
-          cy.findByText("Third collection").should("be.visible");
-        });
+      modal().within(() => {
+        cy.findByText("Collection it's saved in").should("be.visible");
+        cy.findByText("Third collection").should("be.visible");
       });
     });
   });

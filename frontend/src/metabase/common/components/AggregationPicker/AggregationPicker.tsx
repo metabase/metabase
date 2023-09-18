@@ -18,7 +18,7 @@ import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import QueryColumnPicker from "../QueryColumnPicker";
+import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
   Root,
   ColumnPickerContainer,

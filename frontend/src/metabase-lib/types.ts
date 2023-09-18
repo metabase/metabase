@@ -1,3 +1,5 @@
+import type { DatasetColumn, RowValue } from "metabase-types/api";
+
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
  * and in other files it gets treated like `unknown` so it can't be examined, manipulated or a new one created.
@@ -150,12 +152,6 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-export type ExternalOp = {
-  operator: string;
-  options: Record<string, unknown>;
-  args: [ColumnMetadata, ...ExpressionArg[]];
-};
-
 export type FilterParts = {
   operator: FilterOperator;
   options: Record<string, unknown>;
@@ -178,17 +174,32 @@ export type JoinStrategyDisplayInfo = {
 declare const DrillThru: unique symbol;
 export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
-export type BaseDrillThruInfo<Type> = { type: Type };
+export type DrillThruType =
+  | "drill-thru/quick-filter"
+  | "drill-thru/pk"
+  | "drill-thru/zoom"
+  | "drill-thru/fk-details"
+  | "drill-thru/pivot"
+  | "drill-thru/fk-filter"
+  | "drill-thru/distribution"
+  | "drill-thru/sort"
+  | "drill-thru/summarize-column"
+  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/column-filter"
+  | "drill-thru/underlying-records";
+
+export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
     operators: Array<"=" | "≠" | "<" | ">">;
   };
 
-type ObjectDetailsDrillThruInfo<Type> = BaseDrillThruInfo<Type> & {
-  objectId: string | number;
-  manyPks: boolean;
-};
+type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
+  BaseDrillThruInfo<Type> & {
+    objectId: string | number;
+    "manyPks?": boolean; // TODO [33479]: this should be "manyPks"
+  };
 export type PKDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pk">;
 export type ZoomDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/zoom">;
 export type FKDetailsDrillThruInfo =
@@ -212,7 +223,7 @@ export type SummarizeColumnByTimeDrillThruInfo =
 
 export type ColumnFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-filter"> & {
-    initialOp: { short: string };
+    initialOp: { short: string } | null; // null gets returned for date column
   };
 
 export type UnderlyingRecordsDrillThruInfo =
@@ -236,8 +247,11 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo;
 
 export interface Dimension {
-  column: Record<string, unknown>;
-  value?: any;
+  column: DatasetColumn;
+  value?: RowValue;
 }
 
-export type DataRow = Array<{ col: Record<string, unknown>; value: any }>;
+export type DataRow = Array<{
+  col: DatasetColumn | ColumnMetadata | null;
+  value: RowValue;
+}>;

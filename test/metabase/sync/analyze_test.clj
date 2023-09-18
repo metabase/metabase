@@ -62,7 +62,7 @@
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
-    (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
+    (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
       (t2.with-temp/with-temp [Table table {}
                                Field _ {:table_id            (u/the-id table)
                                         :name                "Current fingerprint, not analyzed"
