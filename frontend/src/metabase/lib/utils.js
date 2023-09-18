@@ -135,14 +135,13 @@ const MetabaseUtils = {
     return JSON.parse(JSON.stringify(a));
   },
 
-  // this should correctly compare all version formats Metabase uses, e.x.
-  // 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
-  // 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
-  compareVersions(aVersion, bVersion) {
-    if (!aVersion || !bVersion) {
-      return null;
-    }
-
+  /**
+   * Converts a metabase version to a list of numeric components, it converts pre-release
+   * components to numbers and pads the numeric part to 4 numbers to make comparison easier
+   * @param {string} version
+   * @returns {number[]}
+   */
+  versionToNumericComponents(version) {
     const SPECIAL_COMPONENTS = {
       snapshot: -4,
       alpha: -3,
@@ -150,21 +149,44 @@ const MetabaseUtils = {
       rc: -1,
     };
 
-    const getComponents = x =>
-      // v1.2.3-BETA1
-      x
-        .toLowerCase()
-        // v1.2.3-beta1
-        .replace(/^v/, "")
-        // 1.2.3-beta1
-        .split(/[.-]*([0-9]+)[.-]*/)
-        .filter(c => c)
-        // ["1", "2", "3", "beta", "1"]
-        .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
-    // [1, 2, 3, -2, 1]
+    const regex =
+      /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+    const {
+      ossOrEE,
+      major = 0,
+      minor = 0,
+      patch = 0,
+      label,
+      build = 0,
+    } = regex.exec(version).groups;
 
-    const aComponents = getComponents(aVersion);
-    const bComponents = getComponents(bVersion);
+    return [
+      ossOrEE,
+      major,
+      minor,
+      patch,
+      SPECIAL_COMPONENTS[label?.toLowerCase()] ?? 0,
+      build,
+    ].map(part => parseInt(part, 10));
+  },
+
+  /**
+   * this should correctly compare all version formats Metabase uses, e.g.
+   * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
+   * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
+   * @type {{
+   * (aVersion: string, bVersion: string) => number;
+   * (aVersion: string | null | undefined, bVersion: string | null | undefined) => number | null;
+   * }}
+   */
+  compareVersions(aVersion, bVersion) {
+    if (!aVersion || !bVersion) {
+      return null;
+    }
+
+    const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
+    const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
+
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];
       const b = bComponents[i];

@@ -24,42 +24,40 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private Show
-  (su/with-api-error-message (s/maybe (s/enum "all"))
+  (mu/with-api-error-message
+    [:maybe [:enum "all"]]
     (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
-  (su/with-api-error-message
-    (s/pred (fn [prefix]
-              (some #(not-empty (dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"])))
+  (mu/with-api-error-message
+    [:fn (fn [prefix]
+           (some #(not-empty (dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))]
     (deferred-tru "invalid value for prefix")))
 
 (def ^:private DashboardTemplate
-  (su/with-api-error-message
-    (s/pred (fn [dashboard-template]
+  (mu/with-api-error-message
+    [:fn (fn [dashboard-template]
               (some (fn [toplevel]
                       (some (comp dashboard-templates/get-dashboard-template
                                   (fn [prefix]
-                                    [toplevel prefix dashboard-template])
+                                   [toplevel prefix dashboard-template])
                                   :dashboard-template-name)
-                            (dashboard-templates/get-dashboard-templates [toplevel])))
-                    ["table" "metric" "field"])))
+                           (dashboard-templates/get-dashboard-templates [toplevel])))
+                   ["table" "metric" "field"]))]
     (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
-  (su/with-api-error-message
-    (s/pred decode-base64-json)
+  (mu/with-api-error-message
+    [:fn decode-base64-json]
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
@@ -136,13 +134,13 @@
   (map name (keys (methods ->entity))))
 
 (def ^:private Entity
-  (su/with-api-error-message
-    (apply s/enum entities)
+  (mu/with-api-error-message
+    (into [:enum] entities)
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
-  (su/with-api-error-message
-    (s/enum "segment" "adhoc" "table")
+  (mu/with-api-error-message
+    [:enum "segment" "adhoc" "table"]
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query"
@@ -264,9 +262,7 @@
                                 :model-index       model-index
                                 :model-index-value model-index-value}))))
 
-;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query prefix dashboard-template show]
   {entity Entity
@@ -277,8 +273,7 @@
       (automagic-analysis {:show (keyword show)
                            :dashboard-template ["table" prefix dashboard-template]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
    query `cell-query`."
@@ -290,9 +285,7 @@
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
-;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/dashboard-template/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-query` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query cell-query prefix dashboard-template show]
@@ -306,8 +299,7 @@
                            :dashboard-template       ["table" prefix dashboard-template]
                            :cell-query (decode-base64-json cell-query)})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
   [entity entity-id-or-query show comparison-entity comparison-entity-id-or-query]
@@ -321,9 +313,7 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
-;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
@@ -340,8 +330,7 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
@@ -357,9 +346,7 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
-;; TODO - all /rule/ paths should be changed to /dashboard-template/ or just /template/ for brevity.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."

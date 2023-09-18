@@ -110,8 +110,8 @@
                 last-name (mt/random-name)
                 invitor-first-name (mt/random-name)]
             (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
-                         :user {:first_name invitor-first-name}
-                         :site_name "Metabase"}
+                          :user {:first_name invitor-first-name}
+                          :site_name "Metabase"}
               (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
@@ -176,9 +176,9 @@
               v                     [true false nil]]
         (let [db-name (mt/random-name)]
           (with-setup! {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details details
-                                  k        v}}
+                                   :name    db-name
+                                   :details details
+                                   k        v}}
             (testing "Database should be created"
               (is (t2/exists? Database :name db-name)))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
@@ -192,8 +192,8 @@
         (mt/with-open-channels [chan (a/chan)]
           (events/subscribe-to-topics! #{:database-create} chan)
           (with-setup! {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details (:details (mt/db))}}
+                                   :name    db-name
+                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
               (is (schema= {:topic (schema/eq :database-create)
                             :item  {:id            su/IntGreaterThanZero
