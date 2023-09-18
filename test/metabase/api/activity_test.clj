@@ -148,6 +148,8 @@
     (t2/insert! QueryExecution (:card views))))
 
 (deftest popular-items-test
+  ;; Clear out the view log so that test doesn't read stale state
+  (t2/delete! :model/ViewLog)
   (mt/with-temp [Card      card1 {:name                   "rand-name"
                                   :creator_id             (mt/user->id :crowberto)
                                   :display                "table"
@@ -212,7 +214,7 @@
                   ["card"      (:id card1)]
                   ["dataset"   (:id dataset)]
                   ["table"     (:id table1)]]
-                        ;; all views are from :rasta, but :crowberto can still see popular items
+                 ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
                       (filter #(test-ids (:model_id %)))
                       (map (juxt :model :model_id))))))))))
