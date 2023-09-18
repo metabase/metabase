@@ -1,8 +1,8 @@
-import type { Location } from "history";
-import type { ComponentType } from "react";
+import type {Location} from "history";
+import type {ComponentType} from "react";
 
-import type { Collection, SearchResult } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type {Collection, SearchResult} from "metabase-types/api";
+import type {IconName} from "metabase/core/components/Icon";
 import type {
   SearchFilterKeys,
   enabledSearchTypes,
@@ -22,9 +22,11 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
+export type CreatedAtFilterProps = string[];
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
@@ -42,6 +44,7 @@ export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
 export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   title: string;
   iconName: IconName;
+  applyImmediately?: boolean;
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
 };

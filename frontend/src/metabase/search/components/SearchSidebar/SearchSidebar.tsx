@@ -6,19 +6,21 @@ import type {
   SearchFilters,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Title, Flex } from "metabase/ui";
-import { SearchFilterKeys } from "metabase/search/constants";
-import { SidebarFilter } from "metabase/search/components/SidebarFilter/SidebarFilter";
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
+import {Title, Flex, Stack} from "metabase/ui";
+import {SearchFilterKeys} from "metabase/search/constants";
+import {SidebarFilter} from "metabase/search/components/SidebarFilter/SidebarFilter";
+import {TypeFilter} from "metabase/search/components/filters/TypeFilter/TypeFilter";
+import {CreatedAtFilter} from "metabase/search/components/filters/CreatedAtFilter";
 
 export const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
+  [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
 };
 
 export const SearchSidebar = ({
-  value,
-  onChangeFilters,
-}: {
+                                value,
+                                onChangeFilters,
+                              }: {
   value: SearchFilters;
   onChangeFilters: (filters: SearchFilters) => void;
 }) => {
@@ -50,5 +52,8 @@ export const SearchSidebar = ({
     );
   };
 
-  return <Flex direction="column">{getFilter(SearchFilterKeys.Type)}</Flex>;
+  return <Stack>
+    {getFilter(SearchFilterKeys.Type)}
+    {getFilter(SearchFilterKeys.CreatedAt)}
+  </Stack>;
 };

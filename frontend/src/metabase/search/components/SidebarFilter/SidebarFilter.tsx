@@ -1,17 +1,17 @@
-import { isEmpty } from "underscore";
-import type { MouseEvent } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
-import { t } from "ttag";
+import {isEmpty} from "underscore";
+import type {MouseEvent} from "react";
+import {useLayoutEffect, useRef, useState} from "react";
+import {t} from "ttag";
 import type {
   SearchFilterComponentProps,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Box, Button, Group, Text } from "metabase/ui";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import {Box, Button, Group, Text} from "metabase/ui";
+import type {IconName} from "metabase/core/components/Icon";
+import {Icon} from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
-import { useSelector } from "metabase/lib/redux";
-import { getIsNavbarOpen } from "metabase/redux/app";
+import {useSelector} from "metabase/lib/redux";
+import {getIsNavbarOpen} from "metabase/redux/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import {
   DropdownApplyButtonDivider,
@@ -23,11 +23,11 @@ export type SearchSidebarFilterProps = {
 } & SearchFilterComponentProps;
 
 export const SidebarFilter = ({
-  filter: { title, iconName, DisplayComponent, ContentComponent },
-  "data-testid": dataTestId,
-  value,
-  onChange,
-}: SearchSidebarFilterProps) => {
+                                filter: {title, iconName, applyImmediately, DisplayComponent, ContentComponent},
+                                "data-testid": dataTestId,
+                                value,
+                                onChange,
+                              }: SearchSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -41,7 +41,7 @@ export const SidebarFilter = ({
 
   const handleResize = () => {
     if (dropdownRef.current) {
-      const { width } = dropdownRef.current.getBoundingClientRect();
+      const {width} = dropdownRef.current.getBoundingClientRect();
       setPopoverWidth(`${width}px`);
     }
   };
@@ -98,21 +98,21 @@ export const SidebarFilter = ({
         >
           <Group position="apart">
             {fieldHasValue ? (
-              <DisplayComponent value={value} />
+              <DisplayComponent value={value}/>
             ) : (
               <Group noWrap>
-                <Icon name={iconName} />
+                <Icon name={iconName}/>
                 <Text weight={700}>{title}</Text>
               </Group>
             )}
             <Button
-              style={{ pointerEvents: "all" }}
+              style={{pointerEvents: "all"}}
               data-testid="sidebar-filter-dropdown-button"
               compact
               c="inherit"
               variant="subtle"
               onClick={onClearFilter}
-              leftIcon={<Icon name={getDropdownIcon()} />}
+              leftIcon={<Icon name={getDropdownIcon()}/>}
             />
           </Group>
         </DropdownFilterElement>
@@ -127,13 +127,22 @@ export const SidebarFilter = ({
         <Box p="md" w={popoverWidth ?? "100%"}>
           <ContentComponent
             value={selectedValues}
-            onChange={selected => setSelectedValues(selected)}
+            onChange={selected => {
+              setSelectedValues(selected);
+              if (applyImmediately) {
+                onChange(selected);
+              }
+            }}
           />
         </Box>
-        <DropdownApplyButtonDivider />
-        <Group position="right" align="center" px="sm" pb="sm">
-          <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
-        </Group>
+        {!applyImmediately && (
+          <>
+            <DropdownApplyButtonDivider/>
+            <Group position="right" align="center" px="sm" pb="sm">
+              <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
+            </Group>
+          </>
+        )}
       </Popover>
     </div>
   );
