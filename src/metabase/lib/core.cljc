@@ -237,6 +237,7 @@
   raw-native-query
   with-native-query
   template-tags
+  engine
   with-template-tags
   required-native-extras
   native-extras

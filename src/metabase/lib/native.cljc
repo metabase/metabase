@@ -257,3 +257,10 @@
   [query :- ::lib.schema/query]
   (assert-native-query! (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
+
+(mu/defn engine :- :keyword
+  "Returns the database engine.
+   Must be a native query"
+  [query :- ::lib.schema/query]
+  (assert-native-query! (lib.util/query-stage query 0))
+  (:engine (lib.metadata/database query)))
