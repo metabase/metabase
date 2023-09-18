@@ -53,7 +53,7 @@ describe("scenarios > collections > archive", () => {
     cy.intercept("PUT", "/api/collection/*").as("updateCollection");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
-    // test individual archive and undo
+    cy.log("Test individual archive and undo");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
@@ -67,7 +67,7 @@ describe("scenarios > collections > archive", () => {
     cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
 
-    // test bulk archive and undo
+    cy.log("Test bulk archive and undo");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).within(() => {
       cy.findByLabelText("archive-item-swapper").realHover().click();
       cy.get("input").should("be.checked");
