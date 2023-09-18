@@ -717,7 +717,8 @@
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
           (try
-            (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
+            (doseq [stmt [(str "USE `" lower-db-name "`;")
+                          "CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
                           "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
                           (str "GRANT SELECT ON `bar` TO 'table_privileges_test_user'")]]
