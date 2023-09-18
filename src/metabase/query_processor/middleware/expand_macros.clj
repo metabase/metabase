@@ -467,6 +467,7 @@
     metric-info))
 
 (defn- metrics!
+  "Get metric infos from app database. Every distinct metric id provided, is expected to have metric info fetched."
   [inner-query]
   (when-let [metrics-ids (not-empty (set (map second (metrics inner-query))))]
     (doto (t2/select :model/Metric :id [:in metrics-ids])
