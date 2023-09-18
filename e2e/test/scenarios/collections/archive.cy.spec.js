@@ -50,6 +50,8 @@ describe("scenarios > collections > archive", () => {
     cy.visit("/archive");
 
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
     // test individual archive and undo
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
@@ -68,19 +70,27 @@ describe("scenarios > collections > archive", () => {
     // test bulk archive and undo
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).within(() => {
       cy.findByLabelText("archive-item-swapper").realHover().click();
+      cy.get("input").should("be.checked");
     });
 
-    cy.findByTestId("bulk-action-bar", { timeout: 5000 }).should("be.visible");
-    cy.findByTestId("bulk-action-bar").within(() => {
-      cy.findByLabelText("bulk-actions-input").click();
-      cy.findByText("Unarchive").click();
-    });
+    cy.findByTestId("bulk-action-bar", { timeout: 5000 })
+      .should("be.visible")
+      .within(() => {
+        cy.findByLabelText("bulk-actions-input").click();
+        cy.findByText("Unarchive").click();
+        cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+      });
 
+    cy.get("main").findByText("Items you archive will appear here.");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("not.exist");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+    cy.get("main")
+      .findByText("Items you archive will appear here.")
+      .should("not.exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
