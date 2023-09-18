@@ -49,15 +49,20 @@ describe("scenarios > collections > archive", () => {
 
     cy.visit("/archive");
 
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
     // test individual archive and undo
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("unarchive icon")
       .click();
+    cy.wait("@updateDashboard");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
 
     cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
 
     // test bulk archive and undo
