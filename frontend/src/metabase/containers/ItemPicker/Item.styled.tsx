@@ -21,6 +21,10 @@ export const ItemRoot = styled.div<ItemRootProps>`
     css`
       color: ${color("white")};
       background-color: ${color("brand")};
+
+      & ${ExpandButton} {
+        color: ${color("white")};
+      }
     `}
 
   ${({ canSelect, hasChildren }) =>
@@ -57,7 +61,9 @@ export const ExpandButton = styled(IconButtonWrapper)<{ canSelect: boolean }>`
   border: 1px solid ${color("border")};
 
   &:hover {
-    color: ${color("brand")} !important;
+    & svg.Icon {
+      color: ${props => (props.canSelect ? color("brand") : color("white"))};
+    }
     background-color: ${props =>
       props.canSelect ? color("white") : color("brand")};
   }
