@@ -74,12 +74,12 @@ export const openNavbar = createAction(OPEN_NAVBAR);
 export const closeNavbar = createAction(CLOSE_NAVBAR);
 export const toggleNavbar = createAction(TOGGLE_NAVBAR);
 
-export const getIsNavbarOpen: Selector<State> = createSelector(
+export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
     getIsEmbedded,
     getEmbedOptions,
     getIsAppBarVisible,
-    state => state.app.isNavbarOpen,
+    (state: State) => state.app.isNavbarOpen,
   ],
   (isEmbedded, embedOptions, isAppBarVisible, isNavbarOpen) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
