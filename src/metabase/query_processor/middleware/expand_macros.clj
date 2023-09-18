@@ -384,14 +384,9 @@
   "Generate join condition used to join [[metrics-query]] into original query.
    "
   [join-alias joining-query metrics-query-metadata]
-  ;;;; TODO: When expressions are "pushed-down" join condition is not udpated correctly
-  (let [conditions (for [[orig-breakout-clause metrics-breakout-clause]
-                         (map vector
-                              (:breakout joining-query)
-                              (map (partial breakout->field metrics-query-metadata)
-                                   (:breakout joining-query)))]
-                     [:= orig-breakout-clause (mbql.u/update-field-options metrics-breakout-clause
-                                                                           assoc :join-alias join-alias)])]
+  (let [conditions (for [breakout (:breakout joining-query)]
+                     [:= breakout (-> (breakout->field metrics-query-metadata breakout)
+                                      (mbql.u/update-field-options assoc :join-alias join-alias))])]
     (cond (zero? (count conditions)) [:= 1 1]
           (= 1 (count conditions)) (first conditions)
           :else (into [:and] conditions))))
