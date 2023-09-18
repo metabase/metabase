@@ -452,10 +452,17 @@ function PivotTable({
                         return sumArray(subColumnWidths);
                       }}
                       estimatedColumnSize={DEFAULT_CELL_WIDTH}
-                      cellRenderer={({ rowIndex, columnIndex, key, style }) => (
+                      cellRenderer={({
+                        rowIndex,
+                        columnIndex,
+                        key,
+                        style,
+                        isScrolling,
+                      }) => (
                         <BodyCell
                           key={key}
                           style={style}
+                          isScrolling={isScrolling}
                           rowSection={getRowSection(columnIndex, rowIndex)}
                           isNightMode={isNightMode}
                           getCellClickHandler={getCellClickHandler}

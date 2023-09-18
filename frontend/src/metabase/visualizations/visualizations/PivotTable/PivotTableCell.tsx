@@ -43,6 +43,7 @@ interface CellProps {
   hasTopBorder?: boolean;
   onClick?: ((e: React.SyntheticEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
+  isScrolling?: boolean;
 }
 
 export function Cell({
@@ -59,6 +60,7 @@ export function Cell({
   hasTopBorder,
   onClick,
   onResize,
+  isScrolling = false,
 }: CellProps) {
   return (
     <PivotTableCell
@@ -81,7 +83,7 @@ export function Cell({
     >
       <>
         <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-          <Ellipsified>{value}</Ellipsified>
+          <Ellipsified showTooltip={!isScrolling}>{value}</Ellipsified>
           {icon && <div className="pl1">{icon}</div>}
         </div>
         {!!onResize && (
@@ -196,6 +198,7 @@ interface BodyCellProps {
   isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
+  isScrolling?: boolean;
 }
 
 export const BodyCell = ({
@@ -204,6 +207,7 @@ export const BodyCell = ({
   isNightMode,
   getCellClickHandler,
   cellWidths,
+  isScrolling = false,
 }: BodyCellProps) => {
   return (
     <div style={style} className="flex">
@@ -218,6 +222,7 @@ export const BodyCell = ({
             value={value}
             isEmphasized={isSubtotal}
             isBold={isSubtotal}
+            isScrolling={isScrolling}
             isBody
             onClick={getCellClickHandler(clicked)}
             backgroundColor={backgroundColor}

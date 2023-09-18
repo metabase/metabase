@@ -2,14 +2,16 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import resizeObserver from "metabase/lib/resize-observer";
 
-export const useIsTruncated = <E extends Element>() => {
+export const useIsTruncated = <E extends Element>({
+  skip = false,
+}: { skip?: boolean } = {}) => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
   useLayoutEffect(() => {
     const element = ref.current;
 
-    if (!element) {
+    if (!element || skip) {
       return;
     }
 
@@ -23,7 +25,7 @@ export const useIsTruncated = <E extends Element>() => {
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, []);
+  }, [skip]);
 
   return { isTruncated, ref };
 };

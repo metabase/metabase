@@ -31,11 +31,14 @@ const Ellipsified = ({
   placement = "top",
   "data-testid": dataTestId,
 }: EllipsifiedProps) => {
-  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>();
+  const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
+  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
+    skip: canSkipTooltipRendering,
+  });
 
   return (
     <Tooltip
-      tooltip={tooltip || children || " "}
+      tooltip={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       isEnabled={(showTooltip && (isTruncated || alwaysShowTooltip)) || false}
       maxWidth={tooltipMaxWidth}
       placement={placement}
@@ -47,6 +50,8 @@ const Ellipsified = ({
         style={style}
         data-testid={dataTestId}
       >
+        {children}
+        {children}
         {children}
       </EllipsifiedRoot>
     </Tooltip>
