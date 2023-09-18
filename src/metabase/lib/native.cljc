@@ -249,3 +249,11 @@
   "Returns the native query's template tags"
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
+
+(mu/defn has-write-permission :- :boolean
+  "Returns whether the database has native write permissions.
+   This is only filled in by [[metabase.api.database/add-native-perms-info]]
+   and added to metadata when pulling a database from the list of dbs in js."
+  [query :- ::lib.schema/query]
+  (assert-native-query! (lib.util/query-stage query 0))
+  (= :write (:native-permissions (lib.metadata/database query))))
