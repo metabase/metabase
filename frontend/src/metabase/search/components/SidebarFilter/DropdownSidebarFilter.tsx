@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import type {
   SearchFilterComponentProps,
-  SearchSidebarFilterComponent,
+  SearchFilterDropdown,
 } from "metabase/search/types";
 import { Box, Button, Group, Text } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
@@ -19,10 +19,10 @@ import {
 } from "./SidebarFilter.styled";
 
 export type SearchSidebarFilterProps = {
-  filter: SearchSidebarFilterComponent;
+  filter: SearchFilterDropdown;
 } & SearchFilterComponentProps;
 
-export const SidebarFilter = ({
+export const DropdownSidebarFilter = ({
   filter: { title, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,
@@ -101,7 +101,7 @@ export const SidebarFilter = ({
               <DisplayComponent value={value} />
             ) : (
               <Group noWrap>
-                <Icon name={iconName} />
+                {iconName && <Icon name={iconName} />}
                 <Text weight={700}>{title}</Text>
               </Group>
             )}

@@ -2,13 +2,14 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
-import type { SearchSidebarFilterProps } from "./SidebarFilter";
-import { SidebarFilter } from "./SidebarFilter";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { SearchSidebarFilterProps } from "./DropdownSidebarFilter";
+import { DropdownSidebarFilter } from "./DropdownSidebarFilter";
 
-const mockFilter: SearchSidebarFilterComponent = {
+const mockFilter: SearchFilterComponent = {
   title: "Mock Filter",
   iconName: "filter",
+  type: "dropdown",
   DisplayComponent: ({ value }) => (
     <div data-testid="mock-display-component">
       {!value || value.length === 0 ? "Display" : value}
@@ -34,7 +35,7 @@ const MockSearchSidebarFilter = ({
   };
 
   return (
-    <SidebarFilter
+    <DropdownSidebarFilter
       filter={filter}
       value={selectedValues}
       onChange={onFilterChange}

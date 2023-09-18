@@ -10,6 +10,8 @@ import type {
 
 export type EnabledSearchModelType = typeof enabledSearchTypes[number];
 
+export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
+
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;
   getIcon: () => {
@@ -23,8 +25,11 @@ export interface WrappedResult extends SearchResult {
 
 export type TypeFilterProps = EnabledSearchModelType[];
 
+export type VerifiedFilterProps = true | undefined;
+
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.Verified]: VerifiedFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
@@ -37,11 +42,27 @@ export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
   "data-testid"?: string;
 } & Record<string, unknown>;
 
-export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
+type SidebarFilterType = "dropdown" | "toggle";
 
-export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
+interface SearchFilter {
+  type: SidebarFilterType;
   title: string;
-  iconName: IconName;
+  iconName?: IconName;
+}
+
+export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
+  extends SearchFilter {
+  type: "dropdown";
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
-};
+}
+
+export interface SearchFilterToggle<T extends FilterTypeKeys = any>
+  extends SearchFilter {
+  type: "toggle";
+  Component: ComponentType<SearchFilterComponentProps<T>>;
+}
+
+export type SearchFilterComponent<T extends FilterTypeKeys = any> =
+  | SearchFilterDropdown<T>
+  | SearchFilterToggle<T>;
