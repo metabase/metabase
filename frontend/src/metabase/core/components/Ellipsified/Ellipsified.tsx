@@ -51,8 +51,6 @@ export const Ellipsified = ({
         data-testid={dataTestId}
       >
         {children}
-        {children}
-        {children}
       </EllipsifiedRoot>
     </Tooltip>
   );
