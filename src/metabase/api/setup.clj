@@ -165,8 +165,11 @@
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
-      (events/publish-event! :database-create database)
-      (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (when database
+        (events/publish-event! :event/database-create database))
+      (->> {:user-id user-id}
+           (events/publish-event! :event/user-login)
+           (events/publish-event! :event/user-joined))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
       (when database (snowplow/track-event! ::snowplow/database-connection-successful
                                             user-id
@@ -194,7 +197,7 @@
 
 ;;; Admin Checklist
 
-(def ChecklistState
+(def ^:private ChecklistState
   "Malli schema for the state to annotate the checklist."
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]

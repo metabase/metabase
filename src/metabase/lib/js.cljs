@@ -861,8 +861,8 @@
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
 
   Each type of drill-thru has a different effect on the query."
-  [a-query stage-number a-drill-thru]
-  (lib.core/drill-thru a-query stage-number a-drill-thru))
+  [a-query stage-number a-drill-thru & args]
+  (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
