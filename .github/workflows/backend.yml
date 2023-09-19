@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
-      static_viz: ${{ steps.static_viz.outputs.static_viz}}
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v3
       - name: Prepare back-end environment
@@ -30,7 +30,7 @@ jobs:
         with:
           m2-cache-key: "files-changed"
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: yarn build-static-viz:file-paths
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
