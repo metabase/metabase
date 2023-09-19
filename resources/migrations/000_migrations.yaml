@@ -15289,7 +15289,7 @@ databaseChangeLog:
       rollback: # not needed, it will be removed with the table
 
   - changeSet:
-      id: v48.00-016
+      id: v48.00-017
       author: noahmoss
       comment: Add new audit_log table
       changes:
