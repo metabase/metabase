@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -130,6 +130,10 @@ function DashCardVisualization({
   onChangeLocation,
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
+  const question = useMemo(() => {
+    return new Question(dashcard.card, metadata);
+  }, [dashcard.card, metadata]);
+
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
@@ -184,7 +188,6 @@ function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const question = new Question(dashcard.card, metadata);
     const mainSeries = series[0] as unknown as Dataset;
 
     const shouldShowDashCardMenu = DashCardMenu.shouldRender({
@@ -211,10 +214,9 @@ function DashCardVisualization({
       />
     );
   }, [
-    dashcard.card,
+    question,
     dashcard.id,
     dashcard.dashboard_id,
-    metadata,
     series,
     isEmbed,
     isPublic,
