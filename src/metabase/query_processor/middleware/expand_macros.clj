@@ -473,7 +473,7 @@
     (doto (t2/select :model/Metric :id [:in metrics-ids])
       (as-> $ (assert (= (count metrics-ids) (count $)) "Metric id and fetched metric model count mismatch.")))))
 
-(defn- maybe-adjust-metric-opt
+(defn- swap-ag-for-field
   "Adjust field from `::metric-id->field` to be swappable for aggregation containing only one metric. If the
    aggregation that field is being swapped for was also coming from metric, ::metric opt is updated. That is
    necessary, so field can be correctly provided using [[provides]] when swapping metric uplevel."
@@ -497,13 +497,14 @@
    later. Else metrics in aggregation are swapped for corresponding fields, or if aggregation contains no metric
    it is left unmodified."
   [query ag]
-  (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second) distinct)
-        multiple-metrics? (some? other-metric-ids)]
+  (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second))
+        multiple-metrics? (seq other-metric-ids)]
+    ;;;; TODO: can be further simplified
     (cond multiple-metrics?
           (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))
 
           (one-and-only-metric? ag)
-          (maybe-adjust-metric-opt ag (get-in query [::metric-id->field first-metric-id]))
+          (swap-ag-for-field ag (get-in query [::metric-id->field first-metric-id]))
 
           :else
           ag)))
@@ -565,17 +566,13 @@
   [{breakout :breakout
     ordered-clauses-for-fields ::ordered-clauses-for-fields
     :as query}]
-  (let [ordered-ag-clauses (subvec ordered-clauses-for-fields (count breakout))
-        orig-ag-idx->breakout-idx (into {}
-                                        (map-indexed (fn [orig-ag-idx [_type breakout-idx]]
-                                                       [orig-ag-idx breakout-idx]))
-                                        ordered-ag-clauses)]
-    ;;;; TODO: references in places other than order-bys
+  (assert (and (vector? ordered-clauses-for-fields)
+               (seq ordered-clauses-for-fields))
+    "Not empty vector `ordered-clauses-for-fields` expected.")
+  (let [original-ag-index->clause-ref (subvec ordered-clauses-for-fields (count breakout))]
     (mbql.u/replace-in query [:order-by]
       [:aggregation idx]
-      (if (contains? orig-ag-idx->breakout-idx idx)
-        [:breakout (orig-ag-idx->breakout-idx idx)]
-        &match))))
+      (original-ag-index->clause-ref idx))))
 
 (defn- metric-infos->metrics-queries
   "Transforms metric info into metrics query. Groupping (partitioning in practice) of metrics is further described
