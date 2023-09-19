@@ -60,6 +60,7 @@ const ORDERS_COLUMNS = {
   CREATED_AT: createOrdersCreatedAtDatasetColumn(),
   QUANTITY: createOrdersQuantityDatasetColumn(),
 };
+
 const ORDERS_ROW_VALUES: Record<keyof typeof ORDERS_COLUMNS, string | number> =
   {
     ID: "3",
@@ -72,6 +73,7 @@ const ORDERS_ROW_VALUES: Record<keyof typeof ORDERS_COLUMNS, string | number> =
     CREATED_AT: "2025-12-06T22:22:48.544+02:00",
     QUANTITY: 2,
   };
+
 describe("availableDrillThrus", () => {
   describe("should return list of available drills", () => {
     describe("unaggregated query", () => {
@@ -429,6 +431,7 @@ describe("availableDrillThrus", () => {
           parameters: [],
         } as StructuredDatasetQuery,
       });
+
       const columns = {
         Math: createMockColumn({
           base_type: "type/Integer",
@@ -500,95 +503,262 @@ describe("drillThru", () => {
     drillArgs?: any[];
     expectedQuery: StructuredQueryApi;
   }>([
-    // FIXME: sort drill is not yet implemented on the BE side
+    // FIXME: sort drill returns wrong result query
     // {
     //   drillType: "drill-thru/sort",
     //   clickType: "header",
     //   columnName: ORDERS_COLUMNS.ID.name,
     //   drillArgs: ["asc"],
-    //   expectedQuery: {},
+    //   expectedQuery: {
+    //     "order-by": [
+    //       [
+    //         "asc",
+    //         [
+    //           "field",
+    //           ORDERS.ID,
+    //           {
+    //             "base-type": "type/BigInteger",
+    //           },
+    //         ],
+    //       ],
+    //     ],
+    //     "source-table": ORDERS_ID,
+    //   },
     // },
     // {
     //   drillType: "drill-thru/sort",
     //   clickType: "header",
     //   columnName: ORDERS_COLUMNS.PRODUCT_ID.name,
     //   drillArgs: ["desc"],
-    //   expectedQuery: {},
+    //   expectedQuery: {
+    //     "order-by": [
+    //       [
+    //         "desc",
+    //         [
+    //           "field",
+    //           ORDERS.PRODUCT_ID,
+    //           {
+    //             "base-type": "type/Integer",
+    //           },
+    //         ],
+    //       ],
+    //     ],
+    //     "source-table": ORDERS_ID,
+    //   },
     // },
     // {
     //   drillType: "drill-thru/sort",
     //   clickType: "header",
     //   columnName: ORDERS_COLUMNS.SUBTOTAL.name,
     //   drillArgs: ["asc"],
-    //   expectedQuery: {},
+    //   expectedQuery: {
+    //     "order-by": [
+    //       [
+    //         "asc",
+    //         [
+    //           "field",
+    //           ORDERS.SUBTOTAL,
+    //           {
+    //             "base-type": "type/Float",
+    //           },
+    //         ],
+    //       ],
+    //     ],
+    //     "source-table": ORDERS_ID,
+    //   },
     // },
     // {
     //   drillType: "drill-thru/sort",
     //   clickType: "header",
     //   columnName: ORDERS_COLUMNS.DISCOUNT.name,
     //   drillArgs: ["desc"],
-    //   expectedQuery: {},
+    //   expectedQuery: {
+    //     "order-by": [
+    //       [
+    //         "desc",
+    //         [
+    //           "field",
+    //           ORDERS.DISCOUNT,
+    //           {
+    //             "base-type": "type/Float",
+    //           },
+    //         ],
+    //       ],
+    //     ],
+    //     "source-table": ORDERS_ID,
+    //   },
     // },
     // {
     //   drillType: "drill-thru/sort",
     //   clickType: "header",
     //   columnName: ORDERS_COLUMNS.CREATED_AT.name,
     //   drillArgs: ["asc"],
-    //   expectedQuery: {},
+    //   expectedQuery: {
+    //     "order-by": [
+    //       [
+    //         "asc",
+    //         [
+    //           "field",
+    //           ORDERS.CREATED_AT,
+    //           {
+    //             "base-type": "type/DateTime",
+    //           },
+    //         ],
+    //       ],
+    //     ],
+    //     "source-table": ORDERS_ID,
+    //   },
     // },
 
-    // FIXME: summarize-column drill does not work due to metabase#33480
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.ID.name,
-    //   drillArgs: ["distinct"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.PRODUCT_ID.name,
-    //   drillArgs: ["distinct"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.SUBTOTAL.name,
-    //   drillArgs: ["distinct"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.TAX.name,
-    //   drillArgs: ["sum"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.DISCOUNT.name,
-    //   drillArgs: ["avg"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.CREATED_AT.name,
-    //   drillArgs: ["distinct"],
-    //   expectedQuery: {},
-    // },
-    // {
-    //   drillType: "drill-thru/summarize-column",
-    //   clickType: "header",
-    //   columnName: ORDERS_COLUMNS.QUANTITY.name,
-    //   drillArgs: ["avg"],
-    //   expectedQuery: {},
-    // },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.ID.name,
+      drillArgs: ["distinct"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "distinct",
+            [
+              "field",
+              ORDERS.ID,
+              {
+                "base-type": "type/BigInteger",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.PRODUCT_ID.name,
+      drillArgs: ["distinct"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "distinct",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.SUBTOTAL.name,
+      drillArgs: ["distinct"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "distinct",
+            [
+              "field",
+              ORDERS.SUBTOTAL,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.TAX.name,
+      drillArgs: ["sum"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "sum",
+            [
+              "field",
+              ORDERS.TAX,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.DISCOUNT.name,
+      drillArgs: ["avg"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "avg",
+            [
+              "field",
+              ORDERS.DISCOUNT,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.CREATED_AT.name,
+      drillArgs: ["distinct"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "distinct",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/summarize-column",
+      clickType: "header",
+      columnName: ORDERS_COLUMNS.QUANTITY.name,
+      drillArgs: ["avg"],
+      expectedQuery: {
+        aggregation: [
+          [
+            "avg",
+            [
+              "field",
+              ORDERS.QUANTITY,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
 
-    // FIXME: distribution drill does not work on FK columns
+    // FIXME: distribution drill result for FK columns creates extra binning, which is wrong
     // {
     //   drillType: "drill-thru/distribution",
     //   clickType: "header",
@@ -701,14 +871,26 @@ describe("drillThru", () => {
       },
     },
 
-    // FIXME: cell quick-filter drill doesn't work yet with a simple operator like "=", seems we need to implement MLv2 Filters first
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   columnName: ORDERS_COLUMNS.SUBTOTAL.name,
-    //   drillArgs: ["="],
-    //   expectedQuery: {},
-    // },
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      columnName: ORDERS_COLUMNS.SUBTOTAL.name,
+      drillArgs: ["="],
+      expectedQuery: {
+        filter: [
+          "=",
+          [
+            "field",
+            ORDERS.SUBTOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          ORDERS_ROW_VALUES.SUBTOTAL,
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
 
     {
       drillType: "drill-thru/fk-filter",
