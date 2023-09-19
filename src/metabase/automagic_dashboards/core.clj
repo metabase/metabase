@@ -1322,7 +1322,7 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name query-filter] :as root}]
+  [{:keys [show full-name query-filter url] :as root}]
   (let [[dashboard
          {:keys [dashboard-template-name] :as dashboard-template}
          {:keys [available-dimensions
@@ -1343,7 +1343,7 @@
         (assoc :related (related root available-values dashboard-template)
                :more (when (and (not= show :all)
                                 (-> dashboard :cards count (> show)))
-                       (format "%s#show=all" (:url root)))
+                       (format "%s#show=all" url))
                :transient_filters query-filter
                :param_fields (filter-referenced-fields root query-filter)
                :auto_apply_filters true))))

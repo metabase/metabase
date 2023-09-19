@@ -2196,20 +2196,8 @@
               :satisfied-metrics    []
               :satisfied-filters    []})))))
 
-;; todo: card-templates can have queries with [[dimension]] bindings and ALSO [[table]] bindings
-;; 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯
-;; resources/automagic_dashboards/table/example.yaml
-;; note that they can specify dimension dependencies and ALSO table dependencies:
-;; - Native:
-;;    title: Native query
-;;    # Template interpolation works the same way as in title and description. Field
-;;    # names are automatically expanded into the full TableName.FieldName form.
-;;    query: select count(*), [[State]]
-;;           from [[GenericTable]] join [[UserTable]] on
-;;           [[UserFK]] = [[UserPK]]
-;;    visualization: bar
 (deftest potential-card-dimension-bindings-to-entity-type-test
-  (testing "Ensure the branch is called in which "
+  (testing "Ensure the branch is called in which the filter-tables branch of some-fn is called."
     (mt/dataset sample-dataset
       (testing "The dimension is named in the card query"
         (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
@@ -2250,6 +2238,60 @@
                     {:satisfied-dimensions [[:dimension dimension-name {}]]
                      :satisfied-metrics    []
                      :satisfied-filters    []}))))))))
+
+(deftest potential-card-dimension-bindings-native-query-card-test
+  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
+  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
+  (testing "Card templates can specify dimensions in their queries, which can include table dependencies."
+    (mt/dataset sample-dataset
+      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
+            card-template {:query query}
+            table         (t2/select-one :model/Table :id (mt/id :people))
+            root          (#'magic/->root table)
+            base-context  (#'magic/make-base-context root)
+            [potential-binding :as potential-bindings] (#'magic/potential-card-dimension-bindings
+                                                         base-context
+                                                         {:available-dimensions
+                                                          {"State"  {:matches [{:name "STATE"}]}
+                                                           "UserFK" {:matches [{:name "USER_ID"}]}
+                                                           "UserPK" {:matches [{:name "ID"}]}}}
+                                                         card-template
+                                                         {:satisfied-dimensions []
+                                                          :satisfied-metrics    []
+                                                          :satisfied-filters    []})]
+        (is (= 1 (count potential-bindings)))
+        (is (=? {"State"        {:name "STATE"}
+                 "GenericTable" table
+                 "UserTable"    table
+                 "UserFK"       {:name "USER_ID"}
+                 "UserPK"       {:name "ID"}}
+                potential-binding))))))
+
+(deftest make-cards-native-query-card-test
+  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
+  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
+  (testing "Cards can be generated from a card with a native query."
+    (mt/dataset sample-dataset
+      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
+            card-template {:query query :score 1}
+            table         (t2/select-one :model/Table :id (mt/id :people))
+            root          (#'magic/->root table)
+            base-context  (#'magic/make-base-context root)
+            [card-candidate :as card-candidates] (#'magic/card-candidates
+                                                   base-context
+                                                   {:available-dimensions
+                                                    {"State"  {:matches [{:name "STATE"}]}
+                                                     "UserFK" {:matches [{:name "USER_ID"}]}
+                                                     "UserPK" {:matches [{:name "ID"}]}}}
+                                                   card-template)]
+        (is (= 1 (count card-candidates)))
+        ;; Note that PEOPLE does not contain USER_ID.
+        ;; This is contrived based on the base context data and mocked available dimensions.
+        (is (=? (assoc card-template
+                  :dataset_query {:type     :native
+                                  :native   {:query "select count(*), STATE from PEOPLE join PEOPLE on USER_ID = ID"}
+                                  :database (mt/id)})
+                card-candidate))))))
 
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
