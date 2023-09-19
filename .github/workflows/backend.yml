@@ -34,10 +34,10 @@ jobs:
       - run: yarn install --frozen-lockfile --prefer-offline
       - name: Build static viz frontend
         run: yarn build-static-viz
-      - name: Cache Static Viz Bundle
-        uses: actions/cache@v3
+      - name: Upload Static Viz Bundle Artifact
+        uses: actions/upload-artifact@v3
         with:
-          key: static-viz-bundle-${{ github.sha }}
+          name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
@@ -201,12 +201,11 @@ jobs:
         with:
           m2-cache-key: be-tests
 
-      - name: Restore Static Viz Bundle
-        uses: actions/cache@v3
+      - name: Download Static Viz Bundle Artifact
+        uses: actions/download-artifact@v3
         with:
-          key: static-viz-bundle-${{ github.sha }}
+          name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
-
       - name: Run tests
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
