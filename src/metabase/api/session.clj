@@ -61,8 +61,10 @@
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]
     (assert (map? session))
-    (events/publish-event! :user-login
-      {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+    (let [event {:user-id (u/the-id user)}]
+      (events/publish-event! :event/user-login event)
+      (when (nil? (:last_login user))
+        (events/publish-event! :event/user-joined event)))
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when-not (:last_login user)
       (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
