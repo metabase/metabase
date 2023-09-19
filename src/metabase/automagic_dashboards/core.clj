@@ -774,8 +774,8 @@
   [{context-dimensions :dimensions
     :keys              [tables]}
    {card-query :query}
-   {:keys [common-dimensions common-metrics common-filters]}]
-  (let [dimension-locations [common-dimensions common-metrics common-filters card-query]
+   {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}]
+  (let [dimension-locations [satisfied-dimensions satisfied-metrics satisfied-filters card-query]
         used-dimensions     (dashboard-templates/collect-dimensions dimension-locations)
         matched-dimensions  (map (some-fn #(get-in context-dimensions [% :matches])
                                           (comp #(filter-tables % tables) dashboard-templates/->entity))
@@ -797,31 +797,31 @@
     card-score      :score
     :keys           [limit]
     :as             card-template}
-   {:keys [common-dimensions common-metrics common-filters]}
+   {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}
    bindings]
   (let [score          (if card-query
                          card-score
                          (* (or (->> card-dimensions
                                      (map (partial get context-dimensions))
-                                     (concat common-filters common-metrics)
+                                     (concat satisfied-filters satisfied-metrics)
                                      (transduce (keep :score) stats/mean))
                                 dashboard-templates/max-score)
                             (/ card-score dashboard-templates/max-score)))
-        metrics        (for [metric common-metrics]
+        metrics        (for [metric satisfied-metrics]
                          {:name   ((some-fn :name (comp metric-name :metric)) metric)
                           :metric (:metric metric)
                           :op     (-> metric :metric metric-op)})
         dashcard       (visualization/expand-visualization
                          card-template
-                         (map (comp bindings second) common-dimensions)
+                         (map (comp bindings second) satisfied-dimensions)
                          metrics)
         dashcard-query (if card-query
                          (build-native-query context bindings card-query)
                          (build-mbql-query context
                                            bindings
-                                           common-filters
+                                           satisfied-filters
                                            metrics
-                                           common-dimensions
+                                           satisfied-dimensions
                                            limit
                                            (build-order-by dashcard)))]
     (-> dashcard
@@ -830,12 +830,12 @@
                                            (merge bindings)))
         (assoc :dataset_query dashcard-query
                :metrics metrics
-               :dimensions (map (comp :name bindings second) common-dimensions)
+               :dimensions (map (comp :name bindings second) satisfied-dimensions)
                :score score))))
 
-(defn- valid-bindings? [{:keys [root]} common-dimensions bindings]
+(defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
-    (->> common-dimensions
+    (->> satisfied-dimensions
          (map (fn [[_ identifier opts]]
                 (merge (bindings identifier) opts)))
          (every? (every-pred valid-breakout-dimension?
@@ -844,34 +844,32 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [{context-dimensions :dimensions
-    context-metrics    :metrics
-    context-filters    :filters
-    :keys              [query-filter]
-    :as                context}
-   {card-dimensions :dimensions
-    card-metrics    :metrics
-    card-filters    :filters
-    card-title      :title
-    :as             card-template}]
+  [{available-dimensions :dimensions
+    available-metrics    :metrics
+    available-filters    :filters
+    :keys                [query-filter]
+    :as                  context}
+   {required-dimensions :dimensions
+    required-metrics    :metrics
+    required-filters    :filters
+    card-title          :title
+    :as                 card-template}]
   (if
     (and
-      (every? context-dimensions (map ffirst card-dimensions))
-      (every? context-metrics card-metrics)
-      (every? context-filters card-filters))
-    (let [common-metrics    (map context-metrics card-metrics)
-          common-filters    (cond-> (map context-filters card-filters)
-                              ;; Do we need to ensure this is a seq?
-                              ;; It may be that this is what Dan saw.
-                              query-filter
-                              (conj {:filter query-filter}))
-          common-dimensions (map (comp (partial into [:dimension]) first) card-dimensions)
-          common-values     {:common-dimensions common-dimensions
-                             :common-metrics    common-metrics
-                             :common-filters    common-filters}]
-      (->> (potential-card-dimension-bindings context card-template common-values)
-           (filter (partial valid-bindings? context common-dimensions))
-           (map (partial build-dashcard context card-template common-values))))
+      (every? available-dimensions (map ffirst required-dimensions))
+      (every? available-metrics required-metrics)
+      (every? available-filters required-filters))
+    (let [satisfied-metrics    (map available-metrics required-metrics)
+          satisfied-filters    (cond-> (map available-filters required-filters)
+                                 query-filter
+                                 (conj {:filter query-filter}))
+          satisfied-dimensions (map (comp (partial into [:dimension]) first) required-dimensions)
+          satisfied-values     {:satisfied-dimensions satisfied-dimensions
+                                :satisfied-metrics    satisfied-metrics
+                                :satisfied-filters    satisfied-filters}]
+      (->> (potential-card-dimension-bindings context card-template satisfied-values)
+           (filter (partial valid-bindings? context satisfied-dimensions))
+           (map (partial build-dashcard context card-template satisfied-values))))
     (log/debugf "Card %s cannot satisfy required dimensions." card-title)))
 
 (defn- matching-dashboard-templates

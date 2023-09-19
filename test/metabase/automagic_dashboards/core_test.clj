@@ -2115,12 +2115,12 @@
               "Income"   {:matches [{:name "Income"} {:name "Realized Income"}]}
               "Discount" {:matches [{:name "Price Discount"}]}}}
             {:query nil}
-            {:common-dimensions [[:dimension "Date" {}]]
-             :common-metrics    [{"AvgDiscount" {:metric ["/"
+            {:satisfied-dimensions [[:dimension "Date" {}]]
+             :satisfied-metrics    [{"AvgDiscount" {:metric ["/"
                                                           ["sum" ["dimension" "Discount"]]
                                                           ["sum" ["dimension" "Income"]]]
-                                                 :name   "Average discount %"}}]
-             :common-filters    []}))))
+                                                 :name      "Average discount %"}}]
+             :satisfied-filters    []}))))
   (testing "Dimensionless metrics (e.g. count) still require a dimension to match on.
             In this case you would be counting the Source dimension field."
     (is (= [{"Source" {:name "SOURCE"}}]
@@ -2133,9 +2133,9 @@
                                                  {:name "LEGACY_PLAN"}]}
               "Source"                {:matches [{:name "SOURCE"}]}}}
             {:query nil}
-            {:common-dimensions [[:dimension "Source" {}]]
-             :common-metrics [{:metric ["count"]}]
-             :common-filters    []}))))
+            {:satisfied-dimensions [[:dimension "Source" {}]]
+             :satisfied-metrics    [{:metric ["count"]}]
+             :satisfied-filters    []}))))
   (testing "Dimensionless metrics (e.g. count) will match all dimensions if present."
     (is (= [{"Source" {:name "SOURCE"}
              "GenericNumber" {:name "SEATS"}}]
@@ -2147,10 +2147,10 @@
                                                  {:name "AT ALL"}]}
               "Source"                {:matches [{:name "SOURCE"}]}}}
             {:query nil}
-            {:common-dimensions [[:dimension "Source" {}]
+            {:satisfied-dimensions [[:dimension "Source" {}]
                                  [:dimension "GenericNumber" {}]]
-             :common-metrics    [{:metric ["count"]}]
-             :common-filters    []}))))
+             :satisfied-metrics    [{:metric ["count"]}]
+             :satisfied-filters    []}))))
   (testing "Dimensionless metrics (e.g. count) must have some dimension to count on.
             Count won't just count a source table or anything, a dimension must be provided."
     (is (= [{}]
@@ -2162,9 +2162,9 @@
                                                  {:name "AT ALL"}]}
               "Source"                {:matches [{:name "SOURCE"}]}}}
             {:query nil}
-            {:common-dimensions []
-             :common-metrics    [{:metric ["count"]}]
-             :common-filters    []}))))
+            {:satisfied-dimensions []
+             :satisfied-metrics    [{:metric ["count"]}]
+             :satisfied-filters    []}))))
   (testing "Dimension-only matching is also supported (e.g. show points at Lon-Lat locations)."
     (is (= [{"Lon" {:name "Longitude"}
              "Lat" {:name "Latitude"}}]
@@ -2173,19 +2173,19 @@
              {"Lon" {:matches [{:name "Longitude"}]},
               "Lat" {:matches [{:name "Latitude"}]}}}
             {:query nil}
-            {:common-dimensions [[:dimension "Lon" {}]
+            {:satisfied-dimensions [[:dimension "Lon" {}]
                                  [:dimension "Lat" {}]]
-             :common-metrics    [{:metric ["count"]}]
-             :common-filters    []}))))
+             :satisfied-metrics    [{:metric ["count"]}]
+             :satisfied-filters    []}))))
   (testing "Dimensions can be sourced from a query."
     (is (= [{"QUERY_FIELD" {:name "Query Field"}}]
            (#'magic/potential-card-dimension-bindings
             {:dimensions
              {"QUERY_FIELD" {:matches [{:name "Query Field"}]}}}
             {:query [:field [:dimension "QUERY_FIELD"]]}
-            {:common-dimensions []
-             :common-metrics    []
-             :common-filters    []})))))
+            {:satisfied-dimensions []
+             :satisfied-metrics    []
+             :satisfied-filters    []})))))
 
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
