@@ -1112,10 +1112,8 @@
                                       ;;  'metabase.automagic-dashboards.core-test
                                       ;;  'metabase.automagic-dashboards.dashboard-templates-test
                                       ;;  'metabase.automagic-dashboards.filters-test)
-                                      dashboard-template
                                       ;; test model-with-joins-test fails and could be a thread to pull
-                                      #_{:cards (filter (comp interestings key first)
-                                                        (:cards dashboard-template))})]
+                                      dashboard-template)]
     (when (or (not-empty cards)
               (-> dashboard-template :cards nil?))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
