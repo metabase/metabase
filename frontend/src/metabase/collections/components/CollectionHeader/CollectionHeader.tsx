@@ -1,4 +1,4 @@
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import type { Location } from "history";
 
 import type { Collection, CollectionId } from "metabase-types/api";

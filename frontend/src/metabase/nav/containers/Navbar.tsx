@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 import type { Location } from "history";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 
 import Database from "metabase/entities/databases";
 import { getIsNavbarOpen } from "metabase/redux/app";

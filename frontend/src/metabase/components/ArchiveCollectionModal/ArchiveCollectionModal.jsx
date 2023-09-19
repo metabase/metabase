@@ -3,7 +3,7 @@ import { Component } from "react";
 import _ from "underscore";
 
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import { push } from "connected-react-router";
 import { t } from "ttag";
 

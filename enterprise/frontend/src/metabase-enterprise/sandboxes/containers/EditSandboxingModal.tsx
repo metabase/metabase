@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import _ from "underscore";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

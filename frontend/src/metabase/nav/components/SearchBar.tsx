@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { push } from "connected-react-router";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import type { LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";

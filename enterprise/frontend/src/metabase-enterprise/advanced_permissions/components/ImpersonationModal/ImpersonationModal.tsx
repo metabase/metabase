@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import { push } from "connected-react-router";
 import { useAsyncFn, useMount } from "react-use";
 import { useSelector } from "react-redux";

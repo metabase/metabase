@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type * as React from "react";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";

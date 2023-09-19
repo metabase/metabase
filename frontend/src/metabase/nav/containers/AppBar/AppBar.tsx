@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { withRouter } from "react-router-dom";
 import _ from "underscore";
 import Collections from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
