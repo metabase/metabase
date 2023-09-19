@@ -22,7 +22,7 @@ interface DateAllOptionsWidgetProps {
   disableOperatorSelection?: boolean;
 }
 
-const DateAllOptionsWidget = ({
+export const DateAllOptionsWidget = ({
   setValue,
   onClose,
   disableOperatorSelection,
@@ -41,13 +41,13 @@ const DateAllOptionsWidget = ({
     const filterValues = filter.slice(2);
     return filterValues.every((value: any) => value != null);
   };
+
   return (
     <WidgetRoot>
       <DatePicker
         filter={filter as any}
         onFilterChange={setFilter}
         onCommit={commitAndClose}
-        hideTimeSelectors
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
         supportsExpressions
@@ -64,6 +64,3 @@ const DateAllOptionsWidget = ({
     </WidgetRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateAllOptionsWidget;
