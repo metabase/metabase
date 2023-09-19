@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";

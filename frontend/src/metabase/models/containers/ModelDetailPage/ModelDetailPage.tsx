@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo, useState } from "react";
 import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 import { useMount } from "react-use";
 import type { Location, LocationDescriptor } from "history";
 

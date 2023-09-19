@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import _ from "underscore";
 
 export const getColumnName = column => column.remapped_to || column.name;

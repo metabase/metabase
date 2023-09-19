@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { createAction } from "redux-actions";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import {
   combineReducers,
   createThunkAction,

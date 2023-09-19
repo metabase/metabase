@@ -2,7 +2,7 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { t } from "ttag";
 import _ from "underscore";
 

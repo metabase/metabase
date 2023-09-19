@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { connect } from "react-redux";
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 import _ from "underscore";
 import type { LocationDescriptor } from "history";
 

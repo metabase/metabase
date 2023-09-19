@@ -2,7 +2,7 @@ import type * as React from "react";
 import { t } from "ttag";
 import type { Location } from "history";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import Radio from "metabase/core/components/Radio";
 

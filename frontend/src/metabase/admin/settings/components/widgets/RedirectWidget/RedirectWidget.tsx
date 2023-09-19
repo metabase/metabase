@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { connect } from "react-redux";
-import type { LocationAction } from "react-router-redux";
-import { replace } from "react-router-redux";
+import type { LocationAction } from "connected-react-router";
+import { replace } from "connected-react-router";
 
 interface RedirectWidgetProps {
   to: string;

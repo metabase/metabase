@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { goBack, push } from "react-router-redux";
+import { goBack, push } from "connected-react-router";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";

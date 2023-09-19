@@ -1,7 +1,7 @@
 import type { ChangeEvent, MouseEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";

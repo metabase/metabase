@@ -1,6 +1,6 @@
 import { createAction, createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import type { GroupId, Impersonation } from "metabase-types/api";
 import type { EntityId } from "metabase/admin/permissions/types";
 import {

@@ -2,7 +2,7 @@
 import { Component } from "react";
 
 import { connect } from "react-redux";
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 
 import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";

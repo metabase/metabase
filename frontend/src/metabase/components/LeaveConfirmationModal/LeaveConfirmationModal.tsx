@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { t } from "ttag";
 
 import ConfirmContent from "metabase/components/ConfirmContent";

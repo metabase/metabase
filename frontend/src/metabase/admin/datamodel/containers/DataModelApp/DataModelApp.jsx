@@ -1,6 +1,6 @@
 import { Fragment, useMemo } from "react";
 import PropTypes from "prop-types";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { connect } from "react-redux";
 import { t } from "ttag";
 

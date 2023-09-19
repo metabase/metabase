@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { open } from "metabase/lib/dom";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 

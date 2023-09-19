@@ -1,4 +1,4 @@
-import { push, LOCATION_CHANGE } from "react-router-redux";
+import { push, LOCATION_CHANGE } from "connected-react-router";
 import { createSelector } from "@reduxjs/toolkit";
 import type { Selector } from "@reduxjs/toolkit";
 

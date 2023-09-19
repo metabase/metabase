@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import type { Timeline } from "metabase-types/api";

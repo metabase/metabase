@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack } from "connected-react-router";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";

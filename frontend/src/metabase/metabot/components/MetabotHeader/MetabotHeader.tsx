@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { jt, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";

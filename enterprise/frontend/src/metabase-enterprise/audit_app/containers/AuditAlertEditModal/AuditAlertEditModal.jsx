@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import _ from "underscore";
 import { t } from "ttag";
 import Alerts from "metabase/entities/alerts";

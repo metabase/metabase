@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { ModalRoute } from "metabase/hoc/ModalRoute";

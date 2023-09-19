@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
-import { routerActions } from "react-router-redux";
+import { routerActions } from "connected-react-router";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 
 import { Route } from "metabase/hoc/Title";

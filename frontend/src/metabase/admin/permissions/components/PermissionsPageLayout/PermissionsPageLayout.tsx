@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import type { Route } from "react-router";
 
 import Button from "metabase/core/components/Button";

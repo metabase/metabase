@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import RecentItems from "metabase/entities/recent-items";
 import Text from "metabase/components/type/Text";

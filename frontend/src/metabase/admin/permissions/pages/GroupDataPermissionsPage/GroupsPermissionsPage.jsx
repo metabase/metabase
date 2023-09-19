@@ -1,7 +1,7 @@
 import { Fragment, useCallback } from "react";
 import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";

@@ -4,7 +4,7 @@ import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import MetabaseSettings from "metabase/lib/settings";
 import User from "metabase/entities/users";

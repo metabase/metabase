@@ -3,7 +3,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { push, goBack } from "react-router-redux";
+import { push, goBack } from "connected-react-router";
 import title from "metabase/hoc/Title";
 
 import Collections from "metabase/entities/collections";

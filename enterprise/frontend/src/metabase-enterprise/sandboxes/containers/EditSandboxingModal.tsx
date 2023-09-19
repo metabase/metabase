@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import _ from "underscore";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   getGroupTableAccessPolicy,

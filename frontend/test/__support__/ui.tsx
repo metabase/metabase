@@ -5,7 +5,7 @@ import _ from "underscore";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
+import { connectRouter, routerMiddleware } from "connected-react-router";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { DragDropContextProvider } from "react-dnd";
@@ -71,7 +71,7 @@ export function renderWithProviders(
   let reducers = mode === "default" ? mainReducers : publicReducers;
 
   if (withRouter) {
-    Object.assign(reducers, { routing: routerReducer });
+    Object.assign(reducers, { router: connectRouter(history) });
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };

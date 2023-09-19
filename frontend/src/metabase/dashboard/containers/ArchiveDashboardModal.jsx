@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import * as Urls from "metabase/lib/urls";
 

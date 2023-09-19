@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import _ from "underscore";
 import type { LocationDescriptor } from "history";
 

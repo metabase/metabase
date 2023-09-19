@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { t } from "ttag";
 
 import type { Group, GroupsPermissions } from "metabase-types/api";

@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
 import { getSetting } from "metabase/selectors/settings";

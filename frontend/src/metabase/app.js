@@ -34,7 +34,7 @@ import { Provider } from "react-redux";
 // router
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
-import { syncHistoryWithStore } from "react-router-redux";
+import { syncHistoryWithStore } from "connected-react-router";
 
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";

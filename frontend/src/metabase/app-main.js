@@ -2,7 +2,7 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import _ from "underscore";
 
 import { init } from "metabase/app";

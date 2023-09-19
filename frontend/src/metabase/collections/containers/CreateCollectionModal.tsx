@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import type { LocationDescriptor } from "history";
 
 import ModalContent from "metabase/components/ModalContent";

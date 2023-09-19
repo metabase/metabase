@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 const CARD_ID_ROW_IDX = 0;
 

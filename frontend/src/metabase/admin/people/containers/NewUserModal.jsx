@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
-import { goBack, push } from "react-router-redux";
+import { goBack, push } from "connected-react-router";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";

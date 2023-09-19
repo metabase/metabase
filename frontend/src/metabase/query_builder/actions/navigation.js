@@ -1,6 +1,6 @@
 import { parse as parseUrl } from "url";
 import { createAction } from "redux-actions";
-import { push, replace } from "react-router-redux";
+import { push, replace } from "connected-react-router";
 
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";

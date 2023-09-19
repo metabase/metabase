@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { chain } from "icepick";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 
 import PaginationControls from "metabase/components/PaginationControls";
 

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { assocIn } from "icepick";
 
 import {

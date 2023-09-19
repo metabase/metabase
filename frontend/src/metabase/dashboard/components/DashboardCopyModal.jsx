@@ -6,7 +6,7 @@ import { dissoc } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";

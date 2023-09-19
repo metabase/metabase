@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { useDebounce } from "react-use";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { SearchResult } from "metabase/search/components/SearchResult";

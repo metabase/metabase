@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import type { LocationDescriptorObject } from "history";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { checkNotNull } from "metabase/core/utils/types";
 import { extractEntityId } from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { t } from "ttag";
-import { replace } from "react-router-redux";
+import { replace } from "connected-react-router";
 import { isSmallScreen } from "metabase/lib/dom";
 import { openNavbar } from "metabase/redux/app";
 import { updateSetting } from "metabase/admin/settings/settings";

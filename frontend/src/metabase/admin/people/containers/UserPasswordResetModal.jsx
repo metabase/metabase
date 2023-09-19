@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack } from "connected-react-router";
 import { t } from "ttag";
 import _ from "underscore";
 

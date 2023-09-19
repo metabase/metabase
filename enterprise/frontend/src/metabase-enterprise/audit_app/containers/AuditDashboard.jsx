@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";

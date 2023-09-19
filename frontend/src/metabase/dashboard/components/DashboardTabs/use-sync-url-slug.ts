@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
-import { push, replace } from "react-router-redux";
+import { push, replace } from "connected-react-router";
 import type { Location } from "history";
 
 import _ from "underscore";

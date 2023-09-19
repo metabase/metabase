@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "connected-react-router";
 import _ from "underscore";
 import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";

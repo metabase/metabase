@@ -1,4 +1,4 @@
-import { routerActions } from "react-router-redux";
+import { routerActions } from "connected-react-router";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import MetabaseSettings from "metabase/lib/settings";
 import { getAdminPaths } from "metabase/admin/app/selectors";

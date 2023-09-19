@@ -2,7 +2,7 @@
 import { Component } from "react";
 
 import { connect } from "react-redux";
-import { push, goBack } from "react-router-redux";
+import { push, goBack } from "connected-react-router";
 
 import _ from "underscore";
 

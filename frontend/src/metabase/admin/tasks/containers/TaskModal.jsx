@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack } from "connected-react-router";
 import _ from "underscore";
 
 import Task from "metabase/entities/tasks";
