@@ -26,15 +26,32 @@ export function startNewCard(type, databaseId, tableId) {
 // TODO: move to redux
 export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
-    const question = Questions.selectors.getObject(getState(), {
+    let question = Questions.selectors.getObject(getState(), {
       entityId: cardId,
     });
+
+    const shouldReload = !isFullQuestionData(question);
+
+    await dispatch(
+      Questions.actions.fetch({ id: cardId }, { reload: shouldReload }),
+    );
+
+    if (shouldReload) {
+      question = Questions.selectors.getObject(getState(), {
+        entityId: cardId,
+      });
+    }
+
     return question?.card();
   } catch (error) {
     console.error("error loading card", error);
     throw error;
   }
+}
+
+function isFullQuestionData(question) {
+  // data loaded from questions api contains this. results from search api don't
+  return question.isSaved() ? question.lastEditInfo() != null : true;
 }
 
 function getCleanCard(card) {

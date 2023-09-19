@@ -300,7 +300,7 @@ function withCachedData(
         reload !== true &&
         // reload if the query used to load an entity has changed even if it's already loaded
         newQueryKey === queryKey &&
-        // and we have a an non-error request state or have a list of properties that all exist on the object
+        // and we have a non-error request state or have a list of properties that all exist on the object
         (loading || loaded || hasRequestedProperties)
       ) {
         // TODO: if requestState is LOADING can we wait for the other reques
