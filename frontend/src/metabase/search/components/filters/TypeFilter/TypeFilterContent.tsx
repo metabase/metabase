@@ -1,14 +1,11 @@
 /* eslint-disable react/prop-types */
-import type {
-  EnabledSearchModelType,
-  SearchFilterDropdown,
-} from "metabase/search/types";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Stack } from "metabase/ui";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import type { SearchModelType } from "metabase-types/api";
+import type { EnabledSearchModelType } from "metabase-types/api";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
@@ -19,7 +16,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
 
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
-      model => availableModels.includes(model as SearchModelType),
+      model => availableModels.includes(model),
     );
 
     return isLoading ? (

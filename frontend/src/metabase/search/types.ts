@@ -1,14 +1,13 @@
 import type { Location } from "history";
 import type { ComponentType } from "react";
 
-import type { Collection, SearchResult } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
 import type {
-  SearchFilterKeys,
-  enabledSearchTypes,
-} from "metabase/search/constants";
-
-export type EnabledSearchModelType = typeof enabledSearchTypes[number];
+  Collection,
+  EnabledSearchModelType,
+  SearchResult,
+} from "metabase-types/api";
+import type { IconName } from "metabase/core/components/Icon";
+import type { SearchFilterKeys } from "metabase/search/constants";
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
 
