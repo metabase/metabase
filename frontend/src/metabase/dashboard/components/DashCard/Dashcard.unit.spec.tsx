@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { queryIcon, renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockCard,
@@ -76,6 +76,12 @@ describe("DashCard", () => {
   it("shows a dashcard title", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
+  });
+
+  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
+    setup({ isXray: true });
+
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("shows a table visualization", () => {

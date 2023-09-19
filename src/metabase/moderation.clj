@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def moderated-item-types
