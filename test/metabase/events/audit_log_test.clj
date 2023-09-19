@@ -355,13 +355,13 @@
                               :revision_message "deleted"}}
                (activity "segment-delete" (:id segment))))))))
 
-(deftest user-login-event-test
-  (testing :user-login
+(deftest user-joined-event-test
+  (testing :user-joined
     ;; TODO - what's the difference between `user-login` / `user-joined`?
     (mt/with-model-cleanup [Activity]
       (let [event {:user-id (mt/user->id :rasta)}]
         (is (= event
-               (events/publish-event! :event/user-login event))))
+               (events/publish-event! :event/user-joined event))))
       (is (= {:topic       :user-joined
               :user_id     (mt/user->id :rasta)
               :model       "user"
@@ -369,4 +369,4 @@
               :database_id nil
               :table_id    nil
               :details     {}}
-             (activity "user-login" (mt/user->id :rasta)))))))
+             (activity "user-joined" (mt/user->id :rasta)))))))
