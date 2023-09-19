@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-db-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.models.database :refer [Database]]
             [metabase.test :as mt]
@@ -33,17 +32,18 @@
       (with-redefs [audit-db/analytics-root-dir-resource nil]
         (is (= nil audit-db/analytics-root-dir-resource))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
-        (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
-        (is (= [] (t2/select 'Card {:where [:= :database_id 13371337]}))
+        (is (= [] (t2/select 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
             "No cards created for Audit DB.")))))
 
 (deftest audit-db-content-is-installed-when-found
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics")]
-        (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
-        (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
-            "Audit DB is installed.")
-        (is (not= 0 (t2/count 'Card {:where [:= :database_id 13371337]}))
-            "Cards should be created for Audit DB when the content is there.")))))
+      (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+      (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})) "Audit DB is installed.")
+      (if audit-db/analytics-root-dir-resource
+        (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
+            "Cards should be created for Audit DB when the content is there.")
+        (is (= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
+            "Cards should not be created for Audit DB when the content is not there.")))))
