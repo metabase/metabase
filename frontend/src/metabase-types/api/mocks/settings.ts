@@ -211,5 +211,6 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "uploads-table-prefix": null,
   "uploads-schema-name": null,
   "user-visibility": null,
+  "last-acknowledged-version": "v1",
   ...opts,
 });

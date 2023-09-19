@@ -742,6 +742,13 @@
    (map u/qualified-name
         (lib.core/required-native-extras (metadataProvider database-id metadata)))))
 
+(defn ^:export has-write-permission
+  "Returns whether the database has native write permissions.
+   This is only filled in by [[metabase.api.database/add-native-perms-info]]
+   and added to metadata when pulling a database from the list of dbs in js."
+  [a-query]
+  (lib.core/has-write-permission a-query))
+
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
@@ -847,8 +854,8 @@
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
 
   Each type of drill-thru has a different effect on the query."
-  [a-query stage-number a-drill-thru]
-  (lib.core/drill-thru a-query stage-number a-drill-thru))
+  [a-query stage-number a-drill-thru & args]
+  (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."

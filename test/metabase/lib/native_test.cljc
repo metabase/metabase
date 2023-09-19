@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
@@ -257,3 +258,25 @@
         #"Must be a native query"
         (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
             (lib/with-native-extras {:collection "mycollection"})))))
+
+(deftest ^:parallel has-write-permission-test
+  (testing ":native-permissions in database"
+    (is (lib/has-write-permission
+          (lib/native-query (lib.tu/mock-metadata-provider
+                              meta/metadata-provider
+                              {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
+                                                    "select * from x;")))
+    (is (not (lib/has-write-permission
+               (lib/native-query (lib.tu/mock-metadata-provider
+                                   meta/metadata-provider
+                                   {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :none})})
+                                 "select * from x;"))))
+    (is (not (lib/has-write-permission
+               (lib/native-query (lib.tu/mock-metadata-provider
+                                   meta/metadata-provider
+                                   {:database (dissoc (lib.metadata/database meta/metadata-provider) :native-permissions)})
+                                 "select * from x;"))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (lib/has-write-permission lib.tu/venues-query)))))
