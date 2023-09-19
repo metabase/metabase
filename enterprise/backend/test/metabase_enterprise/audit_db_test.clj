@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-db-test
   (:require [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
+            [metabase.core :as mbc]
             [metabase.models.database :refer [Database]]
             [metabase.test :as mt]
             [toucan2.core :as t2]))
@@ -13,7 +14,7 @@
        (finally
          (t2/delete! Database :is_audit true)
          (when original-audit-db#
-           (#'metabase.core/ensure-audit-db-installed!))))))
+           (#'mbc/ensure-audit-db-installed!))))))
 
 (deftest audit-db-is-installed-then-left-alone
   (mt/test-drivers #{:postgres :h2 :mysql}
