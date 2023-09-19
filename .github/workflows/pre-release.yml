@@ -5,10 +5,6 @@ on:
     workflows: [Build for the official Metabase release]
     types: [completed]
 
-env:
-  MAX_HASH_LENGTH: 8
-  CUSTOM_REPO: ${{ secrets.CUSTOM_RELEASE_REPO }}
-
 jobs:
   release-artifact:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -18,7 +14,8 @@ jobs:
       matrix:
         edition: [oss, ee]
     outputs:
-      version: ${{ steps.version-properties.outputs.version }}
+      ee_version: ${{ steps.version-properties.outputs.ee_version }}
+      oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
       - name: Checkout repository
@@ -46,8 +43,16 @@ jobs:
       - name: Reveal Metabase ${{ matrix.edition }} properties
         id: version-properties
         run: |
-          echo "version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          cat ./resources/version.properties
           echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
+
+          version=$(grep -o '^tag=.*' ./resources/version.properties | cut -d'=' -f2)
+
+          if [[ "${{ matrix.edition }}" == "ee" ]]; then
+            echo "ee_version=$version" >> $GITHUB_OUTPUT
+          else
+            echo "oss_version=$version" >> $GITHUB_OUTPUT
+          fi
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
         uses: actions/upload-artifact@v3
@@ -63,6 +68,13 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
+    - name: Get the version
+      run: |
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
+        else
+          echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
+        fi
     - name: Ensure that the intended version ($VERSION) was never released before
       run: |
         echo "Checking if $VERSION conflicts with a past release..."
@@ -85,8 +97,6 @@ jobs:
             exit -1
           fi
         fi
-      env:
-        VERSION: ${{ needs.release-artifact.outputs.version }}
 
     - name: Check out the code to verify the release branch
       uses: actions/checkout@v3
@@ -213,18 +223,20 @@ jobs:
         image: registry:2
         ports:
           - 5000:5000
+    outputs:
+      image_tag: ${{ steps.target.outputs.image_tag }}
     steps:
+    - name: Get the version
+      run: |
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          echo "VERSION=${{ needs.release-artifact.outputs.ee_version }}" >> $GITHUB_ENV
+        else
+          echo "VERSION=${{ needs.release-artifact.outputs.oss_version }}" >> $GITHUB_ENV
+        fi
     - name: Check out the code
       uses: actions/checkout@v3
       with:
         ref: ${{ needs.release-artifact.outputs.commit }}
-    - name: Truncate commit hash
-      run: |
-        commit_id=${{ needs.release-artifact.outputs.commit }}
-        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
-
-        echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
-      shell: bash
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
@@ -242,12 +254,12 @@ jobs:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
+        tags: localhost:5000/local-metabase:${{ env.VERSION }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.VERSION }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -258,16 +270,27 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Determine the target Docker Hub repository
+    - name: Retag and push container image to ${{ vars.DOCKERHUB_OWNER }} staging Docker Hub repo
+      id: target
       run: |
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}" >> $GITHUB_ENV
-    - name: Retag and push container image to Docker Hub
-      run: |
-        echo "Pushing container image ${{ env.IMAGE_NAME}} to ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ env.IMAGE_NAME }} ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
-        docker push ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+        # SHA-1 truncated to 7 digits should be enough
+        SHORT_HASH=${COMMIT:0:7}
+
+        IMAGE_TAG=$VERSION-$SHORT_HASH
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+        echo "Retag local image for staging"
+        docker tag localhost:5000/local-metabase:$VERSION $CONTAINER_IMAGE
+
+        echo "Pushing container image $CONTAINER_IMAGE ..."
+        docker push $CONTAINER_IMAGE
+
         echo "Finished!"
+      shell: bash
+      env:
+        COMMIT: ${{ needs.release-artifact.outputs.commit }}
 
   verify-docker-pull:
     runs-on: ubuntu-22.04
@@ -276,30 +299,24 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
+    env:
+      IMAGE_TAG: ${{ needs.containerize.outputs.image_tag }}
     steps:
-    - name: Truncate commit hash
-      run: |
-        commit_id=${{ needs.release-artifact.outputs.commit }}
-        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
-
-        echo "COMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
-      shell: bash
     - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Determine the container image to pull
-      run: |
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}" >> $GITHUB_ENV
     - name: Pull the container image
       run: |
-        echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }} ..."
-        docker pull ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+        echo "Pulling container image $CONTAINER_IMAGE ..."
+        docker pull $CONTAINER_IMAGE
         echo "Successful!"
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+      run: |
+        CONTAINER_IMAGE=${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}:$IMAGE_TAG
+        docker run --rm -dp 3000:3000 $CONTAINER_IMAGE
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
