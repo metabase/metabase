@@ -93,7 +93,7 @@
     "react-redux": "^8.0.5",
     "react-resizable": "^3.0.5",
     "react-router": "^5.3.4",
-    "react-router-dom": "5.3.4",
+    "react-router-dom": "^5.3.4",
     "react-sortable-hoc": "^1.11.0",
     "react-textarea-autosize": "^5.2.1",
     "react-transition-group": "^4.4.5",
