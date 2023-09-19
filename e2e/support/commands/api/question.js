@@ -6,7 +6,14 @@ Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   throwIfNotPresent(query);
 
   logAction("Create a QB question", name);
-  question("query", questionDetails, customOptions);
+  return question("query", questionDetails, customOptions);
+});
+
+Cypress.Commands.add("archiveQuestion", id => {
+  cy.log(`Archiving a question with id: ${id}`);
+  return cy.request("PUT", `/api/card/${id}`, {
+    archived: true,
+  });
 });
 
 Cypress.Commands.add(
@@ -69,55 +76,57 @@ function question(
     interceptAlias = "cardQuery",
   } = {},
 ) {
-  cy.request("POST", "/api/card", {
-    name,
-    description,
-    dataset_query: {
-      type,
-      [type]: type === "native" ? native : query,
-      database,
-    },
-    display,
-    parameters,
-    visualization_settings,
-    collection_id,
-    collection_position,
-  }).then(({ body }) => {
-    /**
-     * Optionally, if you need question's id later in the test, outside the scope of this function,
-     * you can use it like this:
-     *
-     * `cy.get("@questionId").then(id=> {
-     *   doSomethingWith(id);
-     * })
-     */
-    if (wrapId) {
-      cy.wrap(body.id).as(idAlias);
-    }
+  return cy
+    .request("POST", "/api/card", {
+      name,
+      description,
+      dataset_query: {
+        type,
+        [type]: type === "native" ? native : query,
+        database,
+      },
+      display,
+      parameters,
+      visualization_settings,
+      collection_id,
+      collection_position,
+    })
+    .then(({ body }) => {
+      /**
+       * Optionally, if you need question's id later in the test, outside the scope of this function,
+       * you can use it like this:
+       *
+       * `cy.get("@questionId").then(id=> {
+       *   doSomethingWith(id);
+       * })
+       */
+      if (wrapId) {
+        cy.wrap(body.id).as(idAlias);
+      }
 
-    if (dataset || enable_embedding) {
-      cy.request("PUT", `/api/card/${body.id}`, {
-        dataset,
-        enable_embedding,
-        embedding_params,
-      });
-    }
+      if (dataset || enable_embedding) {
+        cy.request("PUT", `/api/card/${body.id}`, {
+          dataset,
+          enable_embedding,
+          embedding_params,
+        });
+      }
 
-    if (loadMetadata || visitQuestion) {
-      dataset
-        ? cy.intercept("POST", `/api/dataset`).as("dataset")
-        : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
-          cy
-            .intercept("POST", `/api/card/**/${body.id}/query`)
-            .as(interceptAlias);
+      if (loadMetadata || visitQuestion) {
+        dataset
+          ? cy.intercept("POST", `/api/dataset`).as("dataset")
+          : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+            cy
+              .intercept("POST", `/api/card/**/${body.id}/query`)
+              .as(interceptAlias);
 
-      const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
-      cy.visit(url);
+        const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
+        cy.visit(url);
 
-      // Wait for `result_metadata` to load
-      dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
-    }
-  });
+        // Wait for `result_metadata` to load
+        dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
+      }
+    });
 }
 
 function throwIfNotPresent(param) {

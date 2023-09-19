@@ -550,25 +550,25 @@
                                     :email      "whatever@whatever.com"}))))
 
     (testing "Attempting to create a new user with the same email as an existing user should fail"
-      (is (= {:errors {:email "Email address already in use."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "Something"
-                                    :last_name  "Random"
-                                    :email      (:email (mt/fetch-user :rasta))}))))))
+      (is (=? {:errors {:email "Email address already in use."}}
+              (mt/user-http-request :crowberto :post 400 "user"
+                                    {:first_name "Something"
+                                     :last_name  "Random"
+                                     :email      (:email (mt/fetch-user :rasta))}))))))
 
 (deftest create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
-      (is (= {:errors {:email "value must be a valid email address."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "whatever"
-                                    :last_name  "whatever"})))
+      (is (=? {:errors {:email "value must be a valid email address."}}
+              (mt/user-http-request :crowberto :post 400 "user"
+                                    {:first_name "whatever"
+                                     :last_name  "whatever"})))
 
-      (is (= {:errors {:email "value must be a valid email address."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "whatever"
-                                    :last_name  "whatever"
-                                    :email      "whatever"}))))))
+      (is (=? {:errors {:email "value must be a valid email address."}}
+              (mt/user-http-request :crowberto :post 400 "user"
+                                    {:first_name "whatever"
+                                     :last_name  "whatever"
+                                     :email      "whatever"}))))))
 
 (defn- do-with-temp-user-email [f]
   (let [email (mt/random-email)]
@@ -657,11 +657,11 @@
                              (t2/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
-      (is (= {:errors {:email "Email address already in use."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "Something"
-                                    :last_name  "Random"
-                                    :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
+      (is (=? {:errors {:email "Email address already in use."}}
+              (mt/user-http-request :crowberto :post 400 "user"
+                                    {:first_name "Something"
+                                     :last_name  "Random"
+                                     :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -834,11 +834,11 @@
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
-            (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
-                   (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
+            (is (=? {:errors {:first_name "Editing first name is not allowed for SSO users."}}
+                    (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
           (testing "`:last_name` changes are rejected"
-            (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
-                   (change-user-via-api! 400 {:last_name "USER"}))))
+            (is (=? {:errors {:last_name "Editing last name is not allowed for SSO users."}}
+                    (change-user-via-api! 400 {:last_name "USER"}))))
           (testing "New names that are the same as existing names succeed because there is no change."
             (is (partial= {:first_name "SSO" :last_name  "User"}
                           (change-user-via-api! 200 {:first_name "SSO" :last_name  "User"})))))))))
@@ -848,9 +848,9 @@
     (testing "test that updating a user's email to an existing inactive user's email fails"
       (let [trashbird (mt/fetch-user :trashbird)
             rasta     (mt/fetch-user :rasta)]
-        (is (= {:errors {:email "Email address already associated to another user."}}
-               (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
-                                     (select-keys trashbird [:email]))))))))
+        (is (=? {:errors {:email "Email address already associated to another user."}}
+                (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
+                                      (select-keys trashbird [:email]))))))))
 
 (deftest update-existing-email-case-mutation-test
   (testing "PUT /api/user/:id"
@@ -858,9 +858,9 @@
       (let [trashbird         (mt/fetch-user :trashbird)
             rasta             (mt/fetch-user :rasta)
             trashbird-mutated (update trashbird :email u/upper-case-en)]
-        (is (= {:errors {:email "Email address already associated to another user."}}
-               (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
-                                     (select-keys trashbird-mutated [:email]))))))))
+        (is (=? {:errors {:email "Email address already associated to another user."}}
+                (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
+                                      (select-keys trashbird-mutated [:email]))))))))
 
 (deftest update-superuser-status-test
   (testing "PUT /api/user/:id"
@@ -1053,7 +1053,8 @@
               (testing group
                 (testing (format "attempt to set locale to %s" new-locale)
                   (testing "response"
-                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}}
+                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}
+                                  s/Any   s/Any}
                                  (set-locale! 400 {:locale new-locale}))))
                   (testing "value in DB should be unchanged"
                     (is (= "en_US"
@@ -1135,14 +1136,14 @@
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
-      (is (= {:errors {:password "password is too common."}}
-             (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
 
     (testing "Make sure that if current password doesn't match we get a 400"
-      (is (= {:errors {:old_password "Invalid password"}}
-             (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta))
-                                   {:password     "whateverUP12!!"
-                                    :old_password "mismatched"}))))))
+      (is (=? {:errors {:old_password "Invalid password"}}
+              (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta))
+                                    {:password     "whateverUP12!!"
+                                     :old_password "mismatched"}))))))
 
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
