@@ -353,11 +353,6 @@
                        table-name))))
         field-name))
 
-(defn json-field?
-  "Return true if field is a JSON field, false if not."
-  [field]
-  (some? (:nfc_path field)))
-
 (defn qualified-name
   "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
   [field]

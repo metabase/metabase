@@ -49,11 +49,17 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.malli :as mu]))
 
 (defn prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -159,22 +165,23 @@
 (defn- this-level-join-aliases [{:keys [joins]}]
   (into #{} (map :alias) joins))
 
-(defn- field-is-from-join-in-this-level? [inner-query [_ _ {:keys [join-alias]}]]
+(defn- field-is-from-join-in-this-level? [inner-query [_field _id-or-name {:keys [join-alias]}]]
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(defn- field-instance
-  {:arglists '([field-clause])}
-  [[_ id-or-name]]
+(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+  [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
-    (qp.store/field id-or-name)))
+    (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
 (defn- field-table-id [field-clause]
-  (:table_id (field-instance field-clause)))
+  (:table-id (field-instance field-clause)))
 
-(defn- field-source-table-alias
+(mu/defn ^:private field-source-table-alias :- [:or
+                                                ::lib.schema.common/non-blank-string
+                                                ::lib.schema.id/table
+                                                [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
-  {:arglists '([inner-query field-clause])}
   [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
@@ -265,19 +272,43 @@
 (defmulti ^String field-reference
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account."
-  {:added "0.46.0", :arglists '([driver field-inst])}
+  parent fields into account.
+
+  DEPRECATED: Implement [[field-reference-mlv2]] instead, which accepts a `kebab-case` Field metadata rather than
+  `snake_case` metadata."
+  {:added "0.46.0", :arglists '([driver field-inst]), :deprecated "0.48.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod field-reference ::driver/driver
-  [_driver field-inst]
-  (:name field-inst))
+(defmulti ^String field-reference-mlv2
+  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
+  By default this is just the name of the field, but it can be more complicated, e.g., take
+  parent fields into account."
+  {:added "0.48.0", :arglists '([driver field-inst])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(mu/defmethod field-reference-mlv2 ::driver/driver
+  [driver :- :keyword
+   field  :- lib.metadata/ColumnMetadata]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (if (get-method field-reference driver)
+    (do
+      (sql.qp.deprecated/log-deprecation-warning
+       driver
+       `field-reference
+       "0.48.0")
+      (field-reference driver
+                       #_{:clj-kondo/ignore [:deprecated-var]}
+                       (qp.store/->legacy-metadata field)))
+    (:name field)))
 
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
-  (or (some->> field-clause field-instance (field-reference driver/*driver*))
+  (or (some->> field-clause
+               field-instance
+               (field-reference-mlv2 driver/*driver*))
       (when (string? id-or-name)
         id-or-name)))
 

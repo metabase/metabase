@@ -5,7 +5,6 @@ import type {
   ColumnMetadata,
   ColumnWithOperators,
   ExpressionArg,
-  ExternalOp,
   FilterOperator,
   FilterClause,
   FilterParts,
@@ -36,9 +35,9 @@ export function filterClause(
 export function filter(
   query: Query,
   stageIndex: number,
-  booleanExpression: ExternalOp,
+  filterClause: FilterClause,
 ): Query {
-  return ML.filter(query, stageIndex, booleanExpression);
+  return ML.filter(query, stageIndex, filterClause);
 }
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {

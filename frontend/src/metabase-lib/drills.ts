@@ -1,16 +1,22 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DataRow, Dimension, DrillThru, Query } from "./types";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  ColumnMetadata,
+  DataRow,
+  Dimension,
+  DrillThru,
+  Query,
+} from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
-// null means a value of SQL NULL; undefined means no value, ie. a column header was clicked.
+// null means a value of SQL NULL; undefined means no value, i.e. a column header was clicked.
 export function availableDrillThrus(
-  // TODO: What is the right type for a JS column? (Not types.ts ColumnMetadata; that's the opaque CLJS type.)
   query: Query,
   stageIndex: number,
-  column: Record<string, unknown>,
-  value: any,
-  row: DataRow | null,
-  dimensions: Dimension[] | null,
+  column: ColumnMetadata | DatasetColumn | undefined,
+  value: RowValue | undefined,
+  row: DataRow | undefined,
+  dimensions: Dimension[] | undefined,
 ): DrillThru[] {
   return ML.available_drill_thrus(
     query,
@@ -23,8 +29,6 @@ export function availableDrillThrus(
 }
 
 // TODO: Precise types for each of the various extra args?
-// Maybe not worth it - we can't easily match the `:type` field from TS. It would need to call through CLJS and
-// needs TS functions that return `DrillThru is SomeSpecificDrillThru` type predicates.
 export function drillThru(
   query: Query,
   stageIndex: number,
