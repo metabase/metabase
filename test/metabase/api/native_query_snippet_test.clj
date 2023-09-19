@@ -65,8 +65,8 @@
   (grant-native-perms)
   (testing "POST /api/native-query-snippet"
     (testing "new snippet field validation"
-      (is (= {:errors {:content "value must be a string."}}
-             (mt/user-http-request :rasta :post 400 (snippet-url) {})))
+      (is (=? {:errors {:content "string"}}
+              (mt/user-http-request :rasta :post 400 (snippet-url) {})))
 
       (is (name-schema-error? (mt/user-http-request :rasta
                                                     :post 400 (snippet-url)
