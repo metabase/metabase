@@ -67,12 +67,10 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
-    [:fn (fn [x]
-           ((every-pred
-             string?
-             (complement #(boolean (re-find #"^\s+" %)))
-             (complement #(boolean (re-find #"}" %))))
-            x))]
+    [:and
+     :string
+     [:fn (fn [x]
+            (not-any? #(re-find % x) [#"^\s+" #"}"]))]]
     (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

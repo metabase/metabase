@@ -192,8 +192,8 @@
   (mu/with-api-error-message
     [:merge CardRef
      [:map
-      [:name               [:maybe string?]]
-      [:description        [:maybe string?]]
+      [:name               [:maybe :string]]
+      [:description        [:maybe :string]]
       [:display            [:maybe ms/KeywordOrString]]
       [:collection_id      [:maybe ms/PositiveInt]]
       [:dashboard_id       [:maybe ms/PositiveInt]]
@@ -204,15 +204,7 @@
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
-  [:or HybridPulseCard CardRef]
-  #_(s/conditional
-     (fn check-hybrid-pulse-card [maybe-map]
-       (and (map? maybe-map)
-            (some #(contains? maybe-map %) [:name :description :display :collection_id
-                                            :dashboard_id :parameter_mappings])))
-     HybridPulseCard
-     :else
-     CardRef))
+  [:or HybridPulseCard CardRef])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -541,14 +533,14 @@
                     [:id                    ms/PositiveInt]
                     [:name                {:optional true} ms/NonBlankString]
                     [:alert_condition     {:optional true} AlertConditions]
-                    [:alert_above_goal    {:optional true} boolean?]
-                    [:alert_first_only    {:optional true} boolean?]
-                    [:skip_if_empty       {:optional true} boolean?]
+                    [:alert_above_goal    {:optional true} :boolean]
+                    [:alert_first_only    {:optional true} :boolean]
+                    [:skip_if_empty       {:optional true} :boolean]
                     [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                     [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                     [:cards               {:optional true} [:sequential CoercibleToCardRef]]
                     [:channels            {:optional true} [:sequential :map]]
-                    [:archived            {:optional true} boolean?]
+                    [:archived            {:optional true} :boolean]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (t2/update! Pulse (u/the-id notification)
     (u/select-keys-when notification

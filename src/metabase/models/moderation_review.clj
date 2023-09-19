@@ -74,9 +74,9 @@
   "Create a new ModerationReview"
   [params :-
    [:map
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
+    [:moderated_item_id   ms/PositiveInt]
+    [:moderated_item_type moderation/moderated-item-types]
+    [:moderator_id        ms/PositiveInt]
     [:status              {:optional true} Statuses]
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]

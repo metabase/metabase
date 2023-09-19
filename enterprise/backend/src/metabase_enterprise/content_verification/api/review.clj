@@ -12,7 +12,7 @@
   {text                [:maybe :string]
    moderated_item_id   ms/PositiveInt
    moderated_item_type moderation/moderated-item-types
-   status              [:maybe moderation-review/Statuses]}
+   status              moderation-review/Statuses}
   (api/check-superuser)
   (let [review-data {:text                text
                      :moderated_item_id   moderated_item_id

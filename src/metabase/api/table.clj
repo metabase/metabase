@@ -315,8 +315,9 @@
                 field)))))
 
 (defn fetch-query-metadata
-  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
-  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  "Returns the query metadata used to power the Query Builder for the given `table`.
+
+  `include-sensitive-fields?`, `include-hidden-fields?` and `include-editable-data-model?` are booleans"
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
   (if include-editable-data-model?
     (api/write-check table)
