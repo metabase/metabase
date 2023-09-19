@@ -151,6 +151,13 @@ const MetabaseUtils = {
 
     const regex =
       /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+
+    const result = regex.exec(version);
+
+    if (!result || !result.groups) {
+      return null;
+    }
+
     const {
       ossOrEE,
       major = 0,
@@ -158,7 +165,7 @@ const MetabaseUtils = {
       patch = 0,
       label,
       build = 0,
-    } = regex.exec(version).groups;
+    } = result.groups;
 
     return [
       ossOrEE,
@@ -186,6 +193,10 @@ const MetabaseUtils = {
 
     const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
     const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
+
+    if (!aComponents || !bComponents) {
+      return null;
+    }
 
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];

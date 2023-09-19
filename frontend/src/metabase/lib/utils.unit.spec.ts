@@ -12,6 +12,11 @@ describe("utils", () => {
         MetabaseUtils.versionToNumericComponents("v1.2-BETA1"),
       ).toStrictEqual([1, 2, 0, 0, -2, 1]);
     });
+    it("should return null when the version is not parsable", () => {
+      expect(MetabaseUtils.versionToNumericComponents("vUNKNOWN")).toEqual(
+        null,
+      );
+    });
   });
 
   describe("compareVersions", () => {
@@ -45,6 +50,10 @@ describe("utils", () => {
       ];
       expect(unsorted.sort(MetabaseUtils.compareVersions)).toEqual(expected);
     });
+  });
+
+  it("should return null if one version is not valid", () => {
+    expect(MetabaseUtils.compareVersions("vUNKNOWN", "v0.46.0")).toBe(null);
   });
 
   it("should return 0 for equal versions", () => {
