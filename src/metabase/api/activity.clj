@@ -136,7 +136,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
-    (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
+    (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
       (if (mi/can-read? dashboard)
         dashboard
         api/generic-204-no-content))
