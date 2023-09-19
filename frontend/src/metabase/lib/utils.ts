@@ -25,7 +25,7 @@ const LAYOUT_PROPS = [
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
-export function stripLayoutProps(props) {
+export function stripLayoutProps(props: unknown) {
   return _.omit(props, LAYOUT_PROPS);
 }
 
@@ -37,7 +37,7 @@ function s4() {
 
 // provides functions for building urls to things we care about
 const MetabaseUtils = {
-  isEmpty(str) {
+  isEmpty(str: string | null) {
     if (str != null) {
       str = String(str);
     } // make sure 'str' is actually a string
@@ -45,7 +45,7 @@ const MetabaseUtils = {
   },
 
   // pretty limited.  just does 0-9 for right now.
-  numberToWord(num) {
+  numberToWord(num: number) {
     const names = [
       t`zero`,
       t`one`,
@@ -83,7 +83,7 @@ const MetabaseUtils = {
     );
   },
 
-  isUUID(uuid) {
+  isUUID(uuid: unknown) {
     return (
       typeof uuid === "string" &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
@@ -92,7 +92,7 @@ const MetabaseUtils = {
     );
   },
 
-  isBase64(string) {
+  isBase64(string: unknown) {
     return (
       typeof string === "string" &&
       /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
@@ -101,27 +101,34 @@ const MetabaseUtils = {
     );
   },
 
-  isJWT(string) {
+  isJWT(string: unknown) {
     return (
       typeof string === "string" &&
       /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
     );
   },
 
-  isEmail(email) {
+  isEmail(email: string | undefined | null) {
+    if (email === null || email === undefined) {
+      return false;
+    }
     return EMAIL_REGEX.test(email);
   },
 
-  getEmailDomain(email) {
+  getEmailDomain(email: string) {
     const match = EMAIL_REGEX.exec(email);
     return match && match[5];
   },
 
-  equals(a, b) {
+  equals(a: unknown, b: unknown) {
     return _.isEqual(a, b);
   },
 
-  propertiesEqual(a, b, properties = [...Object.keys(a), ...Object.keys(b)]) {
+  propertiesEqual(
+    a: Record<string, unknown>,
+    b: Record<string, unknown>,
+    properties = [...Object.keys(a), ...Object.keys(b)],
+  ) {
     for (const property of properties) {
       if (a[property] !== b[property]) {
         return false;
@@ -130,7 +137,7 @@ const MetabaseUtils = {
     return true;
   },
 
-  copy(a) {
+  copy(a: unknown) {
     // FIXME: ugghhhhhhhhh
     return JSON.parse(JSON.stringify(a));
   },
@@ -138,11 +145,9 @@ const MetabaseUtils = {
   /**
    * Converts a metabase version to a list of numeric components, it converts pre-release
    * components to numbers and pads the numeric part to 4 numbers to make comparison easier
-   * @param {string} version
-   * @returns {number[] | null}
    */
-  versionToNumericComponents(version) {
-    const SPECIAL_COMPONENTS = {
+  versionToNumericComponents(version: string): number[] | null {
+    const SPECIAL_COMPONENTS: Record<string, number> = {
       snapshot: -4,
       alpha: -3,
       beta: -2,
@@ -172,43 +177,48 @@ const MetabaseUtils = {
       major,
       minor,
       patch,
-      SPECIAL_COMPONENTS[label?.toLowerCase()] ?? 0,
+      SPECIAL_COMPONENTS[label.toLowerCase()] ?? 0,
       build,
-    ].map(part => parseInt(part, 10));
-  },
-
-  /**
-   * this should correctly compare all version formats Metabase uses, e.g.
-   * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
-   * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
-   * @type {{
-   * (aVersion: string, bVersion: string) => number;
-   * (aVersion: string | null | undefined, bVersion: string | null | undefined) => number | null;
-   * }}
-   */
-  compareVersions(aVersion, bVersion) {
-    if (!aVersion || !bVersion) {
-      return null;
-    }
-
-    const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
-    const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
-
-    if (!aComponents || !bComponents) {
-      return null;
-    }
-
-    for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
-      const a = aComponents[i];
-      const b = bComponents[i];
-      if (b == null || a < b) {
-        return -1;
-      } else if (a == null || b < a) {
-        return 1;
-      }
-    }
-    return 0;
+    ].map(part => (typeof part === "string" ? parseInt(part, 10) : part));
   },
 };
 
-export default MetabaseUtils;
+/**
+ * this should correctly compare all version formats Metabase uses, e.g.
+ * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
+ * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
+ */
+function compareVersions(aVersion: string, bVersion: string): -1 | 0 | 1;
+function compareVersions(
+  aVersion: string | null | undefined,
+  bVersion: string | null | undefined,
+): null;
+function compareVersions(
+  aVersion: string | null | undefined,
+  bVersion: string | null | undefined,
+): -1 | 0 | 1 | null {
+  if (!aVersion || !bVersion) {
+    return null;
+  }
+
+  const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
+  const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
+
+  if (!aComponents || !bComponents) {
+    return null;
+  }
+
+  for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
+    const a = aComponents[i];
+    const b = bComponents[i];
+    if (b == null || a < b) {
+      return -1;
+    } else if (a == null || b < a) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+// eslint-disable-next-line import/no-default-export
+export default Object.assign(MetabaseUtils, { compareVersions });
