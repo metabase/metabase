@@ -1033,10 +1033,7 @@
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
          :cards cards)
        dashboard-template
-       (assoc base-context
-         :dimensions dimensions
-         :metrics available-metrics
-         :filters available-filters)])))
+       available-values])))
 
 (def ^:private ^:const ^Long max-related 8)
 (def ^:private ^:const ^Long max-cards 15)
@@ -1063,23 +1060,22 @@
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (s/defn ^:private indepth
-  [{:keys [dashboard-templates-prefix] :as root}
+  [{:keys [dashboard-templates-prefix url] :as root}
    {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
          (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
-                 (when-let [[dashboard _ _] (apply-dashboard-template base-context indepth)]
+                 (when-let [{:keys [description] :as dashboard} (first (apply-dashboard-template base-context indepth))]
                    {:title       ((some-fn :short-title :title) dashboard)
-                    :description (:description dashboard)
-                    :url         (format "%s/rule/%s/%s" (:url root) dashboard-template-name indepth-template-name)})))
+                    :description description
+                    :url         (format "%s/rule/%s/%s" url dashboard-template-name indepth-template-name)})))
          (hash-map :indepth))))
 
 (defn- drilldown-fields
-  [context]
-  (when (and (->> context :root :source (mi/instance-of? Table))
-             (-> context :root :entity ga-table? not))
-    (->> context
-         :dimensions
+  [root {:keys [available-dimensions]}]
+  (when (and (->> root :source (mi/instance-of? Table))
+             (-> root :entity ga-table? not))
+    (->> available-dimensions
          vals
          (mapcat :matches)
          (filter mi/can-read?)
@@ -1197,9 +1193,11 @@
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
-  [{:keys [root] :as context}, dashboard-template :- (s/maybe dashboard-templates/DashboardTemplate)]
+  [root
+   available-values
+   dashboard-template :- (s/maybe dashboard-templates/DashboardTemplate)]
   (->> (merge (indepth root dashboard-template)
-              (drilldown-fields context)
+              (drilldown-fields root available-values)
               (related-entities root)
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
@@ -1234,28 +1232,30 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name] :as root}]
+  [{:keys [show full-name query-filter] :as root}]
   (let [[dashboard
          {:keys [dashboard-template-name] :as dashboard-template}
-         context] (find-first-match-dashboard-template root)
+         {:keys [available-dimensions
+                 available-metrics
+                 available-filters]
+          :as available-values}] (find-first-match-dashboard-template root)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
     (log/debug (trs "Dimensions bindings:\n{0}"
-                    (->> context
-                         :dimensions
+                    (->> available-dimensions
                          (m/map-vals #(update % :matches (partial map :name)))
                          u/pprint-to-str)))
     (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                    (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
-                    (-> context :filters u/pprint-to-str)))
+                    (->> available-metrics (m/map-vals :metric) u/pprint-to-str)
+                    (-> available-filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)
-        (assoc :related (related context dashboard-template)
+        (assoc :related (related root available-values dashboard-template)
                :more (when (and (not= show :all)
                                 (-> dashboard :cards count (> show)))
                        (format "%s#show=all" (:url root)))
-               :transient_filters (:query-filter context)
-               :param_fields (->> context :query-filter (filter-referenced-fields root))
+               :transient_filters query-filter
+               :param_fields (filter-referenced-fields root query-filter)
                :auto_apply_filters true))))
 
 (defmulti automagic-analysis
