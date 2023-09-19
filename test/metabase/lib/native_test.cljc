@@ -321,4 +321,4 @@
           (lib/has-write-permission lib.tu/venues-query)))))
 
 (deftest ^:parallel engine-test
-  (is (= :h2 (lib/engine lib.tu/venues-query))))
+  (is (= :h2 (lib/engine lib.tu/native-query))))
