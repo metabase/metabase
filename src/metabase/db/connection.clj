@@ -168,7 +168,7 @@
 
   See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929
 
-  Note that nested transactions are no real transactions:
+  Note that these \"nested transactions\" are not the real thing (e.g., as in Oracle):
     - there is only one commit, meaning that every transaction in a tree of transactions can see the changes
       other transactions have made,
     - in the presence of unsynchronized concurrent threads running nested transactions, the effects of rollback
