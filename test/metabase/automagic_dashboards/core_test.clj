@@ -2196,6 +2196,18 @@
               :satisfied-metrics    []
               :satisfied-filters    []})))))
 
+;; todo: card-templates can have queries with [[dimension]] bindings and ALSO [[table]] bindings
+;; 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯
+;; resources/automagic_dashboards/table/example.yaml
+;; note that they can specify dimension dependencies and ALSO table dependencies:
+;; - Native:
+;;    title: Native query
+;;    # Template interpolation works the same way as in title and description. Field
+;;    # names are automatically expanded into the full TableName.FieldName form.
+;;    query: select count(*), [[State]]
+;;           from [[GenericTable]] join [[UserTable]] on
+;;           [[UserFK]] = [[UserPK]]
+;;    visualization: bar
 (deftest potential-card-dimension-bindings-to-entity-type-test
   (testing "Ensure the branch is called in which "
     (mt/dataset sample-dataset
