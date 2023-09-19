@@ -128,7 +128,7 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 4,
+    runMode: 3,
     openMode: 0,
   },
 };
