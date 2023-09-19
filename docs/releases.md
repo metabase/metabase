@@ -15,6 +15,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Enterprise Edition releases
 
+- [v1.47.2](https://github.com/metabase/metabase/releases/tag/v1.47.2)
 - [v1.47.1](https://github.com/metabase/metabase/releases/tag/v1.47.1)
 - [v1.47.0](https://github.com/metabase/metabase/releases/tag/v1.47.0)
 - [v1.46.8](https://github.com/metabase/metabase/releases/tag/v1.46.8)
@@ -123,6 +124,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Open Source Edition releases
 
+- [v0.47.2](https://github.com/metabase/metabase/releases/tag/v0.47.2)
 - [v0.47.1](https://github.com/metabase/metabase/releases/tag/v0.47.1)
 - [v0.47.0](https://github.com/metabase/metabase/releases/tag/v0.47.0)
 - [v0.46.8](https://github.com/metabase/metabase/releases/tag/v0.46.8)
