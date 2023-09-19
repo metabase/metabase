@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import {
   Description,
   Header,

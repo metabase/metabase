@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { t } from "ttag";
 
 import Settings from "metabase/lib/settings";

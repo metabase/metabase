@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";

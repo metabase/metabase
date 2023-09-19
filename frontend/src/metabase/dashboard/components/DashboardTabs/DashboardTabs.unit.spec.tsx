@@ -1,4 +1,5 @@
-import { Link, Route } from "react-router";
+import { Route } from "react-router";
+import { Link } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
 

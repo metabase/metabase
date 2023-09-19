@@ -2,7 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";

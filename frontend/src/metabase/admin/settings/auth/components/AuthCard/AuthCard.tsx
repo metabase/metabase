@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";

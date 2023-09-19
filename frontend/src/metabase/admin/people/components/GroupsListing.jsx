@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 import _ from "underscore";
 import cx from "classnames";

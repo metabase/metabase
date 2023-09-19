@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { Link, IndexLink } from "react-router";
+import { IndexLink } from "react-router";
+import { Link } from "react-router-dom";
 import { t } from "ttag";
 import cx from "classnames";
 

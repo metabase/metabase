@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { t } from "ttag";
 
 import cx from "classnames";

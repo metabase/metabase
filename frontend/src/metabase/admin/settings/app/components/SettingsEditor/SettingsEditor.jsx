@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { t } from "ttag";

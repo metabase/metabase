@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import isPropValid from "@emotion/is-prop-valid";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { color as metabaseColor } from "metabase/lib/colors";
 import { focusOutlineStyle } from "metabase/core/style/input";
 import type { LinkProps } from "./types";

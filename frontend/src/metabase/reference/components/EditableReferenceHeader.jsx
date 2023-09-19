@@ -1,6 +1,6 @@
 import { memo } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import cx from "classnames";
 import { t } from "ttag";
 import L from "metabase/components/List/List.css";

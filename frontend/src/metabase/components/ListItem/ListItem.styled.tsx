@@ -1,6 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";

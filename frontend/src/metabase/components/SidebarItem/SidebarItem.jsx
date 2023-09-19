@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import { memo } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import S from "../Sidebar.css";
 
 import LabelIcon from "../LabelIcon";

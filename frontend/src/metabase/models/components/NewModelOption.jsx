@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import cx from "classnames";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { color } from "metabase/lib/colors";
 
 export default class NewModelOption extends Component {
