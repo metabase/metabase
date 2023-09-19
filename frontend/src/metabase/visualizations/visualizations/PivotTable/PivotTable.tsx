@@ -462,7 +462,7 @@ function PivotTable({
                         <BodyCell
                           key={key}
                           style={style}
-                          isScrolling={isScrolling}
+                          showTooltip={!isScrolling}
                           rowSection={getRowSection(columnIndex, rowIndex)}
                           isNightMode={isNightMode}
                           getCellClickHandler={getCellClickHandler}
