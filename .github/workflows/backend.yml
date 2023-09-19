@@ -34,6 +34,11 @@ jobs:
       - run: yarn install --frozen-lockfile --prefer-offline
       - name: Build static viz frontend
         run: yarn build-static-viz:file-paths
+      - name: Cache Static Viz Bundle
+        uses: actions/cache@v3
+        with:
+          key: ${{ github.sha }}
+          path: resources/frontend_client/app/dist
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
@@ -196,9 +201,11 @@ jobs:
         with:
           m2-cache-key: be-tests
 
-      - run: yarn install --frozen-lockfile --prefer-offline
-      - name: Build static viz frontend
-        run: yarn build-static-viz
+      - name: Restore Static Viz Bundle
+        uses: actions/cache@v3
+        with:
+          key: ${{ github.sha }}
+          path: resources/frontend_client/app/dist
 
       - name: Run tests
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
