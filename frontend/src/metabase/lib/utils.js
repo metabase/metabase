@@ -139,7 +139,7 @@ const MetabaseUtils = {
    * Converts a metabase version to a list of numeric components, it converts pre-release
    * components to numbers and pads the numeric part to 4 numbers to make comparison easier
    * @param {string} version
-   * @returns {number[]}
+   * @returns {number[] | null}
    */
   versionToNumericComponents(version) {
     const SPECIAL_COMPONENTS = {
