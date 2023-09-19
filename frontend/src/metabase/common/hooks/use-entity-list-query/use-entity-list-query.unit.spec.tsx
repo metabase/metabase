@@ -153,6 +153,11 @@ describe("useEntityListQuery", () => {
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/database")).toHaveLength(2);
     });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
   });
 
@@ -165,6 +170,11 @@ describe("useEntityListQuery", () => {
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
     });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 });
