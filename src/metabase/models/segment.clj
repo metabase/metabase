@@ -12,9 +12,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -168,3 +170,15 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Segment
+  [metric _event-type]
+  (let [table-id (:table_id metric)
+        db-id    (table/table-id->database-id table-id)]
+    (assoc
+     (select-keys metric [:name :description :revision_message])
+     :table_id    table-id
+     :database-id db-id)))

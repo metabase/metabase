@@ -23,7 +23,9 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.models.audit-log :as audit-log]
+   [metabase.models.table :as table]))
 
 (def Metric
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
@@ -176,3 +178,15 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Metric
+  [metric _event-type]
+  (let [table-id (:table_id metric)
+        db-id    (table/table-id->database-id table-id)]
+    (assoc
+     (select-keys metric [:name :description :revision_message])
+     :table-id    table-id
+     :database-id db-id)))

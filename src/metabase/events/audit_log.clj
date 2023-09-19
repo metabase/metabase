@@ -3,7 +3,6 @@
    [metabase.events :as events]
    [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -48,15 +47,7 @@
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic object]
-  (let [details-fn  #(select-keys % [:name :description :revision_message])
-        table-id    (:table_id object)
-        database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
+  (audit-log/record-event! topic object))
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
@@ -92,15 +83,7 @@
 
 (methodical/defmethod events/publish-event! ::segment-event
   [topic object]
-  (let [details-fn  #(select-keys % [:name :description :revision_message])
-        table-id    (:table_id object)
-        database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
+  (audit-log/record-event! topic object))
 
 (derive ::user-joined-event ::event)
 (derive :event/user-joined ::user-joined-event)
