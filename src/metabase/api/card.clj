@@ -62,8 +62,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
@@ -212,7 +210,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
+        (events/publish-event! :event/card-read (assoc <> :actor_id api/*current-user-id*))))))
 
 (defn- card-columns-from-names
   [card names]
@@ -543,7 +541,7 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :card-create card))
+       (events/publish-event! :event/card-create card))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
@@ -615,11 +613,11 @@ saved later when it is ready."
   (let [event (cond
                 ;; card was archived
                 (and archived?
-                     (not (:archived card))) :card-archive
+                     (not (:archived card))) :event/card-archive
                 ;; card was unarchived
                 (and (false? archived?)
-                     (:archived card))       :card-unarchive
-                :else                        :card-update)]
+                     (:archived card))       :event/card-unarchive
+                :else                        :event/card-update)]
     (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
 
 (defn- card-archived? [old-card new-card]
@@ -848,7 +846,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -921,12 +919,12 @@ saved later when it is ready."
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/collections"
+(api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
-  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  {card_ids      [:sequential ms/PositiveInt]
+   collection_id [:maybe ms/PositiveInt]}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
