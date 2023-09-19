@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { CollectionItemModel } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
 
 import CheckBox from "metabase/core/components/CheckBox";
@@ -11,7 +12,7 @@ import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 interface ArchivedItemProps {
   name: string;
-  model: string;
+  model: CollectionItemModel;
   icon: IconName;
   color?: string;
   isAdmin: boolean;
@@ -33,47 +34,60 @@ export const ArchivedItem = ({
   selected,
   onToggleSelected,
   showSelect,
-}: ArchivedItemProps) => (
-  <div
-    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
-    data-testid={`archive-item-${name}`}
-  >
-    <Swapper
-      aria-label={"archive-item-swapper"}
-      defaultElement={
-        <ItemIconContainer>
-          <ItemIcon name={icon} color={color} />
-        </ItemIconContainer>
-      }
-      swappedElement={
-        <ItemIconContainer>
-          <CheckBox checked={selected} onChange={onToggleSelected} />
-        </ItemIconContainer>
-      }
-      isSwapped={showSelect}
-    />
-    {name}
-    {isAdmin && (onUnarchive || onDelete) && (
-      <span className="ml-auto mr2">
-        {onUnarchive && (
-          <Tooltip tooltip={t`Unarchive this ${model}`}>
-            <ActionIcon
-              onClick={onUnarchive}
-              className="hover-child"
-              name="unarchive"
-            />
-          </Tooltip>
-        )}
-        {onDelete && (
-          <Tooltip tooltip={t`Delete this ${model}`}>
-            <ActionIcon
-              onClick={onDelete}
-              className="hover-child"
-              name="trash"
-            />
-          </Tooltip>
-        )}
-      </span>
-    )}
-  </div>
-);
+}: ArchivedItemProps) => {
+  const getArchivedItemType = (model: CollectionItemModel) => {
+    switch (model) {
+      case "card":
+        return "question";
+      case "dataset":
+        return "model";
+      default:
+        return model;
+    }
+  };
+
+  return (
+    <div
+      className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+      data-testid={`archive-item-${name}`}
+    >
+      <Swapper
+        aria-label={"archive-item-swapper"}
+        defaultElement={
+          <ItemIconContainer>
+            <ItemIcon name={icon} color={color} />
+          </ItemIconContainer>
+        }
+        swappedElement={
+          <ItemIconContainer>
+            <CheckBox checked={selected} onChange={onToggleSelected} />
+          </ItemIconContainer>
+        }
+        isSwapped={showSelect}
+      />
+      {name}
+      {isAdmin && (onUnarchive || onDelete) && (
+        <span className="ml-auto mr2">
+          {onUnarchive && (
+            <Tooltip tooltip={t`Unarchive this ${getArchivedItemType(model)}`}>
+              <ActionIcon
+                onClick={onUnarchive}
+                className="hover-child"
+                name="unarchive"
+              />
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Tooltip tooltip={t`Delete this ${getArchivedItemType(model)}`}>
+              <ActionIcon
+                onClick={onDelete}
+                className="hover-child"
+                name="trash"
+              />
+            </Tooltip>
+          )}
+        </span>
+      )}
+    </div>
+  );
+};
