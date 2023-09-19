@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
+import { Button } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -33,6 +35,7 @@ export interface QueryColumnSelectorProps {
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], query?: Lib.Query) => void;
   onShowWidget: (config: EditWidgetConfig, targetElement: HTMLElement) => void;
+  handleWidgetOverride: (key: string) => void;
 }
 
 export const QueryColumnSelector = ({
@@ -42,6 +45,7 @@ export const QueryColumnSelector = ({
   getColumnName,
   onChange,
   onShowWidget,
+  handleWidgetOverride,
 }: QueryColumnSelectorProps) => {
   const columnSettings = useMemo(() => {
     return getColumnSettingsWithRefs(value);
@@ -114,16 +118,22 @@ export const QueryColumnSelector = ({
   );
 
   return (
-    <TableColumnSelector
-      enabledColumnItems={enabledColumnItems}
-      disabledColumnItems={disabledColumnItems}
-      additionalColumnGroups={additionalColumnGroups}
-      getColumnName={getColumnName}
-      onAddColumn={handleAddColumn}
-      onEnableColumn={handleEnableColumn}
-      onDisableColumn={handleDisableColumn}
-      onDragColumn={handleDragColumn}
-      onShowWidget={onShowWidget}
-    />
+    <>
+      <Button
+        variant="subtle"
+        onClick={() => handleWidgetOverride("table.columnVisibility")}
+      >{t`Click me`}</Button>
+      <TableColumnSelector
+        enabledColumnItems={enabledColumnItems}
+        disabledColumnItems={disabledColumnItems}
+        additionalColumnGroups={additionalColumnGroups}
+        getColumnName={getColumnName}
+        onAddColumn={handleAddColumn}
+        onEnableColumn={handleEnableColumn}
+        onDisableColumn={handleDisableColumn}
+        onDragColumn={handleDragColumn}
+        onShowWidget={onShowWidget}
+      />
+    </>
   );
 };

@@ -56,6 +56,7 @@ import {
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
+import { ChartSettingAddRemoveColumns } from "metabase/visualizations/components/settings/ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -550,5 +551,19 @@ export const buildTableColumnSettings = ({
         getColumnName: column => getTitleForColumn(column, series, settings),
       };
     },
+  },
+  "table.columnVisibility": {
+    widget: ChartSettingAddRemoveColumns,
+    hidden: true,
+    writeSettingId: "table.columns",
+    readDependencies: ["table.columns"],
+    getValue: (_series, vizSettings) => vizSettings["table.columns"],
+    getProps: ([
+      {
+        data: { cols },
+      },
+    ]) => ({
+      columns: cols,
+    }),
   },
 });

@@ -197,7 +197,7 @@ export const disableColumnInQuery = (
   return Lib.removeField(query, STAGE_INDEX, metadataColumn);
 };
 
-const findColumnSettingIndex = (
+export const findColumnSettingIndex = (
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   columnSettings: ColumnSetting[],
