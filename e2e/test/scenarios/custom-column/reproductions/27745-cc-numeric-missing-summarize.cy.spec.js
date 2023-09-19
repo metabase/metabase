@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   startNewQuestion,
@@ -16,7 +17,7 @@ import {
       cy.signInAsAdmin();
 
       resetTestTable({ type: dialect, table: tableName });
-      cy.request("POST", "/api/database/2/sync_schema");
+      cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {

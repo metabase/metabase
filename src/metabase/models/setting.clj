@@ -86,6 +86,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
+   [metabase.server.middleware.json]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
@@ -98,7 +99,12 @@
    (java.io StringWriter)
    (java.time.temporal Temporal)))
 
+
 (set! *warn-on-reflection* true)
+
+;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
+;;; other things we need for `:json` settings
+(comment metabase.server.middleware.json/keep-me)
 
 ;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
@@ -408,10 +414,7 @@
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
-    (swap! @*user-local-values*
-           (fn [old-settings] (if value
-                                (assoc old-settings setting-name value)
-                                (dissoc old-settings setting-name))))
+    (swap! @*user-local-values* u/assoc-dissoc setting-name value)
     (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*

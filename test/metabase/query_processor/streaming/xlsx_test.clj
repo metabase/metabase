@@ -48,8 +48,11 @@
       (testing "number-style (non-currency)"
         (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-style "decimal"})))
         (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
-        (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"}))))
+        (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
 
+(deftest format-settings->format-string-test-2b
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
       (testing "Decimals"
         (is (= "#,##0"     (format-string {::mb.viz/decimals 0, ::mb.viz/number-style "decimal"})))
         (is (= "#,##0%"    (format-string {::mb.viz/decimals 0, ::mb.viz/number-style "percent"})))
@@ -62,78 +65,141 @@
         (is (= "#,##0.000E+0"  (format-string {::mb.viz/decimals 3, ::mb.viz/number-style "scientific"})))
         (is (= "[$$]#,##0.000" (format-string {::mb.viz/decimals 3,
                                                ::mb.viz/currency-in-header false,
-                                               ::mb.viz/number-style "currency"})))
-        ;; Negative decimal values not supported (unlike on frontend); falls back to 0
-        (is (= "#,##0"     (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "decimal"})))
-        (is (= "#,##0%"    (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "percent"})))
-        (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
-        (is (= "[$$]#,##0" (format-string {::mb.viz/decimals -1,
-                                           ::mb.viz/currency-in-header false,
-                                           ::mb.viz/number-style "currency"})))
+                                               ::mb.viz/number-style "currency"})))))))
 
-        ;; Thousands separator can be omitted
-        (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."})))
-        ;; Custom separators are not supported
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))
+(deftest format-settings->format-string-test-2b2
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Decimals"
+        (testing "Negative decimal values not supported (unlike on frontend); falls back to 0"
+          (is (= "#,##0"     (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "decimal"})))
+          (is (= "#,##0%"    (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "percent"})))
+          (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
+          (is (= "[$$]#,##0" (format-string {::mb.viz/decimals           -1,
+                                             ::mb.viz/currency-in-header false,
+                                             ::mb.viz/number-style       "currency"}))))))))
 
+(deftest format-settings->format-string-test-2b3
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Decimals"
+        (testing "Thousands separator can be omitted"
+          (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."}))))))))
+
+(deftest format-settings->format-string-test-2b4
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Decimals"
+        (testing "Custom separators are not supported"
+          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
+          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
+          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))))))
+
+(deftest format-settings->format-string-test-2c
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/scale 2})))
-        (is (= "#,##0.00"           (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2}))))
+        (is (= ["#,##0" "#,##0.##"]
+               (format-string {::mb.viz/scale 2})))
+        (is (= "#,##0.00"
+               (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2})))))))
 
+(deftest ^:parallel format-settings->format-string-test-2d
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
       (testing "Prefix and suffix"
-        ;; Prefix/suffix on general number format
-        (is (= ["\"prefix\"#,##0"
-                "\"prefix\"#,##0.##"]             (format-string {::mb.viz/prefix "prefix"})))
-        (is (= ["#,##0\"suffix\""
-                "#,##0.##\"suffix\""]             (format-string {::mb.viz/suffix "suffix"})))
-        (is (= ["\"prefix\"#,##0\"suffix\""
-                "\"prefix\"#,##0.##\"suffix\""]   (format-string {::mb.viz/prefix "prefix",
-                                                                  ::mb.viz/suffix "suffix"})))
-        ;; Prefix/suffix on number format w/fixed decimal count
-        (is (= "\"prefix\"#,##0.00"               (format-string {::mb.viz/decimals 2,
-                                                                  ::mb.viz/prefix "prefix"})))
-        (is (= "#,##0.00\"suffix\""               (format-string {::mb.viz/decimals 2,
-                                                                  ::mb.viz/suffix "suffix"})))
-        (is (= "\"prefix\"#,##0.00\"suffix\""     (format-string {::mb.viz/decimals 2,
-                                                                  ::mb.viz/prefix "prefix",
-                                                                  ::mb.viz/suffix "suffix"})))
-        ;; Prefix/suffix on percentage
-        (is (= "\"prefix\"#,##0.00%\"suffix\""    (format-string {::mb.viz/number-style "percent",
-                                                                  ::mb.viz/prefix "prefix",
-                                                                  ::mb.viz/suffix "suffix"})))
-        ;; Prefix/suffix on scientific notation
-        (is (= "\"prefix\"#,##0.00E+0\"suffix\""  (format-string {::mb.viz/number-style "scientific",
-                                                                  ::mb.viz/prefix "prefix",
-                                                                  ::mb.viz/suffix "suffix"})))
-        ;; Prefix/suffix on currency
-        (is (= "\"prefix\"[$$]#,##0.00\"suffix\"" (format-string {::mb.viz/currency-in-header false,
-                                                                  ::mb.viz/number-style "currency",
-                                                                  ::mb.viz/prefix "prefix",
-                                                                  ::mb.viz/suffix "suffix"})))))))
+        (testing "Prefix/suffix on general number format"
+          (is (= ["\"prefix\"#,##0"
+                  "\"prefix\"#,##0.##"]
+                 (format-string {::mb.viz/prefix "prefix"})))
+          (is (= ["#,##0\"suffix\""
+                  "#,##0.##\"suffix\""]
+                 (format-string {::mb.viz/suffix "suffix"})))
+          (is (= ["\"prefix\"#,##0\"suffix\""
+                  "\"prefix\"#,##0.##\"suffix\""]
+                 (format-string {::mb.viz/prefix "prefix",
+                                 ::mb.viz/suffix "suffix"}))))))))
+
+(deftest ^:parallel format-settings->format-string-test-2d2
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Prefix and suffix"
+        (testing "Prefix/suffix on number format w/fixed decimal count"
+          (is (= "\"prefix\"#,##0.00"
+                 (format-string {::mb.viz/decimals 2,
+                                 ::mb.viz/prefix   "prefix"})))
+          (is (= "#,##0.00\"suffix\""
+                 (format-string {::mb.viz/decimals 2,
+                                 ::mb.viz/suffix   "suffix"})))
+          (is (= "\"prefix\"#,##0.00\"suffix\""
+                 (format-string {::mb.viz/decimals 2,
+                                 ::mb.viz/prefix   "prefix",
+                                 ::mb.viz/suffix   "suffix"}))))))))
+
+(deftest ^:parallel format-settings->format-string-test-2d3
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Prefix and suffix"
+        (testing "Prefix/suffix on percentage"
+          (is (= "\"prefix\"#,##0.00%\"suffix\""
+                 (format-string {::mb.viz/number-style "percent",
+                                 ::mb.viz/prefix       "prefix",
+                                 ::mb.viz/suffix       "suffix"}))))))))
+
+(deftest ^:parallel format-settings->format-string-test-2d4
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Prefix and suffix"
+        (testing "Prefix/suffix on scientific notation"
+          (is (= "\"prefix\"#,##0.00E+0\"suffix\""
+                 (format-string {::mb.viz/number-style "scientific",
+                                 ::mb.viz/prefix       "prefix",
+                                 ::mb.viz/suffix       "suffix"}))))))))
+
+(deftest ^:parallel format-settings->format-string-test-2d5
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "General number formatting"
+      (testing "Prefix and suffix"
+        (testing "Prefix/suffix on currency"
+          (is (= "\"prefix\"[$$]#,##0.00\"suffix\""
+                 (format-string {::mb.viz/currency-in-header false,
+                                 ::mb.viz/number-style       "currency",
+                                 ::mb.viz/prefix             "prefix",
+                                 ::mb.viz/suffix             "suffix"}))))))))
 
 (deftest ^:parallel format-settings->format-string-test-3
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Default currency formatting is dollar sign"
-          (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))
+          (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-3b
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Uses native currency symbol if supported"
           (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"} price-col)))
           (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"} price-col)))
           (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"} price-col)))
-          (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} price-col))))
+          (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} price-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-3c
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Falls back to code if native symbol not supported"
           (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "KGS"} price-col)))
           (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
                                                    ::mb.viz/currency "KGS",
                                                    ::mb.viz/currency-style "symbol"}
-                                                  price-col))))
+                                                  price-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-3d
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Respects currency-style option"
           (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
                                                            ::mb.viz/currency-style "symbol"}
@@ -155,11 +221,18 @@
           (is (= "#,##0.00\" euros\""      (format-string {::mb.viz/currency-in-header false,
                                                            ::mb.viz/currency "EUR",
                                                            ::mb.viz/currency-style "name"}
-                                                          price-col))))
+                                                          price-col))))))))
 
-        (testing "Currency not included for non-currency semantic types"
-          (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} {:semantic_type :type/Quantity}))))
+(deftest ^:parallel format-settings->format-string-test-3e
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (testing "Currency not included for non-currency semantic types"
+        (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} {:semantic_type :type/Quantity})))))))
 
+(deftest ^:parallel format-settings->format-string-test-3f
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} price-col)))
@@ -170,8 +243,12 @@
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} price-col)))
-          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} price-col))))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} price-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-3g
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Global localization settings are incorporated with lower precedence than column format settings"
           (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency "EUR",
                                                                                 :currency_in_header false,
@@ -191,35 +268,67 @@
           (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"} date-col)))
           (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"} date-col)))
           (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"} date-col)))
-          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4b
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
+        (testing "date-style"
+          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"} date-col)))
+          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
+          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"} date-col)))
+          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))))))
+
+(deftest ^:parallel format-settings->format-string-test-4c
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-separator"
           (is (= "m/d/yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"} date-col)))
           (is (= "m.d.yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."} date-col)))
-          (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"} date-col))))
+          (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"} date-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4d
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "date-abbreviate"
           (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-abbreviate true} date-col)))
           (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-abbreviate false} date-col)))
           (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {::mb.viz/date-abbreviate true
                                                                   ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col)))
           (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-abbreviate false
-                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col))))
+                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4e
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "time-style"
           (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"} date-col)))
           (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"} date-col)))
           (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} date-col)))
-          (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"} date-col))))
+          (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"} date-col))))))))
 
+(deftest format-settings->format-string-test-4f
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "time-enabled"
           (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-enabled nil} date-col)))
           (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/time-enabled "minutes"} date-col)))
           (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {::mb.viz/time-enabled "seconds"} date-col)))
           (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {::mb.viz/time-enabled "milliseconds"} date-col)))
           ;; time-enabled overrides time-styled
-          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil} date-col))))
+          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil} date-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4g
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing ":unit values on temporal breakout fields"
           (let [month-col (assoc date-col :unit :month)
                 year-col  (assoc date-col :unit :year)]
@@ -230,8 +339,12 @@
             (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "D MMMM, YYYY"} month-col)))
             (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "DDDD, MMMM D, YYYY"} month-col)))
             (is (= "yyyy"       (format-string {} year-col)))
-            (is (= "yyyy"       (format-string {::mb.viz/date-style "M/D/YYYY"} year-col)))))
+            (is (= "yyyy"       (format-string {::mb.viz/date-style "M/D/YYYY"} year-col)))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4h
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "misc combinations"
           (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {::mb.viz/date-style "YYYY/M/D",
                                                                     ::mb.viz/date-separator ".",
@@ -239,8 +352,12 @@
                                                                     ::mb.viz/time-enabled "seconds"} date-col)))
           (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
                                                                     ::mb.viz/time-style "HH:mm",
-                                                                    ::mb.viz/time-enabled "milliseconds"} date-col))))
+                                                                    ::mb.viz/time-enabled "milliseconds"} date-col))))))))
 
+(deftest ^:parallel format-settings->format-string-test-4i
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Datetime formatting"
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
         (testing "Global localization settings are incorporated with lower precedence than column format settings"
           (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "YYYY/M/D",
                                                                                 :date_separator ".",

@@ -20,8 +20,7 @@
 (comment metabase-enterprise.sso.integrations.jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
   (try
@@ -40,8 +39,7 @@
                  :exceptionClass (.getName Exception)
                  :additionalData data}))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
   (try
