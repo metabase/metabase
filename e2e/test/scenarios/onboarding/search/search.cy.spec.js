@@ -1,5 +1,6 @@
 import {
   createAction,
+  describeEE,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
@@ -8,8 +9,12 @@ import {
   resetSnowplow,
   restore,
   setActionsEnabledForDB,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -121,66 +126,6 @@ describe("scenarios > search", () => {
   describe("applying search filters", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-
-      setActionsEnabledForDB(SAMPLE_DB_ID);
-
-      cy.createQuestion({
-        name: "Orders Model",
-        query: { "source-table": ORDERS_ID },
-        dataset: true,
-      }).then(({ body: { id } }) => {
-        createAction({
-          name: "Update orders quantity",
-          description: "Set orders quantity to the same value",
-          type: "query",
-          model_id: id,
-          database_id: SAMPLE_DB_ID,
-          dataset_query: {
-            database: SAMPLE_DB_ID,
-            native: {
-              query: "UPDATE orders SET quantity = quantity",
-            },
-            type: "native",
-          },
-          parameters: [],
-          visualization_settings: {
-            type: "button",
-          },
-        });
-      });
-    });
-
-    describe("hydrating search query from URL", () => {
-      it("should hydrate search with search text", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-
-        getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-      });
-
-      it("should hydrate search with search text and filter", () => {
-        const { filterName, resultInfoText } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
-        cy.wait("@search");
-
-        getSearchBar().should("have.value", "orders");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-
-        cy.findAllByTestId("result-link-info-text").each(result => {
-          cy.wrap(result).should("contain.text", resultInfoText);
-        });
-
-        cy.findByTestId("type-search-filter").within(() => {
-          cy.findByText("Question").should("exist");
-          cy.findByLabelText("close icon").should("exist");
-        });
-      });
     });
 
     describe("accessing full page search with `Enter`", () => {
@@ -216,8 +161,71 @@ describe("scenarios > search", () => {
       });
     });
 
-    describe("search filters", () => {
-      describe("type filters", () => {
+    describe("search with no filters", () => {
+      it("should hydrate search with search text", () => {
+        cy.visit("/search?q=orders");
+        cy.wait("@search");
+
+        getSearchBar().should("have.value", "orders");
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "orders"').should("exist");
+        });
+      });
+    });
+    describe("type filter", () => {
+      beforeEach(() => {
+        setActionsEnabledForDB(SAMPLE_DB_ID);
+
+        cy.createQuestion({
+          name: "Orders Model",
+          query: { "source-table": ORDERS_ID },
+          dataset: true,
+        }).then(({ body: { id } }) => {
+          createAction({
+            name: "Update orders quantity",
+            description: "Set orders quantity to the same value",
+            type: "query",
+            model_id: id,
+            database_id: SAMPLE_DB_ID,
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              native: {
+                query: "UPDATE orders SET quantity = quantity",
+              },
+              type: "native",
+            },
+            parameters: [],
+            visualization_settings: {
+              type: "button",
+            },
+          });
+        });
+      });
+
+      describe("hydrating search from URL", () => {
+        it("should hydrate search with search text and type filter", () => {
+          const { filterName, resultInfoText } = typeFilters[0];
+          cy.visit(`/search?q=orders&type=${filterName}`);
+          cy.wait("@search");
+
+          getSearchBar().should("have.value", "orders");
+
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            cy.wrap(result).should("contain.text", resultInfoText);
+          });
+
+          cy.findByTestId("type-search-filter").within(() => {
+            cy.findByText("Question").should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+        });
+      });
+
+      describe("applying filters from search app", () => {
         typeFilters.forEach(({ label, resultInfoText }) => {
           it(`should filter results by ${label}`, () => {
             cy.visit("/");
@@ -261,6 +269,76 @@ describe("scenarios > search", () => {
             );
             expect(textContent.size).to.be.greaterThan(1);
           });
+        });
+      });
+    });
+    describeEE("verified filter", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+        cy.createModerationReview({
+          status: "verified",
+          moderated_item_type: "card",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+        });
+      });
+
+      describe("hydrating search from URL", () => {
+        it("should hydrate search with search text and verified filter", () => {
+          cy.visit("/search?q=orders&verified=true");
+          cy.wait("@search");
+
+          getSearchBar().should("have.value", "orders");
+
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result).within(() => {
+              cy.findByLabelText("verified icon").should("exist");
+            });
+          });
+        });
+      });
+      describe("applying filters from search app", () => {
+        it("should filter results by verified items", () => {
+          cy.visit("/");
+
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
+
+          // const verifiedFilter = cy.findByTestId("verified-search-filter")
+          cy.findByTestId("verified-filter-switch").click();
+
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result).within(() => {
+              cy.findByLabelText("verified icon").should("exist");
+            });
+          });
+        });
+
+        it("should not filter results when verified items is off", () => {
+          cy.visit("/search?q=e&verified=true");
+
+          cy.wait("@search");
+
+          cy.findByTestId("verified-filter-switch").click();
+          cy.url().should("not.include", "verified=true");
+
+          let verifiedElementCount = 0;
+          let unverifiedElementCount = 0;
+          cy.findAllByTestId("search-result-item")
+            .each($el => {
+              if (!$el.find('[aria-label="verified icon"]').length) {
+                unverifiedElementCount++;
+              } else {
+                verifiedElementCount++;
+              }
+            })
+            .then(() => {
+              expect(verifiedElementCount).to.eq(1);
+              expect(unverifiedElementCount).to.be.gt(0);
+            });
         });
       });
     });
