@@ -1023,22 +1023,20 @@
         available-values {:available-dimensions dimensions
                           :available-metrics available-metrics
                           :available-filters available-filters}
-        cards             (make-cards base-context available-values dashboard-template)
-        ;; Tease out later
-        context           (assoc base-context
-                            :dimensions dimensions
-                            :metrics available-metrics
-                            :filters available-filters)]
+        cards             (make-cards base-context available-values dashboard-template)]
     (when (or (not-empty cards)
               (-> dashboard-template :cards nil?))
-      [(assoc (make-dashboard root dashboard-template context available-values)
+      [(assoc (make-dashboard root dashboard-template base-context available-values)
          :filters (->> dashboard-template
                        :dashboard_filters
                        (mapcat (comp :matches dimensions))
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
          :cards cards)
        dashboard-template
-       context])))
+       (assoc base-context
+         :dimensions dimensions
+         :metrics available-metrics
+         :filters available-filters)])))
 
 (def ^:private ^:const ^Long max-related 8)
 (def ^:private ^:const ^Long max-cards 15)
