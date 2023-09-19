@@ -1,5 +1,5 @@
 import { screen } from "@testing-library/react";
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import type { Database as IDatabase } from "metabase-types/api";
 import { renderWithProviders } from "__support__/ui";

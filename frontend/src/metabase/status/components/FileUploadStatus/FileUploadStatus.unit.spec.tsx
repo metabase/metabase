@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { createMockUpload, createMockState } from "metabase-types/store/mocks";
 
 import { renderWithProviders } from "__support__/ui";

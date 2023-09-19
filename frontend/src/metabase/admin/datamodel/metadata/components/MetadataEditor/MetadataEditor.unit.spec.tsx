@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import type { Database } from "metabase-types/api";

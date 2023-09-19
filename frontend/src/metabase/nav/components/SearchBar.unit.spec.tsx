@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { waitFor, renderWithProviders, screen, within } from "__support__/ui";
 import {

@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import type { SetupCheckListItem } from "metabase-types/api";
 import {

@@ -1,4 +1,5 @@
-import { IndexRedirect, Redirect, Route } from "react-router";
+import { IndexRedirect, Redirect } from "react-router";
+import { Route } from "react-router-dom";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 

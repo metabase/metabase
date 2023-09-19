@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";

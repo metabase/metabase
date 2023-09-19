@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import fetchMock from "fetch-mock";
 import * as dom from "metabase/lib/dom";
 

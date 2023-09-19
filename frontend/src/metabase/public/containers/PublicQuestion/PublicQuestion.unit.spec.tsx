@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {

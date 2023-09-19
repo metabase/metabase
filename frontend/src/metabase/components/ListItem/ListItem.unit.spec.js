@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import ListItem from "./ListItem";

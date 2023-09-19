@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentPropsWithoutRef } from "react";
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute } from "react-router";
+import { Route } from "react-router-dom";
 import fetchMock from "fetch-mock";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {

@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";

@@ -1,4 +1,5 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute } from "react-router";
+import { Route } from "react-router-dom";
 
 import userEvent from "@testing-library/user-event";
 import {

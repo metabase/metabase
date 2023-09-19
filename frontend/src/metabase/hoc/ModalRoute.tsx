@@ -1,6 +1,6 @@
 import { Component } from "react";
 import * as React from "react";
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { push } from "connected-react-router";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";

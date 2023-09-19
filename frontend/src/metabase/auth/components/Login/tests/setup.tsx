@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 
 import { createMockState } from "metabase-types/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";

@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "react-router-dom";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";

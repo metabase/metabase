@@ -75,10 +75,10 @@ const title = documentTitleOrGetter => ComposedComponent =>
 
 export default title;
 
-import { Route as _Route } from "react-router";
+import { Route as ReactRouterRoute } from "react-router-dom";
 
 // react-router Route wrapper that adds a `title` property
-export class Route extends _Route {
+export class Route extends ReactRouterRoute {
   static createRouteFromReactElement(element) {
     if (element.props.title) {
       element = cloneElement(element, {
@@ -87,6 +87,6 @@ export class Route extends _Route {
         ),
       });
     }
-    return _Route.createRouteFromReactElement(element);
+    return ReactRouterRoute.createRouteFromReactElement(element);
   }
 }
