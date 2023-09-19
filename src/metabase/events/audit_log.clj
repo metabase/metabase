@@ -32,11 +32,6 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-card-event
   [topic {:keys [dashcards id]}]
-  (def topic topic)
-  (def dashcards dashcards)
-  (def id id)
-
-  (def dash (t2/select-one [:model/Dashboard :description :name] :id id))
   ;; we expect that the object has just a dashboard :id at the top level
   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
   (let [details (-> (t2/select-one [:model/Dashboard :description :name] :id id)
