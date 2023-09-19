@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useCallback } from "react";
 import _ from "underscore";
-import type { Route } from "react-router";
+import type { Location } from "history";
 
 import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
@@ -22,7 +22,7 @@ import ToolbarUpsell from "../../components/ToolbarUpsell";
 
 type DataPermissionsPageProps = {
   children: ReactNode;
-  route: typeof Route;
+  route: Location;
   params: {
     databaseId: DatabaseId;
   };

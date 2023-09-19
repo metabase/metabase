@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 import { push } from "connected-react-router";
-import type { Route } from "react-router";
+import type { Location } from "history";
 
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
@@ -44,7 +44,7 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError: () => void;
   navigateToLocation: (location: string) => void;
-  route: Route;
+  route: Location;
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;

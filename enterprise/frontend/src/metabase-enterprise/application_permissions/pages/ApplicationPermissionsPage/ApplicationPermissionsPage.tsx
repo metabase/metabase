@@ -1,5 +1,5 @@
 import _ from "underscore";
-import type { Route } from "react-router";
+import type { Location } from "history";
 import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 
@@ -39,7 +39,7 @@ interface ApplicationPermissionsPageProps {
   initialize: () => void;
   savePermissions: () => void;
   updatePermission: any;
-  route: Route;
+  route: Location;
 }
 
 const ApplicationPermissionsPage = ({
