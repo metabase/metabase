@@ -560,6 +560,26 @@ const TITLE_LOCALES_BN = {
     'en': 'Religion Wise Student Statistics',
     'bn': 'ধর্ম ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
   },
+  'admin.dashboard.nsa.gender.wise.subject.performance': {
+    'en': 'Bangla performance by gender in grade 3 and grade 5',
+    'bn': 'তৃতীয় এবং পঞ্চম শ্রেণীর ছাত্র ছাত্রীদের বাংলা বিষয়ের পারফরম্যান্সের'
+  },
+  'admin.dashboard.nsa.performance.distribution.bangla': {
+    'en' : 'Grade wise performance levels in Bangla',
+    'bn' : 'শ্রেণীভিত্তিক বাংলা বিষয়ের পারফরম্যান্সের'
+  },
+  'admin.dashboard.nsa.performance.distribution.math': {
+    'en' : 'Grade wise performance levels in Mathematics',
+    'bn' : 'শ্রেণীভিত্তিক গণিত বিষয়ের পারফরম্যান্সের'
+  },
+  'admin.dashboard.gender.wise.mean.nsa.scale.scores.grade3.bangla': {
+    'en' : 'Grade 3 Bangla mean scale scores by gender',
+    'bn' : 'ছাত্র ছাত্রী ভিত্তিক তৃতীয় শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
+  },
+  'admin.dashboard.gender.wise.mean.nsa.scale.scores.grade5.bangla' : {
+    'en' : 'Grade 3 Bangla mean scale scores by gender',
+    'bn' : 'ছাত্র ছাত্রী ভিত্তিক পঞ্চম শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
