@@ -11,6 +11,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel validate-zone-id-test
   (testing "invalid"
     (is (thrown-with-msg?

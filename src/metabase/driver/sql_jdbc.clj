@@ -71,6 +71,7 @@
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
   ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (if (has-method? driver sql-jdbc.sync/db-default-timezone)
     (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))
     ;; otherwise fall back to the default implementation.
