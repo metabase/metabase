@@ -25,10 +25,13 @@ jobs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "files-changed"
+      - run: yarn install --frozen-lockfile --prefer-offline
       - name: Build static viz frontend
         run: yarn build-static-viz:file-paths
       - name: Test which files changed
