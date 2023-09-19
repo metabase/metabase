@@ -7,6 +7,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
@@ -123,12 +124,11 @@
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-async-schema GET "/:key"
+(api/defendpoint-async GET "/:key"
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`)."
   [{{:keys [key]} :params} respond raise]
-  {key su/NonBlankString}
+  {key ms/NonBlankString}
   (when-not (or (custom-geojson-enabled) (builtin-geojson (keyword key)))
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
@@ -138,12 +138,11 @@
         (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-async-schema GET "/"
+(api/defendpoint-async GET "/"
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
-  {url su/NonBlankString}
+  {url ms/NonBlankString}
   (validation/check-has-application-permission :setting)
   (when-not (custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
