@@ -11,7 +11,7 @@ import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 interface ArchivedItemProps {
   name: string;
-  type: string;
+  model: string;
   icon: IconName;
   color?: string;
   isAdmin: boolean;
@@ -24,7 +24,7 @@ interface ArchivedItemProps {
 
 export const ArchivedItem = ({
   name,
-  type,
+  model,
   icon,
   color = c("text-light"),
   isAdmin = false,
@@ -56,7 +56,7 @@ export const ArchivedItem = ({
     {isAdmin && (onUnarchive || onDelete) && (
       <span className="ml-auto mr2">
         {onUnarchive && (
-          <Tooltip tooltip={t`Unarchive this ${type}`}>
+          <Tooltip tooltip={t`Unarchive this ${model}`}>
             <ActionIcon
               onClick={onUnarchive}
               className="hover-child"
@@ -65,7 +65,7 @@ export const ArchivedItem = ({
           </Tooltip>
         )}
         {onDelete && (
-          <Tooltip tooltip={t`Delete this ${type}`}>
+          <Tooltip tooltip={t`Delete this ${model}`}>
             <ActionIcon
               onClick={onDelete}
               className="hover-child"
