@@ -702,9 +702,9 @@
        dashboard-templates/collect-dimensions
        (every? (partial get dimensions))))
 
-;; TODO - Rename to interestingness or something and update docs and tests
-(defn- resolve-overloading
-  "Merge definitions of the form [{\"Name\" {:score n}}, {...}] into a single map of {\"Name\" {:score n} ...}.
+(defn- resolve-satisfied-dimensions
+  "Merge definitions of the form [{\"Name\" {:score n}}, {...}] into a single map of {\"Name\" {:score n} ...} after
+  removing any that are not contained in the given dimensions.
 
   Conflicts may occur if multiple definitions have the same name. E.g. two definitions named \"Count\".
   When this happens, priority is given to definitions for which all dimensions named in the definition are contained in
@@ -712,7 +712,7 @@
   definition names are in the dimension map, priority is given to the definition with the highest score."
   [dimensions definitions]
   (->> definitions
-       ;(remove (complement (partial has-matches? dimensions)))
+       (filter (partial has-matches? dimensions))
        (apply merge-with (fn [a b]
                            (case (map (partial has-matches? dimensions) [a b])
                              [true false] a
@@ -844,27 +844,35 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [{context-metrics    :metrics
+  [{context-dimensions :dimensions
+    context-metrics    :metrics
     context-filters    :filters
     :keys              [query-filter]
     :as                context}
    {card-dimensions :dimensions
     card-metrics    :metrics
     card-filters    :filters
+    card-title      :title
     :as             card-template}]
-  (let [common-metrics    (map (partial get context-metrics) card-metrics)
-        common-filters    (cond-> (map (partial get context-filters) card-filters)
-                            ;; Do we need to ensure this is a seq?
-                            ;; It may be that this is what Dan saw.
-                            query-filter
-                            (conj {:filter query-filter}))
-        common-dimensions (map (comp (partial into [:dimension]) first) card-dimensions)
-        common-values     {:common-dimensions common-dimensions
-                           :common-metrics    common-metrics
-                           :common-filters    common-filters}]
-    (->> (potential-card-dimension-bindings context card-template common-values)
-         (filter (partial valid-bindings? context common-dimensions))
-         (map (partial build-dashcard context card-template common-values)))))
+  (if
+    (and
+      (every? context-dimensions (map ffirst card-dimensions))
+      (every? context-metrics card-metrics)
+      (every? context-filters card-filters))
+    (let [common-metrics    (map context-metrics card-metrics)
+          common-filters    (cond-> (map context-filters card-filters)
+                              ;; Do we need to ensure this is a seq?
+                              ;; It may be that this is what Dan saw.
+                              query-filter
+                              (conj {:filter query-filter}))
+          common-dimensions (map (comp (partial into [:dimension]) first) card-dimensions)
+          common-values     {:common-dimensions common-dimensions
+                             :common-metrics    common-metrics
+                             :common-filters    common-filters}]
+      (->> (potential-card-dimension-bindings context card-template common-values)
+           (filter (partial valid-bindings? context common-dimensions))
+           (map (partial build-dashcard context card-template common-values))))
+    (log/debugf "Card %s cannot satisfy required dimensions." card-title)))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -1000,23 +1008,25 @@
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [{{:keys [entity] :as root} :root :as base-context}
+  [{root :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-filters    :filters
     :keys               [dashboard-template-name]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [dimensions   (->> (bind-dimensions base-context template-dimensions)
-                          (add-field-self-reference base-context))
-        metrics      (->> (resolve-overloading dimensions template-metrics)
-                          (add-metric-self-reference base-context))
-        filters      (resolve-overloading dimensions template-filters)
-        context      (assoc base-context
-                       :dimensions dimensions
-                       :metrics metrics
-                       :filters filters)
-        cards        (make-cards context dashboard-template)]
+  (let [dimensions        (->> (bind-dimensions base-context template-dimensions)
+                               (add-field-self-reference base-context))
+        ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
+        satisfied-metrics (->> (resolve-satisfied-dimensions dimensions template-metrics)
+                               (add-metric-self-reference base-context)
+                               (into {}))
+        satisfied-filters (into {} (resolve-satisfied-dimensions dimensions template-filters))
+        context           (assoc base-context
+                            :dimensions dimensions
+                            :metrics satisfied-metrics
+                            :filters satisfied-filters)
+        cards             (make-cards context dashboard-template)]
     (when (or (not-empty cards)
               (-> dashboard-template :cards nil?))
       [(assoc (make-dashboard root dashboard-template context)
