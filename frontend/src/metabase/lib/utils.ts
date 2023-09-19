@@ -35,165 +35,160 @@ function s4() {
     .substring(1);
 }
 
-// provides functions for building urls to things we care about
-const MetabaseUtils = {
-  isEmpty(str: string | null) {
-    if (str != null) {
-      str = String(str);
-    } // make sure 'str' is actually a string
-    return str == null || 0 === str.length || str.match(/^\s+$/) != null;
-  },
+export function isEmpty(str: string | null) {
+  if (str != null) {
+    str = String(str);
+  } // make sure 'str' is actually a string
+  return str == null || 0 === str.length || str.match(/^\s+$/) != null;
+}
 
-  // pretty limited.  just does 0-9 for right now.
-  numberToWord(num: number) {
-    const names = [
-      t`zero`,
-      t`one`,
-      t`two`,
-      t`three`,
-      t`four`,
-      t`five`,
-      t`six`,
-      t`seven`,
-      t`eight`,
-      t`nine`,
-    ];
+// pretty limited.  just does 0-9 for right now.
+export function numberToWord(num: number) {
+  const names = [
+    t`zero`,
+    t`one`,
+    t`two`,
+    t`three`,
+    t`four`,
+    t`five`,
+    t`six`,
+    t`seven`,
+    t`eight`,
+    t`nine`,
+  ];
 
-    if (num >= 0 && num <= 9) {
-      return names[num];
-    } else {
-      return "" + num;
-    }
-  },
+  if (num >= 0 && num <= 9) {
+    return names[num];
+  } else {
+    return "" + num;
+  }
+}
 
-  uuid() {
-    return (
-      s4() +
-      s4() +
-      "-" +
-      s4() +
-      "-" +
-      s4() +
-      "-" +
-      s4() +
-      "-" +
-      s4() +
-      s4() +
-      s4()
-    );
-  },
+export function uuid() {
+  return (
+    s4() +
+    s4() +
+    "-" +
+    s4() +
+    "-" +
+    s4() +
+    "-" +
+    s4() +
+    "-" +
+    s4() +
+    s4() +
+    s4()
+  );
+}
 
-  isUUID(uuid: unknown) {
-    return (
-      typeof uuid === "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
-        uuid,
-      )
-    );
-  },
+export function isUUID(uuid: unknown) {
+  return (
+    typeof uuid === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)
+  );
+}
 
-  isBase64(string: unknown) {
-    return (
-      typeof string === "string" &&
-      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-        string,
-      )
-    );
-  },
+export function isBase64(string: unknown) {
+  return (
+    typeof string === "string" &&
+    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+      string,
+    )
+  );
+}
 
-  isJWT(string: unknown) {
-    return (
-      typeof string === "string" &&
-      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
-    );
-  },
+export function isJWT(string: unknown) {
+  return (
+    typeof string === "string" &&
+    /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
+  );
+}
 
-  isEmail(email: string | undefined | null) {
-    if (email === null || email === undefined) {
+export function isEmail(email: string | undefined | null) {
+  if (email === null || email === undefined) {
+    return false;
+  }
+  return EMAIL_REGEX.test(email);
+}
+
+export function getEmailDomain(email: string) {
+  const match = EMAIL_REGEX.exec(email);
+  return match && match[5];
+}
+
+export function equals(a: unknown, b: unknown) {
+  return _.isEqual(a, b);
+}
+
+export function propertiesEqual(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  properties = [...Object.keys(a), ...Object.keys(b)],
+) {
+  for (const property of properties) {
+    if (a[property] !== b[property]) {
       return false;
     }
-    return EMAIL_REGEX.test(email);
-  },
+  }
+  return true;
+}
 
-  getEmailDomain(email: string) {
-    const match = EMAIL_REGEX.exec(email);
-    return match && match[5];
-  },
+export function copy(a: unknown) {
+  // FIXME: ugghhhhhhhhh
+  return JSON.parse(JSON.stringify(a));
+}
 
-  equals(a: unknown, b: unknown) {
-    return _.isEqual(a, b);
-  },
+/**
+ * Converts a metabase version to a list of numeric components, it converts pre-release
+ * components to numbers and pads the numeric part to 4 numbers to make comparison easier
+ */
+export function versionToNumericComponents(version: string): number[] | null {
+  const SPECIAL_COMPONENTS: Record<string, number> = {
+    snapshot: -4,
+    alpha: -3,
+    beta: -2,
+    rc: -1,
+  };
 
-  propertiesEqual(
-    a: Record<string, unknown>,
-    b: Record<string, unknown>,
-    properties = [...Object.keys(a), ...Object.keys(b)],
-  ) {
-    for (const property of properties) {
-      if (a[property] !== b[property]) {
-        return false;
-      }
-    }
-    return true;
-  },
+  const regex =
+    /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
 
-  copy(a: unknown) {
-    // FIXME: ugghhhhhhhhh
-    return JSON.parse(JSON.stringify(a));
-  },
+  const result = regex.exec(version);
 
-  /**
-   * Converts a metabase version to a list of numeric components, it converts pre-release
-   * components to numbers and pads the numeric part to 4 numbers to make comparison easier
-   */
-  versionToNumericComponents(version: string): number[] | null {
-    const SPECIAL_COMPONENTS: Record<string, number> = {
-      snapshot: -4,
-      alpha: -3,
-      beta: -2,
-      rc: -1,
-    };
+  if (!result || !result.groups) {
+    return null;
+  }
 
-    const regex =
-      /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+  const {
+    ossOrEE,
+    major = 0,
+    minor = 0,
+    patch = 0,
+    label,
+    build = 0,
+  } = result.groups;
 
-    const result = regex.exec(version);
-
-    if (!result || !result.groups) {
-      return null;
-    }
-
-    const {
-      ossOrEE,
-      major = 0,
-      minor = 0,
-      patch = 0,
-      label,
-      build = 0,
-    } = result.groups;
-
-    return [
-      ossOrEE,
-      major,
-      minor,
-      patch,
-      SPECIAL_COMPONENTS[label.toLowerCase()] ?? 0,
-      build,
-    ].map(part => (typeof part === "string" ? parseInt(part, 10) : part));
-  },
-};
+  return [
+    ossOrEE,
+    major,
+    minor,
+    patch,
+    SPECIAL_COMPONENTS[label.toLowerCase()] ?? 0,
+    build,
+  ].map(part => (typeof part === "string" ? parseInt(part, 10) : part));
+}
 
 /**
  * this should correctly compare all version formats Metabase uses, e.g.
  * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
  * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
  */
-function compareVersions(aVersion: string, bVersion: string): -1 | 0 | 1;
-function compareVersions(
+export function compareVersions(aVersion: string, bVersion: string): -1 | 0 | 1;
+export function compareVersions(
   aVersion: string | null | undefined,
   bVersion: string | null | undefined,
 ): null;
-function compareVersions(
+export function compareVersions(
   aVersion: string | null | undefined,
   bVersion: string | null | undefined,
 ): -1 | 0 | 1 | null {
@@ -201,8 +196,8 @@ function compareVersions(
     return null;
   }
 
-  const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
-  const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
+  const aComponents = versionToNumericComponents(aVersion);
+  const bComponents = versionToNumericComponents(bVersion);
 
   if (!aComponents || !bComponents) {
     return null;
@@ -219,6 +214,3 @@ function compareVersions(
   }
   return 0;
 }
-
-// eslint-disable-next-line import/no-default-export
-export default Object.assign(MetabaseUtils, { compareVersions });

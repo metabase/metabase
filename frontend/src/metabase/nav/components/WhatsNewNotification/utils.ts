@@ -1,5 +1,5 @@
 import type { VersionInfoRecord } from "metabase-types/api";
-import MetabaseUtils from "metabase/lib/utils";
+import { compareVersions } from "metabase/lib/utils";
 import type { VersionInfo } from "metabase-types/api/settings";
 import { isNotFalsy } from "metabase/core/utils/types";
 /**
@@ -35,16 +35,16 @@ export const getLatestEligibleReleaseNotes = ({
 
   const eligibleVersions = versions.filter(({ version }) => {
     return (
-      //                            version <= currentVersion
-      MetabaseUtils.compareVersions(version, currentVersion) !== 1 &&
+      //             version <= currentVersion
+      compareVersions(version, currentVersion) !== 1 &&
       // shortcircuit lower bound if lastAcknowledgedVersion is null
       (lastAcknowledgedVersion == null ||
-        //                            version > lastAcknowledgedVersion
-        MetabaseUtils.compareVersions(version, lastAcknowledgedVersion) === 1)
+        //              version > lastAcknowledgedVersion
+        compareVersions(version, lastAcknowledgedVersion) === 1)
     );
   });
 
   return eligibleVersions
-    .sort((a, b) => MetabaseUtils.compareVersions(b.version, a.version))
+    .sort((a, b) => compareVersions(b.version, a.version))
     .find(({ announcement_url }) => announcement_url);
 };
