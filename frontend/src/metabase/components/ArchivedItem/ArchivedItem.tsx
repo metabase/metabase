@@ -1,7 +1,6 @@
-/* eslint "react/prop-types": "warn" */
-
-import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import type { IconName } from "metabase/core/components/Icon";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import Swapper from "metabase/core/components/Swapper";
@@ -10,7 +9,20 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { color as c } from "metabase/lib/colors";
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
-const ArchivedItem = ({
+interface ArchivedItemProps {
+  name: string;
+  type: string;
+  icon: IconName;
+  color?: string;
+  isAdmin: boolean;
+  onUnarchive?: () => void;
+  onDelete?: () => void;
+  selected: boolean;
+  onToggleSelected: () => void;
+  showSelect: boolean;
+}
+
+export const ArchivedItem = ({
   name,
   type,
   icon,
@@ -21,12 +33,13 @@ const ArchivedItem = ({
   selected,
   onToggleSelected,
   showSelect,
-}) => (
+}: ArchivedItemProps) => (
   <div
     className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
     data-testid={`archive-item-${name}`}
   >
     <Swapper
+      aria-label={"archive-item-swapper"}
       defaultElement={
         <ItemIconContainer>
           <ItemIcon name={icon} color={color} />
@@ -64,19 +77,3 @@ const ArchivedItem = ({
     )}
   </div>
 );
-
-ArchivedItem.propTypes = {
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
-  icon: PropTypes.string.isRequired,
-  color: PropTypes.string,
-  isAdmin: PropTypes.bool,
-  onUnarchive: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-
-  selected: PropTypes.bool.isRequired,
-  onToggleSelected: PropTypes.func.isRequired,
-  showSelect: PropTypes.bool.isRequired,
-};
-
-export default ArchivedItem;

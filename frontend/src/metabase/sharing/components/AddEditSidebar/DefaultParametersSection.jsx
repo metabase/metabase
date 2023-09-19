@@ -8,27 +8,17 @@ import { Icon } from "metabase/core/components/Icon";
 import Heading from "./Heading";
 
 // TODO: will need improved formatting for operator parameter filters
-function formatDefaultParamValues(parameters, defaultParametersById) {
+function formatDefaultParamValues(parameters) {
   return parameters
     .map(parameter => {
-      const value = conjunct(
-        [].concat(defaultParametersById[parameter.id]),
-        t`and`,
-      );
+      const value = conjunct([].concat(parameter.default), t`and`);
       return value && `${parameter.name} is ${value}`;
     })
     .filter(Boolean);
 }
 
-function DefaultParametersSection({
-  className,
-  parameters,
-  defaultParametersById,
-}) {
-  const formattedParameterValues = formatDefaultParamValues(
-    parameters,
-    defaultParametersById,
-  );
+function DefaultParametersSection({ className, parameters }) {
+  const formattedParameterValues = formatDefaultParamValues(parameters);
 
   return (
     <div className={cx(className, "text-bold")}>
@@ -56,7 +46,6 @@ function DefaultParametersSection({
 DefaultParametersSection.propTypes = {
   className: PropTypes.string,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
 };
 
 export default DefaultParametersSection;
