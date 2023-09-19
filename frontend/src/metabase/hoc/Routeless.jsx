@@ -8,7 +8,7 @@ import _ from "underscore";
 
 // namespace under _routeless_
 const mapStateToProps = (state, props) => ({
-  _routeless_location: state.routing.locationBeforeTransitions,
+  _routeless_location: state.router.location,
 });
 
 const mapDispatchToProps = {

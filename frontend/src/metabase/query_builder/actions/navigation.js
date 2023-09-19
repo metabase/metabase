@@ -39,8 +39,7 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { locationBeforeTransitions = {} } = getState().routing;
-      const { state, query } = locationBeforeTransitions;
+      const { state, query } = getState().router.location;
       const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
       if (

@@ -4,7 +4,7 @@ import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { Router, useRouterHistory } from "react-router";
+import { Router } from "react-router-dom";
 import { connectRouter, routerMiddleware } from "connected-react-router";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
@@ -60,13 +60,8 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   }
 
-  // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const browserHistory = useRouterHistory(createMemoryHistory)({
-    entries: [initialRoute],
-  });
-  const history = withRouter ? browserHistory : undefined;
+  const history = withRouter ? createMemoryHistory() : undefined;
+  history?.replace(initialRoute);
 
   let reducers = mode === "default" ? mainReducers : publicReducers;
 
@@ -140,7 +135,7 @@ function MaybeRouter({
   hasRouter: boolean;
   history?: History;
 }): JSX.Element {
-  if (!hasRouter) {
+  if (!hasRouter || !history) {
     return children;
   }
   return <Router history={history}>{children}</Router>;

@@ -32,9 +32,8 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 
 // router
-import { Router, useRouterHistory } from "react-router";
-import { createHistory } from "history";
-import { syncHistoryWithStore } from "connected-react-router";
+import { Router } from "react-router-dom";
+import { createBrowserHistory } from "history";
 
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
@@ -57,15 +56,10 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 
-// eslint-disable-next-line react-hooks/rules-of-hooks
-const browserHistory = useRouterHistory(createHistory)({
-  basename: BASENAME,
-});
-
 function _init(reducers, getRoutes, callback) {
-  const store = getStore(reducers, browserHistory);
+  const history = createBrowserHistory();
+  const store = getStore(reducers, history);
   const routes = getRoutes(store);
-  const history = syncHistoryWithStore(browserHistory, store);
 
   let root;
 
