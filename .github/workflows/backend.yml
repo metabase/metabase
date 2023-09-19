@@ -33,11 +33,11 @@ jobs:
           m2-cache-key: "files-changed"
       - run: yarn install --frozen-lockfile --prefer-offline
       - name: Build static viz frontend
-        run: yarn build-static-viz:file-paths
+        run: yarn build-static-viz
       - name: Cache Static Viz Bundle
         uses: actions/cache@v3
         with:
-          key: ${{ github.sha }}
+          key: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
@@ -204,7 +204,7 @@ jobs:
       - name: Restore Static Viz Bundle
         uses: actions/cache@v3
         with:
-          key: ${{ github.sha }}
+          key: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
       - name: Run tests

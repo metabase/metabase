@@ -328,7 +328,6 @@
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "build-static-viz": "yarn && yarn build-release:cljs && WEBPACK_BUNDLE=production webpack --config webpack.static-viz.config.js",
     "build-static-viz:watch": "webpack --config webpack.static-viz.config.js --watch",
-    "build-static-viz:file-paths": "yarn && yarn build-release:cljs && webpack --config webpack.static-viz.config.js --env FILE_PATHS",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}'",

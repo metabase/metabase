@@ -15,8 +15,7 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 
 module.exports = env => {
-  const shouldDisableMinimization =
-    env.WEBPACK_WATCH === true || env.FILE_PATHS;
+  const shouldDisableMinimization = env.WEBPACK_WATCH === true;
 
   return {
     mode: "production",
@@ -62,31 +61,29 @@ module.exports = env => {
     optimization: {
       minimize: !shouldDisableMinimization,
     },
-    plugins: env.FILE_PATHS
-      ? [
-          new StatsWriterPlugin({
-            stats: {
-              modules: true,
-              assets: false,
-              nestedModules: false,
-              reasons: false,
-              excludeModules: [/node_modules/],
-            },
-            filename: "../../../../.github/static-viz-sources.yaml",
-            transform: stats =>
-              YAML.stringify({
-                static_viz: stats.modules
-                  .filter(
-                    module =>
-                      module.type !== "hidden modules" &&
-                      module.moduleType !== "runtime",
-                  )
-                  .map(module =>
-                    module.nameForCondition.replace(`${__dirname}/`, ""),
-                  ),
-              }),
+    plugins: [
+      new StatsWriterPlugin({
+        stats: {
+          modules: true,
+          assets: false,
+          nestedModules: false,
+          reasons: false,
+          excludeModules: [/node_modules/],
+        },
+        filename: "../../../../.github/static-viz-sources.yaml",
+        transform: stats =>
+          YAML.stringify({
+            static_viz: stats.modules
+              .filter(
+                module =>
+                  module.type !== "hidden modules" &&
+                  module.moduleType !== "runtime",
+              )
+              .map(module =>
+                module.nameForCondition.replace(`${__dirname}/`, ""),
+              ),
           }),
-        ]
-      : [],
+      }),
+    ],
   };
 };
