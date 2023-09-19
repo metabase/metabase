@@ -3,19 +3,16 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  (s/enum "card" "dashboard" :card :dashboard))
+  [:enum "card" :card])
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
   {"card"      'Card
-   :card       'Card
-   "dashboard" 'Dashboard
-   :dashboard  'Dashboard})
+   :card       'Card})
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
