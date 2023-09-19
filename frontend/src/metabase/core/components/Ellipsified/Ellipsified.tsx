@@ -33,7 +33,7 @@ export const Ellipsified = ({
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
-    skip: canSkipTooltipRendering,
+    disabled: canSkipTooltipRendering,
   });
 
   return (
