@@ -38,6 +38,7 @@ import type {
 } from "metabase-types/api";
 
 import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/core/utils/types";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
@@ -174,17 +175,18 @@ export function FieldValuesWidgetInner({
     try {
       if (canUseDashboardEndpoints(dashboard)) {
         const { values, has_more_values } =
-          await _fetchDashboardParameterValues(query);
+          await dispatchFetchDashboardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } = await _fetchCardParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await dispatchFetchCardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await _fetchParameterValues(query);
+        const { values, has_more_values } = await dispatchFetchParameterValues(
+          query,
+        );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else {
@@ -250,7 +252,7 @@ export function FieldValuesWidgetInner({
     }
   };
 
-  const _fetchParameterValues = async (query?: string) => {
+  const dispatchFetchParameterValues = async (query?: string) => {
     if (!parameter) {
       return { has_more_values: false, values: [] };
     }
@@ -263,10 +265,10 @@ export function FieldValuesWidgetInner({
     );
   };
 
-  const _fetchCardParameterValues = async (query?: string) => {
+  const dispatchFetchCardParameterValues = async (query?: string) => {
     const cardId = question?.id();
 
-    if (!cardId || !parameter) {
+    if (!isNotNull(cardId) || !parameter) {
       return { has_more_values: false, values: [] };
     }
 
@@ -279,10 +281,10 @@ export function FieldValuesWidgetInner({
     );
   };
 
-  const _fetchDashboardParameterValues = async (query?: string) => {
+  const dispatchFetchDashboardParameterValues = async (query?: string) => {
     const dashboardId = dashboard?.id;
 
-    if (!dashboardId || !parameter || !parameters) {
+    if (!isNotNull(dashboardId) || !parameter || !parameters) {
       return { has_more_values: false, values: [] };
     }
 
