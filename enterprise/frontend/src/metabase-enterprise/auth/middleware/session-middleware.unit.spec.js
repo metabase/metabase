@@ -13,7 +13,7 @@ jest.mock("metabase/auth/actions", () => ({
   logout: jest.fn(),
   refreshSession: jest.fn(() => Promise.resolve()),
 }));
-jest.mock("react-router-redux", () => ({
+jest.mock("connected-react-router", () => ({
   replace: jest.fn(),
 }));
 
