@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -29,13 +29,13 @@ export interface NewItemMenuProps {
   hasDatabaseWithJsonEngine: boolean;
   hasDatabaseWithActionsEnabled: boolean;
   onCloseNavbar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
+  onChangeLocation: (nextLocation: To) => void;
 }
 
 type NewMenuItem = {
   title: string;
   icon: string;
-  link?: LocationDescriptor;
+  link?: To;
   event?: string;
   action?: () => void;
   onClose?: () => void;

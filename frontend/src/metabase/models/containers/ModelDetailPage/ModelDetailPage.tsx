@@ -4,7 +4,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "connected-react-router";
 import { useMount } from "react-use";
-import type { Location, LocationDescriptor } from "history";
+import type { Location, To } from "history";
 
 import { NotFound } from "metabase/containers/ErrorPages";
 
@@ -57,7 +57,7 @@ type DispatchProps = {
     collection: Collection,
     opts: ToastOpts,
   ) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 };
 
 type Props = OwnProps & EntityLoadersProps & DispatchProps;

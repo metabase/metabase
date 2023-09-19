@@ -3,7 +3,7 @@ import * as React from "react";
 import { Route } from "react-router-dom";
 import { push } from "connected-react-router";
 import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal";
@@ -44,7 +44,7 @@ type ComposedModalProps = {
 interface WrappedModalRouteProps {
   route: IRoute;
   location: Location;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
+  onChangeLocation: (nextLocation: To) => void;
 }
 
 const ModalWithRoute = (

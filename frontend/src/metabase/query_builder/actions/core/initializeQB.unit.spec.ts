@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
-import type { LocationDescriptorObject } from "history";
+import type { Path } from "history";
+import querystring from "querystring";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
@@ -49,7 +50,7 @@ type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
 
 type BaseSetupOpts = {
   user?: User;
-  location: LocationDescriptorObject;
+  location: Path;
   params: Record<string, unknown>;
 };
 
@@ -83,15 +84,12 @@ async function baseSetup({ user, location, params }: BaseSetupOpts) {
   return { dispatch, state, result, metadata };
 }
 
-function getLocationForCard(
-  card: TestCard,
-  extra: LocationDescriptorObject = {},
-): LocationDescriptorObject {
+function getLocationForCard(card: TestCard, extra: Partial<Path> = {}): Path {
   const isSaved = "id" in card;
   return {
     pathname: isSaved ? Urls.question(card) : Urls.serializedQuestion(card),
     hash: !isSaved ? CardLib.serializeCardForUrl(card) : "",
-    query: {},
+    search: "",
     ...extra,
   };
 }
@@ -113,7 +111,7 @@ function getQueryParamsForCard(
 
 type SetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
   card: TestCard;
-  location?: LocationDescriptorObject;
+  location?: Path;
   params?: Record<string, unknown>;
 };
 
@@ -279,7 +277,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("passes object ID from location query params correctly", async () => {
           const location = getLocationForCard(card, {
-            query: { objectId: 123 },
+            search: querystring.stringify({ objectId: 123 }),
           });
           const { result } = await setup({ card, location });
           expect(result.objectId).toBe(123);
@@ -333,7 +331,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("passes object ID from location query params correctly", async () => {
           const location = getLocationForCard(card, {
-            query: { objectId: 123 },
+            search: querystring.stringify({ objectId: 123 }),
           });
           const { result } = await setup({ card: card, location });
           expect(result.objectId).toBe(123);
@@ -388,7 +386,7 @@ describe("QB Actions > initializeQB", () => {
         it("throws not found error when opening question with /model URL", async () => {
           const { dispatch } = await setup({
             card: card,
-            location: { pathname: `/model/${card}` },
+            location: { pathname: `/model/${card}`, search: "", hash: "" },
           });
 
           expect(dispatch).toHaveBeenCalledWith(
@@ -686,8 +684,9 @@ describe("QB Actions > initializeQB", () => {
         hash = "#?" + hash;
       }
 
-      const location: LocationDescriptorObject = {
+      const location: Path = {
         pathname: "/question",
+        search: "",
         hash,
       };
 

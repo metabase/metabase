@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
+import querystring from "querystring";
 import _ from "underscore";
-import type { LocationDescriptorObject } from "history";
+import type { Location } from "history";
 import { push } from "connected-react-router";
 import { checkNotNull } from "metabase/core/utils/types";
 import { extractEntityId } from "metabase/lib/urls";
@@ -17,7 +18,7 @@ interface RouterParams {
 
 interface RouteProps {
   params: RouterParams;
-  location: LocationDescriptorObject;
+  location: Location;
 }
 
 interface DatabaseLoaderProps {
@@ -37,13 +38,17 @@ const mapStateToProps = (
   { params, location, databases }: RouteProps & DatabaseLoaderProps,
 ): StateProps => {
   const entityId = checkNotNull(extractEntityId(params.databaseId));
+  const query = querystring.parse(location.search);
+  const initialPrompt = Array.isArray(query.prompt)
+    ? query.prompt[0]
+    : query.prompt;
 
   return {
     entityId,
     entityType: "database",
     database: Databases.selectors.getObject(state, { entityId }),
     databases: databases.filter(canUseMetabotOnDatabase),
-    initialPrompt: location?.query?.prompt,
+    initialPrompt,
   };
 };
 

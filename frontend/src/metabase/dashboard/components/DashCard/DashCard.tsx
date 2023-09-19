@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { getIn } from "icepick";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import { useMount } from "react-use";
 import type { IconProps } from "metabase/core/components/Icon";
@@ -82,7 +82,7 @@ export interface DashCardProps {
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 function DashCard({

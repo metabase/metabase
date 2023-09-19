@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import type { LocationDescriptorObject } from "history";
+import querystring from "querystring";
+import type { Location } from "history";
 import { checkNotNull } from "metabase/core/utils/types";
 import { extractEntityId } from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
@@ -15,7 +16,7 @@ interface RouterParams {
 
 interface RouteProps {
   params: RouterParams;
-  location: LocationDescriptorObject;
+  location: Location;
 }
 
 interface CardLoaderProps {
@@ -33,11 +34,15 @@ const mapStateToProps = (
   { params, location }: CardLoaderProps & RouteProps,
 ): StateProps => {
   const entityId = checkNotNull(extractEntityId(params.slug));
+  const query = querystring.parse(location.search);
+  const initialPrompt = Array.isArray(query.prompt)
+    ? query.prompt[0]
+    : query.prompt;
 
   return {
     entityId,
     entityType: "model",
-    initialPrompt: location?.query?.prompt,
+    initialPrompt,
   };
 };
 

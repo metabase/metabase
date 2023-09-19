@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import ModalContent from "metabase/components/ModalContent";
@@ -21,7 +21,7 @@ interface CreateDashboardModalOwnProps
 }
 
 interface CreateDashboardModalDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 type Props = CreateDashboardModalOwnProps & CreateDashboardModalDispatchProps;

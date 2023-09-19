@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 
@@ -84,7 +84,7 @@ interface DashCardVisualizationProps {
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 function mapDispatchToProps(dispatch: Dispatch) {

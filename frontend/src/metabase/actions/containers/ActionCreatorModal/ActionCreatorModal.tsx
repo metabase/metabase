@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { connect } from "react-redux";
 import { replace } from "connected-react-router";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import * as Urls from "metabase/lib/urls";
 import Actions from "metabase/entities/actions";
@@ -21,7 +21,7 @@ interface OwnProps {
     actionId?: string;
   };
   onClose: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 interface EntityLoaderProps {
@@ -32,7 +32,7 @@ interface EntityLoaderProps {
 
 interface DispatchProps {
   setErrorPage: (error: AppErrorDescriptor) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;

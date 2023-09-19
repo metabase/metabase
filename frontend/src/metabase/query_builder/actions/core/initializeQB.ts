@@ -1,5 +1,5 @@
 import querystring from "querystring";
-import type { LocationDescriptorObject } from "history";
+import type { Path } from "history";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
@@ -236,15 +236,12 @@ export async function updateTemplateTagNames(
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
-  {
-    location,
-    params,
-  }: { location: LocationDescriptorObject; params: QueryParams },
+  { location, params }: { location: Path; params: QueryParams },
 ) {
   dispatch(resetQB());
   dispatch(cancelQuery());
 
-  const queryParams = location.query;
+  const queryParams = querystring.parse(location.search);
   const cardId = Urls.extractEntityId(params.slug);
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
@@ -367,7 +364,7 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (location: LocationDescriptorObject, params: QueryParams) =>
+  (location: Path, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
     try {
       await handleQBInit(dispatch, getState, { location, params });

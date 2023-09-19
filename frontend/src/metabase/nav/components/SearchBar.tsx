@@ -3,7 +3,8 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { push } from "connected-react-router";
 import { withRouter } from "react-router-dom";
-import type { LocationDescriptorObject } from "history";
+import type { To } from "history";
+import querystring from "querystring";
 
 import { usePrevious } from "react-use";
 import { Icon } from "metabase/core/components/Icon";
@@ -75,8 +76,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
+    (nextLocation: To) => dispatch(push(nextLocation)),
     [dispatch],
   );
 
@@ -165,7 +165,10 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       if (e.key === "Enter" && hasSearchText) {
         onChangeLocation({
           pathname: "search",
-          query: { q: searchText.trim(), ...searchFilters },
+          search: querystring.stringify({
+            q: searchText.trim(),
+            ...searchFilters,
+          }),
         });
       }
     },

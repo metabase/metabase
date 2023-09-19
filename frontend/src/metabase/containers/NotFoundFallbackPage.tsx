@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import { replace } from "connected-react-router";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import { useMount } from "react-use";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -9,7 +9,7 @@ import { NotFound } from "./ErrorPages";
 
 type DispatchProps = {
   refreshCurrentUser: () => any;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 };
 
 type Props = DispatchProps;

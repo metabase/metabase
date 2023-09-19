@@ -1,5 +1,5 @@
-import type { LocationDescriptorObject } from "history";
-import type { QueryBuilderMode, DatasetEditorTab } from "metabase-types/store";
+import type { Path } from "history";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 type LocationQBModeResult = {
   queryBuilderMode: QueryBuilderMode;
@@ -7,7 +7,7 @@ type LocationQBModeResult = {
 };
 
 export function getQueryBuilderModeFromLocation(
-  location: LocationDescriptorObject,
+  location: Path,
 ): LocationQBModeResult {
   const { pathname } = location;
   if (pathname?.endsWith("/notebook")) {

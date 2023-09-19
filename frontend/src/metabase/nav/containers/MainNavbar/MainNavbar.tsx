@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "connected-react-router";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
+import type { To } from "history";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -37,7 +37,7 @@ interface StateProps {
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 type Props = MainNavbarOwnProps &
