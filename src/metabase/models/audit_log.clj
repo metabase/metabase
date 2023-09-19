@@ -1,5 +1,5 @@
 (ns metabase.models.audit-log
-  "Model defenition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is a
+  "Model defenition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is
   distinct from the Activity and View Log models, which predate this namespace, and which power specific API endpoints
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
