@@ -7,17 +7,13 @@
    [clojure.walk :as walk]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            NativeQuerySnippet
-            Permissions
-            PermissionsGroup
-            Pulse
-            User]]
+    :refer [Card Collection Dashboard NativeQuerySnippet Permissions
+            PermissionsGroup Pulse User]]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1653,3 +1649,11 @@
           (is (= "e816af2d"
                  (serdes/raw-hash ["grandchild" :yolocorp c2-hash now])
                  (serdes/identity-hash c3))))))))
+
+(deftest instance-analytics-collections-test
+  (premium-features-test/with-premium-features #{:audit-app}
+    (with-redefs [perms/default-audit-collection-entity-id (constantly "collection-entity-id")]
+      (t2.with-temp/with-temp [Collection collection {:entity_id "collection-entity-id"}]
+        (mt/with-current-user (mt/user->id :crowberto)
+                                           (is (not (mi/can-write? Collection (:id collection)))
+                                               "Admin isn't able to write to audit collection"))))))
