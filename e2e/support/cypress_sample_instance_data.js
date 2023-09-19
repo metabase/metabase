@@ -59,3 +59,8 @@ export const ORDERS_DASHBOARD_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.dashboards,
   { name: "Orders in a dashboard" },
 ).id;
+
+export const NORMAL_PERSONAL_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  first_name: "Robert",
+  last_name: "Tableton",
+}).id;
