@@ -85,7 +85,9 @@
   "SerDes v2 load entry point for internal users.
 
   `opts` are passed to [[v2.load/load-metabase]]."
-  [path :- :string
+  [path :- [:or {:error/message "Must be a java.net.URL or a string."}
+            :string
+            [:fn #(instance? URL %)]]
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?]
