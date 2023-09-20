@@ -1272,6 +1272,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-name :name, coll-id :id}]
-                        [((fnil u/lower-case-en "") coll-name) coll-id])))))
+             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+                        ;; coll-type is `nil` or "instance-analytics"
+                        ;; nil sorts first, so we get instance-analytics at the end, which is what we want
+                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
      (annotate-collections coll-type-ids collections))))
