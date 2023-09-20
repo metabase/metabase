@@ -933,15 +933,15 @@
   eg:
   (dash-template->affinities-map
    (dashboard-templates/get-dashboard-template [\"table\" \"TransactionTable\"]))
-  {\"CountByState\"       {:dimensions [\"State\"],
-                           :metrics    [\"TotalOrders\"],
-                           :score      90},
-   \"RowcountLast30Days\" {:filters [\"Last30Days\"],
-                           :metrics [\"TotalOrders\"],
-                           :score 100,
-                           :dimensions []}
+  {\"CountByState\"       [{:dimensions [\"State\"],
+                            :metrics    [\"TotalOrders\"],
+                            :score      90}],
+   \"RowcountLast30Days\" [{:filters [\"Last30Days\"],
+                            :metrics [\"TotalOrders\"],
+                            :score 100,
+                            :dimensions []}]
    ,,,}.
-  This assumes that card names are disinct."
+"
   [{card-templates :cards :as _dashboard-template}]
   ;; todo: cards can specify native queries with dimension template tags. See
   ;; resources/automagic_dashboards/table/example.yaml
@@ -961,15 +961,19 @@
                                 ;; dimensions are maps with multiple keys and aggregation information
                                 ;; as values, just want the keys
 
-                                (fn [dims] (into [] (comp (map keys)
-                                                          cat)
-                                                 dims)))))]
-    ;; order by score descending
-    (into {} (comp cat (map (juxt key (comp card-deps val)))) card-templates)))
+                                (fn [dims] (into [] (comp (map keys) cat) dims)))))]
+    (group-by first (into [] (comp cat (map (juxt key (comp card-deps val)))) card-templates))))
 
 (comment
   (dash-template->affinities-map
    (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+  ;; Generic Table has cards with the same name. One depends on CreateTime, one on CreateTimestamp. Need both
+  ;; definitions around for matching
+  (let [affinities (-> ["table" "GenericTable"]
+                       dashboard-templates/get-dashboard-template
+                       dash-template->affinities-map)]
+    (affinities "HourOfDayCreateDate"))
+
   )
 
 (defn match-affinities
@@ -990,14 +994,17 @@
                 :filter
                 dashboard-templates/collect-dimensions))]
     (into {}
-          (keep (fn [[affinity-name {:keys [dimensions metrics filters] :as combination}]]
-                  (let [dimension-deps (concat dimensions
-                                               (mapcat metric-deps metrics)
-                                               (mapcat filter-deps filters))]
-                    (when (every? available-dimensions dimension-deps)
-                      ;; todo: when do we want to "populate" the affinity definition with bound fields.
-                      [affinity-name combination]
-                      ))))
+          (keep (fn [[affinity-name definitions]]
+                  (reduce
+                   (fn [_ {:keys [dimensions metrics filters] :as definition}]
+                     (let [dimension-deps (concat dimensions
+                                                  (mapcat metric-deps metrics)
+                                                  (mapcat filter-deps filters))]
+                       (when (every? available-dimensions dimension-deps)
+                         ;; todo: when do we want to "populate" the affinity definition with bound fields.
+                         (reduced [affinity-name definition]))))
+                   nil
+                   definitions)))
           affinities)))
 
 (s/defn ^:private make-base-context
@@ -1103,13 +1110,14 @@
                                       (update dashboard-template
                                               :cards
                                               (fn [card-templates]
-                                                card-templates)))]
+                                                (filter (comp interestings key first)
+                                                        card-templates))))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
-         :filters (->> dashboard_filters
-                       (mapcat (comp :matches dimensions))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
-         :cards cards)
+              :filters (->> dashboard_filters
+                            (mapcat (comp :matches dimensions))
+                            (remove (comp (singular-cell-dimensions root) id-or-name)))
+              :cards cards)
        dashboard-template
        available-values])))
 
