@@ -1013,7 +1013,8 @@
   (let [affinities (-> ["table" "GenericTable"]
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
-    (affinities "HourOfDayCreateDate"))
+    (match-affinities affinities
+                      {:available-dimensions {"JoinDate" :whatever}}))
   )
 
 (defn match-affinities
