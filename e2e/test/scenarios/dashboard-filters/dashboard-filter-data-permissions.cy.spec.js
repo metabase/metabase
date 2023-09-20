@@ -4,9 +4,10 @@ import {
   selectDashboardFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 function filterDashboard(suggests = true) {
-  visitDashboard(1);
+  visitDashboard(ORDERS_DASHBOARD_ID);
   cy.contains("Orders");
   cy.contains("Text").click();
 
@@ -29,13 +30,16 @@ function filterDashboard(suggests = true) {
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/dashboard/1/params/*/search/*").as("search");
+    cy.intercept(
+      "GET",
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/params/*/search/*").as("search`,
+    );
 
     restore();
     cy.signInAsAdmin();
 
     // Setup a dashboard with a text filter
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     // click pencil icon to edit
     cy.icon("pencil").click();
 
@@ -68,7 +72,7 @@ describe("support > permissions (metabase#8472)", () => {
     cy.signIn("nocollection");
     cy.request({
       method: "GET",
-      url: "/api/dashboard/1",
+      url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
       failOnStatusCode: false,
     }).should(xhr => {
       expect(xhr.status).to.equal(403);

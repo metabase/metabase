@@ -3,19 +3,27 @@
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
+   [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
    [metabase.lib.drill-thru.foreign-key :as lib.drill-thru.foreign-key]
    [metabase.lib.drill-thru.object-details :as lib.drill-thru.object-details]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
+   [metabase.lib.drill-thru.pk :as lib.drill-thru.pk]
    [metabase.lib.drill-thru.quick-filter :as lib.drill-thru.quick-filter]
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
    [metabase.lib.drill-thru.summarize-column :as lib.drill-thru.summarize-column]
    [metabase.lib.drill-thru.summarize-column-by-time :as lib.drill-thru.summarize-column-by-time]
    [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
-   #_[metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.drill-thru.zoom :as lib.drill-thru.zoom]
+   [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.util.malli :as mu]))
+
+(comment
+  lib.drill-thru.fk-details/keep-me
+  lib.drill-thru.pk/keep-me
+  lib.drill-thru.zoom/keep-me)
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:
@@ -51,7 +59,7 @@
           lib.drill-thru.summarize-column/summarize-column-drill
           lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
           lib.drill-thru.underlying-records/underlying-records-drill
-          #_lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])))
+          lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`

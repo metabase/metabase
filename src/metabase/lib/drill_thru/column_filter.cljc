@@ -3,8 +3,6 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -22,7 +20,7 @@
              (not (lib.types.isa/structured? column))
              ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
              (some? (:id column)))
-    (let [initial-op (when-not (lib.types.isa/date? column) ; Date fields have special handling in the FE.
+    (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
                        (-> (lib.filter.operator/filter-operators column)
                            first
                            (assoc :lib/type :operator/filter)))]
@@ -36,6 +34,10 @@
   {:type       :drill-thru/column-filter
    :initial-op initial-op})
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-filter
-  [query stage-number {:keys [column] :as _drill-thru} filter-op value & _]
-  (lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
+(mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-filter :- ::lib.schema/query
+  [query                            :- ::lib.schema/query
+   stage-number                     :- :int
+   {:keys [column] :as _drill-thru} :- ::lib.schema.drill-thru/drill-thru.column-filter
+   filter-op                        :- [:or :keyword :string] ; filter tag
+   value                            :- :any]
+  (lib.filter/filter query stage-number (lib.filter/filter-clause filter-op column value)))

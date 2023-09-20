@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -65,7 +64,7 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone! [datetime-str ^String timezone-id]
+(defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
     (mt/with-report-timezone-id timezone-id
       (is (= (qp.timezone/results-timezone-id)
@@ -74,11 +73,11 @@
       (second (#'qp.wrap-value-literals/add-type-info datetime-str
                                                       {:unit :day})))))
 
-(deftest parse-datetime-literal-strings-test
+(deftest ^:parallel parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone! "2018-10-01" timezone))
+           (parse-with-timezone "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test
@@ -122,14 +121,13 @@
            "being compared against a type/DateTime `field-literal`")))
 
 (def ^:private unix-timestamp-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:fields [(merge (meta/field-metadata :checkins :date)
-                     {:id                1
-                      :base-type         :type/Integer
-                      :effective-type    :type/DateTime
-                      :coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
-   meta/metadata-provider))
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:fields [(merge (meta/field-metadata :checkins :date)
+                    {:id                1
+                     :base-type         :type/Integer
+                     :effective-type    :type/DateTime
+                     :coercion-strategy :Coercion/UNIXSeconds->DateTime})]}))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-4
   (qp.store/with-metadata-provider unix-timestamp-metadata-provider

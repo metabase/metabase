@@ -27,6 +27,6 @@ export const createMockForeignKey = (
 ): ForeignKey => ({
   origin_id: 1,
   destination_id: 1,
-  relationship: "",
+  relationship: "Mt1",
   ...opts,
 });

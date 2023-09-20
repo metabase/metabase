@@ -10,14 +10,15 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -33,7 +34,7 @@
      t)))
 
 (defn- param-value->str
-  [{coercion :coercion_strategy, :as field} x]
+  [{coercion :coercion-strategy, :as field} x]
   (cond
     ;; #30136: Provide a way of using dashboard filter as a variable.
     (and (sequential? x) (= (count x) 1))
@@ -64,15 +65,12 @@
     :else
     (pr-str x)))
 
-(defn- field->name
-  ([field] (field->name field true))
-  ;; store parent Field(s) if needed, since `mongo.qp/field->name` attempts to look them up using the QP store
-  ([field pr?]
-   (letfn [(store-parent-field! [{parent-id :parent_id}]
-             (when parent-id
-               (qp.store/fetch-and-store-fields! #{parent-id})
-               (store-parent-field! (qp.store/field parent-id))))]
-     (store-parent-field! field))
+(mu/defn ^:private field->name
+  ([field]
+   (field->name field true))
+
+  ([field :- lib.metadata/ColumnMetadata
+    pr?]
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
      pr? pr-str)))
@@ -111,7 +109,10 @@
     :else
     (format "{%s: %s}" (field->name field) (param-value->str field value))))
 
-(defn- substitute-field-filter [{field :field, {:keys [value]} :value, :as field-filter}]
+(mu/defn ^:private substitute-field-filter
+  [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
+                                                                [:field lib.metadata/ColumnMetadata]
+                                                                [:value [:map [:value :any]]]]]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
@@ -135,7 +136,7 @@
                                            :target
                                            [:template-tag
                                             [:field (field->name (:field v) false)
-                                             {:base-type (get-in v [:field :base_type])}]])
+                                             {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that

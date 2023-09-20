@@ -9,7 +9,8 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -37,10 +38,10 @@
     (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
   :ok)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/snapshot/:name"
+(api/defendpoint POST "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [name]
+  {name ms/NonBlankString}
   (save-snapshot! name)
   nil)
 
@@ -95,16 +96,16 @@
         (.. lock writeLock unlock))))
   :ok)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/restore/:name"
+(api/defendpoint POST "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [name]
+  {name ms/NonBlankString}
   (restore-snapshot! name)
   nil)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/echo"
+(api/defendpoint POST "/echo"
   [fail :as {:keys [body]}]
+  {fail ms/BooleanValue}
   (if fail
     {:status 400
      :body {:error-code "oops"}}

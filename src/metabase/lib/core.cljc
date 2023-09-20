@@ -242,6 +242,7 @@
   native-extras
   with-native-extras
   with-different-database
+  has-write-permission
   extract-template-tags]
  [lib.order-by
   change-direction
@@ -252,7 +253,8 @@
  [lib.normalize
   normalize]
  [lib.query
-  query]
+  query
+  with-different-table]
  [lib.ref
   ref]
  [lib.remove-replace

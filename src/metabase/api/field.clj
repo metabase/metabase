@@ -23,9 +23,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
@@ -38,7 +35,7 @@
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
-  (apply s/enum (map name field/visibility-types)))
+  (into [:enum] (map name field/visibility-types)))
 
 (defn- has-segmented-query-permissions?
   "Does the Current User have segmented query permissions for `table`?"
@@ -54,12 +51,12 @@
                 (has-segmented-query-permissions? (field/table field)))
     (api/throw-403)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
-  (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
-        field                       (-> (api/check-404 (t2/select-one Field :id id))
+  {id                          ms/PositiveInt
+   include_editable_data_model ms/BooleanValue}
+  (let [field                       (-> (api/check-404 (t2/select-one Field :id id))
                                         (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field                       (if include_editable_data_model
                                       (field/hydrate-target-with-write-perms field)
@@ -129,24 +126,24 @@
                   {:active false})))
   nil)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
             :as   body} :body}]
-  {caveats            (s/maybe su/NonBlankString)
-   description        (s/maybe su/NonBlankString)
-   display_name       (s/maybe su/NonBlankString)
-   fk_target_field_id (s/maybe su/IntGreaterThanZero)
-   points_of_interest (s/maybe su/NonBlankString)
-   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
-   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
-   visibility_type    (s/maybe FieldVisibilityType)
-   has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
-   settings           (s/maybe su/Map)
-   nfc_path           (s/maybe [su/NonBlankString])
-   json_unfolding     (s/maybe s/Bool)}
+  {id                 ms/PositiveInt
+   caveats            [:maybe ms/NonBlankString]
+   description        [:maybe ms/NonBlankString]
+   display_name       [:maybe ms/NonBlankString]
+   fk_target_field_id [:maybe ms/PositiveInt]
+   points_of_interest [:maybe ms/NonBlankString]
+   semantic_type      [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]
+   coercion_strategy  [:maybe ms/CoercionStrategyKeywordOrString]
+   visibility_type    [:maybe FieldVisibilityType]
+   has_field_values   [:maybe (into [:enum] (map name field/has-field-values-options))]
+   settings           [:maybe ms/Map]
+   nfc_path           [:maybe [:sequential ms/NonBlankString]]
+   json_unfolding     [:maybe :boolean]}
   (let [field             (t2/hydrate (api/write-check Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -194,10 +191,10 @@
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/summary"
+(api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
+  {id ms/PositiveInt}
   (let [field (api/read-check Field id)]
     [[:count     (metadata-queries/field-count field)]
      [:distincts (metadata-queries/field-distinct-count field)]]))
@@ -205,13 +202,13 @@
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/dimension"
+(api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
-  {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name          (su/api-param "name" su/NonBlankString)
-   human_readable_field_id (s/maybe su/IntGreaterThanZero)}
+  {id                      ms/PositiveInt
+   dimension-type          [:enum "internal" "external"]
+   dimension-name          ms/NonBlankString
+   human_readable_field_id [:maybe ms/PositiveInt]}
   (api/write-check Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
@@ -229,10 +226,10 @@
                  :human_readable_field_id human_readable_field_id}))
   (t2/select-one Dimension :field_id id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/dimension"
+(api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
+  {id ms/PositiveInt}
   (api/write-check Field id)
   (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
@@ -281,8 +278,7 @@
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/field%2C:field-name%2C:options/values"
+(api/defendpoint GET "/field%2C:field-name%2C:options/values"
   "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored
@@ -317,12 +313,12 @@
                 :human_readable_values (when human-readable-values?
                                          (map second value-pairs)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/values"
+(api/defendpoint POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
+  {id          ms/PositiveInt
+   value-pairs [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -332,11 +328,11 @@
       (create-field-values! field value-pairs)))
   {:status :success})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rescan_values"
+(api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
+  {id ms/PositiveInt}
   (let [field (api/write-check (t2/select-one Field :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -345,11 +341,11 @@
       (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/discard_values"
+(api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
+  {id ms/PositiveInt}
   (field-values/clear-field-values-for-field! (api/write-check (t2/select-one Field :id id)))
   {:status :success})
 
@@ -480,19 +476,21 @@
     (.parse (NumberFormat/getInstance) value)
     value))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/remapping/:remapped-id"
+(api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id, ^String value]
+  [id remapped-id value]
+  {id          ms/PositiveInt
+   remapped-id ms/PositiveInt
+   value       ms/NonBlankString}
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/related"
+(api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
+  {id ms/PositiveInt}
   (-> (t2/select-one Field :id id) api/read-check related/related))
 
 (api/define-routes)

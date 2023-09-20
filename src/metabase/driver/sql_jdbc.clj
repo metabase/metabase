@@ -64,9 +64,11 @@
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
   ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
-  (when (not= (get-method sql-jdbc.sync/db-default-timezone driver)
-              (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
-    (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))))
+  (if-not (identical? (get-method sql-jdbc.sync/db-default-timezone driver)
+                      (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
+    (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))
+    ;; otherwise fall back to the default implementation.
+    ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
   [driver query chans respond]

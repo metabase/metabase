@@ -1,38 +1,39 @@
 (ns metabase.lib.drill-thru.quick-filter
   (:require
+   [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
 
-(mu/defn ^:private operators-for :- [:sequential [:map [:name string?] [:filter ::lib.schema.expression/boolean]]]
+(mu/defn ^:private operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- lib.metadata/ColumnMetadata
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
-      (lib.types.isa/structured? column)  []
-      (= value :null)                     [{:name "=" :filter (operator :is-null  field-ref)}
-                                           {:name "≠" :filter (operator :not-null field-ref)}]
+      (lib.types.isa/structured? column)    []
+      (= value :null)                       [{:name "=" :filter (operator :is-null  field-ref)}
+                                             {:name "≠" :filter (operator :not-null field-ref)}]
       (or (lib.types.isa/numeric? column)
-          (lib.types.isa/date? column))   (for [[op label] [[:<  "<"]
-                                                            [:>  ">"]
-                                                            [:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)})
-      :else                               (for [[op label] [[:=  "="]
-                                                            [:!= "≠"]]]
-                                            {:name   label
-                                             :filter (operator op field-ref value)}))))
+          (lib.types.isa/temporal? column)) (for [[op label] [[:<  "<"]
+                                                              [:>  ">"]
+                                                              [:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)})
+      :else                                 (for [[op label] [[:=  "="]
+                                                              [:!= "≠"]]]
+                                              {:name   label
+                                               :filter (operator op field-ref value)}))))
 
 (mu/defn quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.quick-filter]
   "Filter the current query based on the value clicked.
@@ -62,12 +63,15 @@
   {:type      (:type drill-thru)
    :operators (map :name (:operators drill-thru))})
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter
-  [query stage-number drill-thru filter-op & _more]
-  (if-let [quick-filter (first (filter #(= (:name %) filter-op) (:operators drill-thru)))]
+(mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/quick-filter :- ::lib.schema/query
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   drill        :- ::lib.schema.drill-thru/drill-thru.quick-filter
+   filter-op    :- ::lib.schema.common/non-blank-string]
+  (if-let [quick-filter (m/find-first #(= (:name %) filter-op) (:operators drill))]
     (lib.filter/filter query stage-number (:filter quick-filter))
     (throw (ex-info (str "No matching filter for operator " filter-op)
-                    {:drill-thru   drill-thru
+                    {:drill-thru   drill
                      :operator     filter-op
                      :query        query
                      :stage-number stage-number}))))

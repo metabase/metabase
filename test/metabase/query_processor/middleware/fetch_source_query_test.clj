@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
@@ -11,8 +10,8 @@
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]))
 
 (defn- resolve-card-id-source-tables [query]
   (letfn [(thunk []
@@ -40,20 +39,11 @@
                             (qp/query->expected-cols outer-query)
                             metadata))))))
 
-(defn- card-with-metadata [id query]
-  (qp.store/with-metadata-provider meta/metadata-provider
-    {:id              id
-     :database-id     (meta/id)
-     :name            (format "Card %d" id)
-     :dataset-query   query
-     :result-metadata (qp/query->expected-cols query)}))
-
 (def ^:private mock-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:cards [(card-with-metadata 1 (lib.tu.macros/mbql-query venues))
-             (card-with-metadata 2 (lib.tu.macros/mbql-query checkins))]})
-   meta/metadata-provider))
+  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+   meta/metadata-provider
+   [(lib.tu.macros/mbql-query venues)
+    (lib.tu.macros/mbql-query checkins)]))
 
 (deftest ^:parallel resolve-mbql-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves MBQL queries"
@@ -120,42 +110,30 @@
 
 (deftest ^:parallel resolve-native-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves native queries"
-    (let [card (dissoc (lib.tu/mock-cards :venues/native) :result-metadata)]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [card]})
-                                        meta/metadata-provider)
-        (is (= (assoc (default-result-with-inner-query
-                       {:aggregation    [[:count]]
-                        :breakout       [[:field "price" {:base-type :type/Integer}]]
-                        :source-query   {:native "SELECT * FROM venues"}
-                        :source-card-id (u/the-id card)}
-                       nil)
-                      :info {:card-id (u/the-id card)})
-               (resolve-card-id-source-tables
-                (wrap-inner-query
-                 {:source-table (str "card__" (u/the-id card))
-                  :aggregation  [[:count]]
-                  :breakout     [[:field "price" {:base-type :type/Integer}]]}))))))))
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(:dataset-query (lib.tu/mock-cards :venues/native))])
+      (is (= (assoc (default-result-with-inner-query
+                     {:aggregation    [[:count]]
+                      :breakout       [[:field "price" {:base-type :type/Integer}]]
+                      :source-query   {:native "SELECT * FROM venues"}
+                      :source-card-id 1}
+                     nil)
+                    :info {:card-id 1})
+             (resolve-card-id-source-tables
+              (wrap-inner-query
+               {:source-table "card__1"
+                :aggregation  [[:count]]
+                :breakout     [[:field "price" {:base-type :type/Integer}]]})))))))
 
 (defn- nested-nested-provider []
-  (let [provider* (lib/composed-metadata-provider
-                   (lib.tu/mock-metadata-provider
-                    {:cards [(card-with-metadata 1 (lib.tu.macros/mbql-query venues {:limit 100}))]})
-                   meta/metadata-provider)]
-    (lib/composed-metadata-provider
-     (lib.tu/mock-metadata-provider
-      (qp.store/with-metadata-provider provider*
-        {:cards [(let [query {:database lib.schema.id/saved-questions-virtual-database-id
-                              :type     :query
-                              :query    {:source-table "card__1"
-                                         :limit        50}}]
-                   {:id              2
-                    :name            "Card 2"
-                    :database-id     (meta/id)
-                    :dataset-query   query
-                    :result-metadata (qp/query->expected-cols query)})]}))
-     provider*)))
+  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+   meta/metadata-provider
+   [(lib.tu.macros/mbql-query venues {:limit 100})
+    {:database lib.schema.id/saved-questions-virtual-database-id
+     :type     :query
+     :query    {:source-table "card__1"
+                :limit        50}}]))
 
 (deftest ^:parallel nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
@@ -177,30 +155,14 @@
                {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (let [app-db-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        provider* (lib/composed-metadata-provider
-                   (lib.tu/mock-metadata-provider
-                    {:cards (qp.store/with-metadata-provider app-db-provider
-                              [(let [query (mt/mbql-query venues {:limit 100})]
-                                 {:id               1
-                                  :database-id      (mt/id)
-                                  :name             "Card 1"
-                                  :dataset          true
-                                  :dataset-query    query
-                                  :results-metadata (qp/query->expected-cols query)})])})
-                   app-db-provider)]
-    (lib/composed-metadata-provider
-     (lib.tu/mock-metadata-provider
-      {:cards (qp.store/with-metadata-provider provider*
-                [(let [query {:database lib.schema.id/saved-questions-virtual-database-id
-                              :type     :query
-                              :query    {:source-table "card__1"}}]
-                   {:id               2
-                    :database-id      (mt/id)
-                    :name             "Card 2"
-                    :dataset-query    query
-                    :results-metadata (qp/query->expected-cols query)})])})
-     provider*)))
+  (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+       [(mt/mbql-query venues {:limit 100})
+        {:database lib.schema.id/saved-questions-virtual-database-id
+         :type     :query
+         :query    {:source-table "card__1"
+                    :limit        50}}])
+      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :dataset true}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"
@@ -251,14 +213,9 @@
     :field_ref    [:field (meta/id :categories :name) nil]}])
 
 (def ^:private joins-metadata-provider
-  (lib/composed-metadata-provider
-   (lib.tu/mock-metadata-provider
-    {:cards [{:id              1
-              :name            "Card 1"
-              :database-id     1
-              :dataset-query   (lib.tu.macros/mbql-query categories {:limit 100})
-              :result-metadata joins-metadata}]})
-   meta/metadata-provider))
+  (-> meta/metadata-provider
+      (lib.tu/metadata-provider-with-cards-for-queries [(lib.tu.macros/mbql-query categories {:limit 100})])
+      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :result-metadata joins-metadata}]})))
 
 (deftest ^:parallel joins-test
   (qp.store/with-metadata-provider joins-metadata-provider
@@ -310,17 +267,16 @@
                                   :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}})))))))
 
 (deftest ^:parallel joins-test-4
-  (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                    (lib.tu/mock-metadata-provider
-                                     (qp.store/with-metadata-provider joins-metadata-provider
-                                       {:cards [(let [query (lib.tu.macros/mbql-query nil
-                                                              {:source-table "card__1", :limit 200})]
-                                                  {:id              2
-                                                   :name            "Card 2"
-                                                   :database-id     (meta/id)
-                                                   :dataset-query   query
-                                                   :result-metadata (qp/query->expected-cols query)})]}))
-                                    joins-metadata-provider)
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    joins-metadata-provider
+                                    (qp.store/with-metadata-provider joins-metadata-provider
+                                      {:cards [(let [query (lib.tu.macros/mbql-query nil
+                                                             {:source-table "card__1", :limit 200})]
+                                                 {:id              2
+                                                  :name            "Card 2"
+                                                  :database-id     (meta/id)
+                                                  :dataset-query   query
+                                                  :result-metadata (qp/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
       (is (= (lib.tu.macros/mbql-query venues
                {:joins [{:alias           "c"
@@ -344,13 +300,9 @@
     (let [query {:database (meta/id)
                  :type     :query
                  :query    {:source-table "card__1"}}]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:cards [{:id            1
-                                                   :name          "Card 1"
-                                                   :database-id   (meta/id)
-                                                   :dataset-query query}]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                        meta/metadata-provider
+                                        [query])
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Circular dependency"
@@ -360,21 +312,14 @@
   (testing (str "middleware should throw an Exception if we try to resolve a source query card with a source query "
                 "that refers back to the original")
     ;; Card 1 refers to Card 2, and Card 2 refers to Card 1
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table "card__2"}}}
-                                                {:id            2
-                                                 :name          "Card 2"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table "card__1"}}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [{:database (meta/id)
+                                        :type     :query
+                                        :query    {:source-table "card__2"}}
+                                       {:database (meta/id)
+                                        :type     :query
+                                        :query    {:source-table "card__1"}}])
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Circular dependency"
@@ -392,19 +337,12 @@
 ;;
 (deftest ^:parallel complex-topologies-test
   (testing "We should allow complex topologies"
-    (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                      (lib.tu/mock-metadata-provider
-                                       {:cards [{:id            1
-                                                 :name          "Card 1"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query (lib.tu.macros/mbql-query venues)}
-                                                {:id            2
-                                                 :name          "Card 2"
-                                                 :database-id   (meta/id)
-                                                 :dataset-query {:database (meta/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table "card__1"}}}]})
-                                      meta/metadata-provider)
+    (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                      meta/metadata-provider
+                                      [(lib.tu.macros/mbql-query venues)
+                                       {:database (meta/id)
+                                        :type     :query
+                                        :query    {:source-table "card__1"}}])
       (is (some? (resolve-card-id-source-tables
                   (lib.tu.macros/mbql-query nil
                     {:source-table "card__1"
@@ -446,13 +384,9 @@
                  :database (meta/id)}]
       ;; this doesn't actually need to load Mongo code, there is special casing for `:mongo`
       ;; in [[metabase.query-processor.middleware.fetch-source-query/source-query]]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:database (assoc meta/metadata :engine :mongo)
-                                          :cards    [{:id            1
-                                                      :database-id   (meta/id)
-                                                      :name          "Card 1"
-                                                      :dataset-query query}]}))
+      (qp.store/with-metadata-provider (-> meta/metadata-provider
+                                           (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
+                                           (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (= {:source-metadata nil
                 :source-query    {:projections ["_id" "user_id" "venue_id"],
                                   :native      {:collection "checkins"
@@ -474,14 +408,9 @@
                      :native   {:query      query-str
                                 :collection "checkins"}
                      :database (meta/id)}]
-      (qp.store/with-metadata-provider (lib/composed-metadata-provider
-                                        (lib.tu/mock-metadata-provider
-                                         {:database (assoc meta/metadata :engine :mongo)
-                                          :cards    [{:id            1
-                                                      :database-id   (meta/id)
-                                                      :name          "Card 1"
-                                                      :dataset-query query}]})
-                                        meta/metadata-provider)
+      (qp.store/with-metadata-provider (-> meta/metadata-provider
+                                           (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
+                                           (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (= {:source-metadata nil
                 :source-query    {:native     {:collection "checkins"
                                                :query      query-str}

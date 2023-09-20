@@ -1,5 +1,9 @@
 import { t } from "ttag";
-import type { ClickActionBase, Drill } from "metabase/visualizations/types";
+import type {
+  ClickActionBase,
+  ClickActionProps,
+  QuestionChangeClickAction,
+} from "metabase/visualizations/types";
 import {
   sortDrill,
   sortDrillQuestion,
@@ -22,7 +26,10 @@ const ACTIONS: Record<string, ClickActionBase> = {
   },
 };
 
-const SortDrill: Drill = ({ question, clicked }) => {
+const SortDrill = ({
+  question,
+  clicked,
+}: ClickActionProps): QuestionChangeClickAction[] => {
   const drill = sortDrill({ question, clicked });
   if (!drill) {
     return [];

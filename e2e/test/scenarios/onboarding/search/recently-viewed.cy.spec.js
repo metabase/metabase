@@ -9,7 +9,10 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -25,7 +28,7 @@ describe("search > recently viewed", () => {
     visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
@@ -45,7 +48,7 @@ describe("search > recently viewed", () => {
       0,
       "Orders in a dashboard",
       "Dashboard",
-      "/dashboard/1-orders-in-a-dashboard",
+      `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
     );
     assertRecentlyViewedItem(
       ORDERS_QUESTION_ID,
