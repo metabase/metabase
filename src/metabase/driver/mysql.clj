@@ -782,15 +782,20 @@
 
 (defmethod driver/current-user-table-privileges :mysql
   [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-        table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
-                         (drop 1)
-                         (map first))]
-    (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()") (:name database) table-names)]
-      {:role   nil
-       :schema nil
-       :table  table-name
-       :select (contains? privileges :select)
-       :update (contains? privileges :update)
-       :insert (contains? privileges :insert)
-       :delete (contains? privileges :delete)})))
+  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges 
+  ;; for the mysql database), so we can't query the full privileges of the current user.
+  (when (-> database :dbms_version :flavor (not= "MariaDB"))
+    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+          table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
+                           (drop 1)
+                           (map first))]
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()") 
+                                                             (:name database)
+                                                             table-names)]
+        {:role   nil
+         :schema nil
+         :table  table-name
+         :select (contains? privileges :select)
+         :update (contains? privileges :update)
+         :insert (contains? privileges :insert)
+         :delete (contains? privileges :delete)}))))
