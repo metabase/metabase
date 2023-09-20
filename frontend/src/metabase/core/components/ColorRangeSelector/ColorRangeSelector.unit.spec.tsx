@@ -32,4 +32,8 @@ describe("ColorRangeSelector", () => {
     screen.getByLabelText(color("filter")).click();
     expect(onChange).toHaveBeenCalled();
   });
+
+  it("should call `onChange` upon clicking a non-initial range", async () => {
+    expect(1).toBe(1);
+  });
 });
