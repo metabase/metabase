@@ -64,7 +64,7 @@ function mapStateToProps(state, props) {
       .getObject(state, {
         entityId: uploadDbId,
       })
-      ?.canWrite();
+      ?.canUpload();
 
   return {
     isAdmin: getUserIsAdmin(state),

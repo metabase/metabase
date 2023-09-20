@@ -1185,7 +1185,7 @@ saved later when it is ready."
 (defn can-upload?
   "Returns true if the user can upload to the given database and schema, and false otherwise."
   [db schema-name]
-  (nil? (sc.api/spy (can-upload-error db schema-name))))
+  (nil? (can-upload-error db schema-name)))
 
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
