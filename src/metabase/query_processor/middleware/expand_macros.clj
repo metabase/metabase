@@ -152,7 +152,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -316,22 +315,38 @@
         ;; then recursively expand things at any other levels.
         (expand-metrics-clauses metric-id->info))))
 
-;; (mu/defn ^:private expand-metrics :- mbql.s/Query
-;;   [query :- mbql.s/Query]
-;;   (if-let [metrics (metrics query)]
-;;     (expand-metrics-clauses query (metric-clauses->id->info metrics))
-;;     query))
+(mu/defn ^:private expand-metrics-old :- mbql.s/Query
+  [query :- mbql.s/Query]
+  (if-let [metrics (metrics query)]
+    (expand-metrics-clauses query (metric-clauses->id->info metrics))
+    query))
 
 ;;;; METRICS REVAMP
 
+(defn- mbql-query->metadata
+  "1. ensure vector, 2. assertion"
+  [query]
+  (let [metadata (vec (qp.add-source-metadata/mbql-source-query->metadata query))]
+    (if (seq metadata)
+      metadata
+      (throw (ex-info "Expected not-empty metdata."
+                      {:type qp.error-type/invalid-query
+                       :query query
+                       :metadata metadata})))))
+
 (mu/defn ^:private top-display-name
-  "Describe why we need display name only in"
-  [{:keys [aggregation]} :- mbql.s/MBQLQuery {:keys [id] :as metric-info} :- MetricInfo]
+  "Get display name of aggregation that contains metric with `id`.
+   When aggregation becomes field by act of joining, which is inevitable for metric queries, name of the field can
+   not be further changed. To overcome that overcome that name from aggregation that contains the metric is used
+   to name aggregation in [[metrics-query]]."
+  [{:keys [aggregation]} :- mbql.s/MBQLQuery {:keys [id] :as _metric-info} :- MetricInfo]
   (mbql.u/match-one aggregation
     [:aggregation-options [:metric examined-id] (opts :guard #(contains? % :display-name))]
     (when (= id examined-id)
       (:display-name opts))))
 
+;;;; TODO: doc!
+;;;; TODO: check correspondence with old naming logic!
 (mu/defn ^:private metric-info->aggregation :- mbql.s/Aggregation
   [query :- mbql.s/MBQLQuery
    {{[ag] :aggregation} :definition id :id metric-name :name :as metric-info} :- MetricInfo]
@@ -365,49 +380,64 @@
 
 (declare expand-metrics*)
 
+;;;; TODO: doc
 (mu/defn ^:private metrics-query :- mbql.s/MBQLQuery
   [original-query :- mbql.s/MBQLQuery metric-infos :- [:sequential MetricInfo]]
   (assert (apply = (map (comp :filter :definition) metric-infos)) "Metrics have different filters.")
-  (tap> ["metrics-query original-query" original-query])
-  (doto (let [filter (get-in (first metric-infos) [:definition :filter])
-              metrics-query-expanded-this-level
-              (loop [[metric-info & ms] metric-infos
-                     index 0
-                     query (-> (select-keys original-query metrics-query-keys)
-                               (m/assoc-some :filter filter))]
-                (if (some? metric-info)
-                  (recur ms (inc index) (update query :aggregation #(conj (vec %1) %2)
-                                                (metric-info->aggregation original-query metric-info)))
-                  query))]
-          (binding [*expansion-depth* (inc *expansion-depth*)]
-            (-> (expand-metrics* metrics-query-expanded-this-level)
-                (dissoc ::ordered-clauses-for-fields))))
-    (as-> $ (tap> ["metrics-query result" $]))))
+  (let [filter (get-in (first metric-infos) [:definition :filter])
+        metrics-query-expanded-this-level
+        (loop [[metric-info & ms] metric-infos
+               query (-> (select-keys original-query metrics-query-keys)
+                         (m/assoc-some :filter filter))]
+          (if (some? metric-info)
+            (recur ms (update query :aggregation #(conj (vec %1) %2)
+                              (metric-info->aggregation original-query metric-info)))
+            query))]
+    (binding [*expansion-depth* (inc *expansion-depth*)]
+      (-> (expand-metrics* metrics-query-expanded-this-level)
+          (dissoc ::ordered-clauses-for-fields)))))
 
 (defn- query->join-alias [query]
   (->> query :filter hash Integer/toHexString (str "metric__")))
 
-(defn- breakout->field
-  "Breakout can contain eg expression references. Modify to field using metadata"
-  [metadatas [type :as breakout]]
-  (case type
-    :expression (let [[_ name] breakout
-                      metadata (some #(when (-> % :field_ref (= [:expression name])) %) @(def mmm metadatas))
-                      {:keys [name display_name base_type]} metadata]
-                  [:field (or display_name name) {:base-type base_type}])
-    breakout))
+;;;; TODO: Is naming of the field correct?, also check for [[top-display-name]].
+(defn- metadata->field
+  [{base-type :base_type
+    name :name
+    display-name :display_name}]
+  [:field (or name display-name) {:base-type base-type}])
+
+(defn- clause-with-metric-opt? [form]
+  (and (vector? form)
+       (= 3 (count form))
+       (contains? (form 2) ::metric)))
+
+(defn- metric-field-opt [form]
+  (when (clause-with-metric-opt? form)
+    (::metric (form 2))))
+
+(defn- clause->field
+  "Transform `clause` of some source-query to field usable in joining or parent query.
+   Conveys ::metric field option of aggregation and field, so fields are usable in [[provides]]"
+  [[clause-type :as clause] metadata]
+  (case clause-type
+    :field clause
+    (update (metadata->field metadata) 2 m/assoc-some ::metric (metric-field-opt clause))))
 
 (defn metrics-query-join-condition
   "Generate join condition used to join [[metrics-query]] into original query.
    Used by [[metrics-join]]. For explanation of modelling join on breakout fields equality refer to this ns docstring,
    section [## `metrics-query`s are joined to the containing (original) query]."
   [join-alias joining-query metrics-query-metadata]
-  (let [conditions (for [breakout (:breakout joining-query)]
-                     [:= breakout (-> (breakout->field metrics-query-metadata breakout)
+  (let [conditions (for [[index breakout] (map vector (range) (:breakout joining-query))]
+                     [:= breakout (-> (clause->field breakout (metrics-query-metadata index))
                                       (mbql.u/update-field-options assoc :join-alias join-alias))])]
-    (cond (zero? (count conditions)) [:= 1 1]
-          (= 1 (count conditions)) (first conditions)
-          :else (into [:and] conditions))))
+    ;;;; TODO: Using [:= 1 1] as condition is problematic. Hence changed to [:= [:+ 1 1] 2]. [:= 1 1] is changed 
+    ;;;;       to [:= [:field 1 nil] 1] during preprocess and main cultprit is some middleware. Investigate!
+    (condp = (count conditions)
+      0 [:= [:+ 1 1] 2]
+      1 (first conditions)
+      (into [:and] conditions))))
 
 (mu/defn ^:private metrics-join
   "Generate join used to join [[metrics-query]] into query being transformed.
@@ -418,7 +448,7 @@
   (assert (every? #(some #{%} (:breakout metrics-query)) (:breakout query))
     "Original breakout missing in metrics query.")
   (let [join-alias (query->join-alias metrics-query)
-        metrics-query-metadata (qp.add-source-metadata/mbql-source-query->metadata metrics-query)]
+        metrics-query-metadata (mbql-query->metadata metrics-query)]
     {:alias join-alias
      :strategy :left-join
      :condition (metrics-query-join-condition join-alias query metrics-query-metadata)
@@ -426,35 +456,18 @@
      :source-metadata metrics-query-metadata
      :fields :all}))
 
-;;;; TODO: Move definition here!
-(declare metadata->field)
-
-(defn- ag-with-metadata->field
-  ;;;; Doc!
-  [[_ _ {metric ::metric}] metadata]
-  (assert (pos? metric) "Aggregation options should contain ::metric key.")
-  (update (metadata->field metadata) 2
-          assoc ::metric metric))
-
-(defn- metric-field-opt [form]
-  (when (vector? form)
-    (::metric (form 2))))
-
-(defn- clause-with-metric-opt? [form]
-  (and (vector? form)
-       (contains? (form 2) ::metric)))
-
 ;;;; TODO: because of expressions I must transform also breakout elements to fields?
 ;;;;       -- check later when tackling exprs!
 (defn- provides
   "Generate mapping of metric id to field.
-   Takes brekout and aggregation of query. Further checks which of those clauses contain `::metric` key in options.
+   Takes breakout and aggregation of query. Further checks which of those clauses contain `::metric` key in options.
    Presence of that key signals that clause represents column for some metric. Clauses from aggregations are
    transformed to fields. `::annotate/avoid-display-name-prefix?` ensures that annotate middleware won't prefix
    display name with join alias. That is not desired for fields comming from metrics, because they come from internal
    joins."
   [{:keys [breakout aggregation] :as _metrics-query} metadatas join-alias]
-  (let [fields-from-ags (doto (map ag-with-metadata->field aggregation (drop (count breakout) metadatas))
+  ;;;; TODO: subvec
+  (let [fields-from-ags (doto (map clause->field aggregation (drop (count breakout) metadatas))
                           (as-> $ (assert (= (count aggregation) (count $)) "Aggregation count mismatch.")))
         fields-to-provide (->> fields-from-ags
                                (into (filterv clause-with-metric-opt? breakout))
@@ -465,7 +478,7 @@
 
 (defn- join-metrics-query
   "Joins [[metrics-query]] into original query.
-   Sets `::metric-id->field` which is later used during original query transformations."
+   Sets `::metric-id->field` which is later used during original query transformation, in [[swap-metric-clauses]]."
   [query metrics-query]
   (let [{:keys [alias source-metadata source-query] :as join} (metrics-join query metrics-query)]
     (-> query
@@ -508,23 +521,22 @@
     (or (empty? &parents)
         (= [:aggregation-options] &parents))))
 
+;;;; TODO: doc
 (defn- swap-metric-clauses-in-aggregation
   "Transform one aggregation containing metrics clauses.
+   Query expected to `::metric-id->field` key, so has joined [[metrics-query]]s with [[join-metrics-query]].
+
+
+
    If aggregation contains only one metric and nothing else it is swapped for field, that will be moved to breakout
    later. Else metrics in aggregation are swapped for corresponding fields, or if aggregation contains no metric
    it is left unmodified."
   [query ag]
-  (let [[first-metric-id & other-metric-ids] (->> ag metrics (map second))
-        multiple-metrics? (seq other-metric-ids)]
-    ;;;; TODO: can be further simplified
-    (cond multiple-metrics?
-          (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))
-
-          (one-and-only-metric? ag)
-          (swap-ag-for-field ag (get-in query [::metric-id->field first-metric-id]))
-
-          :else
-          ag)))
+  ;;;; TODO: can be further simplified
+  (let [[first-metric-id] (->> ag metrics (map second))]
+    (if (one-and-only-metric? ag)
+      (swap-ag-for-field ag (get-in query [::metric-id->field first-metric-id]))
+      (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id])))))
 
 (defn- swap-metric-clauses
   "Swap metric clauses in aggregation clauses of `query`. For details refer to [[swap-metric-clauses-in-aggregation]].
@@ -534,11 +546,14 @@
   (update query :aggregation (partial mapv #(swap-metric-clauses-in-aggregation query %))))
 
 (defn- ordered-clauses-for-fields
+  "At this point of transformation `:aggregations` contain aggregation clauses or field clauses, which are result of
+   [[swap-metric-clauses]]. Field clauses will be moved later to breakout. Result of this function is vector, where
+   index is original query column index and value is reference to clause after transformation
+   ([[adjust-aggregation-and-breakout]] call). Resulting map is later used [[maybe-wrap-in-ordering-query]]."
   [breakout-idx ag-idx [[type :as ag] & ags] acc]
   (cond (nil? ag)
         acc
 
-        ;;;; TODO: May there be anything else but field?
         (= :field type)
         (recur (inc breakout-idx) ag-idx ags (conj acc [:breakout breakout-idx]))
 
@@ -549,34 +564,33 @@
   "Generate sequence containing ordered clauses of form [:breakout index] or [:aggregation idx]
    Those are used to preserve original column order after [[transform-aggregations]].
    "
-  ;;;; TODO: DOcstring, original breakout, aggregation with metrics transformed
-  ;;;; TODO: Add docsrting why is this key necessary and where it is to be used.
   [query]
   (let [clauses-from-orig-breakout (mapv #(vector :breakout %) (range (count (:breakout query))))
         orig-breakout-count (count clauses-from-orig-breakout)]
     (assoc query ::ordered-clauses-for-fields 
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
+;;;; DONE
 (defn- adjust-aggregation-and-breakout
   ;;;; TODO: docstring, all fields from aggregation are to be moved to breakout
   ;;;; TODO: Aggregation can be left empty, Breakout can be empty at also
+  "Aggregation will contain only aggregations or fields that are result of [[swap-metric-clauses]]"
   [query]
-  (tap> ["adjust... query" query])
-  (doto (let [{:keys [aggregation breakout]}
-              (group-by (fn [[type]]
-                          (if (= :field type) :breakout :aggregation))
-                        (:aggregation query))]
+  (let [{:keys [aggregation breakout]}
+        (group-by (fn [[type]]
+                    (if (= :field type) :breakout :aggregation))
+                  (:aggregation query))]
     ;;;; TODO: isn't implementation with cond-> cleaner?
-          (as-> query $
-            (if (seq aggregation)
-              (assoc $ :aggregation aggregation)
-              (dissoc $ :aggregation))
-            (if (seq breakout)
-              (update $ :breakout #(into (vec %1) %2) breakout)
-              $)))
-    (as-> $ (tap> ["adjust... result" $]))))
+    (as-> query $
+      (if (seq aggregation)
+        (assoc $ :aggregation aggregation)
+        (dissoc $ :aggregation))
+      (if (seq breakout)
+        (update $ :breakout #(into (vec %1) %2) breakout)
+        $))))
 
-(defn- update-aggregation-references
+(defn- update-order-by-ag-refs
+  "`:order-by` contains references to aggregations, breakout or expressions. Clauses"
   ;;;; TODO: doc: expects ordred-clauses-for-fields
   ;;;; TODO: references can be in order-bys and where else?
   ;;;; TODO: ! expressions
@@ -585,7 +599,7 @@
     :as query}]
   (assert (and (vector? ordered-clauses-for-fields)
                (seq ordered-clauses-for-fields))
-    "Not empty vector `ordered-clauses-for-fields` expected.")
+    "Expected not empty vector of `ordered-clauses-for-fields`.")
   (let [original-ag-index->clause-ref (subvec ordered-clauses-for-fields (count breakout))]
     (mbql.u/replace-in query [:order-by]
       [:aggregation idx]
@@ -601,6 +615,8 @@
        (partition-by (comp :filter :definition))
        (mapv (partial metrics-query original-query))))
 
+;;;; TODO: mutually recursive metrics definition guard!
+;;;; TODO: Robust expressions handling!
 (mu/defn ^:private expand-metrics*
   "Recursively expand metrics."
   [query :- mbql.s/MBQLQuery]
@@ -611,43 +627,34 @@
                      :depth *expansion-depth*})))
   (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
-    ;;;; TODO: Robust expressions handling!
-    (-> metric-infos
-        (->> (metric-infos->metrics-queries query))
-        ;;;; TODO: join-metrics-queries -- with cleanup?
-        (->> (reduce join-metrics-query query))
-        (swap-metric-clauses)
-        (dissoc ::metric-id->field)
-        (infer-ordered-clauses-for-fields)
-        (update-aggregation-references)
-        (adjust-aggregation-and-breakout))
+    (let [with-joined-metrics-queries (->> metric-infos
+                                           (metric-infos->metrics-queries query)
+                                           (reduce join-metrics-query query))]
+      (-> with-joined-metrics-queries
+          (swap-metric-clauses)
+          (dissoc ::metric-id->field)
+          (infer-ordered-clauses-for-fields)
+          (update-order-by-ag-refs)
+          (adjust-aggregation-and-breakout)))
     query))
 
-(defn- metadata->field
-  [{base-type :base_type
-    name :name
-    display-name :display_name}]
-  [:field (or name display-name) {:base-type base-type}])
-
-(defn- clause->field
-  ;;;; TODO: docstring!
-  [{:keys [breakout] :as _query} metadatas [clause-type index]]
-  (case clause-type
-    :aggregation (metadata->field (metadatas index))
-    :breakout (breakout index)))
+(defn- clause-ref->field
+  "Transform clause reference of format [type index] to field usable in wrapping query."
+  [{:keys [breakout] :as query} metadatas [clause-type index :as clause-ref]]
+  (clause->field (get-in query clause-ref) (metadatas (+ index (case clause-type
+                                                                 :aggregation (count breakout)
+                                                                 0)))))
 
 (defn- maybe-wrap-in-ordering-query
   ;;;; TODO: doc!
   [{ordered-clauses-for-fields ::ordered-clauses-for-fields :as inner-query}]
-  (tap> ["maybe-wrap... inner-query" inner-query])
-  (doto (if (some? ordered-clauses-for-fields)
-          (let [inner-query* (dissoc inner-query ::ordered-clauses-for-fields)
-                metadatas (qp.add-source-metadata/mbql-source-query->metadata inner-query*)]
-            {:fields (mapv (partial clause->field inner-query* metadatas) ordered-clauses-for-fields)
-             :source-query inner-query*
-             :source-metadata metadatas})
-          inner-query)
-    (as-> $ (tap> ["maybe-wrap... result" $]))))
+  (if (some? ordered-clauses-for-fields)
+    (let [inner-query* (dissoc inner-query ::ordered-clauses-for-fields)
+          metadatas (mbql-query->metadata inner-query*)]
+      {:fields (mapv (partial clause-ref->field inner-query* metadatas) ordered-clauses-for-fields)
+       :source-query inner-query*
+       :source-metadata metadatas})
+    inner-query))
 
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
@@ -673,9 +680,9 @@
 
 ;;;; TODO?: Factor out following function? With current, and probably upcomming state of this module, I think it is 
 ;;;;        redundant.
-(mu/defn ^:private expand-metrics-and-segments  :- mbql.s/Query
+(mu/defn ^:private expand-metrics-and-segments :- mbql.s/Query
   "Expand the macros (`segment`, `metric`) in a `query`."
-  [query  :- mbql.s/Query]
+  [query :- mbql.s/Query]
   (-> query
       expand-segments
       expand-metrics))
