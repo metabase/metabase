@@ -36,15 +36,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
       // so the test won't fail if we change the default database
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
 
       _.times(ADDED_DASHBOARDS, i =>
         cy.createDashboard({ name: `dashboard ${i}` }),
@@ -93,15 +85,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in a default dataset,
       // so it's easier to test sorting
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
     });
 
     it("should allow to sort unpinned items by columns asc and desc", () => {
@@ -263,4 +247,20 @@ function getAllCollectionItemNames() {
 function visitRootCollection() {
   cy.visit("/collection/root");
   cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+}
+
+function archiveAll() {
+  cy.request("GET", "/api/collection/root/items").then(response => {
+    response.body.data.forEach(({ model, id }) => {
+      if (model !== "collection") {
+        cy.request(
+          "PUT",
+          `/api/${model === "dataset" ? "card" : model}/${id}`,
+          {
+            archived: true,
+          },
+        );
+      }
+    });
+  });
 }

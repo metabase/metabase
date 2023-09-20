@@ -88,7 +88,8 @@ describe("scenarios > dashboard", () => {
         .click();
 
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByPlaceholderText(/Search for some/).type("Pro");
+        // cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
