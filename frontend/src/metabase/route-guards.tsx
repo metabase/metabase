@@ -1,33 +1,34 @@
 import { routerActions } from "connected-react-router";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history4/redirect";
-import MetabaseSettings from "metabase/lib/settings";
+import type { State } from "metabase-types/store";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getIsMetabotEnabled } from "metabase/home/selectors";
+import MetabaseSettings from "metabase/lib/settings";
 
-const MetabaseIsSetup = connectedReduxRedirect({
+const MetabaseIsSetup = connectedReduxRedirect<unknown, State>({
   redirectPath: "/setup",
-  authenticatedSelector: () => MetabaseSettings.hasUserSetup(), // HACK
+  authenticatedSelector: () => Boolean(MetabaseSettings.hasUserSetup()), // HACK
   wrapperDisplayName: "MetabaseIsSetup",
   allowRedirectBack: false,
   redirectAction: routerActions.replace,
 });
 
-const UserIsAuthenticated = connectedReduxRedirect({
+const UserIsAuthenticated = connectedReduxRedirect<unknown, State>({
   redirectPath: "/auth/login",
-  authenticatedSelector: state => state.currentUser,
+  authenticatedSelector: state => Boolean(state.currentUser),
   wrapperDisplayName: "UserIsAuthenticated",
   redirectAction: routerActions.replace,
 });
 
-const UserIsAdmin = connectedReduxRedirect({
+const UserIsAdmin = connectedReduxRedirect<unknown, State>({
   redirectPath: "/unauthorized",
-  authenticatedSelector: state => state.currentUser?.is_superuser,
+  authenticatedSelector: state => Boolean(state.currentUser?.is_superuser),
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsAdmin",
   redirectAction: routerActions.replace,
 });
 
-const UserIsNotAuthenticated = connectedReduxRedirect({
+const UserIsNotAuthenticated = connectedReduxRedirect<unknown, State>({
   redirectPath: "/",
   authenticatedSelector: state => !state.currentUser,
   authenticatingSelector: state => state.auth.loginPending,
@@ -36,7 +37,7 @@ const UserIsNotAuthenticated = connectedReduxRedirect({
   redirectAction: routerActions.replace,
 });
 
-const UserCanAccessSettings = connectedReduxRedirect({
+const UserCanAccessSettings = connectedReduxRedirect<unknown, State>({
   redirectPath: "/unauthorized",
   authenticatedSelector: state => getAdminPaths(state)?.length > 0,
   allowRedirectBack: false,
@@ -44,7 +45,7 @@ const UserCanAccessSettings = connectedReduxRedirect({
   redirectAction: routerActions.replace,
 });
 
-export const UserCanAccessMetabot = connectedReduxRedirect({
+export const UserCanAccessMetabot = connectedReduxRedirect<unknown, State>({
   redirectPath: "/",
   authenticatedSelector: getIsMetabotEnabled,
   allowRedirectBack: false,
@@ -53,20 +54,20 @@ export const UserCanAccessMetabot = connectedReduxRedirect({
 });
 
 export const IsAuthenticated = MetabaseIsSetup(
-  UserIsAuthenticated(({ children }) => children),
+  UserIsAuthenticated(({ children }) => <>{children}</>),
 );
 export const IsAdmin = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
+  UserIsAuthenticated(UserIsAdmin(({ children }) => <>{children}</>)),
 );
 
 export const IsNotAuthenticated = MetabaseIsSetup(
-  UserIsNotAuthenticated(({ children }) => children),
+  UserIsNotAuthenticated(({ children }) => <>{children}</>),
 );
 
 export const CanAccessSettings = MetabaseIsSetup(
-  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+  UserIsAuthenticated(UserCanAccessSettings(({ children }) => <>{children}</>)),
 );
 
-export const CanAccessMetabot = UserCanAccessMetabot(
-  ({ children }) => children,
-);
+export const CanAccessMetabot = UserCanAccessMetabot(({ children }) => (
+  <>{children}</>
+));
