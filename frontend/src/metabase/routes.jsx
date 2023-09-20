@@ -1,4 +1,4 @@
-import { Redirect } from "react-router-dom";
+import { Redirect, Switch } from "react-router-dom";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
@@ -95,55 +95,59 @@ import {
 
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
-    {/* SETUP */}
-    <Route
-      path="/setup"
-      render={() => {
-        if (MetabaseSettings.hasUserSetup()) {
-          return <Redirect to="/" />;
-        }
+    <Switch>
+      {/* SETUP */}
+      <Route
+        path="/setup"
+        render={() => {
+          if (MetabaseSettings.hasUserSetup()) {
+            return <Redirect to="/" />;
+          }
 
-        return <Setup />;
-      }}
-    />
+          return <Setup />;
+        }}
+      />
 
-    {/* PUBLICLY SHARED LINKS */}
-    <Route path="public">
-      <Route path="question/:uuid" component={PublicQuestion} />
-      <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
-    </Route>
+      {/* PUBLICLY SHARED LINKS */}
+      <Route path="public">
+        <Route path="question/:uuid" component={PublicQuestion} />
+        <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
+      </Route>
 
-    {/* DEPRECATED */}
-    {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-    <Route
-      path="/q"
-      render={({ location }) => {
-        return <Redirect to={{ pathname: "/question", hash: location.hash }} />;
-      }}
-    />
-    <Route
-      path="/card/:slug"
-      render={({ location, match }) => {
-        return (
-          <Redirect
-            to={{
-              pathname: `/question/${match.params.slug}`,
-              hash: location.hash,
-            }}
-          />
-        );
-      }}
-    />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
-    <Redirect
-      from="/collections/permissions"
-      to="/admin/permissions/collections"
-    />
+      {/* DEPRECATED */}
+      {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+      <Route
+        path="/q"
+        render={({ location }) => {
+          return (
+            <Redirect to={{ pathname: "/question", hash: location.hash }} />
+          );
+        }}
+      />
+      <Route
+        path="/card/:slug"
+        render={({ location, match }) => {
+          return (
+            <Redirect
+              to={{
+                pathname: `/question/${match.params.slug}`,
+                hash: location.hash,
+              }}
+            />
+          );
+        }}
+      />
+      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+      <Redirect
+        from="/collections/permissions"
+        to="/admin/permissions/collections"
+      />
 
-    {/* MISC */}
-    <Route path="/unsubscribe" component={UnsubscribePage} />
-    <Route path="/unauthorized" component={Unauthorized} />
-    <Route path="/*" component={NotFoundFallbackPage} />
+      {/* MISC */}
+      <Route path="/unsubscribe" component={UnsubscribePage} />
+      <Route path="/unauthorized" component={Unauthorized} />
+      <Route path="/*" component={NotFoundFallbackPage} />
+    </Switch>
   </Route>
 );
 
