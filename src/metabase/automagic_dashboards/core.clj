@@ -942,51 +942,6 @@
      :query-filter (filters/inject-refinement (:query-filter root)
                                               (:cell-query root))}))
 
-(defn dash-template->affinities-map
-  "Takes a dashboard template and pulls the affinities from its cards.
-
-  eg:
-  (dash-template->affinities-map
-   (dashboard-templates/get-dashboard-template [\"table\" \"TransactionTable\"]))
-  {\"CountByState\"       {:dimensions [\"State\"],
-                           :metrics    [\"TotalOrders\"],
-                           :score      90},
-   \"RowcountLast30Days\" {:filters [\"Last30Days\"],
-                           :metrics [\"TotalOrders\"],
-                           :score 100,
-                           :dimensions []}
-   ,,,}.
-  This assumes that card names are disinct."
-  [{card-templates :cards :as _dashboard-template}]
-  ;; todo: cards can specify native queries with dimension template tags. See
-  ;; resources/automagic_dashboards/table/example.yaml
-  ;; note that they can specify dimension dependencies and ALSO table dependencies:
-  ;; - Native:
-  ;;    title: Native query
-  ;;    # Template interpolation works the same way as in title and description. Field
-  ;;    # names are automatically expanded into the full TableName.FieldName form.
-  ;;    query: select count(*), [[State]]
-  ;;           from [[GenericTable]] join [[UserTable]] on
-  ;;           [[UserFK]] = [[UserPK]]
-  ;;    visualization: bar
-  (let [card-deps (fn [card]
-                    (-> card
-                        (select-keys [:dimensions :filters :metrics :score])
-                        (update :dimensions
-                                ;; dimensions are maps with multiple keys and aggregation information
-                                ;; as values, just want the keys
-
-                                (fn [dims] (into [] (comp (map keys)
-                                                          cat)
-                                                 dims)))))]
-    ;; order by score descending
-    (into {} (comp cat (map (juxt key (comp card-deps val)))) card-templates)))
-
-(comment
-  (dash-template->affinities-map
-   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
-  )
-
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
@@ -1044,34 +999,6 @@
                    :name   (:name entity)
                    :score  dashboard-templates/max-score})))
 
-(defn match-affinities
-  "Treat affinities as a template. If they are matched everywhere, then let's replace them with the matches."
-  [affinities {:keys [available-dimensions available-metrics available-filters]}]
-  ;; these assume that metrics/filters bottom out in a dimension immediately. if a metric can depend on a metric which
-  ;; depends on a dimension, need to fully expand instead of just once.
-  (letfn [(metric-deps [metric-name]
-            (-> metric-name
-                ;; look up metric definition, returning an unsatisfiable metric definition if not found
-                (available-metrics {:metric [:dimension ::unsatisfiable]})
-                :metric
-                dashboard-templates/collect-dimensions))
-          (filter-deps [filter-name]
-            (-> filter-name
-                ;; look up filter definition, returning an unsatisfiable metric definition if not found
-                (available-filters {:filter [:dimension ::unsatisfiable]})
-                :filter
-                dashboard-templates/collect-dimensions))]
-    (into {}
-          (keep (fn [[affinity-name {:keys [dimensions metrics filters] :as combination}]]
-                  (let [dimension-deps (concat dimensions
-                                               (mapcat metric-deps metrics)
-                                               (mapcat filter-deps filters))]
-                    (when (every? available-dimensions dimension-deps)
-                      ;; todo: when do we want to "populate" the affinity definition with bound fields.
-                      [affinity-name combination]
-                      ))))
-          affinities)))
-
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
@@ -1095,23 +1022,7 @@
         available-values  {:available-dimensions dimensions
                            :available-metrics    available-metrics
                            :available-filters    available-filters}
-        ;; for now we construct affinities from cards
-        affinities        (dash-template->affinities-map dashboard-template)
-        ;; get the suitable matches for them
-        interestings      (match-affinities affinities available-values)
-        ;; pass those interesting groups into the layout engine
-        ;; two things hanging on in context:
-        ;; 1. tables
-        ;; 2. card-query in the card.
-        cards             (make-cards base-context available-values
-                                      ;; five tests fail under
-                                      ;; (clojure.test/run-tests
-                                      ;;  'metabase.automagic-dashboards.comparison-test
-                                      ;;  'metabase.automagic-dashboards.core-test
-                                      ;;  'metabase.automagic-dashboards.dashboard-templates-test
-                                      ;;  'metabase.automagic-dashboards.filters-test)
-                                      ;; test model-with-joins-test fails and could be a thread to pull
-                                      dashboard-template)]
+        cards             (make-cards base-context available-values dashboard-template)]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
          :filters (->> dashboard_filters
