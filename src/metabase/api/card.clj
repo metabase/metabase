@@ -608,6 +608,20 @@ saved later when it is ready."
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
+(defn- publish-card-update!
+  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
+  events)."
+  [card archived?]
+  (let [event (cond
+                ;; card was archived
+                (and archived?
+                     (not (:archived card))) :event/card-archive
+                ;; card was unarchived
+                (and (false? archived?)
+                     (:archived card))       :event/card-unarchive
+                :else                        :event/card-update)]
+    (events/publish-event! event card)))
+
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
        (:archived new-card)))
@@ -835,7 +849,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
+    (events/publish-event! :event/card-delete {:object card}))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
