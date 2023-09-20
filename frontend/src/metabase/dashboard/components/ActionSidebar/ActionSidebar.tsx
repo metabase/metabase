@@ -13,7 +13,7 @@ import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   FieldLabel,
   FieldLabelContainer,
