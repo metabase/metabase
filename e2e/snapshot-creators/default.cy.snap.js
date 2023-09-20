@@ -41,6 +41,8 @@ describe("snapshots", () => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
+        snapshot("without-models");
+        createModels(SAMPLE_DATABASE);
         cy.writeFile(
           "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
@@ -205,6 +207,15 @@ describe("snapshots", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
+    });
+  }
+
+  function createModels({ ORDERS_ID }) {
+    // Model 1
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
     });
   }
 

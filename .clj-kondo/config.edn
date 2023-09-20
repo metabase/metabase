@@ -284,6 +284,7 @@
     metabase.api.util                                               api.util
     metabase.async.streaming-response.thread-pool                   thread-pool
     metabase.automagic-dashboards.core                              magic
+    metabase.automagic-dashboards.dashboard-templates               dashboard-templates
     metabase.automagic-dashboards.populate                          populate
     metabase.cmd.copy.h2                                            copy.h2
     metabase.config                                                 config

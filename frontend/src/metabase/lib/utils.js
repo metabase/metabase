@@ -139,7 +139,7 @@ const MetabaseUtils = {
    * Converts a metabase version to a list of numeric components, it converts pre-release
    * components to numbers and pads the numeric part to 4 numbers to make comparison easier
    * @param {string} version
-   * @returns {number[]}
+   * @returns {number[] | null}
    */
   versionToNumericComponents(version) {
     const SPECIAL_COMPONENTS = {
@@ -151,6 +151,13 @@ const MetabaseUtils = {
 
     const regex =
       /v?(?<ossOrEE>\d+)\.?(?<major>\d+)?\.?(?<minor>\d+)?\.?(?<patch>\d+)?-?(?<label>\D+)?(?<build>\d+)?/;
+
+    const result = regex.exec(version);
+
+    if (!result || !result.groups) {
+      return null;
+    }
+
     const {
       ossOrEE,
       major = 0,
@@ -158,7 +165,7 @@ const MetabaseUtils = {
       patch = 0,
       label,
       build = 0,
-    } = regex.exec(version).groups;
+    } = result.groups;
 
     return [
       ossOrEE,
@@ -186,6 +193,10 @@ const MetabaseUtils = {
 
     const aComponents = MetabaseUtils.versionToNumericComponents(aVersion);
     const bComponents = MetabaseUtils.versionToNumericComponents(bVersion);
+
+    if (!aComponents || !bComponents) {
+      return null;
+    }
 
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];

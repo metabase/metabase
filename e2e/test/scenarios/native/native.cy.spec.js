@@ -223,20 +223,23 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
 
       // parameters[] should reflect the template tags
-      cy.wait("@card").should(xhr => {
+      cy.wait("@card").then(xhr => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(2);
+        cy.wrap(xhr.response.body.id).as("questionId");
       });
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.intercept("GET", "/api/card/*").as("cardQuestion");
-    cy.visit("/question/4?cat=Gizmo&stars=3");
-    cy.wait("@cardQuestion").should(xhr => {
-      const responseBody = xhr.response?.body;
-      expect(responseBody?.parameters?.length).to.equal(2);
+    cy.get("@questionId").then(questionId => {
+      cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
+      cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
+      cy.wait("@cardQuestion").should(xhr => {
+        const responseBody = xhr.response?.body;
+        expect(responseBody?.parameters?.length).to.equal(2);
+      });
     });
   });
 
