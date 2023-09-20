@@ -517,14 +517,16 @@
 (deftest last-acknowledged-version-can-be-read-and-set
   (testing "last-acknowledged-version can be read and set"
     (mt/with-test-user :rasta
-      (try
-        (is (nil? (setting/get :last-acknowledged-version)))
-        (setting/set! :last-acknowledged-version "v0.47.1")
-        (is (= "v0.47.1" (setting/get :last-acknowledged-version)))
-        ;; Ensure it's saved on the user, not globally:
-        (is (= "v0.47.1" (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
-        (finally
-          (setting/set! :last-acknowledged-version nil))))))
+      (let [old-version (setting/get :last-acknowledged-version)
+            new-version "v0.47.1"]
+        (try
+          (is (not= new-version old-version))
+          (setting/set! :last-acknowledged-version new-version)
+          (is (= new-version (setting/get :last-acknowledged-version)))
+          ;; Ensure it's saved on the user, not globally:
+          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+          (finally
+            (setting/set! :last-acknowledged-version old-version)))))))
 
 (deftest last-acknowledged-version-is-set-on-create
   (testing "last-acknowledged-version is automatically set for new users"
