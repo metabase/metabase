@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.integrations.common :as integrations.common]
@@ -18,7 +19,6 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -93,11 +93,13 @@
      {:locale (i18n/normalized-locale-string locale)})))
 
 (t2/define-after-insert :model/User
-  [{user-id :id, superuser? :is_superuser, :as user}]
+  [{user-id :id, superuser? :is_superuser, settings :settings, :as user}]
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
       (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
-      (mw.session/with-current-user user-id
+      ;; Can't use mw.session/with-current-user-id due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (or settings {})))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
     (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
