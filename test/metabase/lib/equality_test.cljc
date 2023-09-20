@@ -348,20 +348,96 @@
                {:lib/desired-column-alias "Orders__ID"}]
               (lib/returned-columns just-3)))
       (testing "matching the four fields against"
-        (let [cols  (lib/returned-columns all-4)
-              ret-3 (lib/returned-columns just-3)]
+        (let [hr-own-id   {:lib/type :metadata/column
+                           :description        "Own ID"
+                           :base-type          :type/BigInteger
+                           :semantic-type      :type/PK
+                           :effective-type     :type/BigInteger
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :id)
+                           :name               "ID"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "ID"
+                           :position           0}
+              hr-own-tax  {:lib/type :metadata/column
+                           :description        "Own Tax"
+                           :base-type          :type/Float
+                           :semantic-type      nil
+                           :effective-type     :type/Float
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :tax)
+                           :name               "TAX"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Tax"
+                           :position           4}
+              hr-join-id  {:lib/type :metadata/column
+                           :description        "Join ID"
+                           :base-type          :type/BigInteger
+                           :semantic-type      :type/PK
+                           :effective-type     :type/BigInteger
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :id)
+                           :name               "ID_2"
+                           :source-alias       "Orders"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Orders → ID"
+                           :position           0}
+              hr-join-tax {:lib/type :metadata/column
+                           :description        "Join Tax"
+                           :base-type          :type/Float
+                           :semantic-type      nil
+                           :effective-type     :type/Float
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :tax)
+                           :name               "TAX_2"
+                           :source-alias       "Orders"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Orders → Tax"
+                           :position           4}
+
+              ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
+              ret-3 [hr-own-id hr-own-tax hr-join-id]
+              refs  (for [join-alias       [nil "Orders"]
+                          [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
+                      [:field (merge {:lib/uuid       (str (random-uuid))
+                                      :base-type      coltype
+                                      :effective-type coltype}
+                                     (when join-alias
+                                       {:join-alias join-alias}))
+                       (meta/id :orders column)])
+              exp-4 [{:display-name "ID"}
+                     {:display-name "Tax"}
+                     {:display-name "Orders → ID"}
+                     {:display-name "Orders → Tax"}]
+              exp-3 (update exp-4 3 (constantly nil))]
           (testing "all-4 matches everything"
-            (is (=? ["ID" "TAX" "Orders__ID" "Orders__TAX"]
-                    (->> cols
-                         (map lib/ref)
-                         (map #(lib.equality/find-matching-column all-4  -1 % cols))
-                         (map :lib/desired-column-alias)))))
+            (is (=? exp-4
+                    (->> refs
+                         (map #(lib.equality/find-matching-column % ret-4)))))
+            (is (=? exp-4
+                    (->> refs
+                         (map #(lib.equality/find-matching-column all-4 -1 % ret-4)))))
+            (is (=? [0 1 2 3]
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (lib.equality/find-column-indexes-for-refs all-4 -1 refs ret-4))))
           (testing "just-3 does not match the joined TAX"
-            (is (=? ["ID" "TAX" "Orders__ID" nil]
-                    (->> cols
-                         (map lib/ref)
-                         (map #(lib.equality/find-matching-column just-3 -1 % ret-3))
-                         (map :lib/desired-column-alias))))))))))
+            (is (=? exp-3
+                    (->> refs
+                         (map #(lib.equality/find-matching-column % ret-3)))))
+            (is (=? exp-3
+                    (->> refs
+                         (map #(lib.equality/find-matching-column just-3 -1 % ret-3)))))
+            (is (=? [0 1 2 -1]
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (lib.equality/find-column-indexes-for-refs just-3 -1 refs ret-3)))))))))
 
 (deftest ^:parallel find-matching-column-aggregation-test
   (let [query (-> lib.tu/venues-query
