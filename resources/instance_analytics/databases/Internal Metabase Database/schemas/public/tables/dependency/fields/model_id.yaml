@@ -1,0 +1,53 @@
+description: null
+database_type: int4
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- dependency
+coercion_strategy: null
+name: model_id
+fingerprint_version: 5
+has_field_values: auto-list
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Integer
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-13T17:11:43.231419Z'
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: dependency
+- model: Field
+  id: model_id
+database_is_auto_increment: false
+json_unfolding: false
+position: 2
+visibility_type: normal
+preview_display: true
+display_name: Model ID
+database_position: 2
+database_required: true
+fingerprint:
+  global:
+    distinct-count: 64
+    nil%: 0.0
+  type:
+    type/Number:
+      min: 2.0
+      q1: 479.25
+      q3: 1157.5
+      max: 4358.0
+      sd: 1191.3775996112245
+      avg: 1205.6712328767123
+created_at: '2023-06-08T14:05:46.958807Z'
+base_type: type/Integer
+points_of_interest: null

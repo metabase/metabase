@@ -1,0 +1,22 @@
+description: Used to keep track of the values indexed in a model
+entity_type: entity/GenericTable
+schema: public
+show_in_getting_started: false
+name: model_index_value
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: model_index_value
+visibility_type: hidden
+field_order: database
+is_upload: false
+initial_sync_status: complete
+display_name: Model Index Value
+created_at: '2023-06-12T14:53:42.351826Z'
+points_of_interest: null

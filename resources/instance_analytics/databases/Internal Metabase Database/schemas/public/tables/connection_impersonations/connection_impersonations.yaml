@@ -1,0 +1,22 @@
+description: Table for holding connection impersonation policies
+entity_type: entity/GenericTable
+schema: public
+show_in_getting_started: false
+name: connection_impersonations
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: connection_impersonations
+visibility_type: hidden
+field_order: database
+is_upload: false
+initial_sync_status: complete
+display_name: Connection Impersonations
+created_at: '2023-06-20T15:56:00.427167Z'
+points_of_interest: null

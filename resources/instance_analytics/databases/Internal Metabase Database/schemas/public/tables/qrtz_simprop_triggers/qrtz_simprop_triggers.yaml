@@ -1,0 +1,22 @@
+description: Used for Quartz scheduler.
+entity_type: entity/GenericTable
+schema: public
+show_in_getting_started: false
+name: qrtz_simprop_triggers
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: qrtz_simprop_triggers
+visibility_type: hidden
+field_order: database
+is_upload: false
+initial_sync_status: complete
+display_name: Qrtz Simprop Triggers
+created_at: '2023-06-08T14:05:40.156303Z'
+points_of_interest: null

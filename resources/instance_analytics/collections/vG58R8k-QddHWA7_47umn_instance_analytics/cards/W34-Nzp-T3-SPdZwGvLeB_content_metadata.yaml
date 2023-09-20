@@ -1,0 +1,117 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Content metadata
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    fields:
+    - - field
+      - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - model_id
+      - base-type: type/Text
+    joins:
+    - fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - join-alias: Question 1
+      alias: Question 1
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - join-alias: Question 1
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    - fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - join-alias: Question 35
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - description
+        - join-alias: Question 35
+      alias: Question 35
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - model_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - id
+        - join-alias: Question 35
+      source-table: AxSackBiyXVRUzM_TyyQY
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - null
+    - dashboard-create
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: W34-Nzp-T3-SPdZwGvLeB
+  label: content_metadata
+display: object
+entity_id: W34-Nzp-T3-SPdZwGvLeB
+collection_preview: true
+visualization_settings:
+  table.pivot_column: full_name
+  table.cell_column: model_id
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"join-alias":"Question 1"}]]':
+      column_title: Creator Name
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Dashboard
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+      column_title: Description
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
+      column_title: Dashboard ID
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","timestamp"],null]]':
+      column_title: Creation Date
+parameters: []
+dataset: false
+created_at: '2023-08-17T21:47:25.11498Z'
+public_uuid: null

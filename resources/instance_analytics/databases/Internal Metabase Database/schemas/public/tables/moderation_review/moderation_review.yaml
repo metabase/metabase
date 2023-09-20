@@ -1,0 +1,22 @@
+description: Reviews (from moderators) for a given question/dashboard (BUCM)
+entity_type: entity/GenericTable
+schema: public
+show_in_getting_started: false
+name: moderation_review
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: moderation_review
+visibility_type: hidden
+field_order: database
+is_upload: false
+initial_sync_status: complete
+display_name: Moderation Review
+created_at: '2023-06-12T14:53:41.845792Z'
+points_of_interest: null

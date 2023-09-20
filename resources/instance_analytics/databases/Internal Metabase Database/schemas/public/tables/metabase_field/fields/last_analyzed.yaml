@@ -1,0 +1,49 @@
+description: null
+database_type: timestamptz
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- metabase_field
+coercion_strategy: null
+name: last_analyzed
+fingerprint_version: 5
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/DateTimeWithLocalTZ
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-12T19:56:22.444018Z'
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: metabase_field
+- model: Field
+  id: last_analyzed
+database_is_auto_increment: false
+json_unfolding: false
+position: 15
+visibility_type: normal
+preview_display: true
+display_name: Last Analyzed
+database_position: 15
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 6
+    nil%: 0.7789142407553108
+  type:
+    type/DateTime:
+      earliest: '2023-06-08T12:20:19.546988Z'
+      latest: '2023-06-12T16:43:20.304755Z'
+created_at: '2023-06-08T14:05:45.284698Z'
+base_type: type/DateTimeWithLocalTZ
+points_of_interest: null
