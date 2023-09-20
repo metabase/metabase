@@ -120,7 +120,8 @@ describe("scenarios > search", () => {
       cy.wait(["@search", "@search"]);
       cy.findAllByTestId("search-result-item-name")
         .first()
-        .should("have.text", "Orders");
+        .should("be.visible")
+        .and("have.text", "Orders");
 
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
