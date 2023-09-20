@@ -7327,11 +7327,6 @@
   dependencies:
     "@types/unist" "*"
 
-"@types/history@^3.2.5":
-  version "3.2.5"
-  resolved "https://registry.yarnpkg.com/@types/history/-/history-3.2.5.tgz#be614208f1a10a20c414b4d3762d1f2b65b53ae4"
-  integrity sha512-TqWYI0mlqS5qhH8MHgJJs0RcgvvZLxkn0bi2qK07liZqP7M9rl1kpJ6TCAUo5Cp4vP5DObIqHcky0MWyyQojVQ==
-
 "@types/history@^4.7.11":
   version "4.7.11"
   resolved "https://registry.yarnpkg.com/@types/history/-/history-4.7.11.tgz#56588b17ae8f50c53983a524fc3cc47437969d64"
@@ -7829,12 +7824,12 @@
   resolved "https://registry.yarnpkg.com/@types/redux-actions/-/redux-actions-2.6.2.tgz#5956d9e7b9a644358e2c0610f47b1fa3060edc21"
   integrity sha512-TvcINy8rWFANcpc3EiEQX9Yv3owM3d3KIrqr2ryUIOhYIYzXA/bhDZeGSSSuai62iVR2qMZUgz9tQ5kr0Kl+Tg==
 
-"@types/redux-auth-wrapper@^1.0.7":
-  version "1.0.10"
-  resolved "https://registry.yarnpkg.com/@types/redux-auth-wrapper/-/redux-auth-wrapper-1.0.10.tgz#26df5a3bbe114907c0f7e644875c5fa2d056907d"
-  integrity sha512-5fN6lsj/kDl4k98gKOrZ2ehadvh/Ld2weLantdWisly+n8O95YlsSfOnMkswhUWq0IVUqHdMyQPstztS4jl8RQ==
+"@types/redux-auth-wrapper@^2.0.13":
+  version "2.0.13"
+  resolved "https://registry.yarnpkg.com/@types/redux-auth-wrapper/-/redux-auth-wrapper-2.0.13.tgz#64508302114b01b5f686815ff9654aee96aa8ba8"
+  integrity sha512-vRt35/fL27IIDA0gMSD+cTvkJ5h8vQIkX417fgmvEWcjEtIYP3SV6121HFstvg8dxzM6vaciqzrrWQrBzxbgWw==
   dependencies:
-    "@types/history" "^3.2.5"
+    "@types/history" "^4.7.11"
     "@types/react" "*"
     redux "^3.7.2"
 
