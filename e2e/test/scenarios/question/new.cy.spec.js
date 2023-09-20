@@ -9,6 +9,8 @@ import {
   getPersonalCollectionName,
   visitCollection,
   modal,
+  setTokenFeatures,
+  describeOSS,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
@@ -173,7 +175,10 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      popover().findByText("Orders").click();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
       visualize();
       saveQuestion("Personal question");
 
@@ -313,10 +318,11 @@ describe("scenarios > question > new", () => {
 // the data picker has different behavior if there are no models in the instance
 // the default instance image has a model in it, so we need to separately test the
 // model-less behavior
-describe("scenarios > question > new > data picker > without models", () => {
+describeOSS("scenarios > question > new > data picker > without models", () => {
   beforeEach(() => {
     restore("without-models");
     cy.signInAsAdmin();
+    setTokenFeatures("none");
   });
 
   it("can create a question from the sample database", () => {

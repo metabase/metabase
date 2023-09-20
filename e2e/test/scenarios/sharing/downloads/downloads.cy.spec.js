@@ -16,7 +16,11 @@ import {
   enableTracking,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -297,9 +301,9 @@ function assertOrdersExport(length) {
   downloadAndAssert(
     {
       fileType: "xlsx",
-      questionId: 1,
-      dashcardId: 1,
-      dashboardId: 1,
+      questionId: ORDERS_QUESTION_ID,
+      dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
+      dashboardId: ORDERS_DASHBOARD_ID,
       isDashboard: true,
     },
     sheet => {

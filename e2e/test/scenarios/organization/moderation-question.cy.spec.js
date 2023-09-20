@@ -7,11 +7,12 @@ import {
   getFullName,
 } from "e2e/support/helpers";
 
+import { USERS } from "e2e/support/cypress_data";
+
 import {
-  USERS,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_data";
+} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 const adminFullName = getFullName(admin);
@@ -107,7 +108,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.createModerationReview({
         status: "verified",
         moderated_item_type: "card",
-        moderated_item_id: 2,
+        moderated_item_id: ORDERS_COUNT_QUESTION_ID,
       });
 
       cy.signInAsNormalUser();
