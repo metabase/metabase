@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import type { VisualizationProps } from "metabase/visualizations/types";
 

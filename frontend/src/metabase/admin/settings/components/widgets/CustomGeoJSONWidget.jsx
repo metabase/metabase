@@ -7,7 +7,7 @@ import cx from "classnames";
 import Utils from "metabase/lib/utils";
 import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
