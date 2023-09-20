@@ -72,12 +72,8 @@
    (if (= (:entity_id instance) (perms/default-audit-collection-entity-id))
      false
      (mi/current-user-has-full-permissions? :write instance)))
-  ([model pk]
-   (if (and
-        (string? (perms/default-audit-collection-entity-id))
-        (= pk (t2/select-one-fn :id 'Collection :entity_id (perms/default-audit-collection-entity-id))))
-     false
-     (mi/current-user-has-full-permissions? :write model pk))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one 'Collection :id pk))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."

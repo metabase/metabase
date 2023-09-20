@@ -129,7 +129,6 @@
            (t2/update! Collection (u/the-id collection)
                        {:name ""}))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -189,7 +188,6 @@
           (recur
            (str/replace path (re-pattern (str "/" id "/")) (str "/" (id->name id) "/"))
            more))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
@@ -428,7 +426,6 @@
       (is (= 2
              (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Ancestors & Effective Ancestors                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -446,7 +443,6 @@
     (testing "trying it on C should give us only A"
       (is (= ["A"]
              (ancestors c))))))
-
 
 ;;; ---------------------------------------------- Effective Ancestors -----------------------------------------------
 
@@ -474,7 +470,6 @@
       (with-current-user-perms-for-collections [d]
         (is (= []
                (effective-ancestors d)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
@@ -572,8 +567,6 @@
                                       :location    "/A/"
                                       :children    #{}}}})))))
 
-
-
 (deftest descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
     (t2.with-temp/with-temp [Collection a {}
@@ -581,7 +574,6 @@
                              Collection c {:location (collection/children-location b)}]
       (is (= #{(u/the-id b) (u/the-id c)}
              (#'collection/descendant-ids a))))))
-
 
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
 
@@ -754,7 +746,6 @@
              Exception
              (collection/perms-for-archiving input)))))))
 
-
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
@@ -859,7 +850,6 @@
              Exception
              (collection/perms-for-moving collection new-parent)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -954,7 +944,6 @@
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
              (collection-locations (vals collections)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Nested Collections: Archiving/Unarchiving                                    |
@@ -1093,7 +1082,6 @@
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Permissions Inheritance Upon Creation!                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1104,12 +1092,12 @@
   ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
   ;; to simulate the output of the `with-collection-hierarchy` macro
   (perms-path-ids->names
-    (zipmap (map :name collections)
-            collections)
-    (t2/select-fn-set :object Permissions
-                      {:where [:and
-                               [:like :object "/collection/%"]
-                               [:= :group_id (u/the-id perms-group)]]})))
+   (zipmap (map :name collections)
+           collections)
+   (t2/select-fn-set :object Permissions
+                     {:where [:and
+                              [:like :object "/collection/%"]
+                              [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
@@ -1204,7 +1192,6 @@
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1245,7 +1232,6 @@
     (t2.with-temp/with-temp [User temp-user]
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
@@ -1335,7 +1321,6 @@
                "/collection/B/"
                "/collection/C/"}
              (group->perms [a b c] group))))))
-
 
 ;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
 
@@ -1651,9 +1636,10 @@
                  (serdes/identity-hash c3))))))))
 
 (deftest instance-analytics-collections-test
-  (premium-features-test/with-premium-features #{:audit-app}
-    (with-redefs [perms/default-audit-collection-entity-id (constantly "collection-entity-id")]
-      (t2.with-temp/with-temp [Collection collection {:entity_id "collection-entity-id"}]
-        (mt/with-current-user (mt/user->id :crowberto)
-                                           (is (not (mi/can-write? Collection (:id collection)))
-                                               "Admin isn't able to write to audit collection"))))))
+  (testing "Instance analytics isn't writable. even for admins."
+   (premium-features-test/with-premium-features #{:audit-app}
+     (with-redefs [perms/default-audit-collection-entity-id (constantly "collection-entity-id")]
+       (t2.with-temp/with-temp [Collection collection {:entity_id "collection-entity-id"}]
+         (mt/with-current-user (mt/user->id :crowberto)
+           (is (not (mi/can-write? Collection (:id collection)))
+               "Admin isn't able to write to audit collection")))))))
