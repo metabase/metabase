@@ -2331,44 +2331,98 @@
            (#'magic/valid-bindings? context common-dimensions bindings))))))
 
 (deftest match-affinities-test
-  (testing "Doesn't match anything if nothing is bound"
-    (let [affinities    {"RowcountLast30Days" [{:filters    ["Last30Days"]
-                                                :metrics    ["Count"]
-                                                :score      100
-                                                :dimensions []}],
-                         "DistinctFKCounts"   [{:metrics    ["CountDistinctFKs"]
-                                                :score      100
-                                                :dimensions []}],
-                         "Rowcount"           [{:metrics    ["Count"]
-                                                :score      100
-                                                :dimensions []}]}
-          nothing-bound (zipmap [:available-dimensions
-                                 :available-metrics
-                                 :available-filters]
-                                (repeat {}))]
-      (is (= {} (magic/match-affinities affinities nothing-bound)))))
-  (testing "Matches affinities to bound dimensions/metrics"
-    (doseq [identified-field ["CreateTimestamp" "CreateTime"]]
-      (let [affinities {"HoursOfDayCreateDate"
-                        [{:dimensions ["CreateTimestamp"], :metrics ["Count"], :score 50}
-                         {:dimensions ["CreateTime"], :metrics ["Count"], :score 50}]}
-            bound      {:available-dimensions {identified-field :anything},
-                        :available-metrics    {"Count" {:metric ["count"], :score 100}},
-                        :available-filters    {}}]
-        (is (= {"HoursOfDayCreateDate" {:dimensions [identified-field]
-                                        :metrics    ["Count"]
-                                        :score      50}}
+  (testing "If no dimensions are provided, only dimensionless affinities are matched"
+    (let [affinities    [{:affinity-name "RowcountLast30Days"
+                          :filters       ["Last30Days"]
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"CreateTimestamp"}}
+                         {:affinity-name "DistinctFKCounts"
+                          :metrics       ["CountDistinctFKs"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"FK"}}
+                         {:affinity-name "Rowcount"
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{}}]
+          nothing-bound {:available-dimensions {}}]
+      (is (= #{"Rowcount"}
+             (magic/match-affinities affinities nothing-bound)))))
+  (testing "When dimensions are present, all affinities that are a subset of those dimensions are matched"
+    (let [affinities    [{:affinity-name "RowcountLast30Days"
+                          :filters       ["Last30Days"]
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"CreateTimestamp"}}
+                         {:affinity-name "DistinctFKCounts"
+                          :metrics       ["CountDistinctFKs"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"FK"}}
+                         {:affinity-name "Rowcount"
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{}}]
+          x {:available-dimensions {"CreateTimestamp" {}}}]
+      (is (= #{"RowcountLast30Days" "Rowcount"}
+             (magic/match-affinities affinities x)))))
+  (testing "Multiple affinities of the same name may be present with different dimensions"
+    (doseq [identified-field ["CreateTimestamp" "CreateDate" "JoinTimestamp"]]
+      (let [affinities [{:filters ["Last30Days"],
+                         :metrics ["Count"],
+                         :score 100,
+                         :dimensions [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims #{"CreateTimestamp"}}
+                        {:filters ["Last30Days"],
+                         :metrics ["Count"],
+                         :score 100,
+                         :dimensions [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims #{"CreateDate"}}
+                        {:filters ["Last30Days"],
+                         :metrics ["Count"],
+                         :score 100,
+                         :dimensions [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims #{"JoinTimestamp"}}]
+            bound      {:available-dimensions {identified-field :anything}}]
+        (is (= #{"RowcountLast30Days"}
                (magic/match-affinities affinities bound))))))
-  (testing "Missing metrics prevent an affinity from being selected"
-    (let [affinities {"foo"
-                      ;; we have A but not M.
-                      [{:dimensions ["A"], :metrics ["M"], :score 50}
-                       ;; We have A' and M'
-                       {:dimensions ["A'"], :metrics ["M'"], :score 50}]}
-          bound      {:available-dimensions {"A" :anything, "A'" :anything},
-                      :available-metrics    {"M'" {:metric ["count"], :score 100}},
-                      :available-filters    {}}]
-      (is (= {"foo" {:dimensions ["A'"]
-                     :metrics    ["M'"]
-                     :score      50}}
-             (magic/match-affinities affinities bound))))))
+  (testing "Multidimensional affinities must satisfy all dimensions to be matched."
+    (testing "Only \"AverageIncomeByMonth\" is satisfied as \"Discount\" is an absent dimension"
+      (let [affinities [{:dimensions    ["Timestamp"]
+                         :metrics       ["AvgIncome"]
+                         :score         100
+                         :affinity-name "AverageIncomeByMonth"
+                         :base-dims     #{"Income" "Timestamp"}}
+                        {:dimensions    ["Timestamp"]
+                         :metrics       ["AvgDiscount"]
+                         :score         70
+                         :affinity-name "AverageDiscountByMonth"
+                         :base-dims     #{"Income" "Discount" "Timestamp"}}]
+            bound      {:available-dimensions {"Income"    :anything,
+                                               "Timestamp" :anything}}]
+        (is (= #{"AverageIncomeByMonth"}
+               (magic/match-affinities affinities bound)))))
+    (testing "Both affinities are matched as all three dimensions are present."
+      (let [affinities [{:dimensions    ["Timestamp"]
+                         :metrics       ["AvgIncome"]
+                         :score         100
+                         :affinity-name "AverageIncomeByMonth"
+                         :base-dims     #{"Income" "Timestamp"}}
+                        {:dimensions    ["Timestamp"]
+                         :metrics       ["AvgDiscount"]
+                         :score         70
+                         :affinity-name "AverageDiscountByMonth"
+                         :base-dims     #{"Income" "Discount" "Timestamp"}}]
+            bound      {:available-dimensions {"Income"    :anything
+                                               "Timestamp" :anything
+                                               "Discount" :anything}}]
+        (is (= #{"AverageIncomeByMonth" "AverageDiscountByMonth"}
+               (magic/match-affinities affinities bound)))))))
