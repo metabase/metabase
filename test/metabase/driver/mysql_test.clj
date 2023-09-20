@@ -715,8 +715,8 @@
               supports-roles? (or (-> (mt/db) :dbms_version :flavor (= "MariaDB"))
                                   (<= 8 (get-db-version spec)))
               get-privileges  (fn []
-                                (let [spec (sql-jdbc.conn/connection-details->spec :mysql (assoc details 
-                                                                                                 :user "table_privileges_test_user" 
+                                (let [spec (sql-jdbc.conn/connection-details->spec :mysql (assoc details
+                                                                                                 :user "table_privileges_test_user"
                                                                                                  :password "password"))]
                                   (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                     (driver/current-user-table-privileges driver/*driver* (assoc (mt/db) :name "table_privileges_test")))))]
