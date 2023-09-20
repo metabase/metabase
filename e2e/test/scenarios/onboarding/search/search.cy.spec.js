@@ -117,7 +117,7 @@ describe("scenarios > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("ord");
-      cy.wait("@search");
+      cy.wait(["@search", "@search"]);
       cy.findAllByTestId("search-result-item-name")
         .first()
         .should("have.text", "Orders");
