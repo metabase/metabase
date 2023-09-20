@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import type {
   ClickActionBase,
-  DrillMLv2,
+  Drill,
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
@@ -22,7 +22,7 @@ const ACTIONS: Record<string, ClickActionBase> = {
   },
 };
 
-export const SortDrill: DrillMLv2<Lib.SortDrillThruInfo> = ({
+export const SortDrill: Drill<Lib.SortDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,

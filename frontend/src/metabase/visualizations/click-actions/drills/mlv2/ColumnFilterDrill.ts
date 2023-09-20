@@ -1,11 +1,11 @@
 import { t } from "ttag";
-import type { DrillMLv2 } from "metabase/visualizations/types/click-actions";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 import { getColumnFilterDrillPopover } from "metabase/visualizations/click-actions/components/ColumnFilterDrillPopover";
 import type * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 
-export const ColumnFilterDrill: DrillMLv2<Lib.ColumnFilterDrillThruInfo> = ({
+export const ColumnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   question,

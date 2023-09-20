@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import type {
   ClickActionBase,
-  DrillMLv2,
+  Drill,
 } from "metabase/visualizations/types/click-actions";
 import type { Dispatch } from "metabase-types/store";
 import type * as Lib from "metabase-lib";
@@ -26,9 +26,11 @@ const ACTIONS: Record<AggregationOperator, Omit<ClickActionBase, "name">> = {
   },
 };
 
-export const SummarizeColumnDrill: DrillMLv2<
-  Lib.SummarizeColumnDrillThruInfo
-> = ({ drill, drillDisplayInfo, applyDrill }) => {
+export const SummarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
+  drill,
+  drillDisplayInfo,
+  applyDrill,
+}) => {
   if (!drill) {
     return [];
   }

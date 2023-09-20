@@ -1,11 +1,11 @@
 import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
-import type { DrillMLv2 } from "metabase/visualizations/types/click-actions";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
 const isShortTableName = (tableName: string) => tableName.length <= 20;
 
-export const UnderlyingRecordsDrill: DrillMLv2<
+export const UnderlyingRecordsDrill: Drill<
   Lib.UnderlyingRecordsDrillThruInfo
 > = ({ drill, drillDisplayInfo, question, clicked, applyDrill }) => {
   if (!drill) {

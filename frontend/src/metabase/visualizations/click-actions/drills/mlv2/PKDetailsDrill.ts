@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import type { DrillMLv2 } from "metabase/visualizations/types/click-actions";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
-export const PKDetailsDrill: DrillMLv2<Lib.PKDrillThruInfo> = ({
+export const PKDetailsDrill: Drill<Lib.PKDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,

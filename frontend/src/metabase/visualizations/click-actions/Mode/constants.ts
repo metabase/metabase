@@ -32,7 +32,7 @@ export const MODES_TYPES = [
 
 export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   DrillThruType,
-  DrillMLv2<any> | null
+  Drill<any> | null
 > = {
   "drill-thru/column-filter": ColumnFilterDrill,
   "drill-thru/quick-filter": QuickFilterDrill,

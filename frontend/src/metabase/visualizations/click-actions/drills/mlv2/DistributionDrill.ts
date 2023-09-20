@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import type { DrillMLv2 } from "metabase/visualizations/types/click-actions";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
-export const DistributionDrill: DrillMLv2<Lib.DistributionDrillThruInfo> = ({
+export const DistributionDrill: Drill<Lib.DistributionDrillThruInfo> = ({
   drill,
   applyDrill,
 }) => {

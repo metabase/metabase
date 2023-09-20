@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   ClickActionButtonType,
-  DrillMLv2,
+  Drill,
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
@@ -86,7 +86,7 @@ const getOperatorOverrides = (
   return null;
 };
 
-export const QuickFilterDrill: DrillMLv2<Lib.QuickFilterDrillThruInfo> = ({
+export const QuickFilterDrill: Drill<Lib.QuickFilterDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
   applyDrill,

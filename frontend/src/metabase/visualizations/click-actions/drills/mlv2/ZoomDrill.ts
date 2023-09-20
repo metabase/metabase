@@ -1,9 +1,9 @@
 import { t } from "ttag";
-import type { DrillMLv2 } from "metabase/visualizations/types/click-actions";
+import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-export const ZoomToRowDrill: DrillMLv2<Lib.ZoomDrillThruInfo> = ({
+export const ZoomToRowDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
   drillDisplayInfo,
 }) => {
