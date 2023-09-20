@@ -173,7 +173,7 @@ export function versionToNumericComponents(version: string): number[] | null {
     major,
     minor,
     patch,
-    SPECIAL_COMPONENTS[label.toLowerCase()] ?? 0,
+    SPECIAL_COMPONENTS[label?.toLowerCase()] ?? 0,
     build,
   ].map(part => (typeof part === "string" ? parseInt(part, 10) : part));
 }
