@@ -1,6 +1,15 @@
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  columnSettings,
+  buildTableColumnSettings,
+} from "metabase/visualizations/lib/settings/column";
 
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+  createMockTableColumnOrderSetting,
+} from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 function seriesWithColumn(col) {
   return [
@@ -94,5 +103,53 @@ describe("column settings", () => {
     expect(time_enabled).toEqual("minutes");
     expect(time_style).toEqual("h:mm A");
     expect(date_style).toEqual("");
+  });
+
+  it("should show new columns and show them as disabled (metabase#25592)", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: {
+            cols: [
+              createMockColumn({
+                id: ORDERS.ID,
+                name: "ID",
+                display_name: "Id",
+                field_ref: ["field", ORDERS.ID, null],
+              }),
+              createMockColumn({
+                id: ORDERS.SUBTOTAL,
+                name: "SUBTOTAL",
+                display_name: "Total",
+                field_ref: ["field", ORDERS.SUBTOTAL, null],
+              }),
+            ],
+          },
+        },
+      ),
+    ];
+
+    const storedSettings = {
+      "table.columns": [
+        createMockTableColumnOrderSetting({
+          name: "TOTAL",
+          fieldRef: ["field", ORDERS.TOTAL, null],
+          enabled: true,
+        }),
+      ],
+    };
+
+    const computedValue = buildTableColumnSettings()["table.columns"].getValue(
+      series,
+      storedSettings,
+    );
+
+    const computedSubtotal = computedValue.find(
+      ({ name }) => name === "SUBTOTAL",
+    );
+
+    expect(computedSubtotal).not.toBeUndefined();
+    expect(computedSubtotal.enabled).toBe(false);
   });
 });

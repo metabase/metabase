@@ -527,16 +527,39 @@ export const buildTableColumnSettings = ({
         )
       );
     },
-    getDefault: ([
-      {
-        data: { cols },
-      },
-    ]) =>
-      cols.map(col => ({
-        name: col.name,
-        fieldRef: col.field_ref,
-        enabled: getIsColumnVisible(col),
-      })),
+    getValue: (series = [], settings) => {
+      const [
+        {
+          data: { cols = [] },
+        },
+      ] = series;
+
+      const columnSettings = settings["table.columns"];
+
+      if (!columnSettings) {
+        // default settings
+        return cols.map(col => ({
+          name: col.name,
+          fieldRef: col.field_ref,
+          enabled: getIsColumnVisible(col),
+        }));
+      }
+
+      const datasetColumnsNotInSettings = cols.filter(
+        datasetColumn =>
+          findColumnIndexForColumnSetting(columnSettings, datasetColumn) < 0,
+      );
+
+      const extraColumnSettings = datasetColumnsNotInSettings.map(
+        datasetColumn => ({
+          name: datasetColumn.name,
+          enabled: false,
+          fieldRef: datasetColumn.field_ref,
+        }),
+      );
+
+      return columnSettings.concat(extraColumnSettings);
+    },
     getProps: (series, settings) => {
       const [
         {
