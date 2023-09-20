@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.collection :as api.collection]
    [metabase.config :as config]
    [metabase.models
@@ -452,7 +454,6 @@
                               (ids-to-keep collection-id))
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
@@ -1808,3 +1809,19 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
+
+(deftest list-collections-instance-analytics-test
+  (audit-db-test/with-audit-db-restoration
+    (audit-db/ensure-audit-db-installed!)
+    (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
+      (testing "Instance Analytics Collection should be the last collection."
+        (testing "GET /api/collection"
+          (is (= "instance-analytics"
+                 (->> (mt/user-http-request :rasta :get 200 "collection")
+                      last
+                      :type))))
+        (testing "GET /api/collection/test"
+          (is (= "instance-analytics"
+                 (->> (mt/user-http-request :rasta :get 200 "collection/tree")
+                      last
+                      :type))))))))
