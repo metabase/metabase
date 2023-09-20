@@ -1,14 +1,9 @@
-(ns metabase.events.activity-feed
+(ns metabase.events.audit-log
   (:require
-   [clojure.set :as set]
    [metabase.events :as events]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.table :as table]
-   [metabase.query-processor :as qp]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,61 +15,32 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic {:keys [user-id] card :object :as _event}]
-  (let [{query :dataset_query
-         dataset? :dataset}   card
-        query                 (when (seq query)
-                                (try (qp/preprocess query)
-                                     (catch Throwable e
-                                       (log/error e (tru "Error preprocessing query:")))))
-        database-id           (some-> query :database u/the-id)
-        table-id              (mbql.u/query->source-table-id query)]
-    (activity/record-activity!
-     {:topic       topic
-      :user-id     user-id
-      :model       (if dataset? "dataset" "card")
-      :model-id    (:id card)
-      :object      card
-      :details     (cond-> (select-keys card [:name :description])
-                     ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
-                     ;; around
-                     dataset? (assoc :original-model "card"))
-      :database-id database-id
-      :table-id    table-id})))
+  [topic {card :object :as _event}]
+  (audit-log/record-event! topic card))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
-(derive :event/dashboard-add-cards ::dashboard-event)
-(derive :event/dashboard-remove-cards ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic {:keys [dashcards user-id] dashboard :object :as _event}]
-  (let [details   (case topic
-                    ;; dashboard events
-                    (:event/dashboard-create
-                     :event/dashboard-delete)
-                    (select-keys dashboard [:description :name])
-                    ;; dashboard card events
-                    (:event/dashboard-add-cards
-                     :event/dashboard-remove-cards)
-                    (let [card-ids             (map :card_id dashcards)
-                          card-id->dashcard-id (into {} (map (juxt :card_id :id) dashcards))
-                          dashboard            (select-keys dashboard [:name :description])
-                          ;; TODO: do we still even use this information? if not let just save dashcards as is
-                          dashcards            (if (seq card-ids)
-                                                 (->> (t2/select [:model/Card :id :name :description] :id [:in card-ids])
-                                                      (map #(set/rename-keys % {:id :card_id}))
-                                                      (map #(assoc % :id (get card-id->dashcard-id (:card_id %)))))
-                                                 [])]
-                      (assoc dashboard :dashcards dashcards)))]
-    (activity/record-activity!
-     {:topic    topic
-      :model    "dashboard"
-      :model-id (:id dashboard)
-      :user-id  user-id
-      :object   dashboard
-      :details details})))
+  [topic {dashboard :object :as _event}]
+  (audit-log/record-event! topic dashboard))
+
+(derive ::dashboard-card-event ::event)
+(derive :event/dashboard-add-cards ::dashboard-card-event)
+(derive :event/dashboard-remove-cards ::dashboard-card-event)
+
+;; TODO (crumb)
+(methodical/defmethod events/publish-event! ::dashboard-card-event
+  [topic {:keys [dashcards id]}]
+  ;; we expect that the object has just a dashboard :id at the top level
+  ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
+  (let [details (-> (t2/select-one [:model/Dashboard :description :name] :id id)
+                    (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                           (-> (t2/select-one [:model/Card :name :description], :id card_id)
+                                               (assoc :id id)
+                                               (assoc :card_id card_id)))))]
+   (audit-log/record-event! topic details :model/Dashboard id)))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
