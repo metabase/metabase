@@ -962,7 +962,12 @@
                                 ;; as values, just want the keys
 
                                 (fn [dims] (into [] (comp (map keys) cat) dims)))))]
-    (group-by first (into [] (comp cat (map (juxt key (comp card-deps val)))) card-templates))))
+    (update-vals (->> card-templates
+                      (into [] (comp cat (map (juxt key (comp card-deps val)))))
+                      (group-by first))
+                 ;; get rid of defintion name in the values [[card-name definition] [card-name definition]]
+                 ;; -> [definition defintion]
+                 (fn [definitions] (map second definitions)))))
 
 (comment
   (dash-template->affinities-map
@@ -973,7 +978,6 @@
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities-map)]
     (affinities "HourOfDayCreateDate"))
-
   )
 
 (defn match-affinities
@@ -984,13 +988,13 @@
   (letfn [(metric-deps [metric-name]
             (-> metric-name
                 ;; look up metric definition, returning an unsatisfiable metric definition if not found
-                (available-metrics {:metric [:dimension ::unsatisfiable]})
+                (available-metrics {:metric [:dimension (str ::unsatisfiable)]})
                 :metric
                 dashboard-templates/collect-dimensions))
           (filter-deps [filter-name]
             (-> filter-name
                 ;; look up filter definition, returning an unsatisfiable metric definition if not found
-                (available-filters {:filter [:dimension ::unsatisfiable]})
+                (available-filters {:filter [:dimension (str ::unsatisfiable)]})
                 :filter
                 dashboard-templates/collect-dimensions))]
     (into {}
