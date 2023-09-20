@@ -23,3 +23,7 @@ export const UserElement = styled(Box, {
 export const CreatedByContainer = styled(Stack)`
   overflow: hidden;
 `;
+
+export const CreatedByContentContainer = styled(Stack)`
+  overflow-y: auto;
+`;
