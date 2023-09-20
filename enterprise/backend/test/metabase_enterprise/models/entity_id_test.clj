@@ -40,6 +40,7 @@
     :model/QueryAction
     :model/Activity
     :model/ApplicationPermissionsRevision
+    :model/AuditLog
     :model/BookmarkOrdering
     :model/CardBookmark
     :model/CollectionBookmark

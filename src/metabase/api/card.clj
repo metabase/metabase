@@ -210,7 +210,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read (assoc <> :actor_id api/*current-user-id*))))))
+        (events/publish-event! :event/card-read <>)))))
 
 (defn- card-columns-from-names
   [card names]
@@ -618,7 +618,7 @@ saved later when it is ready."
                 (and (false? archived?)
                      (:archived card))       :event/card-unarchive
                 :else                        :event/card-update)]
-    (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
+    (events/publish-event! event card)))
 
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
@@ -846,7 +846,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :event/card-delete (assoc card :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/card-delete card))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
