@@ -2426,3 +2426,169 @@
                                                "Discount" :anything}}]
         (is (= #{"AverageIncomeByMonth" "AverageDiscountByMonth"}
                (magic/match-affinities affinities bound)))))))
+
+(deftest dash-template->affinities-test
+  (testing "A trivial case: The TotalOrders metric is dimensionless"
+    (is (= [{:metrics       ["TotalOrders"]
+             :dimensions    []
+             :affinity-name "Rowcount"
+             :base-dims     #{}}]
+           (magic/dash-template->affinities
+             {:cards   [{"Rowcount" {:metrics ["TotalOrders"]}}]
+              :metrics [{"TotalOrders" {:metric ["count"]}}]
+              :filters []}))))
+  (testing "A direct dimension is used"
+    (is (= [{:dimensions    ["Timestamp"]
+             :affinity-name "DIRECT"
+             :base-dims     #{"Timestamp"}}]
+           (magic/dash-template->affinities
+             {:cards   [{"DIRECT" {:dimensions [{"Timestamp" {}}]}}]}))))
+  (testing "One indirect dimension is called out and matched"
+    (is (= [{:metrics       ["AvgIncome"]
+             :dimensions    []
+             :affinity-name "Average Income"
+             :base-dims     #{"Income"}}]
+           (magic/dash-template->affinities
+             {:cards   [{"Average Income" {:metrics ["AvgIncome"]}}]
+              :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
+              :filters []})))))
+
+(comment
+  (magic/dash-template->affinities
+    {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
+               {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
+               {"RowcountLast30Days" {:filters ["Last30Days"] :score 90}}]
+     :metrics [{"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
+     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]})
+
+  (magic/dash-template->affinities
+    {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
+               {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
+               {"IncomeGrowth" {:dimensions [{"Timestamp" {}}] :metrics ["TotalIncome"] :score 100}}
+               {"IncomeByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["TotalIncome" "TotalOrders"] :score 100}}
+               {"AverageQuantityByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgQuantity"] :score 100}}
+               {"AverageIncomeByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgIncome"] :score 100}}
+               {"AverageDiscountByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgDiscount"] :score 70}}
+               {"OrdersByProduct" {:dimensions [{"ProductMedium" {}}] :metrics ["TotalOrders"] :score 90}}
+               {"OrdersByProductCategory" {:dimensions [{"ProductCategoryMedium" {}}] :metrics ["TotalOrders"] :score 90}}
+               {"OrdersBySource" {:dimensions [{"Timestamp" {}} {"SourceSmall" {}}] :metrics ["TotalOrders"] :score 100}}
+               {"OrdersBySource" {:dimensions [{"SourceMedium" {}}] :metrics ["TotalOrders"] :score 90}}
+               {"CountByCountry" {:dimensions [{"Country" {}}] :metrics ["TotalOrders"] :score 90}}
+               {"CountByState" {:dimensions [{"State" {}}] :metrics ["TotalOrders"] :score 90}}
+               {"CountByCoords" {:dimensions [{"Long" {:aggregation "default"}} {"Lat" {:aggregation "default"}}]
+                                 :metrics    ["TotalOrders"]
+                                 :score      80}}]
+     :metrics [{"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]
+                               :score  100
+                               :name   "Average discount %"}}
+               {"TotalIncome" {:metric ["sum" ["dimension" "Income"]] :score 100 :name "Total income"}}
+               {"AvgIncome" {:metric ["avg" ["dimension" "Income"]] :score 100 :name "Average income per transaction"}}
+               {"AvgQuantity" {:metric ["avg" ["dimension" "Quantity"]] :score 100 :name "Average quantity"}}
+               {"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
+     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"] :score 80}}]})
+
+  (magic/dash-template->affinities
+    {:metrics [{"Count" {:metric ["count"], :score 100}}
+               {"CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]], :score 100}}
+               {"Sum" {:metric ["sum" ["dimension" "GenericNumber"]], :score 100}}
+               {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]], :score 100}}],
+     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
+               {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}],
+     :cards   [{"Rowcount" {:metrics ["Count"], :score 100}}
+               {"RowcountLast30Days" {:metrics ["Count"], :filters ["Last30Days"], :score 100}}
+               {"DistinctFKCounts" {:metrics ["CountDistinctFKs"], :score 100}}
+               {"NumberDistribution" {:dimensions [{"GenericNumber" {:aggregation "default"}}], :metrics ["Count"], :score 90}}
+               {"CountByCategoryMedium" {:dimensions [{"GenericCategoryMedium" {}}], :metrics ["Count"], :score 80}}
+               {"CountByCountry" {:dimensions [{"Country" {}}], :metrics ["Count"], :score 90}}
+               {"CountByState" {:dimensions [{"State" {}}], :metrics ["Count"], :score 90}}
+               {"CountByCoords" {:dimensions [{"Long" {}} {"Lat" {}}], :metrics ["Count"], :score 80}}
+               {"CountByJoinDate" {:dimensions [{"JoinTimestamp" {}}], :metrics ["Count"], :score 90}}
+               {"CountByJoinDate" {:dimensions [{"JoinDate" {}}], :metrics ["Count"], :score 90}}
+               {"CountByCreateDate" {:dimensions [{"CreateTimestamp" {}}], :metrics ["Count"], :score 90}}
+               {"CountByCreateDate" {:dimensions [{"CreateDate" {}}], :metrics ["Count"], :score 90}}
+               {"CountByTimestamp" {:dimensions [{"Timestamp" {}}], :metrics ["Count"], :score 20}}
+               {"CountByTimestamp" {:dimensions [{"Date" {}}], :metrics ["Count"], :score 20}}
+               {"NumberOverTime" {:dimensions [{"Timestamp" {}}], :metrics ["Sum" "Avg"], :score 70}}
+               {"NumberOverTime" {:dimensions [{"Date" {}}], :metrics ["Sum" "Avg"], :score 70}}
+               {"NumberOverJoinDate" {:dimensions [{"JoinTimestamp" {}}], :metrics ["Sum" "Avg"], :score 80}}
+               {"NumberOverJoinDate" {:dimensions [{"JoinDate" {}}], :metrics ["Sum" "Avg"], :score 80}}
+               {"NumberOverCreateDate" {:dimensions [{"CreateTimestamp" {}}], :metrics ["Sum" "Avg"], :score 90}}
+               {"NumberOverCreateDate" {:dimensions [{"CreateDate" {}}], :metrics ["Sum" "Avg"], :score 90}}
+               {"DayOfWeekTimestamp" {:dimensions [{"Timestamp" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
+               {"DayOfWeekTimestamp" {:dimensions [{"Date" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
+               {"HourOfDayTimestamp" {:dimensions [{"Timestamp" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
+               {"HourOfDayTimestamp" {:dimensions [{"Time" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
+               {"MonthOfYearTimestamp" {:dimensions [{"Timestamp" {:aggregation "month-of-year"}}],
+                                        :metrics    ["Count"],
+                                        :score      40}}
+               {"MonthOfYearTimestamp" {:dimensions [{"Date" {:aggregation "month-of-year"}}], :metrics ["Count"], :score 40}}
+               {"QuarterOfYearTimestamp" {:dimensions [{"Timestamp" {:aggregation "quarter-of-year"}}],
+                                          :metrics    ["Count"],
+                                          :score      40}}
+               {"QuarterOfYearTimestamp" {:dimensions [{"Date" {:aggregation "quarter-of-year"}}],
+                                          :metrics    ["Count"],
+                                          :score      40}}
+               {"DayOfWeekCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "day-of-week"}}],
+                                       :metrics    ["Count"],
+                                       :score      60}}
+               {"DayOfWeekCreateDate" {:dimensions [{"CreateDate" {:aggregation "day-of-week"}}],
+                                       :metrics    ["Count"],
+                                       :score      60}}
+               {"HourOfDayCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "hour-of-day"}}],
+                                       :metrics    ["Count"],
+                                       :score      50}}
+               {"HourOfDayCreateDate" {:dimensions [{"CreateTime" {:aggregation "hour-of-day"}}],
+                                       :metrics    ["Count"],
+                                       :score      50}}
+               {"DayOfMonthCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "day-of-month"}}],
+                                        :metrics    ["Count"],
+                                        :score      40}}
+               {"DayOfMonthCreateDate" {:dimensions [{"CreateDate" {:aggregation "day-of-month"}}],
+                                        :metrics    ["Count"],
+                                        :score      40}}
+               {"MonthOfYearCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "month-of-year"}}],
+                                         :metrics    ["Count"],
+                                         :score      40}}
+               {"MonthOfYearCreateDate" {:dimensions [{"CreateDate" {:aggregation "month-of-year"}}],
+                                         :metrics    ["Count"],
+                                         :score      40}}
+               {"QuerterOfYearCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "quarter-of-year"}}],
+                                           :metrics    ["Count"],
+                                           :score      40}}
+               {"QuerterOfYearCreateDate" {:dimensions [{"CreateDate" {:aggregation "quarter-of-year"}}],
+                                           :metrics    ["Count"],
+                                           :score      40}}
+               {"DayOfWeekJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "day-of-week"}}],
+                                     :metrics    ["Count"],
+                                     :score      60}}
+               {"DayOfWeekJoinDate" {:dimensions [{"JoinDate" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
+               {"HourOfDayJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "hour-of-day"}}],
+                                     :metrics    ["Count"],
+                                     :score      50}}
+               {"HourOfDayJoinDate" {:dimensions [{"JoinTime" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
+               {"DayOfMonthJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "day-of-month"}}],
+                                      :metrics    ["Count"],
+                                      :score      40}}
+               {"DayOfMonthJoinDate" {:dimensions [{"JoinDate" {:aggregation "day-of-month"}}], :metrics ["Count"], :score 40}}
+               {"MonthOfYearJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "month-of-year"}}],
+                                       :metrics    ["Count"],
+                                       :score      40}}
+               {"MonthOfYearJoinDate" {:dimensions [{"JoinDate" {:aggregation "month-of-year"}}],
+                                       :metrics    ["Count"],
+                                       :score      40}}
+               {"QuerterOfYearJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "quarter-of-year"}}],
+                                         :metrics    ["Count"],
+                                         :score      40}}
+               {"QuerterOfYearJoinDate" {:dimensions [{"JoinDate" {:aggregation "quarter-of-year"}}],
+                                         :metrics    ["Count"],
+                                         :score      40}}
+               {"Singleton" {:dimensions [{"Singleton" {}}], :metrics ["Count"], :score 30}}]}))
