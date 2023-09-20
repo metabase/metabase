@@ -25,6 +25,7 @@ const ColorRangeToggle = ({
         colors={value}
         isQuantile={isQuantile}
         onSelect={onColorRangeSelect}
+        aria-label={getColorRangeLabel(value)}
       />
       {showToggleButton && (
         <ToggleButton icon="compare" small onClick={onToggleClick} />
@@ -35,3 +36,7 @@ const ColorRangeToggle = ({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeToggle;
+
+export function getColorRangeLabel(value: string[]) {
+  return value.join("-");
+}
