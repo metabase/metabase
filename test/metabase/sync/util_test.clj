@@ -197,14 +197,17 @@
           (is (= true
                  (str/includes? results "4.0 s"))))))))
 
-(deftest error-handling-test
+(derive ::sync-error-handling-begin ::sync-util/event)
+(derive ::sync-error-handling-end ::sync-util/event)
+
+(deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
     (mt/dataset sample-dataset
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
                                  "inner, this one triggers the failure"))
-            actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+            actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)
@@ -218,8 +221,9 @@
         (is (= 1 (count (:steps actual))))
         (is (= "failure-step" step-name))
         (is (= {:throwable expected :log-summary-fn nil}
-               (dissoc result :start-time :end-time))))))
+               (dissoc result :start-time :end-time)))))))
 
+(deftest ^:parallel error-handling-test-2
   (doseq [ex [(java.io.IOException.
                "outer, does not trigger"
                (java.net.SocketException. "inner, this one does not trigger"))
@@ -231,7 +235,7 @@
                 (java.lang.IllegalArgumentException.
                  "third level, does not trigger")))]]
     (testing "Other errors will not cause sync to stop"
-      (let [actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+      (let [actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)

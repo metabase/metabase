@@ -57,6 +57,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     canZoomNextRow,
   };
 };
+type MapStateProps = ReturnType<typeof mapStateToProps>;
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = (dispatch: any) => ({
@@ -75,9 +76,15 @@ const mapDispatchToProps = (dispatch: any) => ({
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
+type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
+
+type OwnProps = Omit<
+  ObjectDetailProps,
+  keyof MapStateProps | keyof MapDispatchProps
+>;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(ObjectDetailWrapper);
+)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;

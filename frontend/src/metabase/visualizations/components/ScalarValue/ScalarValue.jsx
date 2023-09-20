@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import {
   ScalarRoot,
