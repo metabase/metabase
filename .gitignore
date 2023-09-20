@@ -50,6 +50,7 @@
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/i18n/*.edn
+/resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
 /resources/license-frontend-third-party.txt
 /resources/namespaces.edn
