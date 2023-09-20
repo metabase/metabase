@@ -548,8 +548,9 @@
 (defn- ordered-clauses-for-fields
   "At this point of transformation `:aggregations` contain aggregation clauses or field clauses, which are result of
    [[swap-metric-clauses]]. Field clauses will be moved later to breakout. Result of this function is vector, where
-   index is original query column index and value is reference to clause after transformation
-   ([[adjust-aggregation-and-breakout]] call). Resulting map is later used [[maybe-wrap-in-ordering-query]]."
+   index is original query column index and value is reference to clause that represents that column after
+   query transformation ([[adjust-aggregation-and-breakout]] call). Resulting map is later used by
+   [[maybe-wrap-in-ordering-query]]."
   [breakout-idx ag-idx [[type :as ag] & ags] acc]
   (cond (nil? ag)
         acc
