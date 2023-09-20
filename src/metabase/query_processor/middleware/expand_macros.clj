@@ -166,9 +166,6 @@
 ;;; |                                                    SEGMENTS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- segments [form]
-  (mbql.u/match form [:segment (_ :guard (complement mbql.u/ga-id?))]))
-
 (defn- segment-clauses->id->definition [segment-clauses]
   (when-let [segment-ids (seq (filter integer? (map second segment-clauses)))]
     (t2/select-pk->fn :definition Segment, :id [:in (set segment-ids)])))
