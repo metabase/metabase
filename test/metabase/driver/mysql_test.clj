@@ -429,14 +429,6 @@
 ;; Therefore, no JSON tests.
 (defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
 
-(defn is-mariadb?
-  "Returns true if the database is MariaDB, false otherwise."
-  [driver db-id]
-  (and (= driver :mysql)
-       (str/includes?
-         (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-         "Maria")))
-
 (deftest json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
@@ -455,7 +447,7 @@
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :mysql
-      (when-not (is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (drop-if-exists-and-create-db! "composite_pks_test")
         (with-redefs [metadata-queries/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
@@ -487,7 +479,7 @@
 
 (deftest json-alias-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
+    (when (not (mysql/mariadb? (mt/db)))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
           (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
@@ -513,7 +505,7 @@
 
 (deftest complicated-json-identifier-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
+    (when (not (mysql/mariadb? (mt/db)))
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
@@ -707,12 +699,12 @@
 
 (deftest table-privileges-test
   (mt/test-driver :mysql
-    (when-not (is-mariadb? driver/*driver* (u/id (mt/db)))
+    (when-not (mysql/mariadb? (mt/db))
       (testing "`table-privileges` should return the correct data for current_user and role privileges"
         (drop-if-exists-and-create-db! "table_privileges_test")
         (let [details         (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec            (sql-jdbc.conn/connection-details->spec :mysql details)
-              supports-roles? (or (-> (mt/db) :dbms_version :flavor (= "MariaDB"))
+              supports-roles? (or (mysql/mariadb? (mt/db))
                                   (<= 8 (get-db-version spec)))
               get-privileges  (fn []
                                 (let [spec (sql-jdbc.conn/connection-details->spec :mysql (assoc details

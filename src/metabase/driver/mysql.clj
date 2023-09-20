@@ -80,22 +80,25 @@
     ;; Only supported for MySQL right now. Revise when a child driver is added.
     (= driver :mysql)))
 
+(defn mariadb?
+  "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
+  [database]
+  (-> database :dbms_version :flavor (= "MariaDB")))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- mariadb? [^DatabaseMetaData metadata]
-  (= (.getDatabaseProductName metadata) "MariaDB"))
 
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
 
 (defn- unsupported-version? [^DatabaseMetaData metadata]
-  (< (db-version metadata)
-     (if (mariadb? metadata)
-       min-supported-mariadb-version
-       min-supported-mysql-version)))
+  (let [mariadb? (= (.getDatabaseProductName metadata) "MariaDB")]
+    (< (db-version metadata)
+       (if mariadb?
+         min-supported-mariadb-version
+         min-supported-mysql-version))))
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
@@ -784,8 +787,8 @@
   [_driver database]
   ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when (-> database :dbms_version :flavor (not= "MariaDB"))
-    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+  (when (mariadb? database)
+    (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
                            (map first))]
