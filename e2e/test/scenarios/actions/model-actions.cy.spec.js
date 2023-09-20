@@ -183,16 +183,16 @@ describe(
       cy.log("Go to the archive");
       cy.visit("/archive");
 
-      getArchiveListItem("Delete Order").within(() => {
-        cy.icon("unarchive").click({ force: true });
-      });
+      getArchiveListItem("Delete Order")
+        .icon("unarchive")
+        .click({ force: true });
 
       cy.get("main").within(() => {
         cy.findByText("Items you archive will appear here.");
         cy.findByText("Delete Order").should("not.exist");
       });
 
-      cy.findByRole("button", { name: "Undo" }).click();
+      cy.findByTestId("toast-undo").button("Undo").click();
 
       cy.get("main").within(() => {
         cy.findByText("Items you archive will appear here.").should(
