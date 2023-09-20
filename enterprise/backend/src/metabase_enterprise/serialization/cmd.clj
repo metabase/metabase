@@ -31,7 +31,9 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.net URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,7 +99,7 @@
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (serdes/with-cache
-    (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
+    (v2.load/load-metabase (v2.ingest/ingest-yaml (.getPath ^URL path)) opts)))
 
 (mu/defn v2-load
   "SerDes v2 load entry point.
