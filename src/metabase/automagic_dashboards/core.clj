@@ -995,15 +995,15 @@
                 dashboard-templates/collect-dimensions))]
     (into {}
           (keep (fn [[affinity-name definitions]]
-                  (reduce
-                   (fn [_ {:keys [dimensions metrics filters] :as definition}]
-                     (let [dimension-deps (concat dimensions
-                                                  (mapcat metric-deps metrics)
-                                                  (mapcat filter-deps filters))]
-                       (when (every? available-dimensions dimension-deps)
-                         ;; todo: when do we want to "populate" the affinity definition with bound fields.
-                         (reduced [affinity-name definition]))))
-                   nil
+                  ((fn find-first-satisfied-definition [definitions]
+                     (when-let [{:keys [dimensions metrics filters] :as definition} (first definitions)]
+                       (let [dimension-deps (concat dimensions
+                                                    (mapcat metric-deps metrics)
+                                                    (mapcat filter-deps filters))]
+                         (if (every? available-dimensions dimension-deps)
+                           ;; todo: when do we want to "populate" the affinity definition with bound fields.
+                           [affinity-name definition]
+                           (recur (next definitions))))))
                    definitions)))
           affinities)))
 
