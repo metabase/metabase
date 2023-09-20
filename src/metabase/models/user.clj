@@ -72,6 +72,16 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
 (t2/define-before-insert :model/User
   [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
@@ -93,13 +103,13 @@
      {:locale (i18n/normalized-locale-string locale)})))
 
 (t2/define-after-insert :model/User
-  [{user-id :id, superuser? :is_superuser, settings :settings, :as user}]
+  [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
       (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
       ;; Can't use mw.session/with-current-user-id due to circular require
       (binding [api/*current-user-id*       user-id
-                setting/*user-local-values* (delay (atom (or settings {})))]
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
     (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
