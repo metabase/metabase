@@ -2004,11 +2004,6 @@
                 dimensions   (#'magic/bind-dimensions base-context template-dimensions)
                 metrics      (#'magic/resolve-available-dimensions dimensions template-metrics)
                 filters      (#'magic/resolve-available-dimensions dimensions template-filters)
-                context      (-> base-context
-                                 (assoc :dimensions dimensions
-                                        :metrics metrics
-                                        :filters filters)
-                                 (#'magic/inject-root card))
                 available-values {:available-dimensions dimensions
                                   :available-metrics metrics
                                   :available-filter filters}]
@@ -2039,7 +2034,7 @@
                                           :database (mt/id)
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates context available-values card-def)))))
+                        (#'magic/card-candidates base-context available-values card-def)))))
             (testing "A card spec that requires both the Count and Lat metrics and dimensions will produce cards that
                       use those bound dimensions."
               (let [card-def {:title      "Some sort of card"
@@ -2054,13 +2049,13 @@
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :breakout     [[:field (mt/id :people :latitude) nil]]
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates context available-values card-def)))))
+                        (#'magic/card-candidates base-context available-values card-def)))))
             (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
               (let [card-def {:title      "Some sort of card"
                               :metrics    ["Count"]
                               :dimensions [{"Lat" {}} {"Lon" {}}]
                               :score      100}]
-                (is (= nil (#'magic/card-candidates context available-values card-def)))))))))))
+                (is (= nil (#'magic/card-candidates base-context available-values card-def)))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
