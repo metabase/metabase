@@ -144,25 +144,6 @@
   ;; https://github.com/seancorfield/next-jdbc/issues/244.
   (next-method connection (assoc options :nested-transaction-rule :ignore) f))
 
-(defn- do-transaction [^java.sql.Connection connection f]
-  (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
-              (try
-               (let [result (f connection)]
-                 (.commit connection)
-                 result)
-               (catch Throwable e
-                 (.rollback connection savepoint)
-                 (throw e)))))]
-    ;; optimization: don't set and unset autocommit if it's already false
-    (if (.getAutoCommit connection)
-      (try
-        (.setAutoCommit connection false)
-        (thunk)
-        (finally
-          (.setAutoCommit connection true)))
-      (thunk))))
-
 (def ^:private ^:dynamic *transaction-depth* 0)
 
 (defn- do-transaction [^java.sql.Connection connection f]
