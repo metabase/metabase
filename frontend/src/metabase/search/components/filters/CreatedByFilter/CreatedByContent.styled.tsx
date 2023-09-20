@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import type { BoxProps } from "metabase/ui";
-import { Box } from "metabase/ui";
+import { Stack, Box } from "metabase/ui";
 
 export const UserElement = styled(Box, {
   shouldForwardProp: prop => prop !== "isSelected",
@@ -18,4 +18,8 @@ export const UserElement = styled(Box, {
   &:hover {
     background-color: ${({ theme }) => theme.colors.brand[0]};
   }
+`;
+
+export const CreatedByContainer = styled(Stack)`
+  overflow: hidden;
 `;

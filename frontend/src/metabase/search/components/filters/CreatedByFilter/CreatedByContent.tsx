@@ -4,7 +4,10 @@ import { isEqual } from "underscore";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserListResult } from "metabase-types/api";
 import { Loader, TextInput, Text, Center, Stack } from "metabase/ui";
-import { UserElement } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
+import {
+  CreatedByContainer,
+  UserElement,
+} from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 
 const UserListElement = ({
@@ -51,19 +54,17 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
         <Loader data-testid="loading-spinner" />
       </Center>
     ) : (
-      <Stack p="md" h="100%" spacing="xs" style={{ overflow: "hidden" }}>
+      <CreatedByContainer p="md" h="100%" spacing="xs">
         <TextInput
           size="sm"
           mb="sm"
           value={userFilter}
           onChange={event => setUserFilter(event.currentTarget.value)}
         />
-        <div
+        <Stack
+          h="100%"
           style={{
             overflowY: "auto",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
           }}
         >
           <Stack spacing="xs">
@@ -80,7 +81,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
               />
             ))}
           </Stack>
-        </div>
-      </Stack>
+        </Stack>
+      </CreatedByContainer>
     );
   };
