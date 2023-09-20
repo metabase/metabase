@@ -139,6 +139,8 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`. Ret
 
 *  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
+*  **`remove_inactive`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
 ## `GET /api/database/:id/schema/`
 
 Return a list of Tables for a Database whose `schema` is `nil` or an empty string.

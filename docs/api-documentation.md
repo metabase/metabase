@@ -35,7 +35,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Bookmark](api/bookmark.md)
 - [Card](api/card.md)
 - [Collection](api/collection.md)
-- [Content management review*](api/ee/content-management-review.md)
+- [Content verification review*](api/ee/content-verification-review.md)
 - [Dashboard](api/dashboard.md)
 - [Database](api/database.md)
 - [Dataset](api/dataset.md)

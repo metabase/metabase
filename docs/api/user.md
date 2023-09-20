@@ -20,7 +20,8 @@ You must be a superuser to do this.
 
 ## `GET /api/user/`
 
-Fetch a list of `Users`. By default returns every active user but only active users.
+Fetch a list of `Users` for admins or group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
