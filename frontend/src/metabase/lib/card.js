@@ -36,7 +36,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
       Questions.actions.fetch({ id: cardId }, { reload: shouldReload }),
     );
 
-    if (shouldReload) {
+    if (shouldReload || !question) {
       question = Questions.selectors.getObject(getState(), {
         entityId: cardId,
       });
@@ -51,7 +51,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
 
 function isFullQuestionData(question) {
   // data loaded from questions api contains this. results from search api don't
-  return question.isSaved() ? question.lastEditInfo() != null : true;
+  return question?.isSaved() ? question.lastEditInfo() != null : true;
 }
 
 function getCleanCard(card) {
