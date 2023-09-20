@@ -7,7 +7,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.collection :as api.collection]
-   [metabase.config :as config]
    [metabase.models
     :refer [Card
             Collection
@@ -86,7 +85,7 @@
   []
   (if-not config/ee-available?
     #{}
-    (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection))
+    (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection :archived false))
           id->coll (m/index-by :id colls)
           collection-tree (collection/collections->tree {} colls)]
       (->> (loop [[tree & coll-tree] collection-tree
@@ -160,7 +159,8 @@
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into (t2/select-fn-set :name Collection {:where [:= :type nil]}) public-collection-names)
+            (is (= (into (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})
+                         public-collection-names)
                    crowbertos))
             (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
                    crowbertos-with-excludes))

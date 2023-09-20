@@ -140,7 +140,11 @@
              (log/info "Unzipping done.")
              (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+<<<<<<< HEAD
              (let [report (log/with-no-logs (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
+=======
+             (let [report (log/with-no-logs (serialization.cmd/v2-load-internal (.getPath (.toURI (io/file "plugins/instance_analytics")))
+>>>>>>> auditv2-main
                                                                                 {}
                                                                                 :token-check? false))]
                (if (not-empty (:errors report))

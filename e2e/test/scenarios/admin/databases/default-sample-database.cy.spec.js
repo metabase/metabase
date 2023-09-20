@@ -260,6 +260,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.wait("@loadDatabaseUsageInfo");
     modal().within(() => {
       cy.findByLabelText(/Delete \d+ saved questions?/).click();
+      cy.findByLabelText(/Delete \d+ model?/).click();
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
