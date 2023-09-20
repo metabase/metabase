@@ -1006,15 +1006,22 @@
   (dash-template->affinities
     (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
 
-  (dash-template->affinities
-    (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-  ;; Generic Table has cards with the same name. One depends on CreateTime, one on CreateTimestamp. Need both
-  ;; definitions around for matching
+  ;; example call
   (let [affinities (-> ["table" "GenericTable"]
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
     (match-affinities affinities
                       {:available-dimensions {"JoinDate" :whatever}}))
+
+  ;; example call where one affinity matches on two sets of dimensions: "OrdersBySource" matches
+  ;; on [#{"SourceSmall" "Timestamp"} #{"SourceMedium"}]
+  (let [affinities (-> ["table" "TransactionTable"]
+                       dashboard-templates/get-dashboard-template
+                       dash-template->affinities)]
+    (match-affinities affinities
+                      {:available-dimensions {"SourceSmall"  :dummy
+                                              "Timestamp"    :dummy
+                                              "SourceMedium" :dummy}}))
   )
 
 (defn match-affinities
