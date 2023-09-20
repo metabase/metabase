@@ -816,7 +816,7 @@
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+    (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
         (let [database (t2/select-one Database :id (mt/id))]
@@ -857,7 +857,7 @@
 
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+    (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]
           (testing "When json_unfolding is disabled at the DB level on the first sync"

@@ -207,7 +207,7 @@
 (deftest ^:parallel json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (mt/dataset json
           (let [table (t2/select-one Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
@@ -333,7 +333,7 @@
 (deftest describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset big-json
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "limit if huge. limit it and yell warning (#23635)"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
@@ -352,7 +352,7 @@
 (deftest ^:parallel big-nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing, but big"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
@@ -370,7 +370,7 @@
 
 (deftest json-unwrapping-bigint-and-boolean
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+    (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json-unwrap-bigint-and-boolean
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
@@ -437,7 +437,7 @@
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
                     metadata-queries/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
-          (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+          (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
               (is (= #{{:name              "json_col → int_turn_string"
