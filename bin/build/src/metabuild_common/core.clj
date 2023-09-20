@@ -27,8 +27,7 @@
 (p/import-vars
  [aws
   create-cloudfront-invalidation!
-  s3-copy!
-  s3-copy-without-profile!]
+  s3-copy!]
 
  [entrypoint
   exit-when-finished-nonzero-on-exception]

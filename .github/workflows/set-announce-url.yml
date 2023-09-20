@@ -1,0 +1,63 @@
+name: Set Announcement URL
+run-name: Set ${{ inputs.edition }} Announcement URL - ${{ inputs.announcement-url }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      announcement-url:
+        description: 'The URL of the announcement'
+        type: string
+        required: true
+      edition:
+        description: The edition to set the announcement URL for ('ee' or 'oss')
+        type: string
+        required: true
+
+jobs:
+  set-announce-url:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Validate inputs
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const announcementUrl = '${{ inputs.announcement-url }}';
+            const edition = '${{ inputs.edition }}';
+
+            if (!announcementUrl.includes('http')) {
+              throw new Error(`announcement-url must be a valid URL, got: ${announcementUrl}`);
+            }
+
+            if (edition !== 'ee' && edition !== 'oss') {
+              throw new Error(`edition must be 'ee' or 'oss', got: ${version}`);
+            }
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Update announcement url
+        uses: actions/github-script@v6
+        id: announce_url
+        with:
+          result-encoding: string
+          script: |
+            // TODO: move this to the release/ directory when it exists
+            const fs = require('fs');
+            const edition = '${{ inputs.edition }}';
+
+            const fileName = edition === 'ee'
+              ? 'version-info-ee.json'
+              : 'version-info.json';
+
+            const versionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/${fileName}`).then(r => r.json());
+            versionInfo.latest.announcement_url = '${{ inputs.announcement-url }}';
+
+            fs.writeFileSync('version-info.json', JSON.stringify(versionInfo));
+
+            return fileName;
+      - name: Upload new version-info.json to s3
+        run: |
+          aws s3 cp version-info.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/${{ steps.announce_url.outputs.results }}
