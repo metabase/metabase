@@ -32,8 +32,8 @@ import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 
 // router
-import { Router } from "react-router-dom";
 import { createBrowserHistory } from "history";
+import { ConnectedRouter } from "connected-react-router";
 
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
@@ -71,7 +71,7 @@ function _init(reducers, getRoutes, callback) {
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
             <GlobalStyles />
-            <Router history={history}>{routes}</Router>
+            <ConnectedRouter history={history}>{routes}</ConnectedRouter>
           </ThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
