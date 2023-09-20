@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useUpdate } from "react-use";
+import { useTrackPageView } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { trackStepSeen } from "../../analytics";
 import { WELCOME_STEP } from "../../constants";
@@ -11,6 +12,8 @@ export const Setup = (): JSX.Element => {
   const step = useSelector(getStep);
   const isLocaleLoaded = useSelector(getIsLocaleLoaded);
   const update = useUpdate();
+
+  useTrackPageView();
 
   useEffect(() => {
     trackStepSeen(step);
