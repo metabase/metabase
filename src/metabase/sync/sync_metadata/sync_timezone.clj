@@ -41,7 +41,8 @@
         zone-id (driver/db-default-timezone driver database)]
     (log/infof (i18n/trs "{0} database {1} default timezone is {2}" driver (pr-str (:id database)) (pr-str zone-id)))
     (validate-zone-id driver zone-id)
-    (let [zone-id (some-> zone-id str)]
+    (let [zone-id (some-> zone-id str)
+          zone-id (if (= zone-id "Z") "UTC" zone-id)]
       (when-not (= zone-id (:timezone database))
         (t2/update! :model/Database (:id database) {:timezone zone-id}))
       {:timezone-id zone-id})))
