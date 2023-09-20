@@ -16,18 +16,17 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import { getSetting } from "metabase/selectors/settings";
-import RecentsList from "metabase/nav/components/RecentsList";
-import SearchResults from "metabase/nav/components/SearchResults";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
-import type { SearchAwareLocation } from "metabase/search/types";
+import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import { getSearchTextFromLocation } from "metabase/search/utils";
+import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import {
   SearchInputContainer,
   SearchIcon,
   CloseSearchButton,
   SearchInput,
   SearchResultsFloatingContainer,
-  SearchResultsContainer,
   SearchBarRoot,
 } from "./SearchBar.styled";
 
@@ -65,7 +64,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
+    (nextLocation: LocationDescriptorObject | string) =>
+      dispatch(push(nextLocation)),
     [dispatch],
   );
 
@@ -79,7 +79,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    result => {
+    (result: WrappedResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
@@ -135,16 +135,20 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     }
   }, [previousLocation, location, setInactive]);
 
+  const goToSearchApp = useCallback(() => {
+    onChangeLocation({
+      pathname: "search",
+      query: { q: searchText.trim() },
+    });
+  }, [onChangeLocation, searchText]);
+
   const handleInputKeyPress = useCallback(
     e => {
       if (e.key === "Enter" && hasSearchText) {
-        onChangeLocation({
-          pathname: "search",
-          query: { q: searchText.trim() },
-        });
+        goToSearchApp();
       }
     },
-    [hasSearchText, onChangeLocation, searchText],
+    [goToSearchApp, hasSearchText],
   );
 
   const handleClickOnClose = useCallback(
@@ -177,12 +181,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       {isActive && isTypeaheadEnabled && (
         <SearchResultsFloatingContainer data-testid="search-results-floating-container">
           {hasSearchText ? (
-            <SearchResultsContainer data-testid="search-bar-results-container">
-              <SearchResults
-                searchText={searchText.trim()}
-                onEntitySelect={onSearchItemSelect}
-              />
-            </SearchResultsContainer>
+            <SearchResultsDropdown
+              searchText={searchText}
+              onSearchItemSelect={onSearchItemSelect}
+              goToSearchApp={goToSearchApp}
+            />
           ) : (
             <RecentsList />
           )}

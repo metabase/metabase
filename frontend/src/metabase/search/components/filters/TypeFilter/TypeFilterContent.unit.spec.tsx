@@ -6,8 +6,10 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import type { EnabledSearchModelType } from "metabase/search/types";
-import type { SearchModelType } from "metabase-types/api";
+import type {
+  EnabledSearchModelType,
+  SearchModelType,
+} from "metabase-types/api";
 import { TypeFilterContent } from "./TypeFilterContent";
 
 const MODEL_NAME: Record<EnabledSearchModelType, string> = {
