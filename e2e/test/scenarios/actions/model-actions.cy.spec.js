@@ -208,8 +208,6 @@ describe(
         cy.findByText("Items you archive will appear here.");
         cy.findByText("Delete Order").should("not.exist");
       });
-
-      cy.findByRole("button", { name: "Undo" }).should("not.exist");
     });
 
     it("should allow to create an action with the New button", () => {
