@@ -18,6 +18,7 @@ import { zoomInRow } from "metabase/query_builder/actions";
 import { getSetting } from "metabase/selectors/settings";
 import RecentsList from "metabase/nav/components/RecentsList";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
+import { TextInput } from "metabase/ui";
 
 import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
@@ -35,7 +36,9 @@ import {
   SearchResultsContainer,
   SearchBarRoot,
   SearchFunnelButton,
+  SearchBarElement,
 } from "./SearchBar.styled";
+import { color } from "metabase/lib/colors";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -185,36 +188,48 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 
   return (
     <SearchBarRoot ref={container}>
-      <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
-        <SearchIcon name="search" isActive={isActive} />
-        <SearchInput
-          isActive={isActive}
-          value={searchText}
-          placeholder={t`Search` + "…"}
-          maxLength={200}
-          onChange={onTextChange}
-          onKeyPress={handleInputKeyPress}
-          ref={searchInput}
-        />
+      <SearchBarElement
+        isActive={isActive}
+        icon={<SearchIcon size={16} name="search" isActive={isActive} />}
+        placeholder={t`Search` + "…"}
+        onChange={onTextChange}
+        value={searchText}
+        onKeyPress={handleInputKeyPress}
+        ref={searchInput}
+        maxLength={200}
+        fw={700}
+        size="sm"
+      />
+      {/*<SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>*/}
+      {/*  <SearchIcon name="search" isActive={isActive} />*/}
+      {/*  <SearchInput*/}
+      {/*    isActive={isActive}*/}
+      {/*    value={searchText}*/}
+      {/*    placeholder={t`Search` + "…"}*/}
+      {/*    maxLength={200}*/}
+      {/*    onChange={onTextChange}*/}
+      {/*    onKeyPress={handleInputKeyPress}*/}
+      {/*    ref={searchInput}*/}
+      {/*  />*/}
 
-        {(!isSmallScreen() || isActive) && (
-          <SearchFunnelButton
-            icon="filter"
-            data-is-filtered={isFiltered}
-            data-testid="search-bar-filter-button"
-            isFiltered={isFiltered}
-            onClick={e => {
-              e.stopPropagation();
-              setIsFilterModalOpen(true);
-            }}
-          />
-        )}
-        {isSmallScreen() && isActive && (
-          <CloseSearchButton onClick={handleClickOnClose}>
-            <Icon name="close" />
-          </CloseSearchButton>
-        )}
-      </SearchInputContainer>
+      {/*  {(!isSmallScreen() || isActive) && (*/}
+      {/*    <SearchFunnelButton*/}
+      {/*      icon="filter"*/}
+      {/*      data-is-filtered={isFiltered}*/}
+      {/*      data-testid="search-bar-filter-button"*/}
+      {/*      isFiltered={isFiltered}*/}
+      {/*      onClick={e => {*/}
+      {/*        e.stopPropagation();*/}
+      {/*        setIsFilterModalOpen(true);*/}
+      {/*      }}*/}
+      {/*    />*/}
+      {/*  )}*/}
+      {/*  {isSmallScreen() && isActive && (*/}
+      {/*    <CloseSearchButton onClick={handleClickOnClose}>*/}
+      {/*      <Icon name="close" />*/}
+      {/*    </CloseSearchButton>*/}
+      {/*  )}*/}
+      {/*</SearchInputContainer>*/}
       {isActive && isTypeaheadEnabled && (
         <SearchResultsFloatingContainer data-testid="search-results-floating-container">
           {hasSearchText ? (

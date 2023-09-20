@@ -11,5 +11,15 @@ export const getTextInputOverrides =
           marginTop: theme.spacing.xs,
         },
       }),
+      variants: {
+        filled: (theme, params, context) => {
+          console.log(theme, params, context)
+          return {
+            input: {
+              backgroundColor: theme.colors.bg[0],
+            },
+          };
+        },
+      },
     },
   });

@@ -13,6 +13,9 @@ import {
 } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 
+import type { InputProps, TextInputProps } from "metabase/ui";
+import { TextInput } from "metabase/ui";
+
 const activeInputCSS = css`
   border-radius: 6px;
   justify-content: flex-start;
@@ -20,9 +23,34 @@ const activeInputCSS = css`
 
 export const SearchBarRoot = styled.div`
   width: 100%;
+  display: flex;
+  flex-direction: row;
 
   ${breakpointMinSmall} {
     position: relative;
+  }
+`;
+
+export const SearchBarElement = styled(TextInput)<
+  InputProps &
+    TextInputProps & {
+      isActive?: boolean;
+    }
+>`
+  & input {
+    background-color: ${({ theme, isActive }) => {
+      return isActive ? theme.colors.bg[1] : theme.colors.bg[0];
+    }};
+    border: 1px solid ${({ theme }) => theme.colors.border[0]};
+    font-size: ${({ theme }) => theme.fontSizes.md};
+    font-weight: 700;
+    color: ${({ theme }) => theme.colors.text[1]};
+    height: auto;
+    min-height: auto;
+  }
+
+  & .emotion-TextInput-icon {
+    width: 36px !important;
   }
 `;
 
@@ -113,13 +141,13 @@ export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
     ${props =>
       props.isActive &&
       css`
-        margin-left: ${ICON_MARGIN};
+        // margin-left: ${ICON_MARGIN};
         margin-right: ${ICON_MARGIN};
       `}
   }
 
   ${breakpointMinSmall} {
-    margin-left: ${ICON_MARGIN};
+    //margin-left: ${ICON_MARGIN};
   }
 `;
 
