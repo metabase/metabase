@@ -7,36 +7,6 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up.
 
-   TODO: Remove, reuse, refine text between ---
-   --- 
-   # On metrics expansion
-
-   Metrics clauses are represented in query as [:metric id], where id is integer greater than 0. Metric is defined 
-   by its id, name, and definition that contains aggregation and possibly filter.
-
-   During expansion, filter and aggregation of original query, containing metric, may be modified.
-
-   Different metrics may have different filters defined. Fact that filtering is performed before the aggregation
-   implies that different metrics, even if contained in single query, are expected to be aggregating on different sets of rows.
-
-   To solve this problem, metrics are partitioned by their filters. Then, metrics with filter are computed
-   in a separate source queries. 
-   Results of those queries are then joined into original query, which is then updated accordingly.
-
-   For aggregations that use metrics values as part of an expresssion, metrics clauses are swapped with joined fields.
-   Aggregations that contain only one metric clause and nothing else, become breakout fields.
-  
-  Those aggregations becoming breakout fields have potential to change order of result as breakouts are presented
-  before aggregations. To mitigate that, query with expanded metrics is further wrapped to ordering query, which
-  presents fields in original order.
-
-   # Relationship between filters
-
-   Solution is designed so original query filter is `:and` merged with metrics filter. That implies the original query's
-   source dataset will conitain at least all rows from metrics query dataset. Because of that, left join can be used
-   to join metrics query rows.
-   ---
-
    # Metrics and joins
 
    Metrics, when created, are bound to specific database table, hence query that uses metric aggregations should use
@@ -59,17 +29,28 @@
 
    Same holds for segments. Containing query's segments should get expanded before metric expansion takes place.
 
+   # Metrics and expressions
+
+   Expressions won't appear in metric definition. But can be used:
+   1. In aggregation expression with metrics arg.
+   2. In breakout.
+
+   TODO: describe expression handling during query compilation in context of metrics expansion!
+
    # Solution overview
 
    This section contains descriptions of steps of the expansion as they follow.
 
    ## Metrics are groupped by filters and generation of `metrics-query`s
 
-   Metrics are groupped by filters. [TODO For reasons why refer to metrics and filter section] For every group `metrics-query` is created. It is a sub query:
+   Metrics are groupped by filters. [TODO For reasons why refer to metrics and filter section] For every group
+   `metrics-query` is created. It is a sub query:
    1. Filter of which is result of combining filters of containing (original) query and filter that is common for 
       metrics group.
    2. Breakout is the same as in containing (original) query.*
-   3. Aggregations are taken from metric definitions of the group.
+   3. Aggregations are taken from metric definitions of the group and have `::metric` aggregation option added, which
+      is later used, while joining aggregations back to the original query, to decide which joined field represnt
+      which metric.
 
    * As metrics can be defined recursively, `metrics-query` can contain `:metric` clauses after the first round of
      expansion. If that is the case, metrics are expanded further, hence final `:breakout` of `metrics-query` may be
@@ -114,7 +95,46 @@
 
    ## Transformation of original query
 
-   TBD
+   ### Swapping metric clauses in aggregation for joined fields
+
+   During modification of joins by [[join-metrics-query]], `::metirc-id->field` is added. This key contains map from
+   metric id to field usable in joining query. [[swap-metric-clauses]] uses this map to swap metric clauses for fields.
+   In case only one metric clause and nothing else is used in aggregation, whole aggregation is swapped for a field.
+
+   [[adjust-aggregation-and-breakout]] later moves those fields to breakout, but more on that in later sections.
+
+   ### Preserving original order of query columns
+
+   [[infer-ordered-clauses-for-fields]] analyzes contents of `:aggregation` after [[swap-metric-clauses]] and adds
+   ::ordered-clauses-for-fields key to the transformed query. Value of this key is vector where index is order
+   of columns from original query and value is reference to clause representing that column after transformation. Value
+   has a form [clause-type index], eg. [:breakout 2].
+
+   This data is further used in [[maybe-wrap-in-ordering-query]], but more on that later.
+
+   ### Update of references in `:order-by`
+
+   As some aggregations of transformed query could become breakout fields, references to those former aggregations,
+   now breakout fields are adjusted accordingly in [[update-order-by-ag-refs]].
+
+   ### Move fields that are result of transformed aggregations to breakout
+
+   ## Wrapping into ordering query
+
+   If metrics are in top level root query and not in joins or source query, this query, after it gets transformed,
+   is wrapped into ordering query. That is necessary, because if some aggregation becomes breakout field, it could
+   potentially change order of columns in resulting query.
+
+   Example. Let's have query as following (only relevant snippet is used):
+   
+   ```
+   {:aggregation [[:count]
+                  [:metric 1]]}
+   ```
+   
+   Metric one aggregation would become a breakout field during transformation. That would change the order of
+   the result columns. Because of that [[maybe-warp-in-ordering-query]] is used. It wraps transformerd query
+   into ordering query and uses `::ordered-clauses-for-fields` to recreate original order of query columns.
 
    # Naming of metrics columns
 
