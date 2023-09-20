@@ -22,9 +22,9 @@
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
 
-      (testing "Test that `record-event!` succesfully records basic card events with the model specified"
+      (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (audit-log/record-event! :event/card-create card :model/Card)
+          (audit-log/record-event! :event/card-create card (mt/user->id :rasta) :model/Card card-id)
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)
