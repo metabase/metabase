@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import { routerActions } from "connected-react-router";
-import { UserAuthWrapper } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history4/redirect";
 
 import { Route } from "metabase/hoc/Title";
 import {
@@ -68,10 +68,9 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import Tools from "metabase/admin/tools/containers/Tools";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 
-const UserCanAccessTools = UserAuthWrapper({
-  predicate: isEnabled => isEnabled,
-  failureRedirectPath: "/admin",
-  authSelector: state => {
+const UserCanAccessTools = connectedReduxRedirect({
+  redirectPath: "/admin",
+  authenticatedSelector: state => {
     if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
       return true;
     }

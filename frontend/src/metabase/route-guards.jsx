@@ -1,57 +1,52 @@
 import { routerActions } from "connected-react-router";
-import { UserAuthWrapper } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history4/redirect";
 import MetabaseSettings from "metabase/lib/settings";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getIsMetabotEnabled } from "metabase/home/selectors";
 
-const MetabaseIsSetup = UserAuthWrapper({
-  predicate: authData => authData.hasUserSetup,
-  failureRedirectPath: "/setup",
-  authSelector: state => ({ hasUserSetup: MetabaseSettings.hasUserSetup() }), // HACK
+const MetabaseIsSetup = connectedReduxRedirect({
+  redirectPath: "/setup",
+  authenticatedSelector: () => MetabaseSettings.hasUserSetup(), // HACK
   wrapperDisplayName: "MetabaseIsSetup",
   allowRedirectBack: false,
   redirectAction: routerActions.replace,
 });
 
-const UserIsAuthenticated = UserAuthWrapper({
-  failureRedirectPath: "/auth/login",
-  authSelector: state => state.currentUser,
+const UserIsAuthenticated = connectedReduxRedirect({
+  redirectPath: "/auth/login",
+  authenticatedSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
   redirectAction: routerActions.replace,
 });
 
-const UserIsAdmin = UserAuthWrapper({
-  predicate: currentUser => currentUser && currentUser.is_superuser,
-  failureRedirectPath: "/unauthorized",
-  authSelector: state => state.currentUser,
+const UserIsAdmin = connectedReduxRedirect({
+  redirectPath: "/unauthorized",
+  authenticatedSelector: state => state.currentUser?.is_superuser,
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsAdmin",
   redirectAction: routerActions.replace,
 });
 
-const UserIsNotAuthenticated = UserAuthWrapper({
-  predicate: currentUser => !currentUser,
-  failureRedirectPath: "/",
-  authSelector: state => state.currentUser,
+const UserIsNotAuthenticated = connectedReduxRedirect({
+  redirectPath: "/",
+  authenticatedSelector: state => !state.currentUser,
   authenticatingSelector: state => state.auth.loginPending,
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectAction: routerActions.replace,
 });
 
-const UserCanAccessSettings = UserAuthWrapper({
-  predicate: adminItems => adminItems?.length > 0,
-  failureRedirectPath: "/unauthorized",
-  authSelector: getAdminPaths,
+const UserCanAccessSettings = connectedReduxRedirect({
+  redirectPath: "/unauthorized",
+  authenticatedSelector: state => getAdminPaths(state)?.length > 0,
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessSettings",
   redirectAction: routerActions.replace,
 });
 
-export const UserCanAccessMetabot = UserAuthWrapper({
-  predicate: isMetabotEnabled => isMetabotEnabled,
-  failureRedirectPath: "/",
-  authSelector: state => getIsMetabotEnabled(state),
+export const UserCanAccessMetabot = connectedReduxRedirect({
+  redirectPath: "/",
+  authenticatedSelector: getIsMetabotEnabled,
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessMetabot",
   redirectAction: routerActions.replace,
