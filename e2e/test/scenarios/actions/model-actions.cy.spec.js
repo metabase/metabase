@@ -7,8 +7,6 @@ import {
   restore,
   fillActionQuery,
   createAction,
-  navigationSidebar,
-  openNavigationSidebar,
   resetTestTable,
   resyncDatabase,
   createModelFromTableName,
@@ -182,11 +180,8 @@ describe(
           cy.findByText("Delete").should("not.exist");
         });
 
-      openNavigationSidebar();
-      navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      popover().findByText("View archive").click();
+      cy.log("Go to the archive");
+      cy.visit("/archive");
 
       getArchiveListItem("Delete Order").within(() => {
         cy.icon("unarchive").click({ force: true });
