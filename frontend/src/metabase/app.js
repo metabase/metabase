@@ -57,7 +57,7 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 api.basename = BASENAME;
 
 function _init(reducers, getRoutes, callback) {
-  const history = createBrowserHistory();
+  const history = createBrowserHistory({ basename: BASENAME });
   const store = getStore(reducers, history);
   const routes = getRoutes(store);
 

@@ -52,7 +52,7 @@
     "dc": "2.1.9",
     "diff": "^3.2.0",
     "formik": "^2.2.9",
-    "history": "^5.3.0",
+    "history": "^4.10.1",
     "html2canvas": "^1.4.1",
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
