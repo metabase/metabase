@@ -1,4 +1,6 @@
 import * as Snowplow from "@snowplow/browser-tracker";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
@@ -28,6 +30,14 @@ export const trackPageView = url => {
   if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(getSanitizedUrl(url));
   }
+};
+
+export const useTrackPageView = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
 };
 
 export const trackStructEvent = (category, action, label, value) => {
