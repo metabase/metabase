@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.collection :as api.collection]
    [metabase.config :as config]
    [metabase.models
@@ -241,16 +243,6 @@
               (is (= []
                      (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
 
-(deftest list-collections-instance-analytics-test
-  (testing "GET /api/collection"
-    (testing "Intsance Analytics Collection should be the last collection, when it exists."
-      (is (= (if config/ee-available?
-               "instance-analytics"
-               nil)
-             (->> (mt/user-http-request :rasta :get 200 "collection")
-                  last
-                  :type))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/tree                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -461,17 +453,6 @@
                               (ids-to-keep collection-id))
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
-
-
-(deftest collection-tree-instance-analytics-test
-  (testing "GET /api/collection/tree"
-    (testing "Intsance Analytics Collection should be the last collection, when it exists."
-      (is (= (if config/ee-available?
-               "instance-analytics"
-               nil)
-             (->> (mt/user-http-request :rasta :get 200 "collection")
-                  last
-                  :type))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
@@ -1827,3 +1808,19 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
+
+(deftest list-collections-instance-analytics-test
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (audit-db-test/with-audit-db-restoration
+      (audit-db/ensure-audit-db-installed!)
+      (testing "Intsance Analytics Collection should be the last collection."
+        (testing "GET /api/collection"
+          (is (= "instance-analytics"
+                 (->> (mt/user-http-request :rasta :get 200 "collection")
+                      last
+                      :type))))
+        (testing "GET /api/collection/test"
+          (is (= "instance-analytics"
+                 (->> (mt/user-http-request :rasta :get 200 "collection/tree")
+                      last
+                      :type))))))))
