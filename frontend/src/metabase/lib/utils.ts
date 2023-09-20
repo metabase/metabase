@@ -88,15 +88,6 @@ export function isUUID(uuid: unknown) {
   );
 }
 
-export function isBase64(string: unknown) {
-  return (
-    typeof string === "string" &&
-    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      string,
-    )
-  );
-}
-
 export function isJWT(string: unknown) {
   return (
     typeof string === "string" &&
