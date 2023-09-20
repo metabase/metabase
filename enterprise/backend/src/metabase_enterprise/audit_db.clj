@@ -134,15 +134,15 @@
              (ee.internal-user/ensure-internal-user-exists!)
              (adjust-audit-db-to-source! audit-db)
              (log/info "Loading Analytics Content...")
-
-             (log/info "Unzipping analytics to plugins...")
+             (log/info "Unzipping instance_analytics to plugins...")
              (u.files/unzip-file analytics-root-dir-resource "plugins")
              (log/info "Unzipping done.")
              (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-             (let [report (log/with-no-logs (serialization.cmd/v2-load-internal (.getPath (.toURI (io/file "plugins/instance_analytics")))
-                                                                                {}
-                                                                                :token-check? false))]
+             (let [report (log/with-no-logs
+                            (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
+                                                                {}
+                                                                :token-check? false))]
                (if (not-empty (:errors report))
                  (log/info (str "Error Loading Analytics Content: " (pr-str report)))
                  (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
