@@ -625,8 +625,7 @@
       (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
-  (let [field-ref   (lib.ref/ref column)
-        join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
+  (let [join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
         join-fields (lib.join/join-fields join)]
     (if (or (nil? join-fields)
             (= join-fields :none))

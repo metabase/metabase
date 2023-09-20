@@ -243,7 +243,9 @@
                                                     (:name resolved)))
                                  (for [col columns]
                                    (if (:id col)
-                                     (dissoc col :name :lib/desired-column-alias)
+                                     (assoc col
+                                            :name                     "____lib.equality/noname"
+                                            :lib/desired-column-alias "____lib.equality/noname")
                                      col))
                                  opts))))))
 

@@ -73,9 +73,9 @@
                     options {:include-implicitly-joinable-for-source-card? false}]
                 (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq cols)
-       (let [matching (into {} (keep-indexed (fn [index breakout]
+       (let [matching (into {} (keep-indexed (fn [index a-breakout]
                                                (when-let [col (lib.equality/find-matching-column
-                                                               query stage-number breakout cols
+                                                               query stage-number a-breakout cols
                                                                {:generous? true})]
                                                  [col index]))
                                              (or (breakouts query stage-number) [])))]

@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -314,7 +315,7 @@
                                        (lib/with-join-fields (for [field [:id :tax]]
                                                                (lib/ref (meta/field-metadata :orders field)))))))
         columns      (lib/visible-columns query)
-        marked       (metabase.lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))
+        marked       (lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))
         user-cols    ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
                       "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
         product-cols ["ID" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE" "RATING" "CREATED_AT"]
