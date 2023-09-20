@@ -996,12 +996,6 @@
                                  ;; as values, just want the keys
 
                                  (fn [dims] (into [] (comp (map keys) cat) dims)))))]
-    (update-vals (->> card-templates
-                      (into [] (comp cat (map (juxt key (comp card-deps val)))))
-                      (group-by first))
-                 ;; get rid of defintion name in the values [[card-name definition] [card-name definition]]
-                 ;; -> [definition defintion]
-                 (fn [definitions] (map second definitions)))
     (->> card-templates
          (into [] (comp cat (map (juxt key (comp card-deps val)))))
          (map (fn [[name definition]] (assoc definition :affinity-name name)))
