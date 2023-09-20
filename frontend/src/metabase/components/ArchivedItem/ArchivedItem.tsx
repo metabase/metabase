@@ -60,7 +60,9 @@ export const ArchivedItem = ({
       <span className="ml-auto mr2">
         {onUnarchive && (
           <Tooltip
-            tooltip={t`Unarchive this ${getTranslatedEntityName(model)}`}
+            tooltip={t`Unarchive this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
           >
             <ActionIcon
               onClick={onUnarchive}
@@ -70,7 +72,11 @@ export const ArchivedItem = ({
           </Tooltip>
         )}
         {onDelete && (
-          <Tooltip tooltip={t`Delete this ${getTranslatedEntityName(model)}`}>
+          <Tooltip
+            tooltip={t`Delete this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
+          >
             <ActionIcon
               onClick={onDelete}
               className="hover-child"
