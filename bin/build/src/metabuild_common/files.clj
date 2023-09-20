@@ -178,8 +178,6 @@
                :when (not (directory? file))]
          (when verbose (out/safe-println "Zipping file:" file))
          (let [file-path (.getAbsolutePath file)
-               _ (out/announce (pr-str ["file path" file-path]))
-               _ (out/announce (pr-str ["source dir path" (.getAbsolutePath source-path)]))
                buffer (byte-array 1024)
                fis (FileInputStream. file)]
            (swap! entry-count inc)
