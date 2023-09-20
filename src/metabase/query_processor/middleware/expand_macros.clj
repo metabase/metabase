@@ -570,24 +570,17 @@
     (assoc query ::ordered-clauses-for-fields 
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
-;;;; DONE
 (defn- adjust-aggregation-and-breakout
-  ;;;; TODO: docstring, all fields from aggregation are to be moved to breakout
-  ;;;; TODO: Aggregation can be left empty, Breakout can be empty at also
-  "Aggregation will contain only aggregations or fields that are result of [[swap-metric-clauses]]"
+  "Move fields, which are currently in :aggregation and are result of [[swap-metric-clauses]], intto :breakout."
   [query]
   (let [{:keys [aggregation breakout]}
         (group-by (fn [[type]]
                     (if (= :field type) :breakout :aggregation))
                   (:aggregation query))]
-    ;;;; TODO: isn't implementation with cond-> cleaner?
-    (as-> query $
-      (if (seq aggregation)
-        (assoc $ :aggregation aggregation)
-        (dissoc $ :aggregation))
-      (if (seq breakout)
-        (update $ :breakout #(into (vec %1) %2) breakout)
-        $))))
+    (cond-> query
+      (seq aggregation) (assoc :aggregation aggregation)
+      (empty? aggregation) (dissoc :aggregation)
+      (seq breakout) (update :breakout #(into (vec %1) %2) breakout))))
 
 (defn- update-order-by-ag-refs
   "`:order-by` contains references to aggregations, breakout or expressions. Clauses"
