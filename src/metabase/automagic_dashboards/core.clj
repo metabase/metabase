@@ -1021,12 +1021,14 @@
   [affinities {:keys [available-dimensions]}]
   ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
   ;; how we currently match to existing cards.
-  (let [dimset (set (keys available-dimensions))]
-    (->> affinities
-         (filter
-          (fn [{:keys [base-dims] :as _v}]
-            (set/subset? base-dims dimset)))
-         (into (ordered-map) (map (juxt :affinity-name :base-dims))))))
+  (let [dimset         (set (keys available-dimensions))
+        met-affinities (filter (fn [{:keys [base-dims] :as _v}]
+                                 (set/subset? base-dims dimset))
+                               affinities)]
+    (reduce (fn [m {:keys [affinity-name base-dims]}]
+              (update m affinity-name (fnil conj []) base-dims))
+            (ordered-map)
+            met-affinities)))
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
