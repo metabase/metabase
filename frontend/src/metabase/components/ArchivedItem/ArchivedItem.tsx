@@ -8,6 +8,8 @@ import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 interface ArchivedItemProps {
@@ -35,17 +37,6 @@ export const ArchivedItem = ({
   onToggleSelected,
   showSelect,
 }: ArchivedItemProps) => {
-  const getArchivedItemType = (model: CollectionItemModel) => {
-    switch (model) {
-      case "card":
-        return "question";
-      case "dataset":
-        return "model";
-      default:
-        return model;
-    }
-  };
-
   return (
     <div
       className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
@@ -69,7 +60,9 @@ export const ArchivedItem = ({
       {isAdmin && (onUnarchive || onDelete) && (
         <span className="ml-auto mr2">
           {onUnarchive && (
-            <Tooltip tooltip={t`Unarchive this ${getArchivedItemType(model)}`}>
+            <Tooltip
+              tooltip={t`Unarchive this ${getTranslatedEntityName(model)}`}
+            >
               <ActionIcon
                 onClick={onUnarchive}
                 className="hover-child"
@@ -78,7 +71,7 @@ export const ArchivedItem = ({
             </Tooltip>
           )}
           {onDelete && (
-            <Tooltip tooltip={t`Delete this ${getArchivedItemType(model)}`}>
+            <Tooltip tooltip={t`Delete this ${getTranslatedEntityName(model)}`}>
               <ActionIcon
                 onClick={onDelete}
                 className="hover-child"
