@@ -30,7 +30,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
       entityId: cardId,
     });
 
-    const shouldReload = !isFullQuestionData(question);
+    const shouldReload = !isFullCardData(question?.card());
 
     await dispatch(
       Questions.actions.fetch({ id: cardId }, { reload: shouldReload }),
@@ -49,9 +49,13 @@ export async function loadCard(cardId, { dispatch, getState }) {
   }
 }
 
-function isFullQuestionData(question) {
-  // data loaded from questions api contains this. results from search api don't
-  return question?.isSaved() ? question.lastEditInfo() != null : true;
+function isFullCardData(maybeCard) {
+  // validate that maybeCard complies with Card interface
+  return (
+    maybeCard?.dataset_query != null &&
+    maybeCard?.display != null &&
+    maybeCard?.visualization_settings != null
+  );
 }
 
 function getCleanCard(card) {
