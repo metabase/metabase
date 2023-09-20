@@ -3,4 +3,5 @@ export * from "./Input";
 export * from "./NumberInput";
 export * from "./Radio";
 export * from "./Select";
+export * from "./Switch";
 export * from "./TextInput";
