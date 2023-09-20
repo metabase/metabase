@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
-   [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Dimension Field FieldValues Table]]
    [metabase.sync :as sync]
