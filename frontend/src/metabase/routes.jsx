@@ -93,6 +93,7 @@ import {
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
+  UserIsNotAuthenticated,
 } from "./route-guards";
 
 export const getRoutes = store => (
@@ -167,17 +168,29 @@ const AppRoutes = ({ store }) => {
   return (
     <Switch>
       {/* AUTH */}
-      <Route path="/auth">
-        <Route component={IsNotAuthenticated}>
-          <Route path="login" title={t`Login`} component={Login} />
-          <Route path="login/:provider" title={t`Login`} component={Login} />
-        </Route>
-        <Route exact path="logout" component={Logout} />
-        <Route exact path="forgot_password" component={ForgotPassword} />
-        <Route exact path="reset_password/:token" component={ResetPassword} />
-        <Route exact path="*">
-          <Redirect to="/auth/login" />
-        </Route>
+      <Route
+        path="/auth/login"
+        render={() => (
+          <IsNotAuthenticated>
+            <Login />
+          </IsNotAuthenticated>
+        )}
+        title={t`Login`}
+      />
+      <Route
+        path="/auth/login/:provider"
+        render={() => (
+          <IsNotAuthenticated>
+            <Login />
+          </IsNotAuthenticated>
+        )}
+        title={t`Login`}
+      />
+      <Route path="/auth/logout" component={Logout} />
+      <Route path="/auth/forgot_password" component={ForgotPassword} />
+      <Route path="/auth/reset_password/:token" component={ResetPassword} />
+      <Route path="/auth/*">
+        <Redirect to="/auth/login" />
       </Route>
 
       {/* MAIN */}
