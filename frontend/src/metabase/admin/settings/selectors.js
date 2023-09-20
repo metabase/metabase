@@ -787,7 +787,7 @@ export const getSections = createSelector(
   },
 );
 
-export const getActiveSectionName = (state, props) => props.params.splat;
+export const getActiveSectionName = (state, props) => props.params[0];
 
 export const getActiveSection = createSelector(
   getActiveSectionName,

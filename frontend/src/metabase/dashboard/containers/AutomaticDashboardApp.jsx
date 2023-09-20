@@ -45,8 +45,10 @@ import {
   XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
-const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
-  `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
+const getDashboardId = (_state, { match, location }) => {
+  const splat = match.params[0];
+  return `/auto/dashboard/${splat}${location.hash.replace(/^#?/, "?")}`;
+};
 
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
