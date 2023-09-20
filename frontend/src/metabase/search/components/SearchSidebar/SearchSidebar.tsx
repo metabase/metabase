@@ -9,9 +9,10 @@ import type {
 } from "metabase/search/types";
 import { Stack } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { DropdownSidebarFilter } from "metabase/search/components/SidebarFilter/DropdownSidebarFilter";
+import { DropdownSidebarFilter } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/DropdownSidebarFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
 
 export const SearchSidebar = ({
   value,
@@ -68,24 +69,27 @@ export const SearchSidebar = ({
 
     if (Filter.type === "toggle") {
       return (
-        <Filter.Component
+        <ToggleSidebarFilter
           data-testid={`${key}-search-filter`}
           value={value[key]}
+          onChange={value => onOutputChange(key, value)}
+          filter={Filter}
+        />
+      );
+    } else if (Filter.type === "dropdown") {
+      const normalizedValue =
+        Array.isArray(value[key]) || !value[key] ? value[key] : [value[key]];
+      return (
+        <DropdownSidebarFilter
+          filter={Filter}
+          data-testid={`${key}-search-filter`}
+          value={normalizedValue}
           onChange={value => onOutputChange(key, value)}
         />
       );
     }
 
-    const normalizedValue =
-      Array.isArray(value[key]) || !value[key] ? value[key] : [value[key]];
-    return (
-      <DropdownSidebarFilter
-        filter={Filter}
-        data-testid={`${key}-search-filter`}
-        value={normalizedValue}
-        onChange={value => onOutputChange(key, value)}
-      />
-    );
+    return null;
   };
 
   return (

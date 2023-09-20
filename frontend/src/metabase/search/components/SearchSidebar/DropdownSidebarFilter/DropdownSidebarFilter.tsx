@@ -16,9 +16,9 @@ import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import {
   DropdownApplyButtonDivider,
   DropdownFilterElement,
-} from "./SidebarFilter.styled";
+} from "./DropdownSidebarFilter.styled";
 
-export type SearchSidebarFilterProps = {
+export type DropdownSidebarFilterProps = {
   filter: SearchFilterDropdown;
 } & SearchFilterComponentProps;
 
@@ -27,7 +27,7 @@ export const DropdownSidebarFilter = ({
   "data-testid": dataTestId,
   value,
   onChange,
-}: SearchSidebarFilterProps) => {
+}: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 

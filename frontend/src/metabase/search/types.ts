@@ -56,12 +56,11 @@ export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
 }
 
-export interface SearchFilterToggle<T extends FilterTypeKeys = any>
+export interface SearchFilterToggle
   extends SearchFilter {
   type: "toggle";
-  Component: ComponentType<SearchFilterComponentProps<T>>;
 }
 
 export type SearchFilterComponent<T extends FilterTypeKeys = any> =
   | SearchFilterDropdown<T>
-  | SearchFilterToggle<T>;
+  | SearchFilterToggle;
