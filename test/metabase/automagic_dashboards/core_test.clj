@@ -2329,3 +2329,46 @@
                common-dimensions [[:dimension "X" {}]]
                bindings          {"X" {:name "X"}}]
            (#'magic/valid-bindings? context common-dimensions bindings))))))
+
+(deftest match-affinities-test
+  (testing "Doesn't match anything if nothing is bound"
+    (let [affinities    {"RowcountLast30Days" [{:filters    ["Last30Days"]
+                                                :metrics    ["Count"]
+                                                :score      100
+                                                :dimensions []}],
+                         "DistinctFKCounts"   [{:metrics    ["CountDistinctFKs"]
+                                                :score      100
+                                                :dimensions []}],
+                         "Rowcount"           [{:metrics    ["Count"]
+                                                :score      100
+                                                :dimensions []}]}
+          nothing-bound (zipmap [:available-dimensions
+                                 :available-metrics
+                                 :available-filters]
+                                (repeat {}))]
+      (is (= {} (magic/match-affinities affinities nothing-bound)))))
+  (testing "Matches affinities to bound dimensions/metrics"
+    (doseq [identified-field ["CreateTimestamp" "CreateTime"]]
+      (let [affinities {"HoursOfDayCreateDate"
+                        [{:dimensions ["CreateTimestamp"], :metrics ["Count"], :score 50}
+                         {:dimensions ["CreateTime"], :metrics ["Count"], :score 50}]}
+            bound      {:available-dimensions {identified-field :anything},
+                        :available-metrics    {"Count" {:metric ["count"], :score 100}},
+                        :available-filters    {}}]
+        (is (= {"HoursOfDayCreateDate" {:dimensions [identified-field]
+                                        :metrics    ["Count"]
+                                        :score      50}}
+               (magic/match-affinities affinities bound))))))
+  (testing "Missing metrics prevent an affinity from being selected"
+    (let [affinities {"foo"
+                      ;; we have A but not M.
+                      [{:dimensions ["A"], :metrics ["M"], :score 50}
+                       ;; We have A' and M'
+                       {:dimensions ["A'"], :metrics ["M'"], :score 50}]}
+          bound      {:available-dimensions {"A" :anything, "A'" :anything},
+                      :available-metrics    {"M'" {:metric ["count"], :score 100}},
+                      :available-filters    {}}]
+      (is (= {"foo" {:dimensions ["A'"]
+                     :metrics    ["M'"]
+                     :score      50}}
+             (magic/match-affinities affinities bound))))))
