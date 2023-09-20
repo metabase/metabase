@@ -1,15 +1,11 @@
 name: Set Announcement URL
-run-name: Set ${{ inputs.edition }} Announcement URL - ${{ inputs.announcement-url }}
+run-name: Set Announcement URL - ${{ inputs.announcement-url }}
 
 on:
   workflow_dispatch:
     inputs:
       announcement-url:
         description: 'The URL of the announcement'
-        type: string
-        required: true
-      edition:
-        description: The edition to set the announcement URL for ('ee' or 'oss')
         type: string
         required: true
 
@@ -23,15 +19,11 @@ jobs:
         with:
           script: |
             const announcementUrl = '${{ inputs.announcement-url }}';
-            const edition = '${{ inputs.edition }}';
 
             if (!announcementUrl.includes('http')) {
               throw new Error(`announcement-url must be a valid URL, got: ${announcementUrl}`);
             }
 
-            if (edition !== 'ee' && edition !== 'oss') {
-              throw new Error(`edition must be 'ee' or 'oss', got: ${version}`);
-            }
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -46,18 +38,25 @@ jobs:
           script: |
             // TODO: move this to the release/ directory when it exists
             const fs = require('fs');
-            const edition = '${{ inputs.edition }}';
 
-            const fileName = edition === 'ee'
-              ? 'version-info-ee.json'
-              : 'version-info.json';
+            const announcementUrl = '${{ inputs.announcement-url }}';
 
-            const versionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/${fileName}`).then(r => r.json());
-            versionInfo.latest.announcement_url = '${{ inputs.announcement-url }}';
+            const OSSversionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/version-info.json`).then(r => r.json());
+            const EEversionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/version-info-ee.json`).then(r => r.json());
 
-            fs.writeFileSync('version-info.json', JSON.stringify(versionInfo));
+            OSSversionInfo.latest.announcement_url = announcementUrl;
+            EEversionInfo.latest.announcement_url = announcementUrl;
 
-            return fileName;
+            fs.writeFileSync('version-info.json', JSON.stringify(OSSversionInfo));
+            fs.writeFileSync('version-info-ee.json', JSON.stringify(EEversionInfo));
+
       - name: Upload new version-info.json to s3
         run: |
-          aws s3 cp version-info.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/${{ steps.announce_url.outputs.results }}
+          aws s3 cp version-info.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/version-info.json
+          aws s3 cp version-info-ee.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/version-info-ee.json
+      - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
+        run: |
+          aws cloudfront create-invalidation \
+          --distribution-id ${{ vars.AWS_CLOUDFRONT_PUBLIC_ID }} \
+          --paths "/version-info.json" "/version-info-ee.json"
+
