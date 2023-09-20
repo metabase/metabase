@@ -369,17 +369,6 @@
                  {:start "2016-06-07" :end "2016-06-08"}
                  {:start "2016-06-06" :end "2016-06-08"}]}))
 
-(deftest ^:parallel date-string->range-relative-today-yesterday-test
-  (do-date-string-range-test
-   {"yesterday" [{:start "2016-06-06" :end "2016-06-06"}
-                 {:start "2016-06-05" :end "2016-06-06"}
-                 {:start "2016-06-06" :end "2016-06-07"}
-                 {:start "2016-06-05" :end "2016-06-07"}]
-    "today"     [{:start "2016-06-07" :end "2016-06-07"}
-                 {:start "2016-06-06" :end "2016-06-07"}
-                 {:start "2016-06-07" :end "2016-06-08"}
-                 {:start "2016-06-06" :end "2016-06-08"}]}))
-
 (deftest ^:parallel date-string->range-relative-past-from-test
   (do-date-string-range-test
    {"past1days-from-0days"      [{:start "2016-06-06" :end "2016-06-06"}
