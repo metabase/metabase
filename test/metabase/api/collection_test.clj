@@ -1810,9 +1810,9 @@
                                               :namespace :currency)))))))))
 
 (deftest list-collections-instance-analytics-test
-  (mt/test-drivers #{:postgres :h2 :mysql}
-    (audit-db-test/with-audit-db-restoration
-      (audit-db/ensure-audit-db-installed!)
+  (audit-db-test/with-audit-db-restoration
+    (audit-db/ensure-audit-db-installed!)
+    (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
       (testing "Intsance Analytics Collection should be the last collection."
         (testing "GET /api/collection"
           (is (= "instance-analytics"
