@@ -13,9 +13,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -23,9 +25,7 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]
-   [metabase.models.audit-log :as audit-log]
-   [metabase.models.table :as table]))
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (def Metric
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
@@ -188,5 +188,5 @@
         db-id    (table/table-id->database-id table-id)]
     (assoc
      (select-keys metric [:name :description :revision_message])
-     :table-id    table-id
-     :database-id db-id)))
+     :table_id    table-id
+     :database_id db-id)))

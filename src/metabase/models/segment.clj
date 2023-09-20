@@ -181,4 +181,4 @@
     (assoc
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id
-     :database-id db-id)))
+     :database_id db-id)))

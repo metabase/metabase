@@ -1,5 +1,6 @@
 (ns metabase.events.audit-log
   (:require
+   [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.audit-log :as audit-log]
@@ -38,7 +39,7 @@
                                            (-> (t2/select-one [:model/Card :name :description], :id card_id)
                                                (assoc :id id)
                                                (assoc :card_id card_id)))))]
-   (audit-log/record-event! topic details :model/Dashboard id)))
+   (audit-log/record-event! topic details api/*current-user-id* :model/Dashboard id)))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
@@ -54,12 +55,8 @@
 (derive :event/pulse-delete ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic object]
-  (let [details-fn #(select-keys % [:name])]
-    (activity/record-activity!
-      :topic      topic
-      :object     object
-      :details-fn details-fn)))
+  [topic {:keys [name id]}]
+  (audit-log/record-event! topic {:name name} api/*current-user-id* :model/Pulse id))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
@@ -67,14 +64,9 @@
 
 (methodical/defmethod events/publish-event! ::alert-event
   [topic {:keys [card] :as alert}]
-  (let [details-fn #(select-keys (:card %) [:name])]
-    (activity/record-activity!
-      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-      :model      "card"
-      :model-id   (:id card)
-      :topic      topic
-      :object     alert
-      :details-fn details-fn)))
+  (let [card-name (:name card)]
+    ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+    (audit-log/record-event! topic {:name card-name} api/*current-user-id* :mode/Card (:id alert))))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
@@ -91,10 +83,8 @@
 (methodical/defmethod events/publish-event! ::user-joined-event
   [topic object]
   {:pre [(pos-int? (:user-id object))]}
-  (activity/record-activity!
-    :topic    topic
-    :user-id  (:user-id object)
-    :model-id (:user-id object)))
+  (let [user-id (:user-id object)]
+   (audit-log/record-event! topic {} user-id :model/User user-id)))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
