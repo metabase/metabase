@@ -1,0 +1,266 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Last viewed questions
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  query:
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+    joins:
+    - fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - id
+        - join-alias: Question 35
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - join-alias: Question 35
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - description
+        - join-alias: Question 35
+      alias: Question 35
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - model_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - id
+        - join-alias: Question 35
+      source-table: AxSackBiyXVRUzM_TyyQY
+    - fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - join-alias: Question 1
+      alias: Question 1
+    order-by:
+    - - desc
+      - - field
+        - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - null
+    - question-view
+  type: query
+  database: Internal Metabase Database
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: ezcT88-OmH-5HFOFNqmX7
+  label: last_viewed_questions
+display: table
+entity_id: ezcT88-OmH-5HFOFNqmX7
+collection_preview: true
+visualization_settings:
+  table.pivot_column: end_timestamp
+  table.cell_column: model_id
+  table.columns:
+  - name: timestamp
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - timestamp
+    - temporal-unit: default
+    enabled: true
+  - name: id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - id
+    - join-alias: Question 35
+    enabled: true
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - join-alias: Question 35
+    enabled: true
+  - name: description
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - join-alias: Question 35
+    enabled: true
+  - name: user_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - user_id
+    - join-alias: Question 1
+    enabled: false
+  - name: email
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - email
+    - join-alias: Question 1
+    enabled: false
+  - name: first_name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - first_name
+    - join-alias: Question 1
+    enabled: false
+  - name: last_name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - last_name
+    - join-alias: Question 1
+    enabled: false
+  - name: full_name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - full_name
+    - join-alias: Question 1
+    enabled: false
+  - name: date_joined
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - date_joined
+    - join-alias: Question 1
+    enabled: false
+  - name: last_login
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - last_login
+    - join-alias: Question 1
+    enabled: false
+  - name: updated_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - updated_at
+    - join-alias: Question 1
+    enabled: false
+  - name: is_admin
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - is_admin
+    - join-alias: Question 1
+    enabled: false
+  - name: is_active
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - is_active
+    - join-alias: Question 1
+    enabled: false
+  - name: sso_source
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - sso_source
+    - join-alias: Question 1
+    enabled: false
+  - name: locale
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - locale
+    - join-alias: Question 1
+    enabled: false
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_content","id"],{"join-alias":"Question 35"}]]':
+      view_as: null
+      column_title: Dashboard ID
+      link_text: Dashboard {{id}}
+      link_url: ''
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Dashboard name
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+      column_title: Description
+parameters: []
+dataset: false
+created_at: '2023-06-15T01:53:38.323579Z'
+public_uuid: null
