@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+import { useAsync } from "react-use";
 import { Redirect, Switch } from "react-router-dom";
 import { t } from "ttag";
 
@@ -84,7 +86,7 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 
 import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
-import { trackPageView } from "metabase/lib/analytics";
+import { useTrackPageView } from "metabase/lib/analytics";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -113,6 +115,8 @@ export const getRoutes = store => (
         <Route path="question/:uuid" component={PublicQuestion} />
         <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
       </Route>
+
+      <AppRoutes store={store} />
 
       {/* DEPRECATED */}
       {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
@@ -151,193 +155,226 @@ export const getRoutes = store => (
   </Route>
 );
 
-// export const getRoutesOld = store => (
-//   <Route title={t`Metabase`} component={App}>
-//     {/* APP */}
-//     <Route
-//       onEnter={async (nextState, replace, done) => {
-//         await store.dispatch(loadCurrentUser());
-//         trackPageView(nextState.location.pathname);
-//         done();
-//       }}
-//       onChange={(prevState, nextState) => {
-//         if (nextState.location.pathname !== prevState.location.pathname) {
-//           trackPageView(nextState.location.pathname);
-//         }
-//       }}
-//     >
-//       {/* AUTH */}
-//       <Route path="/auth">
-//         <IndexRedirect to="/auth/login" />
-//         <Route component={IsNotAuthenticated}>
-//           <Route path="login" title={t`Login`} component={Login} />
-//           <Route path="login/:provider" title={t`Login`} component={Login} />
-//         </Route>
-//         <Route path="logout" component={Logout} />
-//         <Route path="forgot_password" component={ForgotPassword} />
-//         <Route path="reset_password/:token" component={ResetPassword} />
-//       </Route>
+const AppRoutes = ({ store }) => {
+  useTrackPageView();
 
-//       {/* MAIN */}
-//       <Route component={IsAuthenticated}>
-//         {/* The global all hands routes, things in here are for all the folks */}
-//         <Route
-//           path="/"
-//           component={HomePage}
-//           onEnter={(nextState, replace) => {
-//             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
-//             if (page && page !== "/") {
-//               replace(page);
-//             }
-//           }}
-//         />
+  const { loading } = useAsync(() => store.dispatch(loadCurrentUser()));
 
-//         <Route path="search" title={t`Search`} component={SearchApp} />
-//         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
+  if (loading) {
+    return null;
+  }
 
-//         <Route path="collection/users" component={IsAdmin}>
-//           <IndexRoute component={UserCollectionList} />
-//         </Route>
+  return (
+    <Switch>
+      {/* AUTH */}
+      <Route path="/auth">
+        <Route component={IsNotAuthenticated}>
+          <Route path="login" title={t`Login`} component={Login} />
+          <Route path="login/:provider" title={t`Login`} component={Login} />
+        </Route>
+        <Route exact path="logout" component={Logout} />
+        <Route exact path="forgot_password" component={ForgotPassword} />
+        <Route exact path="reset_password/:token" component={ResetPassword} />
+        <Route exact path="*">
+          <Redirect to="/auth/login" />
+        </Route>
+      </Route>
 
-//         <Route path="collection/:slug" component={CollectionLanding}>
-//           <ModalRoute path="move" modal={MoveCollectionModal} />
-//           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-//           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-//           {getCollectionTimelineRoutes()}
-//         </Route>
+      {/* MAIN */}
+      <Route component={IsAuthenticated}>
+        {/* The global all hands routes, things in here are for all the folks */}
+        <Route
+          path="/"
+          render={() => {
+            const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
 
-//         <Route
-//           path="dashboard/:slug"
-//           title={t`Dashboard`}
-//           component={DashboardApp}
-//         >
-//           <ModalRoute path="move" modal={DashboardMoveModal} />
-//           <ModalRoute path="copy" modal={DashboardCopyModal} />
-//           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
-//         </Route>
+            if (page && page !== "/") {
+              return <Redirect to={page} />;
+            }
 
-//         <Route path="/question">
-//           <IndexRoute component={QueryBuilder} />
-//           <Route path="notebook" component={QueryBuilder} />
-//           <Route path=":slug" component={QueryBuilder} />
-//           <Route path=":slug/notebook" component={QueryBuilder} />
-//           <Route path=":slug/metabot" component={QueryBuilder} />
-//           <Route path=":slug/:objectId" component={QueryBuilder} />
-//         </Route>
+            return <HomePage />;
+          }}
+        />
 
-//         <Route path="/metabot" component={CanAccessMetabot}>
-//           <Route path="database/:databaseId" component={DatabaseMetabotApp} />
-//           <Route path="model/:slug" component={ModelMetabotApp} />
-//         </Route>
+        <Route path="search" title={t`Search`} component={SearchApp} />
+        <Route path="archive" title={t`Archive`} component={ArchiveApp} />
 
-//         {/* MODELS */}
-//         {getModelRoutes()}
+        <Route path="collection/users" component={IsAdmin}>
+          <Route path="/" component={UserCollectionList} />
+        </Route>
 
-//         <Route path="/model">
-//           <IndexRoute component={QueryBuilder} />
-//           <Route path="new" title={t`New Model`} component={NewModelOptions} />
-//           <Route path="notebook" component={QueryBuilder} />
-//           <Route path=":slug" component={QueryBuilder} />
-//           <Route path=":slug/notebook" component={QueryBuilder} />
-//           <Route path=":slug/query" component={QueryBuilder} />
-//           <Route path=":slug/metadata" component={QueryBuilder} />
-//           <Route path=":slug/metabot" component={QueryBuilder} />
-//           <Route path=":slug/:objectId" component={QueryBuilder} />
-//           <Route path="query" component={QueryBuilder} />
-//           <Route path="metabot" component={QueryBuilder} />
-//         </Route>
+        <Route path="collection/:slug" component={CollectionLanding}>
+          <ModalRoute path="move" modal={MoveCollectionModal} />
+          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          {getCollectionTimelineRoutes()}
+        </Route>
 
-//         <Route path="browse" component={BrowseApp}>
-//           <IndexRoute component={DatabaseBrowser} />
-//           <Route path=":slug" component={SchemaBrowser} />
-//           <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
-//         </Route>
+        <Route
+          path="dashboard/:slug"
+          title={t`Dashboard`}
+          component={DashboardApp}
+        >
+          <ModalRoute path="move" modal={DashboardMoveModal} />
+          <ModalRoute path="copy" modal={DashboardCopyModal} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
+        </Route>
 
-//         {/* INDIVIDUAL DASHBOARDS */}
+        <Route path="/question">
+          <Route exact path="/" component={QueryBuilder} />
+          <Route exact path="notebook" component={QueryBuilder} />
+          <Route exact path=":slug" component={QueryBuilder} />
+          <Route exact path=":slug/notebook" component={QueryBuilder} />
+          <Route exact path=":slug/metabot" component={QueryBuilder} />
+          <Route exact path=":slug/:objectId" component={QueryBuilder} />
+        </Route>
 
-//         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
+        <Route path="/metabot" component={CanAccessMetabot}>
+          <Route path="database/:databaseId" component={DatabaseMetabotApp} />
+          <Route path="model/:slug" component={ModelMetabotApp} />
+        </Route>
 
-//         {/* REFERENCE */}
-//         <Route path="/reference" title={t`Data Reference`}>
-//           <IndexRedirect to="/reference/databases" />
-//           <Route path="metrics" component={MetricListContainer} />
-//           <Route path="metrics/:metricId" component={MetricDetailContainer} />
-//           <Route
-//             path="metrics/:metricId/edit"
-//             component={MetricDetailContainer}
-//           />
-//           <Route
-//             path="metrics/:metricId/questions"
-//             component={MetricQuestionsContainer}
-//           />
-//           <Route
-//             path="metrics/:metricId/revisions"
-//             component={MetricRevisionsContainer}
-//           />
-//           <Route path="segments" component={SegmentListContainer} />
-//           <Route
-//             path="segments/:segmentId"
-//             component={SegmentDetailContainer}
-//           />
-//           <Route
-//             path="segments/:segmentId/fields"
-//             component={SegmentFieldListContainer}
-//           />
-//           <Route
-//             path="segments/:segmentId/fields/:fieldId"
-//             component={SegmentFieldDetailContainer}
-//           />
-//           <Route
-//             path="segments/:segmentId/questions"
-//             component={SegmentQuestionsContainer}
-//           />
-//           <Route
-//             path="segments/:segmentId/revisions"
-//             component={SegmentRevisionsContainer}
-//           />
-//           <Route path="databases" component={DatabaseListContainer} />
-//           <Route
-//             path="databases/:databaseId"
-//             component={DatabaseDetailContainer}
-//           />
-//           <Route
-//             path="databases/:databaseId/tables"
-//             component={TableListContainer}
-//           />
-//           <Route
-//             path="databases/:databaseId/tables/:tableId"
-//             component={TableDetailContainer}
-//           />
-//           <Route
-//             path="databases/:databaseId/tables/:tableId/fields"
-//             component={FieldListContainer}
-//           />
-//           <Route
-//             path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-//             component={FieldDetailContainer}
-//           />
-//           <Route
-//             path="databases/:databaseId/tables/:tableId/questions"
-//             component={TableQuestionsContainer}
-//           />
-//         </Route>
+        {/* MODELS */}
+        {/* {getModelRoutes()} */}
 
-//         {/* PULSE */}
-//         <Route path="/pulse" title={t`Pulses`}>
-//           {/* NOTE: legacy route, not linked to in app */}
-//           <IndexRedirect to="/search" query={{ type: "pulse" }} />
-//           <Route path="create" component={PulseEditApp} />
-//           <Route path=":pulseId">
-//             <IndexRoute component={PulseEditApp} />
-//           </Route>
-//         </Route>
+        <Route path="/model">
+          <Route exact path="/" component={QueryBuilder} />
+          <Route
+            exact
+            path="new"
+            title={t`New Model`}
+            component={NewModelOptions}
+          />
+          <Route exact path="notebook" component={QueryBuilder} />
+          <Route exact path=":slug" component={QueryBuilder} />
+          <Route exact path=":slug/notebook" component={QueryBuilder} />
+          <Route exact path=":slug/query" component={QueryBuilder} />
+          <Route exact path=":slug/metadata" component={QueryBuilder} />
+          <Route exact path=":slug/metabot" component={QueryBuilder} />
+          <Route exact path=":slug/:objectId" component={QueryBuilder} />
+          <Route exact path="query" component={QueryBuilder} />
+          <Route exact path="metabot" component={QueryBuilder} />
+        </Route>
 
-//         {/* ACCOUNT */}
-//         {getAccountRoutes(store, IsAuthenticated)}
+        <Route path="browse" component={BrowseApp}>
+          <Route exact path="/" component={DatabaseBrowser} />
+          <Route exact path=":slug" component={SchemaBrowser} />
+          <Route
+            exact
+            path=":dbId/schema/:schemaName"
+            component={TableBrowser}
+          />
+        </Route>
 
-//         {/* ADMIN */}
-//         {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
-//       </Route>
-//     </Route>
-//   </Route>
-// );
+        {/* INDIVIDUAL DASHBOARDS */}
+
+        <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
+
+        {/* REFERENCE */}
+        <Route path="/reference" title={t`Data Reference`}>
+          <Route exact path="/">
+            <Redirect to="/reference/databases" />
+          </Route>
+          <Route exact path="metrics" component={MetricListContainer} />
+          <Route
+            exact
+            path="metrics/:metricId"
+            component={MetricDetailContainer}
+          />
+          <Route
+            exact
+            path="metrics/:metricId/edit"
+            component={MetricDetailContainer}
+          />
+          <Route
+            exact
+            path="metrics/:metricId/questions"
+            component={MetricQuestionsContainer}
+          />
+          <Route
+            exact
+            path="metrics/:metricId/revisions"
+            component={MetricRevisionsContainer}
+          />
+          <Route exact path="segments" component={SegmentListContainer} />
+          <Route
+            exact
+            path="segments/:segmentId"
+            component={SegmentDetailContainer}
+          />
+          <Route
+            exact
+            path="segments/:segmentId/fields"
+            component={SegmentFieldListContainer}
+          />
+          <Route
+            exact
+            path="segments/:segmentId/fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route
+            exact
+            path="segments/:segmentId/questions"
+            component={SegmentQuestionsContainer}
+          />
+          <Route
+            exact
+            path="segments/:segmentId/revisions"
+            component={SegmentRevisionsContainer}
+          />
+          <Route exact path="databases" component={DatabaseListContainer} />
+          <Route
+            exact
+            path="databases/:databaseId"
+            component={DatabaseDetailContainer}
+          />
+          <Route
+            exact
+            path="databases/:databaseId/tables"
+            component={TableListContainer}
+          />
+          <Route
+            exact
+            path="databases/:databaseId/tables/:tableId"
+            component={TableDetailContainer}
+          />
+          <Route
+            exact
+            path="databases/:databaseId/tables/:tableId/fields"
+            component={FieldListContainer}
+          />
+          <Route
+            exact
+            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+            component={FieldDetailContainer}
+          />
+          <Route
+            exact
+            path="databases/:databaseId/tables/:tableId/questions"
+            component={TableQuestionsContainer}
+          />
+        </Route>
+
+        {/* PULSE */}
+        <Route path="/pulse" title={t`Pulses`}>
+          {/* NOTE: legacy route, not linked to in app */}
+          <Route exact path="/">
+            <Redirect to="/search" query={{ type: "pulse" }} />
+          </Route>
+          <Route exact path="create" component={PulseEditApp} />
+          <Route exact path=":pulseId" component={PulseEditApp} />
+        </Route>
+
+        {/* ACCOUNT */}
+        {/* {getAccountRoutes(store, IsAuthenticated)} */}
+
+        {/* ADMIN */}
+        {/* {getAdminRoutes(store, CanAccessSettings, IsAdmin)} */}
+      </Route>
+    </Switch>
+  );
+};
+
+AppRoutes.propTypes = {
+  store: PropTypes.object.isRequired,
+};
