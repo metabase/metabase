@@ -88,6 +88,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [clojure.zip :as zip]
+   [flatland.ordered.map :refer [ordered-map]]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [java-time :as t]
    [kixi.stats.core :as stats]
@@ -974,9 +975,9 @@
   (let [dim-groups (fn [items]
                      (-> (->> items
                               (map
-                                (fn [item]
-                                  [(ffirst item)
-                                   (set (dashboard-templates/collect-dimensions item))]))
+                               (fn [item]
+                                 [(ffirst item)
+                                  (set (dashboard-templates/collect-dimensions item))]))
                               (group-by first))
                          (update-vals (fn [v] (mapv second v)))
                          (update "this" conj #{})))
@@ -985,9 +986,9 @@
         base-dims  (fn [{:keys [dimensions metrics filters] :as card}]
                      (let [underlying-dim-groups (concat (map m->dims metrics) (map f->dims filters))]
                        (map
-                         (fn [lower-dims]
-                           (assoc card :base-dims (reduce into (set dimensions) lower-dims)))
-                         (apply math.combo/cartesian-product underlying-dim-groups))))
+                        (fn [lower-dims]
+                          (assoc card :base-dims (reduce into (set dimensions) lower-dims)))
+                        (apply math.combo/cartesian-product underlying-dim-groups))))
         card-deps  (fn [card]
                      (-> card
                          (select-keys [:dimensions :filters :metrics :score])
@@ -1007,29 +1008,25 @@
 
   (dash-template->affinities
     (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-
-  (dash-template->affinities-map
-   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
   ;; Generic Table has cards with the same name. One depends on CreateTime, one on CreateTimestamp. Need both
   ;; definitions around for matching
   (let [affinities (-> ["table" "GenericTable"]
                        dashboard-templates/get-dashboard-template
-                       dash-template->affinities-map)]
+                       dash-template->affinities)]
     (affinities "HourOfDayCreateDate"))
   )
 
 (defn match-affinities
-  "Return the names of affinities that satisfy the available dimensions."
+  "Return the an ordered map of affinity names to the set of dimensions they depend on."
   [affinities {:keys [available-dimensions]}]
-  ;; Since the affinities contain the exploded base-dims, we simply do a set filter on the affinity names as that is
+  ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
   ;; how we currently match to existing cards.
   (let [dimset (set (keys available-dimensions))]
     (->> affinities
          (filter
-           (fn [{:keys [base-dims] :as v}]
-             (set/subset? base-dims dimset)))
-         (map :affinity-name)
-         (into #{}))))
+          (fn [{:keys [base-dims] :as _v}]
+            (set/subset? base-dims dimset)))
+         (into (ordered-map) (map (juxt :affinity-name :base-dims))))))
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
@@ -1049,8 +1046,10 @@
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context available-values {card-templates :cards}]
-  (some->> card-templates
+  [context available-values satisfied-affins {card-templates :cards}]
+  ;; todo: make a function of affinities and card-templates -> card-template
+  ;; in the future that function will become smarter and not need a template
+  (some->> card-templates ;; this will thread affinities through and get a card-template from the affinity
            (map first)
            (map-indexed (fn [position [identifier card-template]]
                           (some->> (assoc card-template :position position)
@@ -1129,12 +1128,13 @@
         ;; for now we construct affinities from cards
         affinities        (dash-template->affinities dashboard-template)
         ;; get the suitable matches for them
-        interestings      (match-affinities affinities available-values)
+        satisfied-affins  (match-affinities affinities available-values)
         cards             (make-cards base-context available-values
+                                      satisfied-affins
                                       (update dashboard-template
                                               :cards
                                               (fn [card-templates]
-                                                (filter (comp interestings key first)
+                                                (filter (comp satisfied-affins key first)
                                                         card-templates))))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
