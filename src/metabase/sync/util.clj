@@ -30,6 +30,30 @@
 
 (set! *warn-on-reflection* true)
 
+(derive ::event :metabase/event)
+
+(def ^:private sync-event-topics
+  #{:event/sync-begin
+    :event/sync-end
+    :event/analyze-begin
+    :event/analyze-end
+    :event/refingerprint-begin
+    :event/refingerprint-end
+    :event/cache-field-values-begin
+    :event/cache-field-values-end
+    :event/sync-metadata-begin
+    :event/sync-metadata-end})
+
+(doseq [topic sync-event-topics]
+  (derive topic ::event))
+
+(def ^:private Topic
+  [:and
+   events/Topic
+   [:fn
+    {:error/message "Sync event deriving from :metabase.sync.util/event"}
+    #(isa? % ::event)]])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -71,18 +95,25 @@
         (finally
           (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
-
-(defn- with-sync-events
+(mu/defn ^:private with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
   `database-id`. `f` is executed between the logging of the two events."
+  {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
-   (with-sync-events
-    (keyword (str (name event-name-prefix) "-begin"))
-    (keyword (str (name event-name-prefix) "-end"))
+   (letfn [(event-keyword [prefix suffix]
+             (keyword (or (namespace event-name-prefix) "event")
+                      (str (name prefix) suffix)))]
+     (with-sync-events
+      (event-keyword event-name-prefix "-begin")
+      (event-keyword event-name-prefix "-end")
+      database-or-id
+      f)))
+
+  ([begin-event-name :- Topic
+    end-event-name   :- Topic
     database-or-id
-    f))
-  ([begin-event-name end-event-name database-or-id f]
+    f]
    (fn []
      (let [start-time    (System/nanoTime)
            tracking-hash (str (random-uuid))]
@@ -97,7 +128,7 @@
 
 (defn- with-start-and-finish-logging*
   "Logs start/finish messages using `log-fn`, timing `f`"
-  {:style/indent 1}
+  {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
         _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
@@ -108,22 +139,23 @@
     result))
 
 (defn- with-start-and-finish-logging
-  "Log MESSAGE about a process starting, then run F, and then log a MESSAGE about it finishing.
-   (The final message includes a summary of how long it took to run F.)"
-  {:style/indent 1}
+  "Log `message` about a process starting, then run `f`, and then log a `message` about it finishing.
+   (The final message includes a summary of how long it took to run `f`.)"
+  {:style/indent [:form]}
   [message f]
   (fn []
     (with-start-and-finish-logging* #(log/info %) message f)))
 
 (defn with-start-and-finish-debug-logging
   "Similar to `with-start-and-finish-logging except invokes `f` and returns its result and logs at the debug level"
+  {:style/indent [:form]}
   [message f]
   (with-start-and-finish-logging* #(log/info %) message f))
 
 (defn- with-db-logging-disabled
   "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid
   cluttering the logs.)"
-  {:style/indent 0}
+  {:style/indent [:form]}
   [f]
   (fn []
     (binding [qp.i/*disable-qp-logging* true
@@ -134,18 +166,19 @@
   "Pass the sync operation defined by `body` to the `database`'s driver's implementation of `sync-in-context`.
   This method is used to do things like establish a connection or other driver-specific steps needed for sync
   operations."
-  {:style/indent 1}
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
-(def ^:private exception-classes-not-to-retry
-  ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
-  ;; list of exception classes (like, driver-specific exceptions)
-  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
-   com.mchange.v2.resourcepool.CannotAcquireResourceException
-   javax.net.ssl.SSLHandshakeException])
+;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
+;; list of exception classes (like, driver-specific exceptions)
+(doseq [klass [java.net.ConnectException
+               java.net.NoRouteToHostException
+               java.net.UnknownHostException
+               com.mchange.v2.resourcepool.CannotAcquireResourceException
+               javax.net.ssl.SSLHandshakeException]]
+  (derive klass ::exception-class-not-to-retry))
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
@@ -153,7 +186,7 @@
   true)
 
 (defn do-with-error-handling
-  "Internal implementation of `with-error-handling`; use that instead of calling this directly."
+  "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
    (do-with-error-handling (trs "Error running sync step") f))
 
@@ -171,15 +204,19 @@
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
   `message` to help provide information about what failed for the log message.
 
-  The exception classes in `exception-classes-not-to-retry` are a list of classes tested against exceptions thrown.
-  If there is a match found, the sync is aborted as that error is not considered recoverable for this sync run."
+  The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
+  against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
+  recoverable for this sync run."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))
 
-(defn do-sync-operation
-  "Internal implementation of `sync-operation`; use that instead of calling this directly."
-  [operation database message f]
+(mu/defn do-sync-operation
+  "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
+  [operation :- :keyword ; something like `:sync-metadata` or `:refingerprint`
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
   ((with-duplicate-ops-prevented operation database
      (with-sync-events operation database
        (with-start-and-finish-logging message
@@ -477,15 +514,15 @@
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))
 
+(defn- do-not-retry-exception? [e]
+  (or (isa? (class e) ::exception-class-not-to-retry)
+      (some-> (ex-cause e) recur)))
+
 (defn abandon-sync?
-  "Given the results of a sync step, returns true if a non-recoverable exception occurred"
+  "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
   [step-results]
-  (when (contains? step-results :throwable)
-    (let [caught-exception (:throwable step-results)
-          exception-classes (u/full-exception-chain caught-exception)]
-      (some true? (for [ex      exception-classes
-                        test-ex exception-classes-not-to-retry]
-                    (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName)))))))
+  (when-let [caught-exception (:throwable step-results)]
+    (do-not-retry-exception? caught-exception)))
 
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
