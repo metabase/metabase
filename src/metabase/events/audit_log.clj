@@ -1,15 +1,9 @@
-(ns metabase.events.activity-feed
+(ns metabase.events.audit-log
   (:require
    [metabase.events :as events]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.table :as table]
-   [metabase.query-processor :as qp]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,53 +15,31 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic {query :dataset_query, dataset? :dataset :as object}]
-  (let [details-fn  #(cond-> (select-keys % [:name :description])
-                       ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
-                       ;; around
-                       dataset? (assoc :original-model "card"))
-        query       (when (seq query)
-                      (try (qp/preprocess query)
-                           (catch Throwable e
-                             (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
-    (activity/record-activity!
-      :topic       topic
-      :object      object
-      :model       (when dataset? "dataset")
-      :details-fn  details-fn
-      :database-id database-id
-      :table-id    table-id)))
+  [topic object]
+  (audit-log/record-event! topic object))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
-(derive :event/dashboard-add-cards ::dashboard-event)
-(derive :event/dashboard-remove-cards ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic object]
-  (let [create-delete-details
-        #(select-keys % [:description :name])
+  (audit-log/record-event! topic object))
 
-        add-remove-card-details
-        (fn [{:keys [dashcards] :as obj}]
-          ;; we expect that the object has just a dashboard :id at the top level
-          ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
-              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (t2/select-one [Card :name :description], :id card_id)
-                                      (assoc :id id)
-                                      (assoc :card_id card_id))))))]
-    (activity/record-activity!
-      :topic      topic
-      :object     object
-      :details-fn (case topic
-                    :event/dashboard-create       create-delete-details
-                    :event/dashboard-delete       create-delete-details
-                    :event/dashboard-add-cards    add-remove-card-details
-                    :event/dashboard-remove-cards add-remove-card-details))))
+(derive ::dashboard-card-event ::event)
+(derive :event/dashboard-add-cards ::dashboard-card-event)
+(derive :event/dashboard-remove-cards ::dashboard-card-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-card-event
+  [topic {:keys [dashcards id]}]
+  ;; we expect that the object has just a dashboard :id at the top level
+  ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
+  (let [details (-> (t2/select-one [:model/Dashboard :description :name] :id id)
+                    (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                           (-> (t2/select-one [:model/Card :name :description], :id card_id)
+                                               (assoc :id id)
+                                               (assoc :card_id card_id)))))]
+   (audit-log/record-event! topic details :model/Dashboard id)))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
