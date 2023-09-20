@@ -584,10 +584,9 @@
       (seq breakout) (update :breakout #(into (vec %1) %2) breakout))))
 
 (defn- update-order-by-ag-refs
-  "`:order-by` contains references to aggregations, breakout or expressions. Clauses"
-  ;;;; TODO: doc: expects ordred-clauses-for-fields
-  ;;;; TODO: references can be in order-bys and where else?
-  ;;;; TODO: ! expressions
+  "`:order-by` contains references to aggregations, breakout or expressions. Metric expansion could cause some
+   aggregations becoming breakout fields. This function ensures aggregation indices in order by clause are updated
+   accordingly."
   [{breakout :breakout
     ordered-clauses-for-fields ::ordered-clauses-for-fields
     :as query}]
