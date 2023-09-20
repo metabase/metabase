@@ -549,8 +549,7 @@
   "At this point of transformation `:aggregations` contain aggregation clauses or field clauses, which are result of
    [[swap-metric-clauses]]. Field clauses will be moved later to breakout. Result of this function is vector, where
    index is original query column index and value is reference to clause that represents that column after
-   query transformation ([[adjust-aggregation-and-breakout]] call). Resulting map is later used by
-   [[maybe-wrap-in-ordering-query]]."
+   query transformation. Resulting map is later used by [[maybe-wrap-in-ordering-query]]."
   [breakout-idx ag-idx [[type :as ag] & ags] acc]
   (cond (nil? ag)
         acc
@@ -562,9 +561,9 @@
         (recur breakout-idx (inc ag-idx) ags (conj acc [:aggregation ag-idx]))))
 
 (defn- infer-ordered-clauses-for-fields
-  "Generate sequence containing ordered clauses of form [:breakout index] or [:aggregation idx]
-   Those are used to preserve original column order after [[transform-aggregations]].
-   "
+  "Add ::ordered-clauses-for-fields to `query`.
+   This key is later used to preserve original column order after metric expansion. It maps original column order to
+   clause in query after transformation."
   [query]
   (let [clauses-from-orig-breakout (mapv #(vector :breakout %) (range (count (:breakout query))))
         orig-breakout-count (count clauses-from-orig-breakout)]
@@ -572,7 +571,7 @@
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
 (defn- adjust-aggregation-and-breakout
-  "Move fields, which are currently in :aggregation and are result of [[swap-metric-clauses]], intto :breakout."
+  "Move fields, which are currently in :aggregation and are result of [[swap-metric-clauses]], into :breakout."
   [query]
   (let [{:keys [aggregation breakout]}
         (group-by (fn [[type]]
@@ -599,7 +598,7 @@
       (original-ag-index->clause-ref idx))))
 
 (defn- metric-infos->metrics-queries
-  "Transforms metric info into metrics query. Groupping (partitioning in practice) of metrics is further described
+  "Transforms metric infos into metrics query. Groupping (partitioning in practice) of metrics is further described
    in namespace docstring, section [# Metrics and filters or segments]."
   [original-query metric-infos]
   (->> metric-infos
