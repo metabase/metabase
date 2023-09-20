@@ -174,15 +174,15 @@ Create a new Collection.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`color`** nullable regex pattern matching #"^#[0-9A-Fa-f]{6}$"
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 ## `PUT /api/collection/:id`
 
@@ -190,19 +190,19 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`name`** nullable value must be a non-blank string.
 
-*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`color`** nullable regex pattern matching #"^#[0-9A-Fa-f]{6}$"
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 *  **`collection-updates`**
 
