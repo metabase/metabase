@@ -1046,19 +1046,19 @@
 
 (defn match-affinities
   "Treat affinities as a template. If they are matched everywhere, then let's replace them with the matches."
-  [affinities {:keys [bound-dimensions bound-metrics bound-filters]}]
+  [affinities {:keys [available-dimensions available-metrics available-filters]}]
   ;; these assume that metrics/filters bottom out in a dimension immediately. if a metric can depend on a metric which
   ;; depends on a dimension, need to fully expand instead of just once.
   (letfn [(metric-deps [metric-name]
             (-> metric-name
                 ;; look up metric definition, returning an unsatisfiable metric definition if not found
-                (bound-metrics {:metric [:dimension ::unsatisfiable]})
+                (available-metrics {:metric [:dimension ::unsatisfiable]})
                 :metric
                 dashboard-templates/collect-dimensions))
           (filter-deps [filter-name]
             (-> filter-name
                 ;; look up filter definition, returning an unsatisfiable metric definition if not found
-                (bound-filters {:filter [:dimension ::unsatisfiable]})
+                (available-filters {:filter [:dimension ::unsatisfiable]})
                 :filter
                 dashboard-templates/collect-dimensions))]
     (into {}
@@ -1066,7 +1066,7 @@
                   (let [dimension-deps (concat dimensions
                                                (mapcat metric-deps metrics)
                                                (mapcat filter-deps filters))]
-                    (when (every? bound-dimensions dimension-deps)
+                    (when (every? available-dimensions dimension-deps)
                       ;; todo: when do we want to "populate" the affinity definition with bound fields.
                       [affinity-name combination]
                       ))))
@@ -1081,7 +1081,8 @@
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-filters    :filters
-    :keys               [dashboard-template-name]
+    template-cards      :cards
+    :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
   (let [dimensions        (->> (bind-dimensions base-context template-dimensions)
@@ -1092,15 +1093,12 @@
                                (into {}))
         available-filters (into {} (resolve-available-dimensions dimensions template-filters))
         available-values  {:available-dimensions dimensions
-                           :available-metrics available-metrics
-                           :available-filters available-filters}
+                           :available-metrics    available-metrics
+                           :available-filters    available-filters}
         ;; for now we construct affinities from cards
         affinities        (dash-template->affinities-map dashboard-template)
         ;; get the suitable matches for them
-        interestings      (match-affinities affinities
-                                            {:bound-dimensions dimensions
-                                             :bound-metrics    available-metrics
-                                             :bound-filters    available-filters})
+        interestings      (match-affinities affinities available-values)
         ;; pass those interesting groups into the layout engine
         ;; two things hanging on in context:
         ;; 1. tables
@@ -1114,14 +1112,12 @@
                                       ;;  'metabase.automagic-dashboards.filters-test)
                                       ;; test model-with-joins-test fails and could be a thread to pull
                                       dashboard-template)]
-    (when (or (not-empty cards)
-              (-> dashboard-template :cards nil?))
+    (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
-              :filters (->> dashboard-template
-                            :dashboard_filters
-                            (mapcat (comp :matches dimensions))
-                            (remove (comp (singular-cell-dimensions root) id-or-name)))
-              :cards cards)
+         :filters (->> dashboard_filters
+                       (mapcat (comp :matches dimensions))
+                       (remove (comp (singular-cell-dimensions root) id-or-name)))
+         :cards cards)
        dashboard-template
        available-values])))
 
