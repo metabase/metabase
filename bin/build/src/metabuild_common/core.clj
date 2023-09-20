@@ -49,7 +49,8 @@
   find-files
   nio-path
   project-root-directory
-  temporary-file]
+  temporary-file
+  zip-directory->file]
 
  [input
   interactive?

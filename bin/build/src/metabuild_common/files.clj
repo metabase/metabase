@@ -7,10 +7,18 @@
    [metabuild-common.shell :as shell]
    [metabuild-common.steps :as steps])
   (:import
-   (java.io File)
-   (java.nio.file Files FileSystems FileVisitOption Path Paths)
+   (java.io File FileInputStream FileOutputStream)
+   (java.nio.file
+    FileSystems
+    FileVisitOption
+    Files
+    Path
+    Paths)
    (java.util.function BiPredicate)
+   (java.util.zip ZipEntry ZipOutputStream)
    (org.apache.commons.io FileUtils)))
+
+(set! *warn-on-reflection* true)
 
 (defn file-exists?
   "Does a file or directory with `filename` exist?"
@@ -106,7 +114,7 @@
       getParentFile   ; /home/cam/metabase/bin/build/src/metabuild_common/
       getParentFile   ; /home/cam/metabase/bin/build/src/
       getParentFile   ; /home/cam/metabase/bin/build/
-      getParentFile   ; /home/cam/metabase/
+      getParentFile   ; /home/cam/metabase/bin/
       getParentFile   ; /home/cam/metabase/
       getCanonicalPath))
 
@@ -142,3 +150,41 @@
   "Whether `file` is an absolute path."
   [file]
   (.isAbsolute (io/file file)))
+
+(defn directory?
+  "Whether `file` is a directory."
+  [file]
+  (.isDirectory (io/file file)))
+
+(defn exists?
+  "Whether `file` exists or not."
+  [file]
+  (.exists (io/file file)))
+
+(defn zip-directory->file
+  "Given a source directory and a destination zip file path,
+   zip the directory and writes it to the destination"
+  ([source-dir zip-file]
+   (zip-directory->file source-dir zip-file {}))
+  ([^String source-dir ^String zip-file {:keys [verbose]}]
+   (let [verbose true
+         ^File source-path (File. source-dir)
+         entry-count (atom 0)]
+     (when-not (exists? source-path)
+       (throw (ex-info "Directory to zip must exist!" {:source-path source-path})))
+     (with-open [fos (FileOutputStream. ^String zip-file)
+                 zos (ZipOutputStream. fos)]
+       (doseq [^File file (file-seq source-path)
+               :when (not (directory? file))]
+         (when verbose (out/safe-println "Zipping file:" file))
+         (let [file-path (.getAbsolutePath file)
+               buffer (byte-array 1024)
+               fis (FileInputStream. file)]
+           (swap! entry-count inc)
+           (.putNextEntry zos (ZipEntry. file-path))
+           (loop [len (.read fis buffer)]
+             (when (pos? len)
+               (.write zos buffer 0 len)
+               (recur (.read fis buffer))))
+           (.closeEntry zos))))
+     (out/announce "%d Entries zipped to '%s'!" @entry-count zip-file))))

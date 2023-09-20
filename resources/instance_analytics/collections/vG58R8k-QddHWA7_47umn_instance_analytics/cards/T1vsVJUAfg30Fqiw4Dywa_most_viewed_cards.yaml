@@ -1,0 +1,83 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Most viewed cards
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - model_id
+      - base-type: type/Integer
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - model
+      - null
+    - card
+    joins:
+    - alias: Question 34
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - join-alias: Question 34
+      fields: all
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: T1vsVJUAfg30Fqiw4Dywa
+  label: most_viewed_cards
+display: table
+entity_id: T1vsVJUAfg30Fqiw4Dywa
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - model_id
+  graph.show_goal: false
+  graph.show_values: true
+  table.pivot_column: model_id
+  table.cell_column: count
+  column_settings:
+    '["name","count"]':
+      show_mini_bar: true
+  graph.metrics:
+  - count
+parameters: []
+dataset: false
+created_at: '2023-06-14T20:04:09.381118Z'
+public_uuid: null
