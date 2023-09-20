@@ -13,7 +13,11 @@ describe("issue 19742", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+    selectFromDropdown("Raw Data");
+
+    popover().within(() => {
+      cy.findByText("Orders").should("exist");
+    });
 
     openNavigationSidebar();
     cy.icon("gear").click();
@@ -28,7 +32,7 @@ describe("issue 19742", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+    selectFromDropdown("Raw Data");
 
     popover().within(() => {
       cy.findByText("Products");

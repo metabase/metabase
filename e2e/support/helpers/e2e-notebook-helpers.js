@@ -86,6 +86,7 @@ export function selectSavedQuestionsToJoin(
 
   popover().within(() => {
     cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Raw Data").click();
     cy.findByTextEnsureVisible("Saved Questions").click();
     cy.findByText(secondQuestionName).click();
   });
