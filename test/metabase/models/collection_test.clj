@@ -1653,8 +1653,8 @@
 (deftest instance-analytics-collections-test
   (testing "Instance analytics isn't writable. even for admins."
    (premium-features-test/with-premium-features #{:audit-app}
-     (with-redefs [perms/default-audit-collection-entity-id (constantly "collection-entity-id")]
-       (t2.with-temp/with-temp [Collection collection {:entity_id "collection-entity-id"}]
+     (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
+       (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}]
          (mt/with-current-user (mt/user->id :crowberto)
-           (is (not (mi/can-write? Collection (:id collection)))
+           (is (not (mi/can-write? collection))
                "Admin isn't able to write to audit collection")))))))
