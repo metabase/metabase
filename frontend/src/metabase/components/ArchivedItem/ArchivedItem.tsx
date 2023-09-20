@@ -36,51 +36,49 @@ export const ArchivedItem = ({
   selected,
   onToggleSelected,
   showSelect,
-}: ArchivedItemProps) => {
-  return (
-    <div
-      className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
-      data-testid={`archive-item-${name}`}
-    >
-      <Swapper
-        aria-label={"archive-item-swapper"}
-        defaultElement={
-          <ItemIconContainer>
-            <ItemIcon name={icon} color={color} />
-          </ItemIconContainer>
-        }
-        swappedElement={
-          <ItemIconContainer>
-            <CheckBox checked={selected} onChange={onToggleSelected} />
-          </ItemIconContainer>
-        }
-        isSwapped={showSelect}
-      />
-      {name}
-      {isAdmin && (onUnarchive || onDelete) && (
-        <span className="ml-auto mr2">
-          {onUnarchive && (
-            <Tooltip
-              tooltip={t`Unarchive this ${getTranslatedEntityName(model)}`}
-            >
-              <ActionIcon
-                onClick={onUnarchive}
-                className="hover-child"
-                name="unarchive"
-              />
-            </Tooltip>
-          )}
-          {onDelete && (
-            <Tooltip tooltip={t`Delete this ${getTranslatedEntityName(model)}`}>
-              <ActionIcon
-                onClick={onDelete}
-                className="hover-child"
-                name="trash"
-              />
-            </Tooltip>
-          )}
-        </span>
-      )}
-    </div>
-  );
-};
+}: ArchivedItemProps) => (
+  <div
+    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+    data-testid={`archive-item-${name}`}
+  >
+    <Swapper
+      aria-label={"archive-item-swapper"}
+      defaultElement={
+        <ItemIconContainer>
+          <ItemIcon name={icon} color={color} />
+        </ItemIconContainer>
+      }
+      swappedElement={
+        <ItemIconContainer>
+          <CheckBox checked={selected} onChange={onToggleSelected} />
+        </ItemIconContainer>
+      }
+      isSwapped={showSelect}
+    />
+    {name}
+    {isAdmin && (onUnarchive || onDelete) && (
+      <span className="ml-auto mr2">
+        {onUnarchive && (
+          <Tooltip
+            tooltip={t`Unarchive this ${getTranslatedEntityName(model)}`}
+          >
+            <ActionIcon
+              onClick={onUnarchive}
+              className="hover-child"
+              name="unarchive"
+            />
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Tooltip tooltip={t`Delete this ${getTranslatedEntityName(model)}`}>
+            <ActionIcon
+              onClick={onDelete}
+              className="hover-child"
+              name="trash"
+            />
+          </Tooltip>
+        )}
+      </span>
+    )}
+  </div>
+);
