@@ -1,0 +1,124 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Most active creators
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+    aggregation:
+    - - count
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    joins:
+    - fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - base-type: type/Text
+          join-alias: Question 1
+      alias: Question 1
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - join-alias: Question 1
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    - fields: all
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - join-alias: Question 34
+      alias: Question 34
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: Question 1
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - null
+    - question-create
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: p-z74CSp1IOs1rXwAcwcS
+  label: most_active_creators
+display: table
+entity_id: p-z74CSp1IOs1rXwAcwcS
+collection_preview: true
+visualization_settings:
+  table.pivot_column: end_timestamp
+  table.cell_column: model_id
+  table.columns:
+  - name: full_name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - full_name
+    - base-type: type/Text
+      join-alias: Question 1
+    enabled: true
+  - name: count
+    fieldRef:
+    - aggregation
+    - 0
+    enabled: true
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: User
+    '["name","count"]':
+      column_title: Questions created
+      show_mini_bar: true
+parameters: []
+dataset: false
+created_at: '2023-06-15T02:22:17.198967Z'
+public_uuid: null
