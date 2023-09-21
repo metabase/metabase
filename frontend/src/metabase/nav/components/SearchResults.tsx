@@ -35,6 +35,7 @@ export const SearchResults = ({
   const dispatch = useDispatch();
 
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
+  const isWaitingForDebounce = searchText !== debouncedSearchText;
 
   useDebounce(
     () => {
@@ -53,7 +54,8 @@ export const SearchResults = ({
 
   const { data: list = [], isLoading } = useSearchListQuery({
     query,
-    reload: true,
+    // reload: true,
+    enabled: !isWaitingForDebounce,
   });
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
@@ -73,7 +75,7 @@ export const SearchResults = ({
 
   const hasResults = list.length > 0;
 
-  if (isLoading) {
+  if (isLoading || isWaitingForDebounce) {
     return (
       <Stack p="xl" align="center">
         <Loader size="lg" />
