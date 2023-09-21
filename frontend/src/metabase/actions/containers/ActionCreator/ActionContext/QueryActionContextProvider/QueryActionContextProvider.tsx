@@ -131,9 +131,12 @@ function QueryActionContextProvider({
 
   const query = useMemo(() => question.query() as NativeQuery, [question]);
 
-  const [formSettings, setFormSettings] = useState(
-    getDefaultFormSettings(initialAction?.visualization_settings),
+  const defaultFormSettings = useMemo(
+    () => getDefaultFormSettings(initialAction?.visualization_settings),
+    [initialAction],
   );
+
+  const [formSettings, setFormSettings] = useState(defaultFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -189,8 +192,18 @@ function QueryActionContextProvider({
   );
 
   const isDirty = useMemo(() => {
-    return canSave && !_.isEqual(action, initialAction);
-  }, [action, canSave, initialAction]);
+    if (!initialAction) {
+      return Boolean(
+        canSave || action.name || !_.isEqual(formSettings, defaultFormSettings),
+      );
+    }
+
+    return (
+      canSave ||
+      !_.isEqual(action, initialAction) ||
+      !_.isEqual(formSettings, defaultFormSettings)
+    );
+  }, [action, canSave, initialAction, formSettings, defaultFormSettings]);
 
   const value = useMemo(
     (): ActionContextType => ({
