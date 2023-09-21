@@ -494,6 +494,8 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
+(defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
+
 (defmethod driver/db-default-timezone :snowflake
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
