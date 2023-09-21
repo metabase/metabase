@@ -1,6 +1,6 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs"
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
 
-import { Switch } from "./"
+import { Switch } from "./";
 
 export const args = {
   labelPosition: "right",
@@ -9,30 +9,30 @@ export const args = {
   error: "Lactose intolerant",
   size: "sm",
   disabled: false,
-}
+};
 
 export const argTypes = {
   labelPosition: {
     control: { type: "inline-radio" },
-    options: ["left", "right"]
+    options: ["left", "right"],
   },
   label: {
-    control: { type: "text" }
+    control: { type: "text" },
   },
   description: {
-    control: { type: "text" }
+    control: { type: "text" },
   },
   error: {
-    control: { type: "text" }
+    control: { type: "text" },
   },
   size: {
     control: { type: "inline-radio" },
-    options: ["xs", "sm", "md", "lg", "xl"]
+    options: ["xs", "sm", "md", "lg"],
   },
   disabled: {
-    control: { type: "boolean"}
-  }
-}
+    control: { type: "boolean" },
+  },
+};
 
 <Meta
   title="Inputs/Switch"
