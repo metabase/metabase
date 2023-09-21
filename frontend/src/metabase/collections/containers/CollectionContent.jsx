@@ -57,8 +57,7 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 function mapStateToProps(state, props) {
   const uploadDbId = getSetting(state, "uploads-database-id");
   const uploadsEnabled = getSetting(state, "uploads-enabled");
-  const canAccessUploadsDb =
-    uploadsEnabled &&
+  const canUploadToDb =
     uploadDbId &&
     Databases.selectors
       .getObject(state, {
@@ -71,7 +70,7 @@ function mapStateToProps(state, props) {
     isBookmarked: getIsBookmarked(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
     uploadsEnabled,
-    canAccessUploadsDb,
+    canUploadToDb,
   };
 }
 
@@ -95,7 +94,7 @@ function CollectionContent({
   openNavbar,
   uploadFile,
   uploadsEnabled,
-  canAccessUploadsDb,
+  canUploadToDb,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -205,8 +204,7 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
-  const canUpload =
-    uploadsEnabled && canAccessUploadsDb && collection.can_write;
+  const canUpload = uploadsEnabled && canUploadToDb && collection.can_write;
 
   const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
