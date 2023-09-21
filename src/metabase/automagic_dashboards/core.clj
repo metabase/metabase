@@ -852,27 +852,22 @@
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [{:keys [query-filter] :as context}
-   {:keys [available-dimensions available-metrics available-filters] :as available-values}
+   {:keys [available-metrics available-filters] :as available-values}
    {required-dimensions :dimensions
     required-metrics    :metrics
     required-filters    :filters
-    card-title          :title
     :as                 card-template}]
-  (if (and (every? available-dimensions (map ffirst required-dimensions))
-           (every? available-metrics required-metrics)
-           (every? available-filters required-filters))
-    (let [satisfied-metrics    (map available-metrics required-metrics)
-          satisfied-filters    (cond-> (map available-filters required-filters)
-                                 query-filter
-                                 (conj {:filter query-filter}))
-          satisfied-dimensions (map (comp (partial into [:dimension]) first) required-dimensions)
-          satisfied-values     {:satisfied-dimensions satisfied-dimensions
-                                :satisfied-metrics    satisfied-metrics
-                                :satisfied-filters    satisfied-filters}]
-      (->> (potential-card-dimension-bindings context available-values card-template satisfied-values)
-           (filter (partial valid-bindings? context satisfied-dimensions))
-           (map (partial build-dashcard context available-values card-template satisfied-values))))
-    (log/debugf "Card %s cannot satisfy required dimensions." card-title)))
+  (let [satisfied-metrics    (map available-metrics required-metrics)
+        satisfied-filters    (cond-> (map available-filters required-filters)
+                               query-filter
+                               (conj {:filter query-filter}))
+        satisfied-dimensions (map (comp (partial into [:dimension]) first) required-dimensions)
+        satisfied-values     {:satisfied-dimensions satisfied-dimensions
+                              :satisfied-metrics    satisfied-metrics
+                              :satisfied-filters    satisfied-filters}]
+    (->> (potential-card-dimension-bindings context available-values card-template satisfied-values)
+         (filter (partial valid-bindings? context satisfied-dimensions))
+         (map (partial build-dashcard context available-values card-template satisfied-values)))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.

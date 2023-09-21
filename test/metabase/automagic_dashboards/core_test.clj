@@ -2050,16 +2050,7 @@
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :breakout     [[:field (mt/id :people :latitude) nil]]
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates base-context available-values card-def)))))
-            (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
-              (let [card-def {:title      "Some sort of card"
-                              :metrics    ["Count"]
-                              :dimensions [{"Lat" {}} {"Lon" {}}]
-                              :score      100}]
-                ;; todo: this violates our invariants. We're now driven by affinities, not random combinations that
-                ;; maybe will be grounded in the underlying thing we are xraying. So this card def would never be
-                ;; considered.
-                (is (= nil (#'magic/card-candidates base-context available-values card-def)))))))))))
+                        (#'magic/card-candidates base-context available-values card-def)))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
