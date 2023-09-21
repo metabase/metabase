@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
+import { t } from "ttag";
 import _ from "underscore";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 
@@ -193,8 +193,10 @@ function QueryActionContextProvider({
 
   const isDirty = useMemo(() => {
     if (!initialAction) {
-      return Boolean(
-        canSave || action.name || !_.isEqual(formSettings, defaultFormSettings),
+      return (
+        canSave ||
+        Boolean(action.name && action.name !== t`New Action`) ||
+        !_.isEqual(formSettings, defaultFormSettings)
       );
     }
 
