@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+
 import _ from "underscore";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 
@@ -132,12 +132,9 @@ function QueryActionContextProvider({
 
   const query = useMemo(() => question.query() as NativeQuery, [question]);
 
-  const defaultFormSettings = useMemo(
-    () => getDefaultFormSettings(initialAction?.visualization_settings),
-    [initialAction],
+  const [formSettings, setFormSettings] = useState(
+    getDefaultFormSettings(initialAction?.visualization_settings),
   );
-
-  const [formSettings, setFormSettings] = useState(defaultFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -193,20 +190,8 @@ function QueryActionContextProvider({
   );
 
   const isDirty = useMemo(() => {
-    if (!initialAction) {
-      return (
-        canSave ||
-        Boolean(action.name && action.name !== t`New Action`) ||
-        !_.isEqual(formSettings, defaultFormSettings)
-      );
-    }
-
-    return (
-      canSave ||
-      !_.isEqual(action, initialAction) ||
-      !_.isEqual(formSettings, defaultFormSettings)
-    );
-  }, [action, canSave, initialAction, formSettings, defaultFormSettings]);
+    return canSave && !_.isEqual(action, initialAction);
+  }, [action, canSave, initialAction]);
 
   const value = useMemo(
     (): ActionContextType => ({
