@@ -52,6 +52,14 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defmethod mi/can-write? Dashboard
+  ([instance]
+   (if (= (t2/select-one-fn :entity_id 'Dashboard :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+     false
+     (perms/perms-objects-set-for-parent-collection instance :write)))
+  ([_ pk]
+   (mi/can-write? (t2/select-one 'Dashboard :id pk))))
+
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
    :embedding_params mi/transform-json})
