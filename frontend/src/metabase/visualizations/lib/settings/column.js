@@ -503,9 +503,8 @@ export const getTitleForColumn = (column, series, settings) => {
 export const buildTableColumnSettings = ({
   getIsColumnVisible = col => col.visibility_type !== "details-only",
 } = {}) => {
-  const isValid = (...args) => {
-    const [{ card, data }] = args[0];
-    const columns = card.visualization_settings["table.columns"] || [];
+  const isValid = ([{ card, data }], settings) => {
+    const columns = settings["table.columns"] || [];
     const enabledColumns = columns.filter(column => column.enabled);
     // If "table.columns" happened to be an empty array,
     // it will be treated as "all columns are hidden",
