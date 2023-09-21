@@ -54,7 +54,7 @@ export const SearchResults = ({
 
   const { data: list = [], isLoading } = useSearchListQuery({
     query,
-    // reload: true,
+    reload: true,
     enabled: !isWaitingForDebounce,
   });
 
