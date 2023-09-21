@@ -85,9 +85,7 @@
   "SerDes v2 load entry point for internal users.
 
   `opts` are passed to [[v2.load/load-metabase]]."
-  [path :- [:or {:error/message "Must be a java.net.URL or a string."}
-            :string
-            [:fn #(instance? URL %)]]
+  [path :- :string
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?]
@@ -101,7 +99,7 @@
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (serdes/with-cache
-    (v2.load/load-metabase (v2.ingest/ingest-yaml (.getPath ^URL path)) opts)))
+    (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
 
 (mu/defn v2-load
   "SerDes v2 load entry point.
