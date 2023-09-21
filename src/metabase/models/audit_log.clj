@@ -62,7 +62,7 @@
   appropriate model namespace.
 
   `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name and/or ID
-  of a model are also relevant to the event and should be recorded, they can be passed as third and fourth arguments."
+  of a model are also relevant to the event and should be recorded, they can be passed as fourth and fifth arguments."
   ([topic object]
    (record-event! topic object api/*current-user-id*))
 
@@ -84,7 +84,7 @@
                  :model    model-name
                  :model_id model-id
                  :user_id  user-id)
-     ;; TODO: temporarily double-writing to the `activity` table
+     ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
      (activity/record-activity!
       :topic      topic
       :object     object
