@@ -507,10 +507,11 @@
   "Adjust field from `::metric-id->field` to be swappable for aggregation containing only one metric. If the
    aggregation that field is being swapped for was also coming from metric, ::metric opt is updated. That is
    necessary, so field can be correctly provided using [[provides]] when swapping metric uplevel."
-  [[_ _ {metric ::metric}] field]
-  (if (some? metric)
-    (update field 2 assoc ::metric metric)
-    field))
+  [ag metric-id->field]
+  (mbql.u/match-one ag
+    [:metric swapped-metric-id]
+    (update (metric-id->field swapped-metric-id) 2
+            m/assoc-some ::metric (metric-field-opt ag))))
 
 (defn- one-and-only-metric?
   "Determine if aggregation consists of one and only metric, hence will later be swapped for a field and moved
@@ -521,22 +522,15 @@
     (or (empty? &parents)
         (= [:aggregation-options] &parents))))
 
-;;;; TODO: doc
 (defn- swap-metric-clauses-in-aggregation
   "Transform one aggregation containing metrics clauses.
-   Query expected to `::metric-id->field` key, so has joined [[metrics-query]]s with [[join-metrics-query]].
-
-
-
-   If aggregation contains only one metric and nothing else it is swapped for field, that will be moved to breakout
-   later. Else metrics in aggregation are swapped for corresponding fields, or if aggregation contains no metric
-   it is left unmodified."
+   Query is expected to have `::metric-id->field` key, so has joins modified with [[join-metrics-query]], joinin
+   [[metrics-query]]s. If aggregation contains only one metric and nothing else, it is swapped for field, that 
+   will be moved to breakout later by [[move-ag-fields-to-breakout]]."
   [query ag]
-  ;;;; TODO: can be further simplified
-  (let [[first-metric-id] (->> ag metrics (map second))]
-    (if (one-and-only-metric? ag)
-      (swap-ag-for-field ag (get-in query [::metric-id->field first-metric-id]))
-      (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id])))))
+  (if (one-and-only-metric? ag)
+    (swap-ag-for-field ag (::metric-id->field query))
+    (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))))
 
 (defn- swap-metric-clauses
   "Swap metric clauses in aggregation clauses of `query`. For details refer to [[swap-metric-clauses-in-aggregation]].
