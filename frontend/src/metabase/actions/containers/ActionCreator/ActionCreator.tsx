@@ -98,6 +98,7 @@ function ActionCreator({
     ui: UIProps,
     patchAction,
     patchFormSettings,
+    setAction,
     renderEditorBody,
   } = useActionContext();
 
@@ -118,7 +119,7 @@ function ActionCreator({
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
-    patchAction(values);
+    setAction(createdAction);
 
     setShowSaveModal(false);
     onSubmit?.(createdAction);
@@ -133,6 +134,7 @@ function ActionCreator({
         visualization_settings: formSettings,
       });
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      setAction(updatedAction);
       onSubmit?.(updatedAction);
     }
   };
