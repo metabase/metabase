@@ -1,6 +1,6 @@
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
+import { getEmailDomain } from "metabase/lib/utils";
 
 import type {
   Channel,
@@ -97,7 +97,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
     return true;
   }
 
-  const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
+  const recipientDomain = getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
     _.isEmpty(allowedDomains) ||
