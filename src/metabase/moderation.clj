@@ -1,13 +1,13 @@
 (ns metabase.moderation
   (:require
-    [medley.core :as m]
-    [metabase.models.interface :as mi]
-    [metabase.util :as u]
-    [toucan2.core :as t2]))
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  [:enum "card" :card])
+  (s/enum "card" :card))
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
@@ -35,7 +35,7 @@
                         (group-by (juxt :moderated_item_type :moderated_item_id)
                                   (t2/select 'ModerationReview
                                              :moderated_item_type "card"
-                                             :moderated_item_id   [:in item-ids]
+                                             :moderated_item_id [:in item-ids]
                                              {:order-by [[:id :desc]]})))]
       (for [item items]
         (if (nil? item)
