@@ -897,51 +897,15 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
-  (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
-                                 ;; computed and agg columns don't have an effective type
-                                 (isa? (:base_type c) t)))
-          (where [f coll] (some #(when (f %) %) coll))
-          (percentage [arg] (if (number? arg)
-                              (format-percentage arg)
-                              " - "))
-          (format-unit [unit] (str/replace (name unit) "-" " "))]
-    (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
+     [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
+     (let [value ((js-svg/trend-chart))]
+       {:attachments
+        nil
 
-          {:keys [last-value previous-value unit last-change] :as _insight}
-          (where (comp #{(:name metric-col)} :col) insights)]
-      (if (and last-value previous-value unit last-change)
-        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
-              previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
-              delta-statement (if (= last-value previous-value)
-                                "No change."
-                                (str adj " " (percentage last-change) "."))]
-          {:attachments nil
-           :content     [:div
-                         [:div {:style (style/style (style/scalar-style))}
-                          (h value)]
-                         [:p {:style (style/style {:color         style/color-text-medium
-                                                   :font-size     :16px
-                                                   :font-weight   700
-                                                   :padding-right :16px})}
-                          delta-statement
-                          " Was " previous " last " (format-unit unit)]]
-           :render/text (str value "\n"
-                             delta-statement
-                             " Was " previous " last " (format-unit unit))})
-        ;; In other words, defaults to plain scalar if we don't have actual changes
-        {:attachments nil
-         :content     [:div
-                       [:div {:style (style/style (style/scalar-style))}
-                        (h last-value)]
-                       [:p {:style (style/style {:color         style/color-text-medium
-                                                 :font-size     :16px
-                                                 :font-weight   700
-                                                 :padding-right :16px})}
-                        (trs "Nothing to compare to.")]]
-         :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
-                           "\n" (trs "Nothing to compare to."))}))))
+        :content
+        [:div {:style (style/style (style/scalar-style))}
+         (:div value)]
+        :render/text (str value)}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]

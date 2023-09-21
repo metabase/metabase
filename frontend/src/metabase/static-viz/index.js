@@ -1,8 +1,16 @@
+// import inlineCss from "inline-css";
 import ReactDOMServer from "react-dom/server";
 import StaticChart from "./containers/StaticChart";
+// import createCache from "@emotion/cache";
+// import { CacheProvider } from "@emotion/react";
 
-export function RenderChart(type, options) {
+// const key = "custom";
+// const cache = createCache({ key });
+
+export function RenderChart(type) {
   return ReactDOMServer.renderToStaticMarkup(
-    <StaticChart type={type} options={options} />,
+    // <CacheProvider value={cache}>
+    <StaticChart />,
+    // </CacheProvider>,
   );
 }

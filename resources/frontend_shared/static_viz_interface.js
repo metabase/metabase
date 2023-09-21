@@ -55,6 +55,10 @@ function funnel(data, settings) {
   });
 }
 
+function trend_chart() {
+  return StaticViz.RenderChart("trend_chart");
+}
+
 function categorical_donut(rows, legendColors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),

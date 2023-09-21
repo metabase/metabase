@@ -58,6 +58,7 @@
     "iframe-resizer": "^4.3.2",
     "immer": "^9.0.17",
     "inflection": "^1.7.1",
+    "inline-css": "^4.0.2",
     "js-cookie": "^2.1.2",
     "jspdf": "^2.5.1",
     "jsrsasign": "^10.5.25",

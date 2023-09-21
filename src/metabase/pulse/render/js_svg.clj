@@ -154,6 +154,11 @@
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
+(defn trend-chart
+  "Trend chart stub"
+  []
+  (.asString (js/execute-fn-name (context) "trend_chart")))
+
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
