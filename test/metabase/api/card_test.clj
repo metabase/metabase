@@ -2874,7 +2874,7 @@
   ([collection-id grant-permission?]
    (mt/with-current-user (mt/user->id :rasta)
      (let [;; Make the file-name unique so the table names don't collide
-           csv-file-name     (str (random-uuid) ".csv")
+           csv-file-name     (str "example csv file " (random-uuid) ".csv")
            file              (upload-test/csv-file-with
                               ["id, name"
                                "1, Luke Skywalker"
@@ -2921,7 +2921,7 @@
                                               :query    {:source-table (:id new-table)}
                                               :type     :query}
                            :creator_id       (mt/user->id :rasta)
-                           :name             "Example Csv File"
+                           :name             #"(?i)example csv file(.*)"
                            :collection_id    nil} new-model)
                       "A new model is created")
                   (is (=? {:name      #"(?i)example(.*)"
@@ -2956,7 +2956,8 @@
             (if (= driver/*driver* :mysql)
               (let [new-model (upload-example-csv! nil)
                     new-table (t2/select-one Table :db_id db-id)]
-                (is (= "Example Csv File" (:name new-model)))
+                (is (=? {:name #"(?i)example csv file(.*)"}
+                        new-model))
                 (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                         new-table))
                 (if (= driver/*driver* :mysql)
