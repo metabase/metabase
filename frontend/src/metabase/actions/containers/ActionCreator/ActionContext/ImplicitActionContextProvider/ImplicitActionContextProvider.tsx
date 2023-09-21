@@ -70,6 +70,7 @@ function ImplicitActionContextProvider({
       patchAction: _.noop,
       patchFormSettings,
       renderEditorBody: EditorBody,
+      setAction: _.noop,
     }),
     [initialAction, formSettings, canSave, patchFormSettings],
   );
