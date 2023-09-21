@@ -493,8 +493,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'অনলাইন, অফলাইন এবং ব্লেন্ডেড প্রশিক্ষণের পরিসংখ্যান'
   },
   'venue.wise.urc.pti.dpeo.office.ddoffice.count': {
-    'en': 'Statistics of Venues(URC, PTI, DPEO, etc)',
-    'bn': 'ট্রেইনিং ভ্যেনু (ইউআরসি, পিটিআই, ডিপিইও, ইত্যাদি) পরিসংখ্যান'
+    'en': 'Statistics of Venues(URC-TRC, PTI, etc)',
+    'bn': 'ট্রেইনিং ভ্যেনু (ইউআরসি-টিআরসি, পিটিআই, ইত্যাদি) পরিসংখ্যান'
   },
   'admin.dashboard.officer.c-in-ed.bp-in-ed': {
     'en': 'Statistics of C-in-Ed and DPED Training',
