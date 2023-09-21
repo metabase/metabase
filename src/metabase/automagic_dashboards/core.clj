@@ -120,6 +120,7 @@
    [metabase.util.log :as log]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [potemkin :as p]
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -1053,19 +1054,46 @@
      :query-filter (filters/inject-refinement (:query-filter root)
                                               (:cell-query root))}))
 
+(p/defprotocol+ CardTemplateProducer
+  (create-template [_ affinity-name affinity]))
+
+(defn card-based-layout
+  [{template-cards :cards :as dashboard-template}]
+  (let [by-name (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
+        resolve-overloading (fn [affinity-name affinity cards]
+                              (letfn [(card->deps [card]
+                                        (->> (assoc dashboard-template :cards
+                                                    [{affinity-name card}])
+                                             (dash-template->affinities)
+                                             (map :base-dims)
+                                             (set)))]
+                                ((fn identify-card [[card & remaining]]
+                                   (when card
+                                     (let [possible-deps (card->deps card)]
+                                       (if (some possible-deps affinity)
+                                         card
+                                         (recur remaining)))))
+                                 ;; todo: order cards by score?
+                                 cards)))]
+    (reify CardTemplateProducer
+      (create-template [_ affinity-name affinity]
+        (let [possible-cards (by-name affinity-name)]
+          (if (= (count possible-cards) 1)
+            (first possible-cards)
+            (resolve-overloading affinity-name affinity possible-cards)))))))
+
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context available-values satisfied-affins {card-templates :cards}]
-  ;; todo: make a function of affinities and card-templates -> card-template
-  ;; in the future that function will become smarter and not need a template
-  (some->> card-templates ;; this will thread affinities through and get a card-template from the affinity
-           (map first)
-           (map-indexed (fn [position [identifier card-template]]
-                          (some->> (assoc card-template :position position)
-                                   (card-candidates context available-values)
-                                   not-empty
-                                   (hash-map (name identifier)))))
+  [context available-values satisfied-affins layout-producer]
+  (some->> satisfied-affins
+           (map-indexed (fn [position [affinity-name affinity]]
+                          (let [card-template (create-template layout-producer
+                                                             affinity-name affinity)]
+                            (some->> (assoc card-template :position position)
+                                     (card-candidates context available-values)
+                                     not-empty
+                                     (hash-map (name affinity-name))))))
            (apply merge-with (partial max-key (comp :score first)) {})
            vals
            (apply concat)))
@@ -1141,11 +1169,7 @@
         satisfied-affins  (match-affinities affinities available-values)
         cards             (make-cards base-context available-values
                                       satisfied-affins
-                                      (update dashboard-template
-                                              :cards
-                                              (fn [card-templates]
-                                                (filter (comp satisfied-affins key first)
-                                                        card-templates))))]
+                                      (card-based-layout dashboard-template))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
               :filters (->> dashboard_filters

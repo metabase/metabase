@@ -2056,6 +2056,9 @@
                               :metrics    ["Count"]
                               :dimensions [{"Lat" {}} {"Lon" {}}]
                               :score      100}]
+                ;; todo: this violates our invariants. We're now driven by affinities, not random combinations that
+                ;; maybe will be grounded in the underlying thing we are xraying. So this card def would never be
+                ;; considered.
                 (is (= nil (#'magic/card-candidates base-context available-values card-def)))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
