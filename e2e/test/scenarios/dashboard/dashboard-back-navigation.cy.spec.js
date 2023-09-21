@@ -115,7 +115,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   );
 
   it(
-    "should display a back to the dashboard button in model x-ray dashboards",
+    "should display 'back to the model x-ray dashboard' button after drill-through",
     { tags: "@slow" },
     () => {
       const modelDetails = {
