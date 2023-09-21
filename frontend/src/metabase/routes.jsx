@@ -1,4 +1,4 @@
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import { useAsync } from "react-use";
 import { Redirect, Switch } from "react-router-dom";
 import { t } from "ttag";
@@ -194,20 +194,34 @@ const AppRoutes = ({ store }) => {
       </Route>
 
       {/* MAIN */}
+      <Route
+        exact
+        path="/"
+        render={() => {
+          const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+
+          if (page && page !== "/") {
+            return (
+              <Redirect to={page} />
+            );
+          }
+
+          return (
+            // <IsAuthenticated>
+              <HomePage />
+            // </IsAuthenticated>
+          );
+        }}
+      />
+    </Switch>
+  );
+
+  // eslint-disable-next-line no-unreachable
+  return (
+    <Switch>
+      {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands routes, things in here are for all the folks */}
-        <Route
-          path="/"
-          render={() => {
-            const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
-
-            if (page && page !== "/") {
-              return <Redirect to={page} />;
-            }
-
-            return <HomePage />;
-          }}
-        />
 
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
