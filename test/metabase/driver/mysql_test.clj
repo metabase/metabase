@@ -421,14 +421,6 @@
                                 "mysql-connect-with-ssl-and-pem-cert-test"
                                 "MB_MYSQL_SSL_TEST_SSL_CERT")))))
 
-;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
-;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
-;; construed as text.
-;; You could even have mixed JSON / non JSON columns...
-;; Therefore, we can't just automatically get JSON columns in MariaDB. Therefore, no JSON support.
-;; Therefore, no JSON tests.
-(defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
-
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
@@ -444,6 +436,12 @@
         (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
+;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
+;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
+;; construed as text.
+;; You could even have mixed JSON / non JSON columns...
+;; Therefore, we can't just automatically get JSON columns in MariaDB. Therefore, no JSON support.
+;; Therefore, no JSON tests.
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :mysql
