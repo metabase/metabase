@@ -97,7 +97,7 @@ function ActionCreator({
     isDirty,
     ui: UIProps,
     handleActionChange,
-    handleFormSettingsChange,
+    patchFormSettings,
     renderEditorBody,
   } = useActionContext();
 
@@ -163,7 +163,7 @@ function ActionCreator({
         isNew={isNew}
         isEditable={isEditable}
         onChangeAction={handleActionChange}
-        onChangeFormSettings={handleFormSettingsChange}
+        onChangeFormSettings={patchFormSettings}
         onClickSave={handleClickSave}
         onCloseModal={onClose}
       >

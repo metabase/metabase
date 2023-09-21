@@ -219,7 +219,7 @@ function QueryActionContextProvider({
         canChangeFieldSettings: true,
       },
       handleActionChange,
-      handleFormSettingsChange: setFormSettings,
+      patchFormSettings: setFormSettings,
       renderEditorBody,
     }),
     [
