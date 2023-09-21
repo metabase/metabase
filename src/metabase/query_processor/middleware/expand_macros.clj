@@ -456,8 +456,6 @@
      :source-metadata metrics-query-metadata
      :fields :all}))
 
-;;;; TODO: because of expressions I must transform also breakout elements to fields?
-;;;;       -- check later when tackling exprs!
 (defn- provides
   "Generate mapping of metric id to field.
    Takes breakout and aggregation of query. Further checks which of those clauses contain `::metric` key in options.
@@ -466,8 +464,7 @@
    display name with join alias. That is not desired for fields comming from metrics, because they come from internal
    joins."
   [{:keys [breakout aggregation] :as _metrics-query} metadatas join-alias]
-  ;;;; TODO: subvec
-  (let [fields-from-ags (doto (map clause->field aggregation (drop (count breakout) metadatas))
+  (let [fields-from-ags (doto (map clause->field aggregation (subvec metadatas (count breakout)))
                           (as-> $ (assert (= (count aggregation) (count $)) "Aggregation count mismatch.")))
         fields-to-provide (->> fields-from-ags
                                (into (filterv clause-with-metric-opt? breakout))
