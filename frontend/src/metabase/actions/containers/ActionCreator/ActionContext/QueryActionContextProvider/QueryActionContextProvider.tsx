@@ -157,7 +157,7 @@ function QueryActionContextProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAction?.id]);
 
-  const handleActionChange = useCallback(
+  const patchAction = useCallback(
     (values: Partial<CreateQueryActionParams>) => {
       let nextQuestion = question.clone();
 
@@ -218,7 +218,7 @@ function QueryActionContextProvider({
         canRename: true,
         canChangeFieldSettings: true,
       },
-      handleActionChange,
+      patchAction,
       patchFormSettings: setFormSettings,
       renderEditorBody,
     }),
@@ -228,7 +228,7 @@ function QueryActionContextProvider({
       isNew,
       canSave,
       isDirty,
-      handleActionChange,
+      patchAction,
       renderEditorBody,
     ],
   );

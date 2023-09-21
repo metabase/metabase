@@ -15,7 +15,7 @@ export type ActionContextType = {
   isNew: boolean;
   isDirty: boolean;
   ui: ActionCreatorUIProps;
-  handleActionChange: (action: EditableActionParams) => void;
+  patchAction: (action: EditableActionParams) => void;
   patchFormSettings: (formSettings: ActionFormSettings) => void;
   renderEditorBody: (props: EditorBodyProps) => React.ReactNode;
 };
@@ -30,7 +30,7 @@ export const ActionContext = createContext<ActionContextType>({
     canRename: true,
     canChangeFieldSettings: true,
   },
-  handleActionChange: _.noop,
+  patchAction: _.noop,
   patchFormSettings: _.noop,
   renderEditorBody: () => null,
 });
