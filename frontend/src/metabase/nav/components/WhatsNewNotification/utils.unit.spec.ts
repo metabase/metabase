@@ -226,4 +226,13 @@ describe("getLatestEligibleReleaseNotes", () => {
       }),
     ).toBe(undefined);
   });
+
+  it("should not crash with vUNKNOWN versions", () => {
+    expect(
+      getLatestEligibleReleaseNotes({
+        ...DEFAULTS,
+        currentVersion: "vUNKNOWN",
+      }),
+    ).toBe(undefined);
+  });
 });
