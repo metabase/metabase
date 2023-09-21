@@ -161,6 +161,17 @@
               :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
+(deftest get-database-can-upload-test
+  (testing "GET /api/database"
+    (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+      (doseq [uploads-enabled? [true false]]
+        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+          (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
+                                             uploads-schema-name "public"
+                                             uploads-database-id db-id]
+            (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+              (is (= uploads-enabled? (:can_upload result))))))))))
+
 (deftest get-database-usage-info-test
   (mt/with-temp
     [Database {db-id :id}      {}
@@ -692,25 +703,18 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest databases-list-test-can-upload
+(deftest databases-list-can-upload-test
   (testing "GET /api/database"
     (let [old-ids (t2/select-pks-set Database)]
-      (testing "The database with uploads enabled for the public schema has can_upload=true"
-        (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
-          (mt/with-temporary-setting-values [uploads-enabled true
-                                             uploads-schema-name "public"
-                                             uploads-database-id db-id]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= (:total result) 1))
-              (is (true? (-> result :data first :can_upload)))))))
-      (testing "The database with uploads enabled for the public schema has can_upload=true"
-        (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
-          (mt/with-temporary-setting-values [uploads-enabled true
-                                             uploads-schema-name "public"
-                                             uploads-database-id db-id]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= (:total result) 1))
-              (is (true? (-> result :data first :can_upload))))))))))
+      (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
+                                               uploads-schema-name "public"
+                                               uploads-database-id db-id]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= (:total result) 1))
+                (is (= uploads-enabled? (-> result :data first :can_upload)))))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"

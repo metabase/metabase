@@ -1161,6 +1161,12 @@ saved later when it is ready."
   [db schema-name]
   (let [driver (driver.u/database->driver db)]
     (cond
+      (not (public-settings/uploads-enabled))
+      (ex-info (tru "Uploads are not enabled.")
+               {:status-code 422})
+      (premium-features/sandboxed-user?)
+      (ex-info (tru "Uploads are not permitted for sandboxed users.")
+               {:status-code 403})
       (not (driver/database-supports? driver :uploads nil))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422})
@@ -1194,10 +1200,6 @@ saved later when it is ready."
   DB errors."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
-  (when (not (public-settings/uploads-enabled))
-    (throw (Exception. (tru "Uploads are not enabled."))))
-  (when (premium-features/sandboxed-user?)
-    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
