@@ -58,5 +58,5 @@ export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   fromUrl: (
     value: string | string[] | null | undefined,
   ) => SearchFilterPropTypes[T];
-  toUrl: (value: SearchFilterPropTypes[T]) => string | string[] | undefined;
+  toUrl: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
 };

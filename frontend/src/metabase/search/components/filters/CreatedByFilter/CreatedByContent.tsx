@@ -12,28 +12,13 @@ import {
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
 import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
-import { createMockUserListResult } from "metabase-types/api/mocks";
-
-const generateUsers = () => {
-  const users = [];
-  for (let i = 0; i < 100; i++) {
-    users.push(
-      createMockUserListResult({
-        id: i + 1000,
-        common_name: `Anna Konstantynopolitańczykiewiczówna ${i}`,
-      }),
-    );
-  }
-  return users;
-};
-const TEST_USERS = generateUsers();
 
 export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
     const [userFilter, setUserFilter] = useState("");
 
-    const filteredUsers = [...TEST_USERS, ...users].filter(user => {
+    const filteredUsers = users.filter(user => {
       const userDisplayName = getUserDisplayName(user);
       return userDisplayName.toLowerCase().includes(userFilter.toLowerCase());
     });

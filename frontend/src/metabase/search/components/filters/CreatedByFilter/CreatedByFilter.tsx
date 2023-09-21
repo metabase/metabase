@@ -8,6 +8,12 @@ export const CreatedByFilter: SearchSidebarFilterComponent<"created_by"> = {
   title: t`Creator`,
   DisplayComponent: CreatedByDisplay,
   ContentComponent: CreatedByContent,
-  fromUrl: value => (value ? Number(value) : undefined),
-  toUrl: value => String(value),
+  fromUrl: value => {
+    if (!value || Array.isArray(value)) {
+      return undefined;
+    }
+    const numValue = Number(value);
+    return numValue && !isNaN(numValue) ? numValue : undefined;
+  },
+  toUrl: value => (Number.isInteger(value) ? String(value) : undefined),
 };

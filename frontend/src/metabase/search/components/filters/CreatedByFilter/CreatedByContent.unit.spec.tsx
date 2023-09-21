@@ -56,6 +56,6 @@ describe("CreatedByContent", () => {
 
     userEvent.click(screen.getByText("Alice"));
 
-    expect(mockOnChange).toHaveBeenCalledWith(["1"]);
+    expect(mockOnChange).toHaveBeenCalledWith(1);
   });
 });
