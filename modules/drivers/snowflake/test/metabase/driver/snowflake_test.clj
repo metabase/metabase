@@ -206,9 +206,9 @@
         (testing "baseline"
           (is (= [["2014-08-02T00:00:00Z"]]
                  (run-query))))
-        (testing "report-timezone is not supported"
+        (testing "with report-timezone"
           (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-            (is (= [["2014-08-02T00:00:00Z"]]
+            (is (= [["2014-08-02T00:00:00-07:00"]]
                    (run-query)))))))
     (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
       (letfn [(run-query []
