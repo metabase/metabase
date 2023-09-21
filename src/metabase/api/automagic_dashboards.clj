@@ -7,7 +7,7 @@
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
    [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -21,7 +21,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.transforms.dashboard :as transform.dashboard]
    [metabase.transforms.materialize :as tf.materialize]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -37,20 +37,20 @@
 (def ^:private Prefix
   (mu/with-api-error-message
     [:fn (fn [prefix]
-           (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"]))]
+           (some #(not-empty (dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))]
     (deferred-tru "invalid value for prefix")))
 
-(def ^:private Rule
+(def ^:private DashboardTemplate
   (mu/with-api-error-message
-    [:fn (fn [rule]
-             (some (fn [toplevel]
-                     (some (comp rules/get-rule
-                                 (fn [prefix]
-                                   [toplevel prefix rule])
-                                 :rule)
-                           (rules/get-rules [toplevel])))
+    [:fn (fn [dashboard-template]
+              (some (fn [toplevel]
+                      (some (comp dashboard-templates/get-dashboard-template
+                                  (fn [prefix]
+                                   [toplevel prefix dashboard-template])
+                                  :dashboard-template-name)
+                           (dashboard-templates/get-dashboard-templates [toplevel])))
                    ["table" "metric" "field"]))]
-    (deferred-tru "invalid value for rule name")))
+    (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
@@ -106,8 +106,8 @@
 (defmethod ->entity :model
   [_entity-type card-id-str]
   (api/read-check (t2/select-one Card
-                    :id (ensure-int card-id-str)
-                    :dataset true)))
+                                 :id (ensure-int card-id-str)
+                                 :dataset true)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
@@ -160,10 +160,10 @@
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
     (map
-      (fn [{:keys [table_id id]}]
-        {:linked-table-id table_id
-         :linked-field-id id})
-      (t2/select 'Field :fk_target_field_id field-id))))
+     (fn [{:keys [table_id id]}]
+       {:linked-table-id table_id
+        :linked-field-id id})
+     (t2/select 'Field :fk_target_field_id field-id))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."
@@ -172,19 +172,19 @@
                        (into [4])
                        (apply max))]
     (cons
-      {:id                     (gensym)
-       :size_x                 max-width
-       :size_y                 1
-       :row                    0
-       :col                    0
-       :visualization_settings {:virtual_card {:display  "link"
-                                               :archived false},
-                                :link         {:entity {:id          model-id
-                                                        :name        model-name
-                                                        :model       "dataset"
-                                                        :display     "table"
-                                                        :description nil}}}}
-      cards)))
+     {:id                     (gensym)
+      :size_x                 max-width
+      :size_y                 1
+      :row                    0
+      :col                    0
+      :visualization_settings {:virtual_card {:display  "link"
+                                              :archived false},
+                               :link         {:entity {:id          model-id
+                                                       :name        model-name
+                                                       :model       "dataset"
+                                                       :display     "table"
+                                                       :description nil}}}}
+     cards)))
 
 (defn- create-linked-dashboard
   "For each joinable table from `model`, create an x-ray dashboard as a tab."
@@ -195,16 +195,16 @@
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (t2/select-one Table :id linked-table-id)]
                                     (magic/automagic-analysis
-                                      table
-                                      {:show         :all
-                                       :query-filter [:= [:field linked-field-id nil] model_pk]})))
+                                     table
+                                     {:show         :all
+                                      :query-filter [:= [:field linked-field-id nil] model_pk]})))
                                 linked-tables)
           seed-dashboard   (-> (first child-dashboards)
                                (merge
-                                 {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-                                  :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
-                                  :parameters   []
-                                  :param_fields {}})
+                                {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+                                 :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                                 :parameters   []
+                                 :param_fields {}})
                                (dissoc :transient_name
                                        :transient_filters))]
       (if (second child-dashboards)
@@ -224,22 +224,22 @@
                            (update :ordered_cards into dash-cards)
                            (update :ordered_tabs conj tab)))
                      (merge
-                       seed-dashboard
-                       {:ordered_cards []
-                        :ordered_tabs  []})))
+                      seed-dashboard
+                      {:ordered_cards []
+                       :ordered_tabs  []})))
         (update seed-dashboard
                 :ordered_cards (fn [cards] (add-source-model-link model cards)))))
     {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
      :ordered_cards (add-source-model-link
-                      model
-                      [{:row                    0
-                        :col                    0
-                        :size_x                 18
-                        :size_y                 2
-                        :visualization_settings {:text                "# Unfortunately, there's not much else to show right now..."
-                                                 :virtual_card        {:display :text}
-                                                 :dashcard.background false
-                                                 :text.align_vertical :bottom}}])}))
+                     model
+                     [{:row                    0
+                       :col                    0
+                       :size_x                 18
+                       :size_y                 2
+                       :visualization_settings {:text                "# Unfortunately, there's not much else to show right now..."
+                                                :virtual_card        {:display :text}
+                                                :dashcard.background false
+                                                :text.align_vertical :bottom}}])}))
 
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
@@ -253,33 +253,30 @@
                                                  :model_index_id model-index-id
                                                  :model_pk pk-id)]
                ;; `->entity` does a read check on the model but this is here as well to be extra sure.
-               (api/read-check Card (:model_id model-index))
-               (let [linked (linked-entities {:model             model
-                                              :model-index       model-index
-                                              :model-index-value model-index-value})]
-                 (or (create-linked-dashboard {:model             model
-                                               :linked-tables     linked
-                                               :model-index       model-index
-                                               :model-index-value model-index-value})
-                     (throw (ex-info (tru "No linked entities")
-                                     {:model-index-id model-index-id
-                                      :status-code    400}))))))
+    (api/read-check Card (:model_id model-index))
+    (let [linked (linked-entities {:model             model
+                                   :model-index       model-index
+                                   :model-index-value model-index-value})]
+      (create-linked-dashboard {:model             model
+                                :linked-tables     linked
+                                :model-index       model-index
+                                :model-index-value model-index-value}))))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
-  "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
-  [entity entity-id-or-query prefix rule show]
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
+  "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
+  [entity entity-id-or-query prefix dashboard-template show]
   {entity Entity
    show   Show
    prefix Prefix
-   rule   Rule}
+   dashboard-template   DashboardTemplate}
   (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show (keyword show)
-                           :rule ["table" prefix rule]})))
+                           :dashboard-template ["table" prefix dashboard-template]})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
-   query `cell-querry`."
+   query `cell-query`."
   [entity entity-id-or-query cell-query show]
   {entity     Entity
    show       Show
@@ -288,18 +285,18 @@
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
-   query `cell-querry` using rule `rule`."
-  [entity entity-id-or-query cell-query prefix rule show]
+   query `cell-query` using dashboard-template `dashboard-template`."
+  [entity entity-id-or-query cell-query prefix dashboard-template show]
   {entity     Entity
    show       Show
    prefix     Prefix
-   rule       Rule
+   dashboard-template       DashboardTemplate
    cell-query Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
-                           :rule       ["table" prefix rule]
+                           :dashboard-template       ["table" prefix dashboard-template]
                            :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
@@ -316,26 +313,26 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
+(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
+  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [entity entity-id-or-query prefix rule show comparison-entity comparison-entity-id-or-query]
+  [entity entity-id-or-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
    show              Show
    prefix            Prefix
-   rule              Rule
+   dashboard-template              DashboardTemplate
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :rule         ["table" prefix rule]
+                                            :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `id` defined by query `cell-querry`; compared with entity `comparison-entity` with id
+   with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
@@ -349,21 +346,21 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
+   with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [entity entity-id-or-query cell-query prefix rule show comparison-entity comparison-entity-id-or-query]
+  [entity entity-id-or-query cell-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
    show              Show
    prefix            Prefix
-   rule              Rule
+   dashboard-template              DashboardTemplate
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
-                                            :rule         ["table" prefix rule]
+                                            :dashboard-template         ["table" prefix dashboard-template]
                                             :query-filter nil})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
