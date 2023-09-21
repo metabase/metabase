@@ -1,6 +1,7 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
+   [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -34,6 +35,21 @@
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
+
+(defmulti can-run-method
+  "Returns whether the query is runnable based on first stage :lib/type"
+  (fn [query]
+    (:lib/type (lib.util/query-stage query 0))))
+
+(defmethod can-run-method :default
+  [_query]
+  true)
+
+(mu/defn can-run :- :boolean
+  "Returns whether the query is runnable. Manually validate schema for cljs."
+  [query :- ::lib.schema/query]
+  (and (mc/validate ::lib.schema/query query)
+       (boolean (can-run-method query))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."

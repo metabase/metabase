@@ -9,7 +9,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util.humanization :as u.humanization]))
+   [metabase.util.humanization :as u.humanization]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
@@ -319,3 +320,24 @@
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
           (lib/has-write-permission lib.tu/venues-query)))))
+
+(deftest ^:parallel can-run-native-test
+  (is (lib/can-run (lib/with-template-tags
+                     (lib/native-query meta/metadata-provider "select * {{foo}}")
+                     {"foo" {:type :dimension
+                             :id "1"
+                             :name "foo"
+                             :widget-type :text
+                             :display-name "foo"
+                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})))
+  (mu/disable-enforcement
+    (is (not (lib/can-run (lib/native-query meta/metadata-provider ""))))
+    (is (not (lib/can-run (lib/with-template-tags
+                            (lib/native-query meta/metadata-provider "select * {{foo}}")
+                            {"foo" {:type :dimension
+                                    :id "1"
+                                    :name "foo"
+                                    :widget-type :text
+                                    :display-name "foo"}}))))
+    (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
+                                     [:stages 0] dissoc :collection))))))

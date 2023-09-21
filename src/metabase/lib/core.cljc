@@ -253,6 +253,7 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-run
   query
   with-different-table]
  [lib.ref
