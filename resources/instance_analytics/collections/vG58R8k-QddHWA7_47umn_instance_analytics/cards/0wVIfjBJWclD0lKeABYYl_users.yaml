@@ -1,6 +1,6 @@
 description: All Metabase users including active and deactivated users.
 archived: false
-collection_position: 6
+collection_position: 8
 table_id:
 - Internal Metabase Database
 - public
