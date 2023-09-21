@@ -2,9 +2,11 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+import type { Route } from "react-router";
 
 import Modal from "metabase/components/Modal";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import type {
   CreateActionParams,
   UpdateActionParams,
@@ -23,7 +25,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 import type Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
@@ -40,6 +41,7 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
+  route: Route;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -85,6 +87,7 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
+  route,
 }: Props) {
   const {
     action,
@@ -97,8 +100,6 @@ function ActionCreator({
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
-
-  useBeforeUnload(isDirty);
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
@@ -181,6 +182,8 @@ function ActionCreator({
           />
         </Modal>
       )}
+
+      <LeaveConfirmationModal isEnabled={isEditable && isDirty} route={route} />
     </>
   );
 }
