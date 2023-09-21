@@ -63,7 +63,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.test :as mt])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io File)))

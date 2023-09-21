@@ -2873,19 +2873,20 @@
    (upload-example-csv! collection-id true))
   ([collection-id grant-permission?]
    (mt/with-current-user (mt/user->id :rasta)
-     (let [file              (upload-test/csv-file-with
+     (let [;; Make the file-name unique so the table names don't collide
+           csv-file-name     (str (random-uuid) ".csv")
+           file              (upload-test/csv-file-with
                               ["id, name"
                                "1, Luke Skywalker"
                                "2, Darth Vader"]
-                              "example_csv_file")
+                              csv-file-name)
            group-id          (u/the-id (perms-group/all-users))
            can-already-read? (mi/can-read? (mt/db))
            grant?            (and (not can-already-read?)
                                   grant-permission?)]
        (when grant?
          (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-       (u/prog1
-         (api.card/upload-csv! collection-id "example_csv_file.csv" file)
+       (u/prog1 (api.card/upload-csv! collection-id csv-file-name file)
          (when grant?
            (perms/revoke-data-perms! group-id (mt/id))))))))
 
