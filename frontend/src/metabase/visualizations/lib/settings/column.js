@@ -512,7 +512,7 @@ export const buildTableColumnSettings = ({
     // This check ensures it's not empty,
     // otherwise it will be overwritten by `getDefault` below
     return (
-      card.visualization_settings["table.columns"]?.length !== 0 &&
+      columns.length !== 0 &&
       _.all(
         enabledColumns,
         columnSetting =>
