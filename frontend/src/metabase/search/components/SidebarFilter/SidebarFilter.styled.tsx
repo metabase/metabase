@@ -41,10 +41,6 @@ export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
   }}
 `;
 
-export const SearchPopoverContent = styled(Stack)<{ maxHeight?: number }>`
-  ${({ maxHeight }) =>
-    maxHeight ??
-    css`
-      max-height: ${maxHeight}px;
-    `};
+export const SearchPopoverContainer = styled(Stack)`
+  overflow: hidden;
 `;

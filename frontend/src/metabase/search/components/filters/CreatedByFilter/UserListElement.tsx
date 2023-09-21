@@ -1,7 +1,7 @@
 import type { UserListResult } from "metabase-types/api";
-import { UserElement } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
 import { Text } from "metabase/ui";
 import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
+import { UserElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement.styled";
 
 export type UserListElementProps = {
   value: UserListResult;
@@ -17,12 +17,13 @@ export const UserListElement = ({
   <UserElement
     data-testid="user-list-element"
     onClick={() => onClick(value)}
-    isSelected={isSelected}
     data-is-selected={isSelected}
     px="sm"
     py="xs"
+    variant="subtle"
+    bg={isSelected ? "brand.0" : undefined}
   >
-    <Text weight={700} color={isSelected ? "brand.1" : undefined}>
+    <Text weight={700} color={isSelected ? "brand.1" : undefined} truncate>
       {getUserDisplayName(value)}
     </Text>
   </UserElement>

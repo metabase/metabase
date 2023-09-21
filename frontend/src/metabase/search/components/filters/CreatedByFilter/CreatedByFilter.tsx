@@ -8,4 +8,6 @@ export const CreatedByFilter: SearchSidebarFilterComponent<"created_by"> = {
   title: t`Creator`,
   DisplayComponent: CreatedByDisplay,
   ContentComponent: CreatedByContent,
+  fromUrl: value => (value ? Number(value) : undefined),
+  toUrl: value => String(value),
 };

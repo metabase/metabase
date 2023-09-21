@@ -12,35 +12,56 @@ import {
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
 import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
+import { createMockUserListResult } from "metabase-types/api/mocks";
+
+const generateUsers = () => {
+  const users = [];
+  for (let i = 0; i < 100; i++) {
+    users.push(
+      createMockUserListResult({
+        id: i + 1000,
+        common_name: `Anna Konstantynopolitańczykiewiczówna ${i}`,
+      }),
+    );
+  }
+  return users;
+};
+const TEST_USERS = generateUsers();
 
 export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
     const [userFilter, setUserFilter] = useState("");
 
-    const filteredUsers = users.filter(user => {
+    const filteredUsers = [...TEST_USERS, ...users].filter(user => {
       const userDisplayName = getUserDisplayName(user);
       return userDisplayName.toLowerCase().includes(userFilter.toLowerCase());
     });
 
     const onUserSelect = (user: UserListResult) => {
-      if (value && value.length > 0 && isEqual(value[0], String(user.id))) {
-        onChange([]);
+      if (value && isEqual(value, user.id)) {
+        onChange(undefined);
       } else {
-        onChange([String(user.id)]);
+        onChange(user.id);
       }
     };
 
-    return isLoading ? (
-      <Center>
-        <Loader data-testid="loading-spinner" />
-      </Center>
-    ) : (
-      <CreatedByContainer p="md" h="100%" spacing="xs">
+    if (isLoading) {
+      return (
+        <Center>
+          <Loader data-testid="loading-spinner" />
+        </Center>
+      );
+    }
+
+    return (
+      <CreatedByContainer p="sm" h="100%" spacing="xs">
         <TextInput
-          size="sm"
+          size="md"
           mb="sm"
+          placeholder="Search for users…"
           value={userFilter}
+          tabIndex={0}
           onChange={event => setUserFilter(event.currentTarget.value)}
         />
         {filteredUsers.length > 0 ? (
@@ -48,11 +69,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
             {filteredUsers.map(user => (
               <UserListElement
                 key={user.id}
-                isSelected={
-                  value && value.length > 0
-                    ? isEqual(value[0], String(user.id))
-                    : false
-                }
+                isSelected={value ? isEqual(value, user.id) : false}
                 onClick={onUserSelect}
                 value={user}
               />

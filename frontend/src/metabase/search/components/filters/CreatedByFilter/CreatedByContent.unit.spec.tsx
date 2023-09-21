@@ -13,7 +13,7 @@ const TEST_USERS: User[] = [
 ];
 
 const TestCreatedByContent = ({ onChange }: { onChange: jest.Func }) => {
-  const [value, setValue] = useState<CreatedByFilterProps>([]);
+  const [value, setValue] = useState<CreatedByFilterProps>();
   const onUserChange = (value: CreatedByFilterProps) => {
     setValue(value);
     onChange(value);
@@ -21,8 +21,8 @@ const TestCreatedByContent = ({ onChange }: { onChange: jest.Func }) => {
   return <CreatedByContent value={value} onChange={onUserChange} />;
 };
 
-const setup = async ({ users = TEST_USERS } = {}) => {
-  setupUsersEndpoints(users);
+const setup = async () => {
+  setupUsersEndpoints(TEST_USERS);
 
   const mockOnChange = jest.fn();
   renderWithProviders(<TestCreatedByContent onChange={mockOnChange} />);

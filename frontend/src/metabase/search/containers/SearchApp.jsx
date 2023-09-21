@@ -83,10 +83,7 @@ function SearchApp({ location }) {
         {({ list, metadata }) => (
           <SearchBody direction="column" justify="center">
             <SearchControls>
-              <SearchSidebar
-                value={searchFilters}
-                onChangeFilters={onFilterChange}
-              />
+              <SearchSidebar value={searchFilters} onChange={onFilterChange} />
             </SearchControls>
             <SearchResultContainer>
               {list.length === 0 ? (

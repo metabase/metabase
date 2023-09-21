@@ -15,7 +15,10 @@ type SetupProps = {
   value?: CreatedByFilterProps;
 };
 
-const setup = async ({ users = TEST_USERS, value = [] }: SetupProps = {}) => {
+const setup = async ({
+  users = TEST_USERS,
+  value = undefined,
+}: SetupProps = {}) => {
   setupUsersEndpoints(users);
   renderWithProviders(<CreatedByDisplay value={value} />);
   await waitFor(() => {
@@ -25,17 +28,12 @@ const setup = async ({ users = TEST_USERS, value = [] }: SetupProps = {}) => {
 
 describe("CreatedByDisplay", () => {
   it("displays correct user name when data is available", async () => {
-    await setup({ users: TEST_USERS, value: ["1"] });
+    await setup({ users: TEST_USERS, value: 1 });
     expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
   it("displays default title when no user is selected", async () => {
-    await setup({ users: TEST_USERS, value: [] });
+    await setup({ users: TEST_USERS, value: undefined });
     expect(screen.getByText("Creator")).toBeInTheDocument();
-  });
-
-  it("displays count of selected users when multiple users are selected", async () => {
-    await setup({ users: TEST_USERS, value: ["1", "2"] });
-    expect(screen.getByText("2 users selected")).toBeInTheDocument();
   });
 });

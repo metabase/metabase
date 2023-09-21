@@ -6,7 +6,7 @@ import type {
   SearchFilterComponentProps,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Stack, Button, Group, Text } from "metabase/ui";
+import { Button, Group, Text, FocusTrap } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -16,7 +16,7 @@ import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import {
   DropdownApplyButtonDivider,
   DropdownFilterElement,
-  SearchPopoverContent,
+  SearchPopoverContainer,
 } from "./SidebarFilter.styled";
 
 export type SearchSidebarFilterProps = {
@@ -38,7 +38,9 @@ export const SidebarFilter = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<string>();
 
-  const fieldHasValue = !isEmpty(value);
+  const fieldHasValue = Array.isArray(value)
+    ? !isEmpty(value)
+    : value !== null && value !== undefined;
 
   const handleResize = () => {
     if (dropdownRef.current) {
@@ -124,19 +126,20 @@ export const SidebarFilter = ({
         target={dropdownRef.current}
         ignoreTrigger
         autoWidth
+        sizeToFit
       >
-        <SearchPopoverContent w={popoverWidth ?? "100%"} spacing={0}>
-          <Stack spacing="sm" h="100%" w="100%" style={{ overflow: "hidden" }}>
+        <FocusTrap active>
+          <SearchPopoverContainer w={popoverWidth ?? "100%"} spacing={0}>
             <ContentComponent
               value={selectedValues}
               onChange={selected => setSelectedValues(selected)}
             />
-          </Stack>
-          <DropdownApplyButtonDivider />
-          <Group position="right" align="center" px="sm" pb="sm">
-            <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
-          </Group>
-        </SearchPopoverContent>
+            <DropdownApplyButtonDivider />
+            <Group position="right" align="center" px="sm" pb="sm">
+              <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
+            </Group>
+          </SearchPopoverContainer>
+        </FocusTrap>
       </Popover>
     </div>
   );
