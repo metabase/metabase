@@ -96,7 +96,7 @@ function ActionCreator({
     canSave,
     isDirty,
     ui: UIProps,
-    handleActionChange,
+    patchAction,
     patchFormSettings,
     renderEditorBody,
   } = useActionContext();
@@ -118,7 +118,7 @@ function ActionCreator({
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
-    handleActionChange(values);
+    patchAction(values);
 
     setShowSaveModal(false);
     onSubmit?.(createdAction);
@@ -162,7 +162,7 @@ function ActionCreator({
         canSave={canSave}
         isNew={isNew}
         isEditable={isEditable}
-        onChangeAction={handleActionChange}
+        onChangeAction={patchAction}
         onChangeFormSettings={patchFormSettings}
         onClickSave={handleClickSave}
         onCloseModal={onClose}
