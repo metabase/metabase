@@ -78,7 +78,7 @@ export const SearchResults = ({
   if (isLoading || isWaitingForDebounce) {
     return (
       <Stack p="xl" align="center">
-        <Loader size="lg" />
+        <Loader size="lg" data-testid="loading-spinner" />
         <Text size="xl" color="text.0">
           {t`Loading…`}
         </Text>
