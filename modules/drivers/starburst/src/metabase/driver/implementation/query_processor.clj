@@ -18,6 +18,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.lib.metadata :as lib.metadata]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x])
     (:import [java.time OffsetDateTime ZonedDateTime]))
@@ -93,7 +95,7 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Trino's
   `AT TIME ZONE` operator. See https://trino.io/docs/current/functions/datetime.html#time-zone-conversion"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst)
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (h2x/type-info expr)
         db-type     (h2x/type-info->db-type type-info)]
@@ -236,7 +238,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:starburst :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst)]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))]
     [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
 
 (defn- timestamp-with-time-zone? [expr]
