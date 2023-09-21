@@ -1,4 +1,4 @@
-(ns metabase-enterprise.api.collection-test
+(ns metabase-enterprise.audit-app.api.collection-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-db :as audit-db]
