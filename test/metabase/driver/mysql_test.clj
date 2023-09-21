@@ -702,8 +702,7 @@
         (drop-if-exists-and-create-db! "table_privileges_test")
         (let [details         (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec            (sql-jdbc.conn/connection-details->spec :mysql details)
-              supports-roles? (or (mysql/mariadb? (mt/db))
-                                  (<= 8 (get-db-version spec)))
+              supports-roles? (<= 8 (get-db-version spec))
               get-privileges  (fn []
                                 (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                   [spec [:mysql (assoc details :user "table_privileges_test_user" :password "password")]]

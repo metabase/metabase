@@ -792,7 +792,7 @@
   [_driver database]
   ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when (mariadb? database)
+  (when-not (mariadb? database)
     (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
