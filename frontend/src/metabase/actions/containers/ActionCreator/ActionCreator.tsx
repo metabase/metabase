@@ -121,6 +121,9 @@ function ActionCreator({
     // Sync the editor state with data from save modal form
     setAction(createdAction);
 
+    // allow setAction to re-render
+    await new Promise(resolve => setTimeout(resolve, 0));
+
     setShowSaveModal(false);
     onSubmit?.(createdAction);
     onClose?.();
@@ -135,7 +138,12 @@ function ActionCreator({
       });
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
       setAction(updatedAction);
+
+      // allow setAction to re-render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       onSubmit?.(updatedAction);
+      onClose?.();
     }
   };
 
@@ -149,7 +157,6 @@ function ActionCreator({
       showSaveModal();
     } else {
       handleUpdate();
-      onClose?.();
     }
   };
 
