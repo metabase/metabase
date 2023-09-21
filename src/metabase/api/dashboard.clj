@@ -273,6 +273,7 @@
                         (if (:dataset card)
                           card
                           (api.card/create-card!
+                           api/*current-user*
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
