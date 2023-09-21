@@ -503,15 +503,16 @@ export const getTitleForColumn = (column, series, settings) => {
 export const buildTableColumnSettings = ({
   getIsColumnVisible = col => col.visibility_type !== "details-only",
 } = {}) => {
-  const isValid = ([{ card, data }]) => {
-    const columns = card.visualization_settings["table.columns"];
+  const isValid = (...args) => {
+    const [{ card, data }] = args[0];
+    const columns = card.visualization_settings["table.columns"] || [];
     const enabledColumns = columns.filter(column => column.enabled);
     // If "table.columns" happened to be an empty array,
     // it will be treated as "all columns are hidden",
     // This check ensures it's not empty,
     // otherwise it will be overwritten by `getDefault` below
     return (
-      card.visualization_settings["table.columns"].length !== 0 &&
+      card.visualization_settings["table.columns"]?.length !== 0 &&
       _.all(
         enabledColumns,
         columnSetting =>
@@ -520,7 +521,7 @@ export const buildTableColumnSettings = ({
     );
   };
 
-  const getValue = (series = [], settings) => {
+  const getValue = (series, settings) => {
     const [
       {
         data: { cols = [] },
@@ -529,8 +530,12 @@ export const buildTableColumnSettings = ({
 
     const columnSettings = settings["table.columns"];
 
-    if (!columnSettings || !isValid(series, settings)) {
+    if (!columnSettings) {
       // default settings
+      return getDefault(series, settings);
+    }
+
+    if (!isValid(series, settings)) {
       return getDefault(series, settings);
     }
 
@@ -554,12 +559,13 @@ export const buildTableColumnSettings = ({
     {
       data: { cols },
     },
-  ]) =>
-    cols.map(col => ({
+  ]) => {
+    return cols.map(col => ({
       name: col.name,
       fieldRef: col.field_ref,
       enabled: getIsColumnVisible(col),
     }));
+  };
 
   return {
     // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
