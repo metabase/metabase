@@ -282,12 +282,14 @@ describe("scenarios > search", () => {
 
           // Check that we're getting elements other than Questions by checking the
           // result text and checking if there's more than one result-link-info-text text
-          cy.findAllByTestId("result-link-info-text").then($elements => {
-            const textContent = new Set(
-              $elements.toArray().map(el => el.textContent),
-            );
-            expect(textContent.size).to.be.greaterThan(1);
-          });
+          cy.findAllByTestId("result-link-info-text").then(
+            $resultTypeDescriptions => {
+              const uniqueTypeDescriptions = new Set(
+                $resultTypeDescriptions.toArray().map(el => el.textContent),
+              );
+              expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+            },
+          );
         });
       });
 
