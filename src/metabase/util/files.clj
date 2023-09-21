@@ -159,16 +159,18 @@
           (slurp is))))))
 
 (defn unzip-file
-  "Decompress a zip archive from input to output."
-  [input output]
+  "Decompress a zip archive from input to path-mod-fn(input).
+
+  path-mod-fn is a function that takes the full file path, and returns where that file should go. "
+  [input path-mod-fn]
   (with-open [stream (-> input io/input-stream ZipInputStream.)]
     (loop [entry (.getNextEntry stream)]
       (when entry
-        (let [out-path (str output File/separatorChar (.getName entry))
-              out-file (File. out-path)]
+        (let [out-path (path-mod-fn (.getName entry))
+              out-file (io/file out-path)]
           (if (.isDirectory entry)
             (when-not (.exists out-file) (.mkdirs out-file))
-            (let [parent-dir (File. (.substring out-path 0 (.lastIndexOf out-path (int File/separatorChar))))]
+            (let [parent-dir (io/file (subs out-path 0 (.lastIndexOf ^String out-path (int File/separatorChar))))]
               (when-not (.exists parent-dir) (.mkdirs parent-dir))
               (io/copy stream out-file)))
           (recur (.getNextEntry stream)))))))
