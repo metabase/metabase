@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -249,7 +250,7 @@
 (deftest ^:parallel nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
-      (when-not (mysql-test/is-mariadb? driver/*driver*(u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing"
           (is (= [:type/JSON :type/SerializedJSON]
                  (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
