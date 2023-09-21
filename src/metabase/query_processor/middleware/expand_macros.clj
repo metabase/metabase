@@ -101,7 +101,7 @@
    metric id to field usable in joining query. [[swap-metric-clauses]] uses this map to swap metric clauses for fields.
    In case only one metric clause and nothing else is used in aggregation, whole aggregation is swapped for a field.
 
-   [[adjust-aggregation-and-breakout]] later moves those fields to breakout, but more on that in later sections.
+   [[move-ag-fields-to-breakout]] later moves those fields to breakout, but more on that in later sections.
 
    ### Preserving original order of query columns
 
@@ -570,7 +570,7 @@
     (assoc query ::ordered-clauses-for-fields 
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
-(defn- adjust-aggregation-and-breakout
+(defn- move-ag-fields-to-breakout
   "Move fields, which are currently in :aggregation and are result of [[swap-metric-clauses]], into :breakout."
   [query]
   (let [{:keys [aggregation breakout]}
@@ -627,7 +627,7 @@
           (dissoc ::metric-id->field)
           (infer-ordered-clauses-for-fields)
           (update-order-by-ag-refs)
-          (adjust-aggregation-and-breakout)))
+          (move-ag-fields-to-breakout)))
     query))
 
 (defn- clause-ref->field
