@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -34,7 +34,7 @@ export const SearchResults = ({
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
-  const [debouncedSearchText, setDebouncedSearchText] = useState(searchText);
+  const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
 
   useDebounce(
     () => {
@@ -44,15 +44,12 @@ export const SearchResults = ({
     [searchText],
   );
 
-  const query = useMemo(
-    () => ({
-      q: debouncedSearchText,
-      limit: DEFAULT_SEARCH_LIMIT,
-      ...searchFilters,
-      models: models ?? searchFilters.type,
-    }),
-    [debouncedSearchText, searchFilters, models],
-  );
+  const query = {
+    q: debouncedSearchText,
+    limit: DEFAULT_SEARCH_LIMIT,
+    ...searchFilters,
+    models: models ?? searchFilters.type,
+  };
 
   const { data: list = [], isLoading } = useSearchListQuery({
     query,

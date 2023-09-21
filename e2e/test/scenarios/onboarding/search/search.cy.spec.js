@@ -117,7 +117,9 @@ describe("scenarios > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("ord");
+
       cy.wait("@search");
+
       cy.findAllByTestId("search-result-item-name")
         .first()
         .should("have.text", "Orders");
@@ -129,6 +131,8 @@ describe("scenarios > search", () => {
         "eq",
         `/question/${ORDERS_QUESTION_ID}-orders`,
       );
+
+      cy.get("@search.all").should("have.length", 1);
     });
   });
 
