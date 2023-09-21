@@ -1053,6 +1053,12 @@
   (create-template [_ affinity-name affinity]))
 
 (defn card-based-layout
+  "Returns an implementation of `CardTemplateProducer`. This is a bit circular right now as we break the idea of cards
+  being the driver.  Affinities are sets of dimensions that are interesting together. We mine the card template
+  definitions for these. And then when we want to make a layout, we use the set of interesting dimensions and the name
+  of that interestingness to find the card that originally defined it. But this gives us the seam to break this
+  connection. We can independently come up with a notion of interesting combinations and then independently come up
+  with how to put that in a dashcard."
   [{template-cards :cards :as dashboard-template}]
   (let [by-name (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
         resolve-overloading (fn [affinity-name affinity cards]
@@ -1076,6 +1082,29 @@
           (if (= (count possible-cards) 1)
             (first possible-cards)
             (resolve-overloading affinity-name affinity possible-cards)))))))
+
+(comment
+  (let [n                   2 ;; how many items of each to show
+        dashboard-template  (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
+        ;; in the abstract, what are the interesting combinations
+        abstract-affinities (dash-template->affinities dashboard-template)
+        ;; given the dimensions that exist in the underlying thing, which are the interesting combinations we can make
+        satisfied-affins    (match-affinities abstract-affinities
+                                              {:available-dimensions
+                                               (zipmap ["Timestamp" "Quantity"]
+                                                       (repeat :field-info))})
+        ;; a producer to create card-templates based on those interesting combinations (again, based on the cards in
+        ;; the template)
+        producer            (card-based-layout dashboard-template)
+        ;; create the cards from the interesting combinations
+        cards-from-affin    (map (fn [[affin-name affinity]]
+                                   (create-template producer affin-name affinity))
+                                 satisfied-affins)]
+    (update-vals {:abstract-affinities  abstract-affinities
+                  :satisfied-affinities satisfied-affins
+                  :cards-from-affin     cards-from-affin}
+                 #(take n %)))
+  )
 
 (defn- make-cards
   "Create cards from the context using the provided template cards.
