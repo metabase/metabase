@@ -18,6 +18,7 @@ export type ActionContextType = {
   patchAction: (action: EditableActionParams) => void;
   patchFormSettings: (formSettings: ActionFormSettings) => void;
   renderEditorBody: (props: EditorBodyProps) => React.ReactNode;
+  setAction: (action: WritebackAction) => void;
 };
 
 export const ActionContext = createContext<ActionContextType>({
@@ -33,6 +34,7 @@ export const ActionContext = createContext<ActionContextType>({
   patchAction: _.noop,
   patchFormSettings: _.noop,
   renderEditorBody: () => null,
+  setAction: _.noop,
 });
 
 export const useActionContext = () => useContext(ActionContext);

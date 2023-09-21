@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -202,13 +202,19 @@ function ActionCreatorWithContext({
   ...props
 }: Props) {
   // This is needed in case we already have an action and pass it from the outside
-  const contextAction = action || initialAction;
+  const initialContextAction = action || initialAction;
+  const [contextAction, setContextAction] = useState(initialContextAction);
+
+  useEffect(() => {
+    setContextAction(initialContextAction);
+  }, [initialContextAction]);
 
   return (
     <ActionContext
       initialAction={contextAction}
       databaseId={databaseId}
       metadata={metadata}
+      onActionChange={setContextAction}
     >
       <ActionCreator
         {...props}

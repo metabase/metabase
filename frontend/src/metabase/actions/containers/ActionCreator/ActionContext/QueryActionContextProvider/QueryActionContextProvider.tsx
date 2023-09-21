@@ -124,6 +124,7 @@ function QueryActionContextProvider({
   metadata,
   databaseId,
   children,
+  onActionChange,
 }: QueryActionContextProviderProps) {
   const [question, setQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
@@ -220,6 +221,7 @@ function QueryActionContextProvider({
       },
       patchAction,
       patchFormSettings: setFormSettings,
+      setAction: onActionChange,
       renderEditorBody,
     }),
     [
@@ -230,6 +232,7 @@ function QueryActionContextProvider({
       isDirty,
       patchAction,
       renderEditorBody,
+      onActionChange,
     ],
   );
 
