@@ -66,6 +66,14 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defmethod mi/can-write? Collection
+  ([instance]
+   (if (= (:entity_id instance) (perms/default-audit-collection-entity-id))
+     false
+     (mi/current-user-has-full-permissions? :write instance)))
+  ([_ pk]
+   (mi/can-write? (t2/select-one 'Collection :id pk))))
+
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
   [:enum "official"])
