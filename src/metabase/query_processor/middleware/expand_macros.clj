@@ -557,11 +557,12 @@
 (defn- infer-ordered-clauses-for-fields
   "Add ::ordered-clauses-for-fields to `query`.
    This key is later used to preserve original column order after metric expansion. It maps original column order to
-   clause in query after transformation."
-  [query]
-  (let [clauses-from-orig-breakout (mapv #(vector :breakout %) (range (count (:breakout query))))
-        orig-breakout-count (count clauses-from-orig-breakout)]
-    (assoc query ::ordered-clauses-for-fields 
+   clause in query after transformation. This function is expected to be called prior to
+   [[move-ag-fields-to-breakout]], so query has still its breakout unmodified."
+  [{:keys [breakout] :as query}]
+  (let [orig-breakout-count (count breakout)
+        clauses-from-orig-breakout (mapv #(vector :breakout %) (range orig-breakout-count))]
+    (assoc query ::ordered-clauses-for-fields
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
 (defn- move-ag-fields-to-breakout
