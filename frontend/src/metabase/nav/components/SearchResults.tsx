@@ -55,7 +55,7 @@ export const SearchResults = ({
   const { data: list = [], isLoading } = useSearchListQuery({
     query,
     reload: true,
-    enabled: !isWaitingForDebounce,
+    enabled: !!debouncedSearchText,
   });
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
