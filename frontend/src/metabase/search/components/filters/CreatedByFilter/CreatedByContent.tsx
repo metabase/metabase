@@ -11,15 +11,17 @@ import {
 } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
+import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
 
 export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
     const [userFilter, setUserFilter] = useState("");
 
-    const filteredUsers = users.filter(user =>
-      user.common_name.toLowerCase().includes(userFilter.toLowerCase()),
-    );
+    const filteredUsers = users.filter(user => {
+      const userDisplayName = getUserDisplayName(user);
+      return userDisplayName.toLowerCase().includes(userFilter.toLowerCase());
+    });
 
     const onUserSelect = (user: UserListResult) => {
       if (value && value.length > 0 && isEqual(value[0], String(user.id))) {

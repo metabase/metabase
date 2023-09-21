@@ -11,7 +11,7 @@ import {
   setActionsEnabledForDB,
 } from "e2e/support/helpers";
 import {
-  NORMAL_PERSONAL_USER_ID,
+  NORMAL_USER_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -304,7 +304,7 @@ describe("scenarios > search", () => {
           cy.signInAsAdmin();
         });
 
-        it(`should filter results by user`, () => {
+        it("should filter results by user", () => {
           cy.visit("/");
 
           getSearchBar().clear().type("e{enter}");
@@ -324,7 +324,7 @@ describe("scenarios > search", () => {
         });
 
         it("should remove type filter when `X` is clicked on filter", () => {
-          cy.visit(`/search?q=e&created_by=${NORMAL_PERSONAL_USER_ID}`);
+          cy.visit(`/search?q=e&created_by=${NORMAL_USER_ID}`);
 
           cy.findByTestId("created_by-search-filter").within(() => {
             cy.findByText("Robert Tableton").should("exist");

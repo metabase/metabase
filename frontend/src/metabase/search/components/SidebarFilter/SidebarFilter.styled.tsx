@@ -18,7 +18,7 @@ export const DropdownFilterElement = styled(ParameterFieldSet)`
   &:hover {
     ${({ theme }) => {
       return css`
-        background-color: ${theme.colors?.bg[1]};
+        background-color: ${theme.colors.bg[1]};
         transition: background-color 0.3s;
         cursor: pointer;
       `;
@@ -33,14 +33,18 @@ export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
   border-width: 1px 0 0 0;
   border-style: solid;
   ${({ theme, width }) => {
-    const dividerWidth = width ?? `100%`;
+    const dividerWidth = width ?? "100%";
     return css`
-      border-color: ${theme.colors?.border[0]};
+      border-color: ${theme.colors.border[0]};
       width: ${dividerWidth};
     `;
   }}
 `;
 
 export const SearchPopoverContent = styled(Stack)<{ maxHeight?: number }>`
-  max-height: ${({ maxHeight }) => maxHeight}px;
+  ${({ maxHeight }) =>
+    maxHeight ??
+    css`
+      max-height: ${maxHeight}px;
+    `};
 `;

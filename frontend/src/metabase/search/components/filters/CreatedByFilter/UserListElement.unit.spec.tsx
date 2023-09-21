@@ -13,7 +13,7 @@ const TEST_NO_NAME_USER_LIST_RESULT = createMockUserListResult({
   common_name: undefined,
 });
 
-const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false }) => {
+const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false } = {}) => {
   const onClickMock = jest.fn();
   renderWithProviders(
     <UserListElement
@@ -27,7 +27,7 @@ const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false }) => {
 
 describe("UserListElement", () => {
   it("should render the component with user's common name", () => {
-    setup({ isSelected: false });
+    setup();
     expect(screen.getByTestId("user-list-element")).toHaveTextContent(
       "Alice Johnson",
     );
@@ -36,7 +36,6 @@ describe("UserListElement", () => {
   it("should render the component with user's first and last name if common name is not available", () => {
     setup({
       value: TEST_NO_NAME_USER_LIST_RESULT,
-      isSelected: false,
     });
     expect(screen.getByTestId("user-list-element")).toHaveTextContent(
       "Dave Smith",
@@ -44,7 +43,7 @@ describe("UserListElement", () => {
   });
 
   it("should call the onClick function when clicked", () => {
-    const { onClickMock } = setup({ isSelected: false });
+    const { onClickMock } = setup();
 
     userEvent.click(screen.getByText("Alice Johnson"));
 
@@ -60,8 +59,8 @@ describe("UserListElement", () => {
     );
   });
 
-  it("should not have a color when isSelected is false", () => {
-    setup({ isSelected: false });
+  it("should not be selected when isSelected is false", () => {
+    setup();
     expect(screen.getByTestId("user-list-element")).toHaveAttribute(
       "data-is-selected",
       "false",
