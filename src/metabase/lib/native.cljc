@@ -84,7 +84,7 @@
                         (u.humanization/name->human-readable-name :simple new-name)
                         (:display-name old-tag))
         new-tag       (-> old-tag
-                          (dissoc :snippet-name :card-id)
+                          (dissoc :snippet-name :card-id :snippet-id)
                           (assoc :display-name display-name
                                  :name         new-name))]
     (-> existing-tags
