@@ -42,7 +42,7 @@ function ImplicitActionContextProvider({
     getDefaultFormSettings(initialAction.visualization_settings),
   );
 
-  const handleFormSettingsChange = useCallback(
+  const patchFormSettings = useCallback(
     (nextFormSettings: ActionFormSettings) => {
       setFormSettings(getDefaultFormSettings(nextFormSettings));
     },
@@ -67,11 +67,11 @@ function ImplicitActionContextProvider({
         canRename: false,
         canChangeFieldSettings: false,
       },
-      handleFormSettingsChange,
+      patchFormSettings,
       handleActionChange: _.noop,
       renderEditorBody: EditorBody,
     }),
-    [initialAction, formSettings, canSave, handleFormSettingsChange],
+    [initialAction, formSettings, canSave, patchFormSettings],
   );
 
   return (
