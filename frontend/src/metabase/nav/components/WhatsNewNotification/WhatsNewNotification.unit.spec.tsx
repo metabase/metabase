@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
+  createMockSettings,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -10,6 +11,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import * as domUtils from "metabase/lib/dom";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
@@ -77,6 +79,7 @@ describe("WhatsNewNotification", () => {
     });
 
     it("should call the backend when clicking dismiss", async () => {
+      setupPropertiesEndpoints(createMockSettings());
       fetchMock.put(LAST_ACK_SETTINGS_URL, {});
       setup({});
 
