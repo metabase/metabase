@@ -6,9 +6,9 @@ beforeEach(() => {
     console.log("CATCH FETCH MOCK");
     console.log(url, args);
 
-    for (const customRule of Object.entries(CUSTOM_RESPONSES)) {
-      if (url.startsWith(customRule[0])) {
-        return customRule[1];
+    for (const [url, response] of Object.entries(CUSTOM_RESPONSES)) {
+      if (url.startsWith(url)) {
+        return response;
       }
     }
 
