@@ -7,12 +7,6 @@ const TEST_USER_LIST_RESULT = createMockUserListResult({
   common_name: "Alice Johnson",
 });
 
-const TEST_NO_NAME_USER_LIST_RESULT = createMockUserListResult({
-  first_name: "Dave",
-  last_name: "Smith",
-  common_name: undefined,
-});
-
 const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false } = {}) => {
   const onClickMock = jest.fn();
   renderWithProviders(
@@ -30,15 +24,6 @@ describe("UserListElement", () => {
     setup();
     expect(screen.getByTestId("user-list-element")).toHaveTextContent(
       "Alice Johnson",
-    );
-  });
-
-  it("should render the component with user's first and last name if common name is not available", () => {
-    setup({
-      value: TEST_NO_NAME_USER_LIST_RESULT,
-    });
-    expect(screen.getByTestId("user-list-element")).toHaveTextContent(
-      "Dave Smith",
     );
   });
 

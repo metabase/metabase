@@ -11,7 +11,6 @@ import {
 } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
-import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
 
 export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
@@ -19,8 +18,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
     const [userFilter, setUserFilter] = useState("");
 
     const filteredUsers = users.filter(user => {
-      const userDisplayName = getUserDisplayName(user);
-      return userDisplayName.toLowerCase().includes(userFilter.toLowerCase());
+      return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
     });
 
     const onUserSelect = (user: UserListResult) => {

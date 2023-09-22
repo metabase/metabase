@@ -1,6 +1,5 @@
 import type { UserListResult } from "metabase-types/api";
 import { Text } from "metabase/ui";
-import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
 import { UserElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement.styled";
 
 export type UserListElementProps = {
@@ -24,7 +23,7 @@ export const UserListElement = ({
     bg={isSelected ? "brand.0" : undefined}
   >
     <Text weight={700} color={isSelected ? "brand.1" : undefined} truncate>
-      {getUserDisplayName(value)}
+      {value.common_name}
     </Text>
   </UserElement>
 );

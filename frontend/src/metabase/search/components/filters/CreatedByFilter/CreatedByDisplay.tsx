@@ -4,7 +4,6 @@ import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { Text } from "metabase/ui";
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter/CreatedByFilter";
-import { getUserDisplayName } from "metabase/search/utils/user-name/user-name";
 
 export const CreatedByDisplay: SearchSidebarFilterComponent<"created_by">["DisplayComponent"] =
   ({ value }) => {
@@ -21,7 +20,7 @@ export const CreatedByDisplay: SearchSidebarFilterComponent<"created_by">["Displ
         return CreatedByFilter.title;
       }
 
-      return user ? getUserDisplayName(user) : t`1 user selected`;
+      return user ? user.common_name : t`1 user selected`;
     };
 
     return (
