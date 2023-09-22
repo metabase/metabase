@@ -25,7 +25,7 @@ export const CreatedByDisplay: SearchSidebarFilterComponent<"created_by">["Displ
     };
 
     return (
-      <Text c="inherit" weight={700}>
+      <Text c="inherit" weight={700} truncate>
         {getDisplayValue()}
       </Text>
     );

@@ -50,7 +50,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
           onChange={event => setUserFilter(event.currentTarget.value)}
         />
         {filteredUsers.length > 0 ? (
-          <CreatedByContentContainer h="100%" spacing="xs">
+          <CreatedByContentContainer h="100%" spacing="xs" p="xs">
             {filteredUsers.map(user => (
               <UserListElement
                 key={user.id}

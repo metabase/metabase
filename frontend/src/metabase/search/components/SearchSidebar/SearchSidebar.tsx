@@ -6,7 +6,7 @@ import type {
   URLSearchFilterQueryParams,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Button, Stack, Menu } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
 import { SidebarFilter } from "metabase/search/components/SidebarFilter/SidebarFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
@@ -52,9 +52,9 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   };
 
   return (
-    <Stack>
+    <Stack py="0.5rem">
       {getFilter(SearchFilterKeys.Type)}
-      <Stack>{getFilter(SearchFilterKeys.CreatedBy)}</Stack>
+      {getFilter(SearchFilterKeys.CreatedBy)}
     </Stack>
   );
 };

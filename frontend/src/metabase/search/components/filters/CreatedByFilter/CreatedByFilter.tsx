@@ -14,7 +14,7 @@ export const CreatedByFilter: SearchSidebarFilterComponent<"created_by"> = {
     }
     const numValue = Number(value);
 
-    if (!numValue || !isNaN(numValue) || numValue <= 0) {
+    if (!numValue || isNaN(numValue) || numValue <= 0) {
       return undefined;
     }
 

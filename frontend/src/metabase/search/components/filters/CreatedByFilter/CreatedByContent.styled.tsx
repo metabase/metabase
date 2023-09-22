@@ -7,8 +7,4 @@ export const CreatedByContainer = styled(Stack)`
 
 export const CreatedByContentContainer = styled(Stack)`
   overflow-y: auto;
-
-  ::-webkit-scrollbar {
-    display: none;
-  }
 `;
