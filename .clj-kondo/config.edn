@@ -569,7 +569,6 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value

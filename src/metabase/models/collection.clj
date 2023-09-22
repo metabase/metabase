@@ -44,7 +44,7 @@
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
-  254)
+  510)
 
 (def Collection
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
