@@ -62,14 +62,17 @@
   appropriate model namespace.
 
   `object` can also be a map of arbitrary details relavent to the event, which is recorded as-is. If the name and/or ID
-  of a model are also relevant to the event and should be recorded, they can be passed as third and fourth arguments."
+  of a model are also relevant to the event and should be recorded, they can be passed as fourth and fifth arguments."
   ([topic object]
-   (record-event! topic object (some-> (t2/model object) name)))
+   (record-event! topic object api/*current-user-id*))
 
-  ([topic object model]
-   (record-event! topic object model (u/id object)))
+  ([topic object user-id]
+   (record-event! topic object user-id (some-> (t2/model object) name)))
 
-  ([topic object model model-id]
+  ([topic object user-id model]
+   (record-event! topic object user-id model (u/id object)))
+
+  ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))
          model-name        (some-> model name)
          details           (if (t2/model object)
@@ -79,17 +82,17 @@
                  :topic    unqualified-topic
                  :details  details
                  :model    model-name
-                 :model_id model-id)
-     ;; TODO: temporarily double-writing to the `activity` table
+                 :model_id model-id
+                 :user_id  user-id)
+     ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
      (activity/record-activity!
       :topic      topic
       :object     object
       :details-fn (fn [_] details)
-      :user-id    api/*current-user-id*))))
+      :user-id    user-id))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]
   (let [defaults {:timestamp :%now
-                  :details   {}
-                  :user_id   api/*current-user-id*}]
+                  :details   {}}]
     (merge defaults activity)))
