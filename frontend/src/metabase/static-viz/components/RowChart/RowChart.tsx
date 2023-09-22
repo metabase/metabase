@@ -11,8 +11,6 @@ import {
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getAxesVisibility,
@@ -26,6 +24,7 @@ import {
 } from "metabase/static-viz/lib/format";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { RemappingHydratedChartData } from "metabase/visualizations/types";
+import type { StaticChartProps } from "metabase/static-viz/types";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 
@@ -42,12 +41,6 @@ const LEGEND_FONT = {
 const WIDTH = 620;
 const HEIGHT = 440;
 
-interface StaticRowChartProps {
-  data: DatasetData;
-  settings: VisualizationSettings;
-  getColor: ColorGetter;
-}
-
 const staticTextMeasurer: TextWidthMeasurer = (
   text: string,
   style: FontStyle,
@@ -58,7 +51,7 @@ const staticTextMeasurer: TextWidthMeasurer = (
     style.weight ? parseInt(style.weight.toString(), 10) : 400,
   );
 
-const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
+const StaticRowChart = ({ data, settings, getColor }: StaticChartProps) => {
   const remappedColumnsData = extractRemappedColumns(
     data,
   ) as RemappingHydratedChartData;

@@ -13,6 +13,7 @@ import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
 import { LINE_AREA_BAR_CHART_TYPE } from "metabase/static-viz/components/LineAreaBarChart/constants";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "metabase/static-viz/components/FunnelChart/constants";
+import { PieChart } from "metabase/static-viz/components/PieChart";
 
 import type { StaticChartProps } from "./types";
 
@@ -35,6 +36,8 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
       return <LineAreaBarChart {...chartProps} />;
     case FUNNEL_CHART_TYPE:
       return <Funnel {...chartProps} />;
+    case "pie":
+      return <PieChart {...chartProps} />;
   }
 };
 
