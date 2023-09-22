@@ -10,7 +10,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models :refer [Activity Database Table User]]
+   [metabase.models :refer [Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -90,13 +90,13 @@
           (testing "Creating a new admin user should set the `admin-email` Setting"
             (is (= email
                    (public-settings/admin-email))))
-          (testing "Should record :user-joined Activity (#12933)"
+          (testing "Should record :user-joined in the Audit Log (#12933)"
             (let [user-id (u/the-id (t2/select-one-pk User :email email))]
               (is (=? {:topic         :user-joined
                        :model_id      user-id
                        :user_id       user-id
-                       :model         "user"}
-                      (t2/select-one Activity :topic "user-joined", :user_id user-id))))))))))
+                       :model         "User"}
+                      (t2/select-one :model/AuditLog :topic "user-joined", :user_id user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
