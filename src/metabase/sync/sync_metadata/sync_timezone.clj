@@ -3,15 +3,14 @@
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.expression.temporal
-    :as lib.schema.expression.temporal]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn sync-timezone! :- [:maybe [:map [:timezone-id [:maybe ::lib.schema.expression.temporal/timezone-id]]]]
+(mu/defn sync-timezone! :- [:maybe [:map [:timezone-id [:maybe :string]]]]
+  ; The schema must have `:string` and not `::lib.schema.expression.temporal/timezone-id]` because MySQL allows offsets (metabase#34050)
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
   [database :- i/DatabaseInstance]
