@@ -40,7 +40,7 @@
   com.fasterxml.jackson.core/jackson-databind
                                             {:mvn/version "2.15.2"}             ; JSON processor used by snowplow-java-tracker
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "6.5.1"}              ; trans dep of commons-codec (pinned version due to CVE-2022-40151)
-  com.h2database/h2                         {:mvn/version "2.1.214"}            ; embedded SQL database
+  com.h2database/h2                         {:mvn/version "2.2.224"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "1.0.0"               ; Snowplow analytics
