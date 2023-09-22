@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-db-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.core :as mbc]
             [metabase.models.database :refer [Database]]
@@ -30,8 +31,8 @@
 (deftest audit-db-content-is-not-installed-when-not-found
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-root-dir-resource nil]
-        (is (= nil audit-db/analytics-root-dir-resource))
+      (with-redefs [audit-db/analytics-zip-resource nil]
+        (is (= nil audit-db/analytics-zip-resource))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
@@ -44,5 +45,10 @@
       (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
       (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
+      (is (some? (or
+                   ;; the zip file
+                   audit-db/analytics-zip-resource
+                   ;; the directory
+                   (io/resource "instance_analytics"))))
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
