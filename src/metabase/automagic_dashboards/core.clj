@@ -1148,7 +1148,7 @@
                               (let [provider (base-dimension-provider dashboard-template)]
                                 (some
                                   (fn [card]
-                                    (let [dimsets (set (create-affinity-sets provider card))]
+                                    (let [dimsets (create-affinity-sets provider card)]
                                       (when (some dimsets affinities) card)))
                                   cards)))]
     (reify CardTemplateProducer
