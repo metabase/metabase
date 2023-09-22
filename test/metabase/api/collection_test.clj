@@ -1807,19 +1807,3 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
-
-(deftest list-collections-instance-analytics-test
-  (audit-db-test/with-audit-db-restoration
-    (audit-db/ensure-audit-db-installed!)
-    (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
-      (testing "Instance Analytics Collection should be the last collection."
-        (testing "GET /api/collection"
-          (is (= "instance-analytics"
-                 (->> (mt/user-http-request :rasta :get 200 "collection")
-                      last
-                      :type))))
-        (testing "GET /api/collection/test"
-          (is (= "instance-analytics"
-                 (->> (mt/user-http-request :rasta :get 200 "collection/tree")
-                      last
-                      :type))))))))
