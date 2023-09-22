@@ -1156,7 +1156,7 @@ saved later when it is ready."
        :num-rows    (count (rest rows))})))
 
 (defn- can-upload-error
-  "Returns an ExceptionInfo object that the user can upload to the given database and schema. Throws an error if not."
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
   (let [driver (driver.u/database->driver db)]
     (cond
