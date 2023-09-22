@@ -21,7 +21,6 @@ import {
   filterWidget,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -114,28 +113,41 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     },
   );
 
-  it(
-    "should display a back to the dashboard button in model x-ray dashboards",
-    { tags: "@slow" },
-    () => {
-      const cardTitle = "Orders by Subtotal";
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit("/auto/dashboard/model/1");
-      cy.wait("@dataset");
+  it("should display 'back to the model x-ray dashboard' button after drill-through", () => {
+    const modelDetails = {
+      name: "Simple Native Model",
+      native: { query: 'select 1 as "Foo"' },
+      dataset: true,
+    };
 
-      getDashboardCards()
-        .filter(`:contains("${cardTitle}")`)
-        .findByText(cardTitle)
+    cy.createNativeQuestion(modelDetails).then(({ body: { id } }) => {
+      const modelUrl = `/auto/dashboard/model/${id}`;
+
+      cy.visit(modelUrl);
+      cy.log("There will always be just two cards since the model is simple");
+      cy.wait(["@dataset", "@dataset"]);
+
+      cy.log("Drill through to see the ad-hoc question");
+      cy.findByTestId("scalar-title")
+        .should("have.text", `Total ${modelDetails.name}`)
         .click();
-      cy.wait("@dataset");
 
-      queryBuilderHeader()
-        .findByLabelText(/Back to .*Orders.*/)
-        .click();
+      cy.log("Make sure we're on the question page");
+      // ad-hoc question format is `/question` followed by hash `#`
+      cy.location("pathname").should("eq", "/question");
+      cy.findByTestId("view-footer").findByText("Showing 1 row");
+      cy.findByTestId("scalar-value").should("have.text", 1);
 
-      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-    },
-  );
+      cy.log("Go back to the model x-ray dashboard");
+      const labelRegex = new RegExp(`Back to .*${modelDetails.name}`, "i");
+      queryBuilderHeader().findByLabelText(labelRegex).click();
+      cy.location("pathname").should("eq", modelUrl);
+      cy.findByTestId("scalar-title").should(
+        "have.text",
+        `Total ${modelDetails.name}`,
+      );
+    });
+  });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
