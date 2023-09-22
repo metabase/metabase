@@ -61,11 +61,12 @@
 
 (defmethod mi/can-write? Card
   ([instance]
-   (if (= (t2/select-one-fn :entity_id 'Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+   ;; Cards in audit collection should be read only
+   (if (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
      false
      (perms/perms-objects-set-for-parent-collection instance :write)))
   ([_ pk]
-   (mi/can-write? (t2/select-one 'Card :id pk))))
+   (mi/can-write? (t2/select-one :model/Card :id pk))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 

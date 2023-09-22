@@ -54,11 +54,12 @@
 
 (defmethod mi/can-write? Dashboard
   ([instance]
-   (if (= (t2/select-one-fn :entity_id 'Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+   ;; Dashboards in audit collection should be read only
+   (if (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
      false
      (perms/perms-objects-set-for-parent-collection instance :write)))
   ([_ pk]
-   (mi/can-write? (t2/select-one 'Dashboard :id pk))))
+   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
