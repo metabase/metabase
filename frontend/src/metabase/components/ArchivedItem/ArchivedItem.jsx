@@ -57,7 +57,7 @@ const ArchivedItem = ({
             />
           </Tooltip>
         )}
-        {onDelete && (
+        {model !== "collection" && onDelete && (
           <Tooltip
             tooltip={t`Delete this ${getTranslatedEntityName(
               model,
