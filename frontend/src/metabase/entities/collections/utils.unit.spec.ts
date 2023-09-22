@@ -351,7 +351,7 @@ describe("entities > collections > utils", () => {
       {
         name: "Instance Analytics",
         collection: createMockCollection({ type: "instance-analytics" }),
-        expectedIcon: "beaker", // this will change when we get the final icon
+        expectedIcon: "audit",
       },
     ];
 
