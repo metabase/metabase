@@ -36,7 +36,10 @@
   (:import
    (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
+   [java.time.format DateTimeFormatter]
+   [java.time ZonedDateTime]
+   [java.util Locale]))
 
 (set! *warn-on-reflection* true)
 
@@ -180,6 +183,17 @@
     ;; else
     message))
 
+(def ^:private abbreviated->long-timezone-id
+  (let [jan-1 (t/local-date (t/year (t/local-date)) 1 1)
+        jun-1 (t/local-date (t/year (t/local-date)) 6 1)
+        zone-abbreviation-formatter (DateTimeFormatter/ofPattern "zzz" (Locale/ENGLISH))
+        abbreviate (fn [date] (.format date zone-abbreviation-formatter))]
+    (into {}
+          (mapcat (fn [zone]
+                    [[(abbreviate (t/zoned-date-time jan-1 zone)) zone]
+                     [(abbreviate (t/zoned-date-time jun-1 zone)) zone]]))
+          (java.time.ZoneId/getAvailableZoneIds))))
+
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]
   (let [sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
@@ -194,7 +208,8 @@
         the-valid-id                           (fn [zone-id]
                                                  (when zone-id
                                                    (try
-                                                     (.getId (t/zone-id zone-id))
+                                                     (or (get abbreviated->long-timezone-id zone-id)
+                                                         (.getId (t/zone-id zone-id)))
                                                      (catch Throwable _))))]
     (or
      ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
