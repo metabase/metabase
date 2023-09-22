@@ -9,27 +9,12 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
-
-(def ^:private TemplateTag
-  [:map
-   [:type [:enum :text :snippet :card]]
-   [:id :string]
-   [:name ::common/non-blank-string]
-   [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
-   [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
-   [:snippet-id {:js/prop "snippet-id" :optional true} ::lib.schema.id/snippet]
-   [:card-id {:js/prop "card-id" :optional true} :int]
-   [:dimension {:optional true} :any]
-   [:widget-type {:js/prop "widget-type" :optional true} :string]])
-
-(def ^:private TemplateTags
-  [:map-of :string TemplateTag])
 
 (def ^:private variable-tag-regex
   #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
@@ -103,7 +88,7 @@
                           (m/index-by :name (map fresh-tag new-tags))))]
     (update-vals tags finish-tag)))
 
-(mu/defn extract-template-tags :- TemplateTags
+(mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
 
   If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
@@ -119,7 +104,7 @@
   ([query-text :- ::common/non-blank-string]
    (extract-template-tags query-text nil))
   ([query-text    :- ::common/non-blank-string
-    existing-tags :- [:maybe TemplateTags]]
+    existing-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
    (let [query-tag-names    (not-empty (recognize-template-tags query-text))
          existing-tag-names (not-empty (set (keys existing-tags)))]
      (if (or query-tag-names existing-tag-names)
@@ -222,7 +207,7 @@
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
   [query :- ::lib.schema/query
-   tags :- TemplateTags]
+   tags :- ::lib.schema.template-tag/template-tag-map]
   (lib.util/update-query-stage
     query 0
     (fn [{existing-tags :template-tags :as stage}]
@@ -236,7 +221,7 @@
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
-(mu/defn template-tags :- TemplateTags
+(mu/defn template-tags :- ::lib.schema.template-tag/template-tag-map
   "Returns the native query's template tags"
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
@@ -248,6 +233,13 @@
   [query :- ::lib.schema/query]
   (assert-native-query! (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
+
+(defmethod lib.query/can-run-method :mbql.stage/native
+  [query]
+  (and
+    (set/subset? (required-native-extras query)
+                 (set (keys (native-extras query))))
+    (not (str/blank? (raw-native-query query)))))
 
 (mu/defn engine :- :keyword
   "Returns the database engine.
