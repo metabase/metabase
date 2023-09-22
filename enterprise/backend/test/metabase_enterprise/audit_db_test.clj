@@ -3,6 +3,7 @@
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.core :as mbc]
             [metabase.models.database :refer [Database]]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [toucan2.core :as t2]))
 
