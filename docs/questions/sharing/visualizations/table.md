@@ -53,7 +53,7 @@ Sometimes it's helpful to highlight certain rows or columns in your tables when 
 When you add a new rule, you'll first need to pick which column(s) should be affected. Your columns can be formatted in one of two ways:
 
 - **Single color**. Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
-- **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice a versa. This option is only available for numeric columns.
+- **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice versa. This option is only available for numeric columns.
 
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
