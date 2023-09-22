@@ -28,7 +28,7 @@ describe("CollectionInstanceAnalyticsIcon", () => {
             entity="collection"
           />,
         );
-        expect(screen.queryByLabelText("beaker icon")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("audit icon")).not.toBeInTheDocument();
       });
     });
   });
@@ -48,7 +48,7 @@ describe("CollectionInstanceAnalyticsIcon", () => {
     }
 
     function queryOfficialIcon() {
-      return screen.getByLabelText("beaker icon");
+      return screen.getByLabelText("audit icon");
     }
 
     ["collection", "dashboard", "model", "question"].forEach(entity => {
