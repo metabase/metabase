@@ -16,7 +16,7 @@ An introduction to Metabase's graphical query builder.
 
 Custom expressions, like spreadsheet formulas, are tools you can use in the graphical query builder to ask more complicated questions.
 
-### [List of expressions](./query-builder/expressions.md)
+### [List of expressions](./query-builder/expressions-list.md)
 
 A list of the aggregations and functions available in the graphical query builder.
 
