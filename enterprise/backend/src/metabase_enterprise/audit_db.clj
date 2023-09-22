@@ -124,9 +124,10 @@
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics.zip"))
 
-(defn- plug-in-ia-content [zip-resource dir-resource]
+(defn- plug-in-ia-content
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
+  [zip-resource dir-resource]
   (cond
     zip-resource
     (do (log/info "Unzipping instance_analytics to plugins...")
