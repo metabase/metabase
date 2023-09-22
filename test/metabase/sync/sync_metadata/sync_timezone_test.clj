@@ -44,17 +44,20 @@
 
 (deftest sync-timezone-mysql-test
   (mt/test-driver :mysql
-    (let [details (mt/dbdef->connection-details :mysql :db {:database-name "sync_timezone_test"})
-          spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
-      (mysql-test/drop-if-exists-and-create-db! "sync_timezone_test")
-      (t2.with-temp/with-temp [Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
-        (let [global-time-zone (-> (jdbc/query spec ["SELECT @@GLOBAL.time_zone;"])
-                                   first
-                                   (get (keyword "@@global.time_zone")))]
-          (try
-            (jdbc/execute! spec ["SET GLOBAL time_zone = '+8:00';"])
-            (let [{:keys [step-info]} (sync.util-test/sync-database! "sync-timezone" database)]
-              (is (= {:timezone-id "+08:00"}
-                     (sync.util-test/only-step-keys step-info))))
-            (finally
-              (jdbc/execute! spec [(str "SET GLOBAL time_zone = '" global-time-zone "';")]))))))))
+    (testing "sync-timezone should allow non-standard MySQL default database time zones, such as offset strings (metabase#34050)"
+      (let [details (mt/dbdef->connection-details :mysql :db {:database-name "sync_timezone_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        (mysql-test/drop-if-exists-and-create-db! "sync_timezone_test")
+        (t2.with-temp/with-temp [:model/Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
+          (let [global-time-zone (-> (jdbc/query spec ["SELECT @@GLOBAL.time_zone;"])
+                                     first
+                                     (get (keyword "@@global.time_zone")))]
+            (try
+              (jdbc/execute! spec ["SET GLOBAL time_zone = '+8:00';"])
+              (let [{:keys [step-info]} (sync.util-test/sync-database! "sync-timezone" database)]
+                (is (= {:timezone-id "+08:00"}
+                       (sync.util-test/only-step-keys step-info)))
+                (is (= "+08:00"
+                       (t2/select-one-fn :timezone :model/Database (:id database)))))
+              (finally
+                (jdbc/execute! spec [(str "SET GLOBAL time_zone = '" global-time-zone "';")])))))))))
