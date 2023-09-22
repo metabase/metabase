@@ -325,7 +325,7 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
-      expect(getIcon("beaker")).toBeInTheDocument();
+      expect(getIcon("audit")).toBeInTheDocument();
     });
   });
 });

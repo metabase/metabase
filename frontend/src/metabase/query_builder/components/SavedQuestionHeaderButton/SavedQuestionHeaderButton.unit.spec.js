@@ -88,7 +88,7 @@ describe("SavedQuestionHeaderButton", () => {
 
     it("should have an additional icon to signify the question's collection type", () => {
       setup({ question });
-      expect(getIcon("beaker")).toBeInTheDocument();
+      expect(getIcon("audit")).toBeInTheDocument();
     });
   });
 });
