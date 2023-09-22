@@ -33,6 +33,8 @@ import arrow_right_component from "./arrow_right.svg?component";
 import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
 import arrow_split_source from "./arrow_split.svg?source";
+import audit_component from "./audit.svg?component";
+import audit_source from "./audit.svg?source";
 import badge_component from "./badge.svg?component";
 import badge_source from "./badge.svg?source";
 import bar_component from "./bar.svg?component";
@@ -422,6 +424,10 @@ export const Icons = {
   arrow_split: {
     component: arrow_split_component,
     source: arrow_split_source,
+  },
+  audit: {
+    component: audit_component,
+    source: audit_source,
   },
   badge: {
     component: badge_component,
