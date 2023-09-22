@@ -44,7 +44,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
         <TextInput
           size="md"
           mb="sm"
-          placeholder="Search for users…"
+          placeholder={t`Search for users…`}
           value={userFilter}
           tabIndex={0}
           onChange={event => setUserFilter(event.currentTarget.value)}
