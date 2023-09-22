@@ -2343,7 +2343,7 @@
                           :score         100
                           :dimensions    []
                           :base-dims     #{}}]
-          nothing-bound {:available-dimensions {}}]
+          nothing-bound {}]
       (is (= (ordered-map "Rowcount" [#{}])
              (magic/match-affinities affinities nothing-bound)))))
   (testing "When dimensions are present, all affinities that are a subset of those dimensions are matched"

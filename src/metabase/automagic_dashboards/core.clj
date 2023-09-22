@@ -81,49 +81,52 @@
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions.
   "
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [clojure.math.combinatorics :as math.combo]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [clojure.zip :as zip]
-   [flatland.ordered.map :refer [ordered-map]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [java-time :as t]
-   [kixi.stats.core :as stats]
-   [kixi.stats.math :as math]
-   [medley.core :as m]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.filters :as filters]
-   [metabase.automagic-dashboards.populate :as populate]
-   [metabase.automagic-dashboards.visualization-macros :as visualization]
-   [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
-   [metabase.models.query :refer [Query]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
-   [metabase.sync.analyze.classify :as classify]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
-   [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [potemkin :as p]
-   [ring.util.codec :as codec]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+    [buddy.core.codecs :as codecs]
+    [cheshire.core :as json]
+    [clojure.math.combinatorics :as math.combo]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [clojure.walk :as walk]
+    [clojure.zip :as zip]
+    [flatland.ordered.map :refer [ordered-map]]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [java-time :as t]
+    [kixi.stats.core :as stats]
+    [kixi.stats.math :as math]
+    [malli.core :as mc]
+    [medley.core :as m]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.filters :as filters]
+    [metabase.automagic-dashboards.populate :as populate]
+    [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.db.query :as mdb.query]
+    [metabase.driver :as driver]
+    [metabase.mbql.normalize :as mbql.normalize]
+    [metabase.mbql.predicates :as mbql.preds]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.card :as card :refer [Card]]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :as field :refer [Field]]
+    [metabase.models.interface :as mi]
+    [metabase.models.metric :as metric :refer [Metric]]
+    [metabase.models.query :refer [Query]]
+    [metabase.models.segment :refer [Segment]]
+    [metabase.models.table :refer [Table]]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.related :as related]
+    [metabase.sync.analyze.classify :as classify]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
+    [metabase.util.log :as log]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [metabase.util.malli :as mu]
+    [metabase.util.schema :as su]
+    [potemkin :as p]
+    [ring.util.codec :as codec]
+    [schema.core :as s]
+    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -925,7 +928,7 @@
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
-(defn dash-template->affinities
+(mu/defn dash-template->affinities :- ads/affinities
   "Takes a dashboard template, pulls the affinities from its cards, adds the name of the card
   as the affinity name, and adds in the set of all required base dimensions to satisfy the card.
 
@@ -956,7 +959,7 @@
   [{card-templates :cards
     card-metrics :metrics
     card-filters :filters
-    :as _dashboard-template}]
+    :as _dashboard-template} :- ads/dashboard-template]
   ;; todo: cards can specify native queries with dimension template tags. See
   ;; resources/automagic_dashboards/table/example.yaml
   ;; note that they can specify dimension dependencies and ALSO table dependencies:
@@ -998,9 +1001,10 @@
          (map (fn [[name definition]] (assoc definition :affinity-name name)))
          (mapcat base-dims))))
 
-(defn match-affinities
+(mu/defn match-affinities :- ads/affinity-matches
   "Return an ordered map of affinity names to the set of dimensions they depend on."
-  [affinities available-dimensions]
+  [affinities :- ads/affinities
+   available-dimensions :- [:map-of [:string {:min 1}] any?]]
   ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
   ;; how we currently match to existing cards.
   (let [dimset         (set (keys available-dimensions))
@@ -1021,7 +1025,7 @@
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
     (match-affinities affinities
-                      {:available-dimensions {"JoinDate" :whatever}}))
+                      {"JoinDate" :whatever}))
 
   ;; example call where one affinity matches on two sets of dimensions: "OrdersBySource" matches
   ;; on [#{"SourceSmall" "Timestamp"} #{"SourceMedium"}]
@@ -1029,9 +1033,9 @@
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
     (match-affinities affinities
-                      {:available-dimensions {"SourceSmall"  :dummy
-                                              "Timestamp"    :dummy
-                                              "SourceMedium" :dummy}}))
+                      {"SourceSmall"  :dummy
+                       "Timestamp"    :dummy
+                       "SourceMedium" :dummy}))
   )
 
 (s/defn ^:private make-base-context
@@ -1058,14 +1062,14 @@
   "
   (create-template [_ affinity-name affinities]))
 
-(defn card-based-layout
+(mu/defn card-based-layout :- [:fn #(satisfies? CardTemplateProducer %)]
   "Returns an implementation of `CardTemplateProducer`. This is a bit circular right now as we break the idea of cards
   being the driver.  Affinities are sets of dimensions that are interesting together. We mine the card template
   definitions for these. And then when we want to make a layout, we use the set of interesting dimensions and the name
   of that interestingness to find the card that originally defined it. But this gives us the seam to break this
   connection. We can independently come up with a notion of interesting combinations and then independently come up
   with how to put that in a dashcard."
-  [{template-cards :cards :as dashboard-template}]
+  [{template-cards :cards :as dashboard-template} :- ads/dashboard-template]
   (let [by-name (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
         resolve-overloading (fn [affinity-name affinities cards]
                               (letfn [(card->deps [card]
@@ -1083,11 +1087,11 @@
                                  ;; todo: order cards by score?
                                  cards)))]
     (reify CardTemplateProducer
-      (create-template [_ affinity-name affinity]
+      (create-template [_ affinity-name affinities]
         (let [possible-cards (by-name affinity-name)]
           (if (= (count possible-cards) 1)
             (first possible-cards)
-            (resolve-overloading affinity-name affinity possible-cards)))))))
+            (resolve-overloading affinity-name affinities possible-cards)))))))
 
 (comment
   (let [n                   2 ;; how many items of each to show
