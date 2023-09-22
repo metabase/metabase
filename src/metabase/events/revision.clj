@@ -1,5 +1,6 @@
 (ns metabase.events.revision
   (:require
+   [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.revision :as revision]
    [metabase.util.log :as log]
@@ -18,12 +19,13 @@
     (try
      (when-not (t2/instance-of? model object)
        (throw (ex-info "object must be a model instance" {:object object :model model})))
-     (revision/push-revision! {:entity       model
-                               :id           (:id object)
-                               :object       object
-                               :user-id      user-id
-                               :is-creation? is-creation?
-                               :message      (:revision-message event)})
+     (let [user-id (or user-id api/*current-user-id*)]
+       (revision/push-revision! {:entity       model
+                                 :id           (:id object)
+                                 :object       object
+                                 :user-id      user-id
+                                 :is-creation? is-creation?
+                                 :message      (:revision-message event)}))
      (catch Throwable e
        (log/warnf e "Failed to process revision event for model %s" model)))))
 
