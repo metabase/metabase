@@ -768,6 +768,12 @@
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
 
+(defn ^:export engine
+  "Returns the database engine.
+   Must be a native query"
+  [a-query]
+  (name (lib.core/engine a-query)))
+
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."

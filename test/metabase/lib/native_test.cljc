@@ -308,3 +308,6 @@
                                     :display-name "foo"}}))))
     (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
                                      [:stages 0] dissoc :collection))))))
+
+(deftest ^:parallel engine-test
+  (is (= :h2 (lib/engine lib.tu/native-query))))
