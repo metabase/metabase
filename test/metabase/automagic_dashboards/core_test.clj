@@ -2454,32 +2454,6 @@
               :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
               :filters []})))))
 
-(deftest card-template-producer-test
-  (let [n                   2                               ;; how many items of each to show
-        dashboard-template  (-> (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
-                                (select-keys [:dimensions :metrics :filters :cards]))
-        ;; in the abstract, what are the interesting combinations
-        abstract-affinities (magic/dash-template->affinities dashboard-template)
-        ;; given the dimensions that exist in the underlying thing, which are the interesting combinations we can make
-        satisfied-affins    (magic/match-affinities abstract-affinities
-                                                    (zipmap ["Timestamp" "Quantity"]
-                                                            (repeat :field-info)))
-        ;; a producer to create card-templates based on those interesting combinations (again, based on the cards in
-        ;; the template)
-        producer            (magic/card-based-layout dashboard-template)
-        ;; create the cards from the interesting combinations
-        cards-from-affin    (map (fn [[affin-name affinity-sets]]
-                                   (magic/create-template producer affin-name affinity-sets))
-                                 satisfied-affins)]
-    (update-vals {:abstract-affinities  abstract-affinities
-                  :satisfied-affinities satisfied-affins
-                  :cards-from-affin     cards-from-affin}
-                 #(take n %))
-    (is (=? #ordered/map(["Rowcount" #{#{}}]
-                         ["RowcountLast30Days" #{#{"Timestamp"}}]
-                         ["AverageQuantityByMonth" #{#{"Quantity" "Timestamp"}}])
-            satisfied-affins))))
-
 (comment
   (magic/dash-template->affinities
     {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}

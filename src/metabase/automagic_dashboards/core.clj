@@ -998,20 +998,6 @@
          (map (fn [[name definition]] (assoc definition :affinity-name name)))
          (mapcat base-dims))))
 
-(defn match-affinities
-  "Return the an ordered map of affinity names to the set of dimensions they depend on."
-  [affinities available-dimensions]
-  ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
-  ;; how we currently match to existing cards.
-  (let [dimset         (set (keys available-dimensions))
-        met-affinities (filter (fn [{:keys [base-dims] :as _v}]
-                                 (set/subset? base-dims dimset))
-                               affinities)]
-    (reduce (fn [m {:keys [affinity-name base-dims]}]
-              (update m affinity-name (fnil conj #{}) base-dims))
-            (ordered-map)
-            met-affinities)))
-
 (comment
   (dash-template->affinities
     (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
@@ -1034,6 +1020,20 @@
                                               "SourceMedium" :dummy}}))
   )
 
+(defn match-affinities
+  "Return the an ordered map of affinity names to the set of dimensions they depend on."
+  [affinities {:keys [available-dimensions]}]
+  ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
+  ;; how we currently match to existing cards.
+  (let [dimset         (set (keys available-dimensions))
+        met-affinities (filter (fn [{:keys [base-dims] :as _v}]
+                                 (set/subset? base-dims dimset))
+                               affinities)]
+    (reduce (fn [m {:keys [affinity-name base-dims]}]
+              (update m affinity-name (fnil conj []) base-dims))
+            (ordered-map)
+            met-affinities)))
+
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
@@ -1050,13 +1050,7 @@
                                               (:cell-query root))}))
 
 (p/defprotocol+ CardTemplateProducer
-  "Given an affinity name and corresponding affinity sets, produce a card template whose base dimensions match
-  one of the affinity sets. Example:
-
-  Given an affinity-name \"AverageQuantityByMonth\" and affinity-sets #{#{\"Quantity\" \"Timestamp\"}}, the producer
-  should produce a card template for which the base dimensions of the card are #{\"Quantity\" \"Timestamp\"}.
-  "
-  (create-template [_ affinity-name affinity-sets]))
+  (create-template [_ affinity-name affinity]))
 
 (defn card-based-layout
   "Returns an implementation of `CardTemplateProducer`. This is a bit circular right now as we break the idea of cards
@@ -1067,50 +1061,44 @@
   with how to put that in a dashcard."
   [{template-cards :cards :as dashboard-template}]
   (let [by-name (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
-        resolve-overloading (fn [affinity-name affinity-sets cards]
+        resolve-overloading (fn [affinity-name affinity cards]
                               (letfn [(card->deps [card]
                                         (->> (assoc dashboard-template :cards
                                                     [{affinity-name card}])
                                              (dash-template->affinities)
                                              (map :base-dims)
-                                             (set)))
-                                      (identify-card [[card & remaining]]
+                                             (set)))]
+                                ((fn identify-card [[card & remaining]]
                                    (when card
                                      (let [possible-deps (card->deps card)]
-                                            (if (affinity-sets possible-deps)
+                                       (if (some possible-deps affinity)
                                          card
-                                              (recur remaining)))))]
-                                (identify-card
+                                         (recur remaining)))))
                                  ;; todo: order cards by score?
                                  cards)))]
     (reify CardTemplateProducer
-      (create-template [_ affinity-name affinity-sets]
+      (create-template [_ affinity-name affinity]
         (let [possible-cards (by-name affinity-name)]
           (if (= (count possible-cards) 1)
             (first possible-cards)
-            (resolve-overloading affinity-name affinity-sets possible-cards)))))))
+            (resolve-overloading affinity-name affinity possible-cards)))))))
 
 (comment
-  (let [template (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
-        affinities (dash-template->affinities template)]
-    (match-affinities affinities
-                      (zipmap ["Timestamp" "Quantity"]
-                              (repeat :field-info))))
-
   (let [n                   2 ;; how many items of each to show
         dashboard-template  (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
         ;; in the abstract, what are the interesting combinations
         abstract-affinities (dash-template->affinities dashboard-template)
         ;; given the dimensions that exist in the underlying thing, which are the interesting combinations we can make
         satisfied-affins    (match-affinities abstract-affinities
+                                              {:available-dimensions
                                                (zipmap ["Timestamp" "Quantity"]
-                                                      (repeat :field-info)))
+                                                       (repeat :field-info))})
         ;; a producer to create card-templates based on those interesting combinations (again, based on the cards in
         ;; the template)
         producer            (card-based-layout dashboard-template)
         ;; create the cards from the interesting combinations
-        cards-from-affin    (map (fn [[affin-name affinity-sets]]
-                                   (create-template producer affin-name affinity-sets))
+        cards-from-affin    (map (fn [[affin-name affinity]]
+                                   (create-template producer affin-name affinity))
                                  satisfied-affins)]
     (update-vals {:abstract-affinities  abstract-affinities
                   :satisfied-affinities satisfied-affins
@@ -1121,10 +1109,11 @@
 (defn- make-cards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context available-values satisfied-affinities layout-producer]
-  (some->> satisfied-affinities
-           (map-indexed (fn [position [affinity-name affinity-sets]]
-                          (let [card-template (create-template layout-producer affinity-name affinity-sets)]
+  [context available-values satisfied-affins layout-producer]
+  (some->> satisfied-affins
+           (map-indexed (fn [position [affinity-name affinity]]
+                          (let [card-template (create-template layout-producer
+                                                             affinity-name affinity)]
                             (some->> (assoc card-template :position position)
                                      (card-candidates context available-values)
                                      not-empty
@@ -1188,27 +1177,27 @@
     :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions (->> (bind-dimensions base-context template-dimensions)
+  (let [dimensions        (->> (bind-dimensions base-context template-dimensions)
                                (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
-        available-metrics    (->> (resolve-available-dimensions available-dimensions template-metrics)
+        available-metrics (->> (resolve-available-dimensions dimensions template-metrics)
                                (add-metric-self-reference base-context)
                                (into {}))
-        available-filters    (into {} (resolve-available-dimensions available-dimensions template-filters))
-        available-values     {:available-dimensions available-dimensions
+        available-filters (into {} (resolve-available-dimensions dimensions template-filters))
+        available-values  {:available-dimensions dimensions
                            :available-metrics    available-metrics
                            :available-filters    available-filters}
         ;; for now we construct affinities from cards
         affinities        (dash-template->affinities dashboard-template)
         ;; get the suitable matches for them
-        satisfied-affinities (match-affinities affinities available-dimensions)
+        satisfied-affins  (match-affinities affinities available-values)
         cards             (make-cards base-context available-values
-                                         satisfied-affinities
+                                      satisfied-affins
                                       (card-based-layout dashboard-template))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
               :filters (->> dashboard_filters
-                       (mapcat (comp :matches available-dimensions))
+                            (mapcat (comp :matches dimensions))
                             (remove (comp (singular-cell-dimensions root) id-or-name)))
               :cards cards)
        dashboard-template
