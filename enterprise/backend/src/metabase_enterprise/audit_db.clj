@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -114,6 +115,13 @@
       :else
       ::no-op)))
 
+(defn- map-instance-analytics-files-to-plugins-dir [path]
+  (let [pattern (re-pattern (str ".*" File/separatorChar "(instance_analytics" File/separatorChar ".*)"))]
+    (->> path
+         (re-find pattern)
+         second
+         (str "plugins" File/separatorChar))))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
@@ -135,12 +143,18 @@
              (adjust-audit-db-to-source! audit-db)
              (log/info "Loading Analytics Content...")
              (log/info "Unzipping instance_analytics to plugins...")
-             (u.files/unzip-file analytics-root-dir-resource "plugins")
+             (log/info "analytics-root-dir-resource is:"
+                       (pr-str analytics-root-dir-resource)
+                       " | "
+                       analytics-root-dir-resource)
+             (u.files/unzip-file
+               analytics-root-dir-resource
+               map-instance-analytics-files-to-plugins-dir)
              (log/info "Unzipping done.")
              (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
              (let [report (log/with-no-logs
-                            (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
+                            (serialization.cmd/v2-load-internal "plugins/instance_analytics"
                                                                 {}
                                                                 :token-check? false))]
                (if (not-empty (:errors report))

@@ -1155,16 +1155,50 @@ saved later when it is ready."
        :num-columns (count (first rows))
        :num-rows    (count (rest rows))})))
 
+(defn- can-upload-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
+  [db schema-name]
+  (let [driver (driver.u/database->driver db)]
+    (cond
+      (not (public-settings/uploads-enabled))
+      (ex-info (tru "Uploads are not enabled.")
+               {:status-code 422})
+      (premium-features/sandboxed-user?)
+      (ex-info (tru "Uploads are not permitted for sandboxed users.")
+               {:status-code 403})
+      (not (driver/database-supports? driver :uploads nil))
+      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
+               {:status-code 422})
+      (and (str/blank? schema-name)
+           (driver/database-supports? driver :schemas db))
+      (ex-info (tru "A schema has not been set.")
+               {:status-code 422})
+      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                            (perms/data-perms-path (u/the-id db) schema-name)))
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403})
+      (and (some? schema-name)
+           (not (driver.s/include-schema? db schema-name)))
+      (ex-info (tru "The schema {0} is not syncable." schema-name)
+               {:status-code 422}))))
+
+(defn- check-can-upload
+  "Throws an error if the user cannot upload to the given database and schema."
+  [db schema-name]
+  (when-let [error (can-upload-error db schema-name)]
+    (throw error)))
+
+(defn can-upload?
+  "Returns true if the user can upload to the given database and schema, and false otherwise."
+  [db schema-name]
+  (nil? (can-upload-error db schema-name)))
+
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
   DB errors."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
-  (when (not (public-settings/uploads-enabled))
-    (throw (Exception. (tru "Uploads are not enabled."))))
-  (when (premium-features/sandboxed-user?)
-    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
@@ -1173,21 +1207,9 @@ saved later when it is ready."
                                 (throw (Exception. (tru "The uploads database does not exist."))))
           driver            (driver.u/database->driver database)
           schema-name       (public-settings/uploads-schema-name)
-          _check-schema     (when (and (str/blank? schema-name)
-                                       (driver/database-supports? driver :schemas database))
-                              (throw (ex-info (tru "A schema has not been set.")
-                                              {:status-code 422})))
-          _check_perms      (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                                            (perms/data-perms-path db-id schema-name)))
-
-          _check-schema     (when-not (or (nil? schema-name)
-                                          (driver.s/include-schema? database schema-name))
-                              (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
-                                              {:status-code 422})))
+          _                 (check-can-upload database schema-name)
           filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                                 filename)
-          _check-setting    (when-not (driver/database-supports? driver :uploads nil)
-                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
           table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
                                  (upload/unique-table-name driver)
                                  (u/lower-case-en))

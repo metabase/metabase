@@ -6,8 +6,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase-enterprise.audit-db :as audit-db]
-   [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.collection :as api.collection]
    [metabase.config :as config]
    [metabase.models

@@ -41,7 +41,7 @@ describe("Collections plugin utils", () => {
 
     it("instance analytics collection", () => {
       const collection = createMockCollection({ type: "instance-analytics" });
-      expect(getCollectionType(collection).icon).toBe("beaker");
+      expect(getCollectionType(collection).icon).toBe("audit");
     });
   });
 });
