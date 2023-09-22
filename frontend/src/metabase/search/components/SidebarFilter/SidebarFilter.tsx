@@ -40,7 +40,7 @@ export const SidebarFilter = ({
 
   const fieldHasValue = Array.isArray(value)
     ? !isEmpty(value)
-    : value !== null && value !== undefined;
+    : isNotNull(value);
 
   const handleResize = () => {
     if (dropdownRef.current) {
