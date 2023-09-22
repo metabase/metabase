@@ -31,12 +31,13 @@
 (deftest audit-db-content-is-not-installed-when-not-found
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-zip-resource nil]
+      (with-redefs [audit-db/analytics-zip-resource nil
+                    audit-db/analytics-dir-resource nil]
         (is (= nil audit-db/analytics-zip-resource))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
-        (is (= [] (t2/select 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
+        (is (= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
             "No cards created for Audit DB.")))))
 
 (deftest audit-db-content-is-installed-when-found

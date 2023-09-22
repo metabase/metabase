@@ -121,8 +121,12 @@
          (str "plugins" sep))))
 
 (def analytics-zip-resource
-  "Where to look for analytics content created by Metabase to load into the app instance on startup."
+  "A zip file containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics.zip"))
+
+(def analytics-dir-resource
+  "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "instance_analytics"))
 
 (defn- plug-in-ia-content
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
@@ -159,7 +163,7 @@
            (ee.internal-user/ensure-internal-user-exists!)
            (adjust-audit-db-to-source! audit-db)
            (log/info "Loading Analytics Content...")
-           (plug-in-ia-content analytics-zip-resource (io/resource "instance_analytics"))
+           (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
            (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
            ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
            (let [report (log/with-no-logs
