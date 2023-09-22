@@ -237,8 +237,8 @@
 (defmethod lib.query/can-run-method :mbql.stage/native
   [query]
   (and
-    (empty? (set/difference (required-native-extras query)
-                            (set (keys (native-extras query)))))
+    (set/subset? (required-native-extras query)
+                 (set (keys (native-extras query))))
     (not (str/blank? (raw-native-query query)))))
 
 (mu/defn engine :- :keyword
