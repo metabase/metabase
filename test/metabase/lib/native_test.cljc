@@ -297,6 +297,7 @@
                              :widget-type :text
                              :display-name "foo"
                              :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})))
+  (is (lib/can-run lib.tu/venues-query))
   (mu/disable-enforcement
     (is (not (lib/can-run (lib/native-query meta/metadata-provider ""))))
     (is (not (lib/can-run (lib/with-template-tags
