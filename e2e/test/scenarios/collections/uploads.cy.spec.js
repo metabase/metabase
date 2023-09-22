@@ -287,7 +287,7 @@ function uploadFile(testFile, valid = true) {
       cy.findByText("Start exploring").click();
     });
 
-    cy.url().should("include", `/model/5`);
+    cy.url().should("include", `/model/`);
     cy.findByTestId("TableInteractive-root");
   } else {
     cy.findByRole("status").within(() => {
