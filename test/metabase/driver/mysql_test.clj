@@ -705,9 +705,14 @@
               supports-roles? (<= 8 (get-db-version spec))
               get-privileges  (fn []
                                 (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                  [spec [:mysql (assoc details :user "table_privileges_test_user" :password "password")]]
+                                  [spec [:mysql (assoc details
+                                                       :user "table_privileges_test_user"
+                                                       :password "password"
+                                                       :ssl true
+                                                       :additional-options "trustServerCertificate=true")]]
                                   (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                    (driver/current-user-table-privileges driver/*driver* (assoc (mt/db) :name "table_privileges_test")))))]
+                                    (driver/current-user-table-privileges driver/*driver*
+                                                                          (assoc (mt/db) :name "table_privileges_test")))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
