@@ -2363,7 +2363,7 @@
                           :score         100
                           :dimensions    []
                           :base-dims     #{}}]
-          x {:available-dimensions {"CreateTimestamp" {}}}]
+          x             {"CreateTimestamp" {}}]
       (is (= (ordered-map
               "RowcountLast30Days" [#{"CreateTimestamp"}]
               "Rowcount" [#{}])
@@ -2388,7 +2388,7 @@
                          :dimensions [],
                          :affinity-name "RowcountLast30Days",
                          :base-dims #{"JoinTimestamp"}}]
-            bound      {:available-dimensions {identified-field :anything}}]
+            bound      {identified-field :anything}]
         (is (= (ordered-map
                 "RowcountLast30Days" [#{identified-field}])
                (magic/match-affinities affinities bound))))))
@@ -2404,8 +2404,8 @@
                          :score         70
                          :affinity-name "AverageDiscountByMonth"
                          :base-dims     #{"Income" "Discount" "Timestamp"}}]
-            bound      {:available-dimensions {"Income"    :anything,
-                                               "Timestamp" :anything}}]
+            bound      {"Income"    :anything,
+                        "Timestamp" :anything}]
         (is (= (ordered-map
                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}])
                (magic/match-affinities affinities bound)))))
@@ -2420,9 +2420,9 @@
                          :score         70
                          :affinity-name "AverageDiscountByMonth"
                          :base-dims     #{"Income" "Discount" "Timestamp"}}]
-            bound      {:available-dimensions {"Income"    :anything
-                                               "Timestamp" :anything
-                                               "Discount" :anything}}]
+            bound      {"Income"    :anything
+                        "Timestamp" :anything
+                        "Discount"  :anything}]
         (is (= (ordered-map
                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}],
                 "AverageDiscountByMonth" [#{"Income" "Discount" "Timestamp"}])
