@@ -54,7 +54,7 @@
 
 (defmethod mi/can-write? Dashboard
   ([instance]
-   (if (= (t2/select-one-fn :entity_id 'Dashboard :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+   (if (= (t2/select-one-fn :entity_id 'Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
      false
      (perms/perms-objects-set-for-parent-collection instance :write)))
   ([_ pk]
