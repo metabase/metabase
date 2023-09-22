@@ -9,9 +9,9 @@ title: Driver interface changelog
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
-  
-- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
-  the set of privileges the database connection's current user has. It needs to be implemented if the database 
+
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get
+  the set of privileges the database connection's current user has. It needs to be implemented if the database
   supports the `:actions` feature.
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
@@ -100,6 +100,10 @@ title: Driver interface changelog
 
 - The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
   of a set.
+
+- The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
+  `database` argument for the arity which previously had one argument. This function might be used in the implementation
+  of a driver's multimethods.
 
 ## Metabase 0.46.0
 
