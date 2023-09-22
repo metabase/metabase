@@ -9,11 +9,12 @@ import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 const ArchivedItem = ({
   name,
-  type,
+  model,
   icon,
   color = c("text-light"),
   isAdmin = false,
@@ -44,7 +45,11 @@ const ArchivedItem = ({
     {isAdmin && (onUnarchive || onDelete) && (
       <span className="ml-auto mr2">
         {onUnarchive && (
-          <Tooltip tooltip={t`Unarchive this ${type}`}>
+          <Tooltip
+            tooltip={t`Unarchive this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
+          >
             <Icon
               onClick={onUnarchive}
               className="cursor-pointer text-brand-hover hover-child ml4"
@@ -53,7 +58,11 @@ const ArchivedItem = ({
           </Tooltip>
         )}
         {onDelete && (
-          <Tooltip tooltip={t`Delete this ${type}`}>
+          <Tooltip
+            tooltip={t`Delete this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
+          >
             <Icon
               onClick={onDelete}
               className="cursor-pointer text-brand-hover hover-child ml4"
@@ -68,7 +77,7 @@ const ArchivedItem = ({
 
 ArchivedItem.propTypes = {
   name: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
+  model: PropTypes.string.isRequired,
   icon: PropTypes.string.isRequired,
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
