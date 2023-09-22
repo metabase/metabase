@@ -22,7 +22,7 @@
                         (get event (keyword (str (u/lower-case-en (name model)) "_id")))
                         (throw (ex-info "Event does not have ID associated with it"
                                         {:mode model, :event event})))
-            user-id (events/object->user-id event)]
+            user-id api/*current-user-id*]
         (revision/push-revision! :entity       model
                                  :id           id
                                  :object       (api/check-404 (t2/select-one model :id id))

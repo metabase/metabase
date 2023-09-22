@@ -213,147 +213,151 @@
   (testing :metric-create
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
-        (is (= metric
-               (events/publish-event! :event/metric-create metric)))
-        (is (= {:topic       :metric-create
-                :user_id     (mt/user->id :rasta)
-                :model       "metric"
-                :model_id    (:id metric)
-                :database_id (mt/id)
-                :table_id    (mt/id :venues)
-                :details     {:name        (:name metric)
-                              :description (:description metric)}}
-               (activity "metric-create" (:id metric))))))))
+        (mt/with-test-user :rasta
+          (is (= metric
+                 (events/publish-event! :event/metric-create metric)))
+          (is (= {:topic       :metric-create
+                  :user_id     (mt/user->id :rasta)
+                  :model       "Metric"
+                  :model_id    (:id metric)
+                  :details     {:name        (:name metric)
+                                :description (:description metric)
+                                :database_id (mt/id)
+                                :table_id    (mt/id :venues)}}
+                 (event "metric-create" (:id metric)))))))))
 
 (deftest metric-update-event-test
   (testing :metric-update
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
-        (let [event (-> (assoc metric
-                               :actor_id         (mt/user->id :rasta)
-                               :revision_message "update this mofo")
-                        ;; doing this specifically to ensure :actor_id is utilized
-                        (dissoc :creator_id))]
-          (is (= event
-                 (events/publish-event! :event/metric-update event))))
-        (is (= {:topic       :metric-update
-                :user_id     (mt/user->id :rasta)
-                :model       "metric"
-                :model_id    (:id metric)
-                :database_id (mt/id)
-                :table_id    (mt/id :venues)
-                :details     {:name             (:name metric)
-                              :description      (:description metric)
-                              :revision_message "update this mofo"}}
-               (activity "metric-update" (:id metric))))))))
+        (mt/with-test-user :rasta
+         (let [event (-> (assoc metric
+                                :actor_id         (mt/user->id :rasta)
+                                :revision_message "update this mofo")
+                         ;; doing this specifically to ensure :actor_id is utilized
+                         (dissoc :creator_id))]
+           (is (= event
+                  (events/publish-event! :event/metric-update event))))
+         (is (= {:topic       :metric-update
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Metric"
+                 :model_id    (:id metric)
+                 :details     {:name             (:name metric)
+                               :description      (:description metric)
+                               :revision_message "update this mofo"
+                               :database_id (mt/id)
+                               :table_id    (mt/id :venues)}}
+                (event "metric-update" (:id metric)))))))))
 
 (deftest metric-delete-event-test
   (testing :metric-delete
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
-        (let [event (assoc metric
-                           :actor_id         (mt/user->id :rasta)
-                           :revision_message "deleted")]
-          (is (= event
-                 (events/publish-event! :event/metric-delete event))))
-        (is (= {:topic       :metric-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "metric"
-                :model_id    (:id metric)
-                :database_id (mt/id)
-                :table_id    (mt/id :venues)
-                :details     {:name             (:name metric)
-                              :description      (:description metric)
-                              :revision_message "deleted"}}
-               (activity "metric-delete" (:id metric))))))))
+        (mt/with-test-user :rasta
+         (let [event (assoc metric
+                            :actor_id         (mt/user->id :rasta)
+                            :revision_message "deleted")]
+           (is (= event
+                  (events/publish-event! :event/metric-delete event))))
+         (is (= {:topic       :metric-delete
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Metric"
+                 :model_id    (:id metric)
+                 :details     {:name             (:name metric)
+                               :description      (:description metric)
+                               :revision_message "deleted"
+                               :database_id (mt/id)
+                               :table_id    (mt/id :venues)}}
+                (event "metric-delete" (:id metric)))))))))
 
 (deftest pulse-create-event-test
   (testing :pulse-create
     (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
-        (is (= pulse
-               (events/publish-event! :event/pulse-create pulse)))
-        (is (= {:topic       :pulse-create
-                :user_id     (mt/user->id :rasta)
-                :model       "pulse"
-                :model_id    (:id pulse)
-                :database_id nil
-                :table_id    nil
-                :details     {:name (:name pulse)}}
-               (activity "pulse-create" (:id pulse))))))))
+        (mt/with-test-user :rasta
+         (is (= pulse
+                (events/publish-event! :event/pulse-create pulse)))
+         (is (= {:topic       :pulse-create
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Pulse"
+                 :model_id    (:id pulse)
+                 :details     {:name (:name pulse)}}
+                (event "pulse-create" (:id pulse)))))))))
 
 (deftest pulse-delete-event-test
   (testing :pulse-delete
     (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
-        (is (= pulse
-               (events/publish-event! :event/pulse-delete pulse)))
-        (is (= {:topic       :pulse-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "pulse"
-                :model_id    (:id pulse)
-                :database_id nil
-                :table_id    nil
-                :details     {:name (:name pulse)}}
-               (activity "pulse-delete" (:id pulse))))))))
+        (mt/with-test-user :rasta
+         (is (= pulse
+                (events/publish-event! :event/pulse-delete pulse)))
+         (is (= {:topic       :pulse-delete
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Pulse"
+                 :model_id    (:id pulse)
+                 :details     {:name (:name pulse)}}
+                (event "pulse-delete" (:id pulse)))))))))
 
 (deftest segment-create-event-test
   (testing :segment-create
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
-        (is (= segment
-               (events/publish-event! :event/segment-create segment)))
-        (is (= {:topic       :segment-create
-                :user_id     (mt/user->id :rasta)
-                :model       "segment"
-                :model_id    (:id segment)
-                :database_id (mt/id)
-                :table_id    (mt/id :checkins)
-                :details     {:name        (:name segment)
-                              :description (:description segment)}}
-               (activity "segment-create" (:id segment))))))))
+        (mt/with-test-user :rasta
+         (is (= segment
+                 (events/publish-event! :event/segment-create segment)))
+         (is (= {:topic       :segment-create
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Segment"
+                 :model_id    (:id segment)
+                 :details     {:name        (:name segment)
+                               :description (:description segment)
+                               :database_id (mt/id)
+                               :table_id    (mt/id :checkins)}}
+                (event "segment-create" (:id segment)))))))))
 
 (deftest segment-update-event-test
   (testing :segment-update
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
-        (let [event (-> segment
-                        (assoc :actor_id         (mt/user->id :rasta)
-                               :revision_message "update this mofo")
-                        ;; doing this specifically to ensure :actor_id is utilized
-                        (dissoc :creator_id))]
-          (is (= event
-                 (events/publish-event! :event/segment-update event))))
-        (is (= {:topic       :segment-update
-                :user_id     (mt/user->id :rasta)
-                :model       "segment"
-                :model_id    (:id segment)
-                :database_id (mt/id)
-                :table_id    (mt/id :checkins)
-                :details     {:name             (:name segment)
-                              :description      (:description segment)
-                              :revision_message "update this mofo"}}
-               (activity "segment-update" (:id segment))))))))
+        (mt/with-test-user :rasta
+         (let [event (-> segment
+                         (assoc :actor_id         (mt/user->id :rasta)
+                                :revision_message "update this mofo")
+                         ;; doing this specifically to ensure :actor_id is utilized
+                         (dissoc :creator_id))]
+           (is (= event
+                  (events/publish-event! :event/segment-update event))))
+         (is (= {:topic       :segment-update
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Segment"
+                 :model_id    (:id segment)
+                 :details     {:name             (:name segment)
+                               :description      (:description segment)
+                               :revision_message "update this mofo"
+                               :database_id (mt/id)
+                               :table_id    (mt/id :checkins)}}
+                (event "segment-update" (:id segment)))))))))
 
 (deftest segment-delete-event-test
   (testing :segment-delete
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
-        (let [event (assoc segment
-                             :actor_id         (mt/user->id :rasta)
-                             :revision_message "deleted")]
-          (is (= event
-                 (events/publish-event! :event/segment-delete event))))
-        (is (= {:topic       :segment-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "segment"
-                :model_id    (:id segment)
-                :database_id (mt/id)
-                :table_id    (mt/id :checkins)
-                :details     {:name             (:name segment)
-                              :description      (:description segment)
-                              :revision_message "deleted"}}
-               (activity "segment-delete" (:id segment))))))))
+        (mt/with-test-user :rasta
+         (let [event (assoc segment
+                              :actor_id         (mt/user->id :rasta)
+                              :revision_message "deleted")]
+           (is (= event
+                  (events/publish-event! :event/segment-delete event))))
+         (is (= {:topic       :segment-delete
+                 :user_id     (mt/user->id :rasta)
+                 :model       "Segment"
+                 :model_id    (:id segment)
+                 :details     {:name             (:name segment)
+                               :description      (:description segment)
+                               :revision_message "deleted"
+                               :database_id (mt/id)
+                               :table_id    (mt/id :checkins)}}
+                (event "segment-delete" (:id segment)))))))))
 
 (deftest user-joined-event-test
   (testing :user-joined
@@ -364,9 +368,7 @@
                (events/publish-event! :event/user-joined event))))
       (is (= {:topic       :user-joined
               :user_id     (mt/user->id :rasta)
-              :model       "user"
+              :model       "User"
               :model_id    (mt/user->id :rasta)
-              :database_id nil
-              :table_id    nil
               :details     {}}
-             (activity "user-joined" (mt/user->id :rasta)))))))
+             (event "user-joined" (mt/user->id :rasta)))))))
