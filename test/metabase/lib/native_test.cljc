@@ -204,7 +204,7 @@
     (testing "Doesn't introduce garbage"
       (is (= original-tags
              (-> query
-                 (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :display-name "Foobar")})
+                 (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :name "garbage" :display-name "Foobar")})
                  lib/template-tags))))
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
