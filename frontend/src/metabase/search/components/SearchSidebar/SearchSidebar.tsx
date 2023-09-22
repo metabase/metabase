@@ -14,7 +14,7 @@ import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFil
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
-  onChange: (filters: URLSearchFilterQueryParams) => void;
+  onChange: (value: URLSearchFilterQueryParams) => void;
 };
 
 export const filterMap: Record<FilterTypeKeys, SearchSidebarFilterComponent> = {
