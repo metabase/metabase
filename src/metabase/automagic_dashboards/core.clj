@@ -928,6 +928,35 @@
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
+(p/defprotocol+ AffinitySetProvider
+  "For some item, determine the affinity sets of that item. This is a set of sets, each underlying set being a set of
+  dimensions that, if satisfied, specify affinity to the item."
+  (create-affinity-sets [this item]))
+
+(mu/defn base-dimension-provider :- [:fn #(satisfies? AffinitySetProvider %)]
+  "Takes a dashboard template and produces a function that takes a dashcard template and returns a seq of potential
+  dimension sets that can satisfy the card."
+  [{card-metrics :metrics card-filters :filters} :- ads/dashboard-template]
+  (let [dim-groups (fn [items]
+                     (-> (->> items
+                              (map
+                                (fn [item]
+                                  [(ffirst item)
+                                   (set (dashboard-templates/collect-dimensions item))]))
+                              (group-by first))
+                         (update-vals (fn [v] (mapv second v)))
+                         (update "this" conj #{})))
+        m->dims    (dim-groups card-metrics)
+        f->dims    (dim-groups card-filters)]
+    (reify AffinitySetProvider
+      (create-affinity-sets [_ {:keys [dimensions metrics filters]}]
+        (let [dimset                (set (map ffirst dimensions))
+              underlying-dim-groups (concat (map m->dims metrics) (map f->dims filters))]
+          (set
+            (map
+              (fn [lower-dims] (reduce into dimset lower-dims))
+              (apply math.combo/cartesian-product underlying-dim-groups))))))))
+
 (mu/defn dash-template->affinities :- ads/affinities
   "Takes a dashboard template, pulls the affinities from its cards, adds the name of the card
   as the affinity name, and adds in the set of all required base dimensions to satisfy the card.
@@ -956,10 +985,7 @@
       ...
    ].
 "
-  [{card-templates :cards
-    card-metrics :metrics
-    card-filters :filters
-    :as _dashboard-template} :- ads/dashboard-template]
+  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template]
   ;; todo: cards can specify native queries with dimension template tags. See
   ;; resources/automagic_dashboards/table/example.yaml
   ;; note that they can specify dimension dependencies and ALSO table dependencies:
@@ -971,35 +997,18 @@
   ;;           from [[GenericTable]] join [[UserTable]] on
   ;;           [[UserFK]] = [[UserPK]]
   ;;    visualization: bar
-  (let [dim-groups (fn [items]
-                     (-> (->> items
-                              (map
-                               (fn [item]
-                                 [(ffirst item)
-                                  (set (dashboard-templates/collect-dimensions item))]))
-                              (group-by first))
-                         (update-vals (fn [v] (mapv second v)))
-                         (update "this" conj #{})))
-        m->dims    (dim-groups card-metrics)
-        f->dims    (dim-groups card-filters)
-        base-dims  (fn [{:keys [dimensions metrics filters] :as card}]
-                     (let [underlying-dim-groups (concat (map m->dims metrics) (map f->dims filters))]
-                       (map
-                        (fn [lower-dims]
-                          (assoc card :base-dims (reduce into (set dimensions) lower-dims)))
-                        (apply math.combo/cartesian-product underlying-dim-groups))))
-        card-deps  (fn [card]
-                     (-> card
-                         (select-keys [:dimensions :filters :metrics :score])
-                         (update :dimensions
-                                 ;; dimensions are maps with multiple keys and aggregation information
-                                 ;; as values, just want the keys
-
-                                 (fn [dims] (into [] (comp (map keys) cat) dims)))))]
-    (->> card-templates
-         (into [] (comp cat (map (juxt key (comp card-deps val)))))
-         (map (fn [[name definition]] (assoc definition :affinity-name name)))
-         (mapcat base-dims))))
+  (let [provider (base-dimension-provider dashboard-template)]
+    (letfn [(card-deps [card]
+              (-> (select-keys card [:dimensions :filters :metrics :score])
+                  (update :dimensions (partial mapv ffirst))))]
+      (mapcat
+        (fn [card-template]
+          (let [[card-name template] (first card-template)]
+            (for [base-dims (create-affinity-sets provider template)]
+              (assoc (card-deps template)
+                :affinity-name card-name
+                :base-dims base-dims))))
+        card-templates))))
 
 (mu/defn match-affinities :- ads/affinity-matches
   "Return an ordered map of affinity names to the set of dimensions they depend on."
@@ -1017,8 +1026,72 @@
             met-affinities)))
 
 (comment
-  (dash-template->affinities
-    (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+  (=
+    (dash-template->affinities
+      (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+    [{:metrics ["TotalOrders"], :score 100, :dimensions [], :affinity-name "Rowcount", :base-dims #{}}
+     {:filters ["Last30Days"],
+      :metrics ["TotalOrders"],
+      :score 100,
+      :dimensions [],
+      :affinity-name "RowcountLast30Days",
+      :base-dims #{"Timestamp"}}
+     {:dimensions ["Timestamp"],
+      :metrics ["TotalIncome"],
+      :score 100,
+      :affinity-name "IncomeGrowth",
+      :base-dims #{"Income" "Timestamp"}}
+     {:dimensions ["Timestamp"],
+      :metrics ["TotalIncome" "TotalOrders"],
+      :score 100,
+      :affinity-name "IncomeByMonth",
+      :base-dims #{"Income" "Timestamp"}}
+     {:dimensions ["Timestamp"],
+      :metrics ["AvgQuantity"],
+      :score 100,
+      :affinity-name "AverageQuantityByMonth",
+      :base-dims #{"Quantity" "Timestamp"}}
+     {:dimensions ["Timestamp"],
+      :metrics ["AvgIncome"],
+      :score 100,
+      :affinity-name "AverageIncomeByMonth",
+      :base-dims #{"Income" "Timestamp"}}
+     {:dimensions ["Timestamp"],
+      :metrics ["AvgDiscount"],
+      :score 70,
+      :affinity-name "AverageDiscountByMonth",
+      :base-dims #{"Income" "Discount" "Timestamp"}}
+     {:dimensions ["ProductMedium"],
+      :metrics ["TotalOrders"],
+      :score 90,
+      :affinity-name "OrdersByProduct",
+      :base-dims #{"ProductMedium"}}
+     {:dimensions ["ProductCategoryMedium"],
+      :metrics ["TotalOrders"],
+      :score 90,
+      :affinity-name "OrdersByProductCategory",
+      :base-dims #{"ProductCategoryMedium"}}
+     {:dimensions ["Timestamp" "SourceSmall"],
+      :metrics ["TotalOrders"],
+      :score 100,
+      :affinity-name "OrdersBySource",
+      :base-dims #{"SourceSmall" "Timestamp"}}
+     {:dimensions ["SourceMedium"],
+      :metrics ["TotalOrders"],
+      :score 90,
+      :affinity-name "OrdersBySource",
+      :base-dims #{"SourceMedium"}}
+     {:dimensions ["Country"],
+      :metrics ["TotalOrders"],
+      :score 90,
+      :affinity-name "CountByCountry",
+      :base-dims #{"Country"}}
+     {:dimensions ["State"], :metrics ["TotalOrders"], :score 90, :affinity-name "CountByState", :base-dims #{"State"}}
+     {:dimensions ["Long" "Lat"],
+      :metrics ["TotalOrders"],
+      :score 80,
+      :affinity-name "CountByCoords",
+      :base-dims #{"Lat" "Long"}}])
 
   ;; example call
   (let [affinities (-> ["table" "GenericTable"]
@@ -1070,28 +1143,20 @@
   connection. We can independently come up with a notion of interesting combinations and then independently come up
   with how to put that in a dashcard."
   [{template-cards :cards :as dashboard-template} :- ads/dashboard-template]
-  (let [by-name (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
-        resolve-overloading (fn [affinity-name affinities cards]
-                              (letfn [(card->deps [card]
-                                        (->> (assoc dashboard-template :cards
-                                                    [{affinity-name card}])
-                                             (dash-template->affinities)
-                                             (map :base-dims)
-                                             (set)))]
-                                ((fn identify-card [[card & remaining]]
-                                   (when card
-                                     (let [possible-deps (card->deps card)]
-                                       (if (some possible-deps affinities)
-                                         card
-                                         (recur remaining)))))
-                                 ;; todo: order cards by score?
-                                 cards)))]
+  (let [by-name             (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
+        resolve-overloading (fn [affinities cards]
+                              (let [provider (base-dimension-provider dashboard-template)]
+                                (some
+                                  (fn [card]
+                                    (let [dimsets (set (create-affinity-sets provider card))]
+                                      (when (some dimsets affinities) card)))
+                                  cards)))]
     (reify CardTemplateProducer
       (create-template [_ affinity-name affinities]
         (let [possible-cards (by-name affinity-name)]
           (if (= (count possible-cards) 1)
             (first possible-cards)
-            (resolve-overloading affinity-name affinities possible-cards)))))))
+            (resolve-overloading affinities possible-cards)))))))
 
 (comment
   (let [n                   2 ;; how many items of each to show
@@ -1100,9 +1165,8 @@
         abstract-affinities (dash-template->affinities dashboard-template)
         ;; given the dimensions that exist in the underlying thing, which are the interesting combinations we can make
         satisfied-affins    (match-affinities abstract-affinities
-                                              {:available-dimensions
-                                               (zipmap ["Timestamp" "Quantity"]
-                                                       (repeat :field-info))})
+                                              (zipmap ["Timestamp" "Quantity"]
+                                                      (repeat :field-info)))
         ;; a producer to create card-templates based on those interesting combinations (again, based on the cards in
         ;; the template)
         producer            (card-based-layout dashboard-template)

@@ -2455,17 +2455,18 @@
               :filters []})))))
 
 (comment
-  (magic/dash-template->affinities
-    {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
-               {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
-               {"RowcountLast30Days" {:filters ["Last30Days"] :score 90}}]
-     :metrics [{"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
-     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]})
+  (count
+    (magic/dash-template->affinities
+      {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
+                 {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
+                 {"RowcountLast30Days" {:filters ["Last30Days"] :score 90}}]
+       :metrics [{"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
+       :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
+                 {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
+                 {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
+                 {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
+                 {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
+                 {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]}))
 
   (magic/dash-template->affinities
     {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
