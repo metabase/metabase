@@ -106,6 +106,16 @@ describe("column settings", () => {
   });
 
   it("should show new columns and show them as disabled (metabase#25592)", () => {
+    const storedSettings = {
+      "table.columns": [
+        createMockTableColumnOrderSetting({
+          name: "ID",
+          fieldRef: ["field", ORDERS.ID, null],
+          enabled: true,
+        }),
+      ],
+    };
+
     const series = [
       createMockSingleSeries(
         {},
@@ -129,16 +139,6 @@ describe("column settings", () => {
         },
       ),
     ];
-
-    const storedSettings = {
-      "table.columns": [
-        createMockTableColumnOrderSetting({
-          name: "TOTAL",
-          fieldRef: ["field", ORDERS.TOTAL, null],
-          enabled: true,
-        }),
-      ],
-    };
 
     const computedValue = buildTableColumnSettings()["table.columns"].getValue(
       series,
