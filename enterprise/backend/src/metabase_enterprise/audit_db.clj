@@ -7,6 +7,7 @@
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -134,8 +135,9 @@
       (sync-metadata/sync-db-metadata! audit-db)
       (log/info "Audit DB Sync Complete.")
 
-      ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
-      (when analytics-root-dir-resource
+      ;; load instance analytics content (collections/dashboards/cards/etc.) when
+      ;; the resource exists and when the feature flag is enabled
+      (when (and (premium-features/enable-audit-app?) analytics-root-dir-resource)
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
            (fn []

@@ -8,13 +8,14 @@
 
 (defmacro with-audit-db-restoration [& body]
   `(let [original-audit-db# (t2/select-one Database :is_audit true)]
-     (try
-       (t2/delete! Database :is_audit true)
-       ~@body
-       (finally
+     (premium-features-test/with-premium-features #{:audit-app}
+       (try
          (t2/delete! Database :is_audit true)
-         (when original-audit-db#
-           (#'mbc/ensure-audit-db-installed!))))))
+         ~@body
+         (finally
+           (t2/delete! Database :is_audit true)
+           (when original-audit-db#
+             (#'mbc/ensure-audit-db-installed!)))))))
 
 (deftest audit-db-is-installed-then-left-alone
   (mt/test-drivers #{:postgres :h2 :mysql}
