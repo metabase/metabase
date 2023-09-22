@@ -231,8 +231,6 @@
  [lib.metric
   available-metrics]
  [lib.native
-  #?@(:cljs [->TemplateTags
-             TemplateTags->])
   native-query
   raw-native-query
   with-native-query
