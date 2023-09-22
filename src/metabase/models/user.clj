@@ -154,11 +154,9 @@
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
   [{:keys [first_name last_name email], :as user}]
-  (let [common-name (if (or first_name last_name)
-                      (str/trim (str first_name " " last_name))
-                      email)]
-    (cond-> user
-      common-name (assoc :common_name common-name))))
+  (assoc user :common_name (if (or first_name last_name)
+                             (str/trim (str first_name " " last_name))
+                             email)))
 
 (t2/define-after-select :model/User
   [user]
