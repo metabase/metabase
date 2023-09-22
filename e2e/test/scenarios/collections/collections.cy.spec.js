@@ -467,7 +467,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("4 items selected");
+          cy.findByText("5 items selected");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
