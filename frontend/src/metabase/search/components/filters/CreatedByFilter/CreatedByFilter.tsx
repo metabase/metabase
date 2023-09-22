@@ -13,7 +13,12 @@ export const CreatedByFilter: SearchSidebarFilterComponent<"created_by"> = {
       return undefined;
     }
     const numValue = Number(value);
-    return numValue && !isNaN(numValue) ? numValue : undefined;
+
+    if (!numValue || !isNaN(numValue) || numValue <= 0) {
+      return undefined;
+    }
+
+    return numValue;
   },
   toUrl: value => (Number.isInteger(value) ? String(value) : undefined),
 };

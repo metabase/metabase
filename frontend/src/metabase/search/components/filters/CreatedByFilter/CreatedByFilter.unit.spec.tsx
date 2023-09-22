@@ -19,6 +19,18 @@ describe("fromUrl", () => {
     expect(undefinedResult).toBeUndefined();
   });
 
+  it("should return undefined when userId is 0", () => {
+    const userId = "0";
+    const result = fromUrl(userId);
+    expect(result).toBeUndefined();
+  });
+
+  it("should return undefined when userId is a negative number", () => {
+    const userId = "-1";
+    const result = fromUrl(userId);
+    expect(result).toBeUndefined();
+  });
+
   it("should return undefined when userId is a string that cannot be converted to a number", () => {
     const userId = "abc";
     const result = fromUrl(userId);
