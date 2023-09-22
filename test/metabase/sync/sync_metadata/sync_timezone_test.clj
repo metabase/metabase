@@ -1,13 +1,17 @@
 (ns metabase.sync.sync-metadata.sync-timezone-test
   (:require
    [clj-time.core :as time]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- db-timezone [db-or-id]
   (t2/select-one-fn :timezone Database :id (u/the-id db-or-id)))
@@ -37,3 +41,20 @@
             (is (nil? tz-after-update)))
           (testing "Check that the value was set again after sync"
             (is (time/time-zone-for-id (db-timezone db)))))))))
+
+(deftest sync-timezone-mysql-test
+  (mt/test-driver :mysql
+    (let [details (mt/dbdef->connection-details :mysql :db {:database-name "sync_timezone_test"})
+          spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+      (mysql-test/drop-if-exists-and-create-db! "sync_timezone_test")
+      (t2.with-temp/with-temp [Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
+        (let [global-time-zone (-> (jdbc/query spec ["SELECT @@GLOBAL.time_zone;"])
+                                   first
+                                   (get (keyword "@@global.time_zone")))]
+          (try
+            (jdbc/execute! spec ["SET GLOBAL time_zone = '+8:00';"])
+            (let [{:keys [step-info]} (sync.util-test/sync-database! "sync-timezone" database)]
+              (is (= {:timezone-id "+08:00"}
+                     (sync.util-test/only-step-keys step-info))))
+            (finally
+              (jdbc/execute! spec [(str "SET GLOBAL time_zone = '" global-time-zone "';")]))))))))
