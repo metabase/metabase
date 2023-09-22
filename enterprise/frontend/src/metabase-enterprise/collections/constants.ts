@@ -25,7 +25,7 @@ export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
   {
     type: "instance-analytics",
     name: t`Instace Analytics`,
-    icon: "beaker",
+    icon: "audit",
   };
 
 export const AUTHORITY_LEVELS: Record<string, CollectionAuthorityLevelConfig> =
