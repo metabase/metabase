@@ -464,7 +464,7 @@
   (testing "Field refs that differ from what we return should still show up as selected if they refer to the same Field (#31482)"
     (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
                                  ;; contain type info, shouldn't matter tho.
-                                 #_#_"correct ref but missing :base-type/:effective-type"
+                                 "correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but

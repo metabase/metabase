@@ -152,7 +152,7 @@
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential lib.metadata/ColumnMetadata]]
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
-    (if (clojure.core/= (count no-implicit) 1)
+    (if-not (next no-implicit)
       (first no-implicit)
       (throw (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
                       {:ref a-ref
@@ -168,7 +168,7 @@
                                              (not (#{:source/card} (:lib/source %))))
                                        columns))]
     ;; At least 1 matching column with no :source-alias.
-    (if (clojure.core/= (count no-alias) 1)
+    (if-not (next no-alias)
       (first no-alias)
       ;; More than 1, keep digging.
       (disambiguate-matches-prefer-explicit a-ref no-alias))
@@ -183,7 +183,12 @@
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
     (if join-alias
       ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
-      (m/find-first #(clojure.core/= (column-join-alias %) join-alias) columns)
+      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
+        (if-not (next matches)
+          (first matches)
+          (throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+                          {:ref     a-ref
+                           :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
@@ -192,19 +197,27 @@
 (mu/defn find-matching-column :- [:maybe lib.metadata/ColumnMetadata]
   "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
 
-  Matching is based on finding the basically plausible matches first, which is usually sufficient. If there are multiple
-  plausible matches, they are disambiguated by the most important extra included in the `ref`. (`:join-alias` first,
-  then `:temporal-unit`, etc.)
+  Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
+  this can return quickly.
 
-  - Integer IDs in the `ref` are matched by ID; this usually is unambiguous. In the case of multiple joins on one table,
-    the `:join-alias` settles the question.
-    - There may be broken cases where the ID must be resolved to a name or `:lib/desired-column-alias` and matched.
-      `query` and `stage-number` are required for this case.
-  - For string IDs, these are checked against `:lib/desired-column-alias` first.
+  If there are multiple plausible matches, they are disambiguated by the most important extra included in the `ref`.
+  (`:join-alias` first, then `:temporal-unit`, etc.)
+
+  - Integer IDs in the `ref` are matched by ID; this usually is unambiguous.
+    - If there are multiple joins on one table (including possible implicit joins), check `:join-alias` next.
+      - If `a-ref` has a `:join-alias`, only a column which matches it can be the match, and it should be unique.
+      - If `a-ref` doesn't have a `:join-alias`, prefer the column with no `:join-alias`, and prefer already selected
+        columns over implicitly joinable ones.
+    - There may be broken cases where the ref has an ID but the column does not. Therefore the ID must be resolved to a
+      name or `:lib/desired-column-alias` and matched that way.
+      - `query` and `stage-number` are required for this case, since they're needed to resolve the correct name.
+      - Columns with `:id` set are dropped to prevent them matching. (If they didn't match by `:id` above they shouldn't
+        match by name due to a coincidence of column names in different tables.)
+  - String IDs are checked against `:lib/desired-column-alias` first.
     - If that doesn't match any columns, `:name` is compared next.
-    - If that *still* doesn't match, and `query` and `stage-number` were supplied.
+    - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
-  Returns the column, or nil if no match is found."
+  Returns the matching column, or nil if no match is found."
   ([a-ref columns]
    (find-matching-column a-ref columns {}))
 
@@ -213,10 +226,9 @@
     {:keys [generous?]}              :- FindMatchingColumnOptions]
    (case ref-kind
      ;; Aggregations are referenced by the UUID of the column being aggregated.
-     :aggregation  (->> columns
-                        (filter #(clojure.core/= (:lib/source %) :source/aggregations))
-                        (filter #(clojure.core/= (:lib/source-uuid %) ref-id))
-                        first)
+     :aggregation  (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
+                                       (clojure.core/= (:lib/source-uuid %) ref-id))
+                                 columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
        :field)     (let [plausible (if (string? ref-id)
@@ -237,17 +249,18 @@
     columns                            :- [:sequential lib.metadata/ColumnMetadata]
     opts                               :- FindMatchingColumnOptions]
    (or (find-matching-column a-ref columns opts)
+       ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
+       ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
+       ;; it certainly shouldn't match by name just because of the coincidence of column names!
        (when (and query (number? ref-id))
-         (when-let [resolved (resolve-field-id query stage-number ref-id)]
-           (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                    (:name resolved)))
-                                 (for [col columns]
-                                   (if (:id col)
-                                     (assoc col
-                                            :name                     "____lib.equality/noname"
-                                            :lib/desired-column-alias "____lib.equality/noname")
-                                     col))
-                                 opts))))))
+         (when-let [no-id-columns (not-empty (remove :id columns))]
+           (when-let [resolved (resolve-field-id query stage-number ref-id)]
+             (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                      (:name resolved)))
+                                   no-id-columns opts)))))))
+
+(defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
+  id-or-name)
 
 (mu/defn find-matching-ref :- [:maybe ::lib.schema.ref/ref]
   "Given `column` and a list of `refs`, finds the ref that best matches this column.
@@ -257,7 +270,7 @@
   Returns the matching ref, or nil if no plausible matches are found."
   [column       :- lib.metadata/ColumnMetadata
    refs         :- [:sequential ::lib.schema.ref/ref]]
-  (let [ref-tails (group-by last refs)
+  (let [ref-tails (group-by ref-id-or-name refs)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
                       (not-empty (get ref-tails (:id column)))
                       (not-empty (get ref-tails (:lib/desired-column-alias column)))
@@ -318,7 +331,7 @@
   ([query stage-number cols selected-columns-or-refs]
    (when (seq cols)
      (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
-           matching-selected-cols (into []
+           matching-selected-cols (into #{}
                                         (map #(find-matching-column query stage-number % cols))
                                         selected-refs)]
-       (mapv #(assoc % :selected? (contains? (set matching-selected-cols) %)) cols)))))
+       (mapv #(assoc % :selected? (contains? matching-selected-cols %)) cols)))))

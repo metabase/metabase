@@ -280,7 +280,6 @@
                       (or (not (:source-card (lib.util/query-stage query stage-number)))
                           (:include-implicitly-joinable-for-source-card? options)))
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
-         #_(#(do #?(:cljs (js/console.log "post-IJC" %)) %))
          (mark-selected-breakouts query stage-number))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has

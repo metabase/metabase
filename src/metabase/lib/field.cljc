@@ -443,7 +443,7 @@
     (column-metadata->field-ref metadata)))
 
 (defn- expression-columns
-  "Create refs for all the expressions in a stage of a query."
+  "Return the [[lib.metadata/ColumnMetadata]] for all the expressions in a stage of a query."
   [query stage-number]
   (filter #(= (:lib/source %) :source/expressions)
           (lib.metadata.calculation/visible-columns
@@ -470,9 +470,9 @@
          ;; If any fields are specified, include all expressions not yet included.
          expr-cols (expression-columns query stage-number)
          ;; Set of expr-cols which are *already* included.
-         included  (set (when xs
-                          (keep #(lib.equality/find-matching-column query stage-number % expr-cols)
-                                xs)))
+         included  (into #{}
+                         (keep #(lib.equality/find-matching-column query stage-number % expr-cols))
+                         (or xs []))
          ;; Those expr-refs which must still be included.
          to-add    (remove included expr-cols)
          xs        (when xs (into xs (map lib.ref/ref) to-add))]
