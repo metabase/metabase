@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import type { ButtonProps } from "metabase/ui";
-import { Group, Button, Stack } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -54,22 +53,6 @@ export const DropdownClearButton = styled(Button)<
   pointer-events: all;
 `;
 
-export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
-  border-width: 1px 0 0 0;
-  border-style: solid;
-  ${({ theme, width }) => {
-    const dividerWidth = width ?? "100%";
-    return css`
-      border-color: ${theme.colors.border[0]};
-      width: ${dividerWidth};
-    `;
-  }}
-`;
-
 export const SearchEventSandbox = styled(EventSandbox)`
   display: contents;
-`;
-
-export const SearchPopoverContainer = styled(Stack)`
-  overflow: hidden;
 `;

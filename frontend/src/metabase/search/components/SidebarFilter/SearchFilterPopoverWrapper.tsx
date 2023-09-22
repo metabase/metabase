@@ -1,20 +1,21 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
+import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
 import {
   DropdownApplyButtonDivider,
   SearchPopoverContainer,
-} from "metabase/search/components/SidebarFilter/SidebarFilter.styled";
-import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+} from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper.styled";
+
+type SearchFilterPopoverWrapperProps = {
+  children: React.ReactNode;
+  onApply: () => void;
+  isLoading?: boolean;
+};
 
 export const SearchFilterPopoverWrapper = ({
   children,
   onApply,
   isLoading = false,
-}: {
-  children: React.ReactNode;
-  onApply: () => void;
-  isLoading?: boolean;
-}) => {
+}: SearchFilterPopoverWrapperProps) => {
   if (isLoading) {
     return (
       <Center p="lg">
