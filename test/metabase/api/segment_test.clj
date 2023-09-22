@@ -51,24 +51,24 @@
 
 (deftest create-segment-input-validation-test
   (testing "POST /api/segment"
-    (is (= {:errors {:name "value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :post 400 "segment" {})))
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "segment" {})))
 
-    (is (= {:errors {:table_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
+    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
 
-    (is (= {:errors {:table_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
-                                                                 :table_id "foobar"})))
+    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
+                                                                  :table_id "foobar"})))
 
-    (is (= {:errors {:definition "value must be a map."}}
-           (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
-                                                                 :table_id 123})))
+    (is (=? {:errors {:definition "Value must be a map."}}
+            (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
+                                                                  :table_id 123})))
 
-    (is (= {:errors {:definition "value must be a map."}}
-           (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
-                                                                 :table_id   123
-                                                                 :definition "foobar"})))))
+    (is (=? {:errors {:definition "Value must be a map."}}
+            (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                  :table_id   123
+                                                                  :definition "foobar"})))))
 
 (deftest create-segment-test
   (mt/with-temp [Database {database-id :id} {}
@@ -109,17 +109,17 @@
 
 (deftest update-input-validation-test
   (testing "PUT /api/segment/:id"
-    (is (= {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :put 400 "segment/1" {:name ""})))
+    (is (=? {:errors {:name "nullable value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
 
-    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
            (mt/user-http-request :crowberto :put 400 "segment/1" {:name "abc"})))
 
-    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
            (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                   :revision_message ""})))
 
-    (is (= {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
+    (is (=? {:errors {:definition "nullable map"}}
            (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                   :revision_message "123"
                                                                   :definition       "foobar"})))))
@@ -195,11 +195,11 @@
 
 (deftest delete-input-validation-test
   (testing "DELETE /api/segment/:id"
-    (is (= {:errors {:revision_message "value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
+    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
 
-    (is (= {:errors {:revision_message "value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
+    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
 
 (deftest delete-test
   (testing "DELETE /api/segment/:id"
@@ -324,11 +324,11 @@
 
 (deftest revert-input-validation-test
   (testing "POST /api/segment/:id/revert"
-    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "segment/1/revert" {})))
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "segment/1/revert" {})))
 
-    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "segment/1/revert" {:revision_id "foobar"})))))
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "segment/1/revert" {:revision_id "foobar"})))))
 
 (deftest revert-test
   (testing "POST /api/segment/:id/revert"

@@ -1,4 +1,4 @@
-import { restore, visualize } from "e2e/support/helpers";
+import { popover, restore, visualize } from "e2e/support/helpers";
 
 describe("issue 20683", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -11,6 +11,7 @@ describe("issue 20683", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    popover().findByText("Raw Data").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("QA Postgres12").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

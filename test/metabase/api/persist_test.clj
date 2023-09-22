@@ -51,8 +51,8 @@
       [:model/Card          model {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative persisted-info-id"
-        (is (= "API endpoint does not exist."
-               (mt/user-http-request :crowberto :get 404 (format "persist/%d" -1)))))
+        (is (=? {:errors {:persisted-info-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 (format "persist/%d" -1)))))
       (testing "Should not get info when the persisted-info-id doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "persist/%d" Integer/MAX_VALUE)))))
@@ -61,7 +61,7 @@
                  :card_id (u/the-id model)
                  :id      (u/the-id pinfo)
                  :state   "persisted"}
-                 (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pinfo)))))))))
+                (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pinfo)))))))))
 
 (deftest persisted-info-by-card-id-test
   (with-setup db
@@ -69,8 +69,8 @@
       [:model/Card          model {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative card-id"
-        (is (= "API endpoint does not exist."
-               (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" -1)))))
+        (is (=? {:errors {:card-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 (format "persist/card/%d" -1)))))
       (testing "Should not get info when the card-id doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" Integer/MAX_VALUE)))))

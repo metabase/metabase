@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { getTranslatedEntityName } from "metabase/nav/utils";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { Checkbox } from "metabase/ui";
 import { useSearchListQuery } from "metabase/common/hooks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";

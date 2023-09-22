@@ -29,7 +29,7 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
@@ -502,7 +502,7 @@ class TableInteractive extends Component {
     }
   };
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
+  cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
     const { data, settings } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
@@ -527,7 +527,8 @@ class TableInteractive extends Component {
     );
 
     const isLink = cellData && cellData.type === ExternalLink;
-    const isClickable = !isLink && this.visualizationIsClickable(clicked);
+    const isClickable =
+      !isLink && !isScrolling && this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,

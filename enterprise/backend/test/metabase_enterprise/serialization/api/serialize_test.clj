@@ -83,23 +83,28 @@
                 (serialize! :user :rasta, :expected-status-code 403))))
        (testing "Require valid collection_ids"
          (testing "Non-empty"
-           (is (= {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
-                  (serialize! :request (dissoc good-request :collection_ids))
-                  (serialize! :request (assoc good-request :collection_ids nil))
-                  (serialize! :request (assoc good-request :collection_ids [])))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (dissoc good-request :collection_ids))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (assoc good-request :collection_ids nil))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (assoc good-request :collection_ids [])))))
          (testing "No duplicates"
-           (is (= {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
-                  (serialize! :request (assoc good-request :collection_ids [collection-id collection-id])))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (assoc good-request :collection_ids [collection-id collection-id])))))
          (testing "All Collections must exist"
            (is (= (format "Invalid Collection ID(s). These Collections do not exist: #{%d}" Integer/MAX_VALUE)
                   (serialize! :request (assoc good-request :collection_ids [collection-id Integer/MAX_VALUE])
                               :expected-status-code 404))))
          (testing "Invalid value"
-           (is (= {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
-                  (serialize! :request (assoc good-request :collection_ids collection-id))
-                  (serialize! :request (assoc good-request :collection_ids "My Collection"))))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (assoc good-request :collection_ids collection-id))))
+           (is (=? {:errors {:collection_ids "Non-empty, distinct array of Collection IDs"}}
+                   (serialize! :request (assoc good-request :collection_ids "My Collection"))))))
        (testing "Validate 'path' parameter"
-         (is (= {:errors {:path "Valid directory to serialize results to"}}
-                (serialize! :request (dissoc good-request :path))
-                (serialize! :request (assoc good-request :path ""))
-                (serialize! :request (assoc good-request :path 1000)))))))))
+         (is (=? {:errors {:path "Valid directory to serialize results to"}}
+                 (serialize! :request (dissoc good-request :path))))
+         (is (=? {:errors {:path "Valid directory to serialize results to"}}
+                 (serialize! :request (assoc good-request :path ""))))
+         (is (=? {:errors {:path "Valid directory to serialize results to"}}
+                 (serialize! :request (assoc good-request :path 1000)))))))))
