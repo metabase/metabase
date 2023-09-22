@@ -1013,12 +1013,11 @@
 (mu/defn match-affinities :- ads/affinity-matches
   "Return an ordered map of affinity names to the set of dimensions they depend on."
   [affinities :- ads/affinities
-   available-dimensions :- [:map-of [:string {:min 1}] any?]]
+   available-dimensions :- [:set [:string {:min 1}]]]
   ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
   ;; how we currently match to existing cards.
-  (let [dimset         (set (keys available-dimensions))
-        met-affinities (filter (fn [{:keys [base-dims] :as _v}]
-                                 (set/subset? base-dims dimset))
+  (let [met-affinities (filter (fn [{:keys [base-dims] :as _v}]
+                                 (set/subset? base-dims available-dimensions))
                                affinities)]
     (reduce (fn [m {:keys [affinity-name base-dims]}]
               (update m affinity-name (fnil conj []) base-dims))
@@ -1097,8 +1096,7 @@
   (let [affinities (-> ["table" "GenericTable"]
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
-    (match-affinities affinities
-                      {"JoinDate" :whatever}))
+    (match-affinities affinities #{"JoinDate"}))
 
   ;; example call where one affinity matches on two sets of dimensions: "OrdersBySource" matches
   ;; on [#{"SourceSmall" "Timestamp"} #{"SourceMedium"}]
@@ -1106,9 +1104,7 @@
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
     (match-affinities affinities
-                      {"SourceSmall"  :dummy
-                       "Timestamp"    :dummy
-                       "SourceMedium" :dummy}))
+                      #{"SourceSmall" "Timestamp" "SourceMedium"}))
   )
 
 (s/defn ^:private make-base-context
@@ -1164,9 +1160,7 @@
         ;; in the abstract, what are the interesting combinations
         abstract-affinities (dash-template->affinities dashboard-template)
         ;; given the dimensions that exist in the underlying thing, which are the interesting combinations we can make
-        satisfied-affins    (match-affinities abstract-affinities
-                                              (zipmap ["Timestamp" "Quantity"]
-                                                      (repeat :field-info)))
+        satisfied-affins    (match-affinities abstract-affinities #{"Timestamp" "Quantity"})
         ;; a producer to create card-templates based on those interesting combinations (again, based on the cards in
         ;; the template)
         producer            (card-based-layout dashboard-template)
@@ -1180,10 +1174,13 @@
                  #(take n %)))
   )
 
-(defn- make-cards
+(mu/defn make-cards :- ads/dashcards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context available-values satisfied-affinities layout-producer]
+  [context :- ads/context
+   available-values :- ads/available-values
+   satisfied-affinities :- ads/affinity-matches
+   layout-producer :- [:fn #(satisfies? CardTemplateProducer %)]]
   (some->> satisfied-affinities
            (map-indexed (fn [position [affinity-name affinities]]
                           (let [card-template (create-template layout-producer affinity-name affinities)]
@@ -1263,7 +1260,7 @@
         ;; for now we construct affinities from cards
         affinities           (dash-template->affinities dashboard-template)
         ;; get the suitable matches for them
-        satisfied-affinities (match-affinities affinities available-dimensions)
+        satisfied-affinities (match-affinities affinities (set (keys available-dimensions)))
         cards                (make-cards base-context available-values
                                          satisfied-affinities
                                          (card-based-layout dashboard-template))]

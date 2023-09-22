@@ -1,6 +1,39 @@
 (ns metabase.automagic-dashboards.schema
-  (:require [malli.core :as mc]))
+  (:require [malli.core :as mc]
+            [malli.generator :as mg]))
 
+;; --
+(def context
+  "The big ball of mud data object from which we generate x-rays"
+  (mc/schema
+    [:map
+     [:source any?]
+     [:root any?]
+     [:tables {:optional true} any?]
+     [:query-filter {:optional true} any?]]))
+
+(def dashcard
+  "The base unit thing we are trying to produce in x-rays"
+  ;; TODO - Beef these specs up, esp. the any?s
+  (mc/schema
+    [:map
+     [:dataset_query {:optional true} any?]
+     [:dimensions {:optional true} [:sequential string?]]
+     [:group {:optional true} string?]
+     [:height pos-int?]
+     [:metrics {:optional true} any?]
+     [:position {:optional true} nat-int?]
+     [:score {:optional true} number?]
+     [:title {:optional true} string?]
+     [:visualization {:optional true} any?]
+     [:width pos-int?]
+     [:x_label {:optional true} string?]]))
+
+(def dashcards
+  "A bunch of dashcards"
+  (mc/schema [:maybe [:sequential dashcard]]))
+
+;;
 (def dimension-value
   "A specification for the basic keys in the value of a dimension template."
   (mc/schema
@@ -83,6 +116,16 @@
      [:metrics {:optional true} [:vector metric-template]]
      [:filters {:optional true} [:vector filter-template]]
      [:cards {:optional true} [:vector card-template]]]))
+
+;; Available values schema -- These are items for which fields have been successfully bound
+
+(def available-values
+  "Specify the shape of things that are available after dimension to field matching for affinity matching"
+  (mc/schema
+    [:map
+     [:available-dimensions [:map-of [:string {:min 1}] any?]]
+     [:available-metrics [:map-of [:string {:min 1}] any?]]
+     [:available-filters [:map-of [:string {:min 1}] any?]]]))
 
 ;; Schemas for "affinity" functions as these can be particularly confusing
 

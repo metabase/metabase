@@ -2343,54 +2343,54 @@
                           :score         100
                           :dimensions    []
                           :base-dims     #{}}]
-          nothing-bound {}]
+          nothing-bound #{}]
       (is (= (ordered-map "Rowcount" [#{}])
              (magic/match-affinities affinities nothing-bound)))))
   (testing "When dimensions are present, all affinities that are a subset of those dimensions are matched"
-    (let [affinities    [{:affinity-name "RowcountLast30Days"
-                          :filters       ["Last30Days"]
-                          :metrics       ["Count"]
-                          :score         100
-                          :dimensions    []
-                          :base-dims     #{"CreateTimestamp"}}
-                         {:affinity-name "DistinctFKCounts"
-                          :metrics       ["CountDistinctFKs"]
-                          :score         100
-                          :dimensions    []
-                          :base-dims     #{"FK"}}
-                         {:affinity-name "Rowcount"
-                          :metrics       ["Count"]
-                          :score         100
-                          :dimensions    []
-                          :base-dims     #{}}]
-          x             {"CreateTimestamp" {}}]
+    (let [affinities [{:affinity-name "RowcountLast30Days"
+                       :filters       ["Last30Days"]
+                       :metrics       ["Count"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{"CreateTimestamp"}}
+                      {:affinity-name "DistinctFKCounts"
+                       :metrics       ["CountDistinctFKs"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{"FK"}}
+                      {:affinity-name "Rowcount"
+                       :metrics       ["Count"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{}}]
+          x          #{"CreateTimestamp"}]
       (is (= (ordered-map
-              "RowcountLast30Days" [#{"CreateTimestamp"}]
-              "Rowcount" [#{}])
+               "RowcountLast30Days" [#{"CreateTimestamp"}]
+               "Rowcount" [#{}])
              (magic/match-affinities affinities x)))))
   (testing "Multiple affinities of the same name may be present with different dimensions"
     (doseq [identified-field ["CreateTimestamp" "CreateDate" "JoinTimestamp"]]
-      (let [affinities [{:filters ["Last30Days"],
-                         :metrics ["Count"],
-                         :score 100,
-                         :dimensions [],
+      (let [affinities [{:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
                          :affinity-name "RowcountLast30Days",
-                         :base-dims #{"CreateTimestamp"}}
-                        {:filters ["Last30Days"],
-                         :metrics ["Count"],
-                         :score 100,
-                         :dimensions [],
+                         :base-dims     #{"CreateTimestamp"}}
+                        {:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
                          :affinity-name "RowcountLast30Days",
-                         :base-dims #{"CreateDate"}}
-                        {:filters ["Last30Days"],
-                         :metrics ["Count"],
-                         :score 100,
-                         :dimensions [],
+                         :base-dims     #{"CreateDate"}}
+                        {:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
                          :affinity-name "RowcountLast30Days",
-                         :base-dims #{"JoinTimestamp"}}]
-            bound      {identified-field :anything}]
+                         :base-dims     #{"JoinTimestamp"}}]
+            bound      #{identified-field}]
         (is (= (ordered-map
-                "RowcountLast30Days" [#{identified-field}])
+                 "RowcountLast30Days" [#{identified-field}])
                (magic/match-affinities affinities bound))))))
   (testing "Multidimensional affinities must satisfy all dimensions to be matched."
     (testing "Only \"AverageIncomeByMonth\" is satisfied as \"Discount\" is an absent dimension"
@@ -2404,10 +2404,9 @@
                          :score         70
                          :affinity-name "AverageDiscountByMonth"
                          :base-dims     #{"Income" "Discount" "Timestamp"}}]
-            bound      {"Income"    :anything,
-                        "Timestamp" :anything}]
+            bound      #{"Income" "Timestamp"}]
         (is (= (ordered-map
-                "AverageIncomeByMonth" [#{"Income" "Timestamp"}])
+                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}])
                (magic/match-affinities affinities bound)))))
     (testing "Both affinities are matched as all three dimensions are present."
       (let [affinities [{:dimensions    ["Timestamp"]
@@ -2420,12 +2419,10 @@
                          :score         70
                          :affinity-name "AverageDiscountByMonth"
                          :base-dims     #{"Income" "Discount" "Timestamp"}}]
-            bound      {"Income"    :anything
-                        "Timestamp" :anything
-                        "Discount"  :anything}]
+            bound      #{"Income" "Timestamp" "Discount"}]
         (is (= (ordered-map
-                "AverageIncomeByMonth" [#{"Income" "Timestamp"}],
-                "AverageDiscountByMonth" [#{"Income" "Discount" "Timestamp"}])
+                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}],
+                 "AverageDiscountByMonth" [#{"Income" "Discount" "Timestamp"}])
                (magic/match-affinities affinities bound)))))))
 
 (deftest dash-template->affinities-test
