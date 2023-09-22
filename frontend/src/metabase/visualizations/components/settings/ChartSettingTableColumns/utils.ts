@@ -13,6 +13,7 @@ import type {
   DragColumnProps,
   EditWidgetConfig,
 } from "./types";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 const STAGE_INDEX = -1;
 
@@ -255,6 +256,14 @@ export const disableColumnInSettings = (
 
   return newSettings;
 };
+
+export const removeColumnFromSettings = (
+  columnSettings: ColumnSetting[],
+  {columnSettingIndex}: {columnSettingIndex: number}
+) => {
+  const newSettings = [...columnSettings];
+  return newSettings.toSpliced(columnSettingIndex, 1);
+}
 
 export const moveColumnInSettings = (
   columnSettings: ColumnSetting[],

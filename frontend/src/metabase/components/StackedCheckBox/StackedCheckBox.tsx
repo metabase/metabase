@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import type { ChangeEvent } from "react";
 
 import {
@@ -25,6 +25,7 @@ interface StackedCheckBoxPropTypes {
   className?: string;
   indeterminate?: boolean;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  onClick?: (event: React.MouseEvent<HTMLInputElement>) => void;
 }
 
 export function StackedCheckBox({
@@ -38,6 +39,7 @@ export function StackedCheckBox({
   className,
   indeterminate = false,
   onChange,
+  onClick,
 }: StackedCheckBoxPropTypes) {
   const renderLabel = useCallback(() => {
     if (label == null) {
@@ -61,6 +63,7 @@ export function StackedCheckBox({
         size={size}
         indeterminate={indeterminate}
         onChange={onChange}
+        onClick={onClick}
       />
       <StackedBackground
         checked={checked}

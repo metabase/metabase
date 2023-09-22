@@ -22,7 +22,7 @@ interface ColumnItemProps {
   onColorChange?: (newColor: string) => void;
 }
 
-export const ColumnItem = ({
+const ColumnIteme = ({
   className,
   title,
   color,
@@ -43,6 +43,7 @@ export const ColumnItem = ({
       isDraggable={draggable}
       onClick={onClick}
       data-testid={draggable ? `draggable-item-${title}` : null}
+      data-enabled={!!onRemove}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}
@@ -112,7 +113,9 @@ const ActionIcon = ({
   />
 );
 
-Object.assign(ColumnItem, {
+export const ColumnItem = Object.assign(ColumnIteme, {
   Root: ColumnItemRoot,
   Container: ColumnItemContainer,
+  Icon: ColumnItemIcon,
+  Handle: ColumnItemDragHandle,
 });

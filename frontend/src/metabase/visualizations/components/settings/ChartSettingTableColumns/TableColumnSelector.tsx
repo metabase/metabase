@@ -2,8 +2,11 @@ import { t } from "ttag";
 import { useCallback } from "react";
 import type { DatasetColumn } from "metabase-types/api";
 import { getEditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { Icon } from "metabase/core/components/Icon";
 import { ColumnItem } from "../ColumnItem";
 import { ChartSettingOrderedItems } from "../ChartSettingOrderedItems";
+import { TableColumnSelectorRoot } from "./TableColumnSelector.styled";
 import type {
   ColumnGroupItem,
   ColumnMetadataItem,
@@ -16,7 +19,7 @@ interface TableColumnSelectorProps {
   enabledColumnItems: ColumnSettingItem[];
   disabledColumnItems: ColumnSettingItem[];
   additionalColumnGroups?: ColumnGroupItem[];
-  getColumnName: (column: DatasetColumn) => string;
+  getColumnName: (column: DatasetColumn) => string | Element;
   onAddColumn?: (columnItem: ColumnMetadataItem) => void;
   onEnableColumn: (columnItem: ColumnSettingItem) => void;
   onDisableColumn: (columnItem: ColumnSettingItem) => void;
@@ -46,15 +49,21 @@ export const TableColumnSelector = ({
   );
 
   return (
-    <div role="list">
+    <TableColumnSelectorRoot role="list">
       {enabledColumnItems.length > 0 ? (
         <div role="group" data-testid="visible-columns">
           <ChartSettingOrderedItems
             items={enabledColumnItems}
-            getItemName={({ datasetColumn }) => getColumnName(datasetColumn)}
+            getItemName={({ datasetColumn, metadataColumn }) => (
+              <>
+                <Icon name={getColumnIcon(metadataColumn)} />{" "}
+                {getColumnName(datasetColumn)}
+              </>
+            )}
             distance={5}
             onEdit={handleEditColumn}
             onRemove={onDisableColumn}
+            onEnable={onEnableColumn}
             onSortEnd={onDragColumn}
           />
         </div>
@@ -96,6 +105,6 @@ export const TableColumnSelector = ({
           </div>
         ))}
       </div>
-    </div>
+    </TableColumnSelectorRoot>
   );
 };

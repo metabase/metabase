@@ -92,6 +92,12 @@ function getComputedSetting(
     }
 
     if (storedSettings[settingId] !== undefined) {
+      if (settingId === "table.columns") {
+        console.log(
+          "is Valid table.columns",
+          settingDef.isValid(object, settings, extra),
+        );
+      }
       if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
         return (computedSettings[settingId] = storedSettings[settingId]);
       }
@@ -124,7 +130,7 @@ function getSettingWidget(
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = (value, question) => {
-    const newSettings = { [settingId]: value };
+    const newSettings = { [settingDef.writeSettingId || settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }

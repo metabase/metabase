@@ -95,8 +95,8 @@ export const QueryColumnSelector = ({
   const handleEnableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       const newSettings = enableColumnInSettings(columnSettings, columnItem);
-      const newQuery = enableColumnInQuery(query, columnItem);
-      onChange(newSettings, newQuery);
+      // const newQuery = enableColumnInQuery(query, columnItem);
+      onChange(newSettings);
     },
     [query, columnSettings, onChange],
   );
@@ -104,17 +104,17 @@ export const QueryColumnSelector = ({
   const handleDisableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       const newSettings = disableColumnInSettings(columnSettings, columnItem);
-      const newQuery = disableColumnInQuery(query, columnItem);
-      onChange(newSettings, newQuery);
+      // const newQuery = disableColumnInQuery(query, columnItem);
+      onChange(newSettings);
     },
     [query, columnSettings, onChange],
   );
 
   const handleDragColumn = useCallback(
     (props: DragColumnProps) => {
-      onChange(moveColumnInSettings(columnSettings, enabledColumnItems, props));
+      onChange(moveColumnInSettings(columnSettings, columnItems, props));
     },
-    [columnSettings, enabledColumnItems, onChange],
+    [columnSettings, columnItems, onChange],
   );
 
   return (
@@ -122,11 +122,12 @@ export const QueryColumnSelector = ({
       <Button
         variant="subtle"
         onClick={() => handleWidgetOverride("table.columnVisibility")}
-      >{t`Click me`}</Button>
+        pl="0"
+      >{t`Add or remove columns`}</Button>
       <TableColumnSelector
-        enabledColumnItems={enabledColumnItems}
-        disabledColumnItems={disabledColumnItems}
-        additionalColumnGroups={additionalColumnGroups}
+        enabledColumnItems={columnItems}
+        disabledColumnItems={[]}
+        // additionalColumnGroups={additionalColumnGroups}
         getColumnName={getColumnName}
         onAddColumn={handleAddColumn}
         onEnableColumn={handleEnableColumn}

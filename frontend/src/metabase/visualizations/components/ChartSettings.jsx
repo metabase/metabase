@@ -103,7 +103,11 @@ class ChartSettings extends Component {
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, currentWidget: null });
+    this.setState({
+      currentSection: section,
+      currentWidget: null,
+      widgetOverride: null,
+    });
   };
 
   // allows a widget to temporarily replace itself with a different widget
@@ -336,8 +340,6 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    console.log(widgets);
-
     const visibleWidgets = widgetOverride
       ? [
           {
@@ -395,8 +397,7 @@ class ChartSettings extends Component {
         visibleWidgets[0].id === "column_settings" &&
         // and this section doesn't doesn't have that as a direct child
         !currentSectionHasColumnSettings
-      ) &&
-      !widgetOverride;
+      );
 
     // default layout with visualization
     return (
