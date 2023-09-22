@@ -152,4 +152,50 @@ describe("column settings", () => {
     expect(computedSubtotal).not.toBeUndefined();
     expect(computedSubtotal.enabled).toBe(false);
   });
+
+  it("table should should generate default columns when table.columns entries do not match data.cols (metabase#28304)", () => {
+    const storedSettings = {
+      "table.columns": [
+        createMockTableColumnOrderSetting({
+          name: "TAX",
+          fieldRef: ["field", ORDERS.TAX, null],
+          enabled: true,
+        }),
+        createMockTableColumnOrderSetting({
+          name: "DISCOUNT",
+          fieldRef: ["field", ORDERS.DISCOUNT, null],
+          enabled: false,
+        }),
+      ],
+    };
+
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: {
+            cols: [
+              createMockColumn({
+                id: ORDERS.ID,
+                name: "ID",
+                display_name: "Id",
+                field_ref: ["field", ORDERS.ID, null],
+              }),
+            ],
+          },
+        },
+      ),
+    ];
+
+    const computedValue = buildTableColumnSettings()["table.columns"].getValue(
+      series,
+      storedSettings,
+    );
+
+    expect(computedValue.length).toBe(1);
+    expect(computedValue[0]).toMatchObject({
+      name: "ID",
+      enabled: true,
+    });
+  });
 });
