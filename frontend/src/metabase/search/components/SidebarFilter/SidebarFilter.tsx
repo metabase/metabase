@@ -1,12 +1,11 @@
 import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { t } from "ttag";
 import type {
   SearchFilterComponentProps,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
-import { Button, Group, Text, Box, FocusTrap } from "metabase/ui";
+import { Group, Text, Box } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -15,11 +14,10 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
 import {
-  DropdownApplyButtonDivider,
   DropdownClearButton,
+  DropdownDisplayContent,
   DropdownFieldSet,
   SearchEventSandbox,
-  SearchPopoverContainer,
 } from "./SidebarFilter.styled";
 
 export type SearchSidebarFilterProps = {
@@ -106,7 +104,7 @@ export const SidebarFilter = ({
         legend={fieldHasValue ? title : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
-        <Group position="apart" noWrap w="100%">
+        <DropdownDisplayContent position="apart" noWrap w="100%">
           {fieldHasValue ? (
             <DisplayComponent value={value} />
           ) : (
@@ -123,7 +121,7 @@ export const SidebarFilter = ({
             onClick={onClearFilter}
             leftIcon={<Icon name={getDropdownIcon()} />}
           />
-        </Group>
+        </DropdownDisplayContent>
       </DropdownFieldSet>
 
       <Popover
@@ -135,18 +133,13 @@ export const SidebarFilter = ({
         sizeToFit
       >
         <SearchEventSandbox>
-          <FocusTrap active>
-            <SearchPopoverContainer w={popoverWidth ?? "100%"} spacing={0}>
-              <ContentComponent
-                value={selectedValues}
-                onChange={selected => setSelectedValues(selected)}
-              />
-              <DropdownApplyButtonDivider />
-              <Group position="right" align="center" px="sm" pb="sm">
-                <Button onClick={onApplyFilter}>{t`Apply filters`}</Button>
-              </Group>
-            </SearchPopoverContainer>
-          </FocusTrap>
+          <Box w={popoverWidth ?? "100%"}>
+            <ContentComponent
+              value={selectedValues}
+              onChange={selected => setSelectedValues(selected)}
+              onApply={onApplyFilter}
+            />
+          </Box>
         </SearchEventSandbox>
       </Popover>
     </Box>

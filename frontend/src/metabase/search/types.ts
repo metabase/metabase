@@ -46,6 +46,7 @@ export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
   value?: SearchFilterPropTypes[T];
   onChange: (value: SearchFilterPropTypes[T]) => void;
   "data-testid"?: string;
+  onApply: () => void;
 } & Record<string, unknown>;
 
 export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {

@@ -2,7 +2,8 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import type { ButtonProps } from "metabase/ui";
-import { Button, Stack } from "metabase/ui";
+import { Group, Button, Stack } from "metabase/ui";
+
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
 
@@ -41,6 +42,10 @@ export const DropdownFieldSet = styled(FieldSet)<{
     color: ${({ theme, fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus && theme.colors.brand[1]};
   }
+`;
+
+export const DropdownDisplayContent = styled(Group)`
+  overflow: hidden;
 `;
 
 export const DropdownClearButton = styled(Button)<
