@@ -32,10 +32,11 @@
   [archived user_id]
   {archived [:maybe ms/BooleanString]
    user_id  [:maybe ms/PositiveInt]}
-  (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
-                                :user-id   user_id}) <>
-    (filter mi/can-read? <>)
-    (t2/hydrate <> :can_write)))
+  (let [user-id (or user_id (when-not api/*is-superuser?* api/*current-user-id*))]
+    (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
+                                  :user-id   user-id}) <>
+      (filter mi/can-read? <>)
+      (t2/hydrate <> :can_write))))
 
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
@@ -45,7 +46,7 @@
       (t2/hydrate :can_write)))
 
 (api/defendpoint GET "/question/:id"
-  "Fetch all questions for the given question (`Card`) id"
+  "Fetch all alerts for the given question (`Card`) id"
   [id archived]
   {id       [:maybe ms/PositiveInt]
    archived [:maybe ms/BooleanString]}
