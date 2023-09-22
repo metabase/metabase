@@ -27,9 +27,7 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
-  (:import
-   (java.net URL)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

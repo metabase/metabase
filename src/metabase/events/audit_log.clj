@@ -1,9 +1,8 @@
 (ns metabase.events.audit-log
   (:require
+   [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.activity :as activity]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -40,7 +39,7 @@
                                            (-> (t2/select-one [:model/Card :name :description], :id card_id)
                                                (assoc :id id)
                                                (assoc :card_id card_id)))))]
-   (audit-log/record-event! topic details :model/Dashboard id)))
+   (audit-log/record-event! topic details api/*current-user-id* :model/Dashboard id)))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
@@ -48,47 +47,24 @@
 (derive :event/metric-delete ::metric-event)
 
 (methodical/defmethod events/publish-event! ::metric-event
-  [topic {:keys [user-id] metric :object :as event}]
-  (let [table-id    (:table_id metric)
-        database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
-     {:topic       topic
-      :user-id     user-id
-      :model       "metric"
-      :model-id    (:id metric)
-      :object      metric
-      :details     (assoc (select-keys metric [:name :description])
-                          :revision_message  (:revision-message event))
-      :database-id database-id
-      :table-id    table-id})))
+  [topic {metric :object :as _event}]
+  (audit-log/record-event! topic metric))
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [user-id] pulse :object :as _event}]
-  (activity/record-activity!
-   {:topic    topic
-    :model    "pulse"
-    :model-id (:id pulse)
-    :user-id  user-id
-    :object   pulse
-    :details  (select-keys pulse [:name])}))
+  [topic {:keys [name id]}]
+  (audit-log/record-event! topic {:name name} api/*current-user-id* :model/Pulse id))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
 
 (methodical/defmethod events/publish-event! ::alert-event
-  [topic {:keys [user-id] alert :object :as _event}]
-  (let [{:keys [card]} alert]
-    (activity/record-activity!
-     ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-     {:topic      topic
-      :user-id    user-id
-      :model      "alert"
-      :model-id   (:id card)
-      :object     alert
-      :details    (select-keys card [:name])})))
+  [topic {:keys [card] alert :object :as _event}]
+  (let [card-name (:name card)]
+    ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+    (audit-log/record-event! topic {:name card-name} api/*current-user-id* :mode/Card (:id alert))))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
@@ -96,30 +72,17 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
-  [topic {:keys [user-id revision-message] segment :object :as _event}]
-  (let [table-id    (:table_id segment)
-        database-id (table/table-id->database-id table-id)]
-    (activity/record-activity!
-     {:topic       topic
-      :model       "segment"
-      :model-id    (:id segment)
-      :user-id     user-id
-      :object      segment
-      :details     (assoc (select-keys segment [:name :description])
-                          :revision_message revision-message)
-      :database-id database-id
-      :table-id    table-id})))
+  [topic {segment :object :as _event}]
+  (audit-log/record-event! topic segment))
 
 (derive ::user-joined-event ::event)
 (derive :event/user-joined ::user-joined-event)
 
 (methodical/defmethod events/publish-event! ::user-joined-event
-  [topic {:keys [user-id] :as _event}]
-  (activity/record-activity!
-   {:topic    topic
-    :model    "user"
-    :user-id  user-id
-    :model-id user-id}))
+  [topic object]
+  {:pre [(pos-int? (:user-id object))]}
+  (let [user-id (:user-id object)]
+   (audit-log/record-event! topic {} user-id :model/User user-id)))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)

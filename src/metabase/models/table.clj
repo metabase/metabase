@@ -8,9 +8,7 @@
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -179,7 +177,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -188,7 +186,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
