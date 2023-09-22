@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -75,11 +76,25 @@
   [metadata-providerable query]
   (query-from-existing metadata-providerable query))
 
-;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
-;;; passed in
+;;; this should already be a query in the shape we want but:
+;; - let's make sure it has the database metadata that was passed in
+;; - fill in field refs with metadata (#33680)
 (defmethod query-method :mbql/query
-  [metadata-providerable query]
-  (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
+  [metadata-providerable {converted? :lib.convert/converted? :as query}]
+  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+        query (-> query
+                  (assoc :lib/metadata metadata-provider)
+                  (dissoc :lib.convert/converted?))]
+    (cond-> query
+      converted?
+      (mbql.u/replace
+        [:field
+         (opts :guard (complement (some-fn :base-type :effective-type)))
+         (field-id :guard (every-pred number? pos?))]
+        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                            (select-keys [:base-type :effective-type]))]
+          ;; Fallback if metadata is missing
+          [:field (merge found-ref opts) field-id])))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
