@@ -4,6 +4,7 @@ import type { HTMLAttributes } from "react";
 import type { ButtonProps } from "metabase/ui";
 import { Button, Stack } from "metabase/ui";
 import FieldSet from "metabase/components/FieldSet";
+import EventSandbox from "metabase/components/EventSandbox";
 
 export const DropdownFieldSet = styled(FieldSet)<{
   fieldHasValueOrFocus?: boolean;
@@ -58,6 +59,10 @@ export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
       width: ${dividerWidth};
     `;
   }}
+`;
+
+export const SearchEventSandbox = styled(EventSandbox)`
+  display: contents;
 `;
 
 export const SearchPopoverContainer = styled(Stack)`

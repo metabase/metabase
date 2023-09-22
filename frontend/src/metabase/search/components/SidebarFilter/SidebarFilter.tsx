@@ -14,11 +14,11 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/redux/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
-import EventSandbox from "metabase/components/EventSandbox";
 import {
   DropdownApplyButtonDivider,
   DropdownClearButton,
   DropdownFieldSet,
+  SearchEventSandbox,
   SearchPopoverContainer,
 } from "./SidebarFilter.styled";
 
@@ -134,7 +134,7 @@ export const SidebarFilter = ({
         autoWidth
         sizeToFit
       >
-        <EventSandbox>
+        <SearchEventSandbox>
           <FocusTrap active>
             <SearchPopoverContainer w={popoverWidth ?? "100%"} spacing={0}>
               <ContentComponent
@@ -147,7 +147,7 @@ export const SidebarFilter = ({
               </Group>
             </SearchPopoverContainer>
           </FocusTrap>
-        </EventSandbox>
+        </SearchEventSandbox>
       </Popover>
     </Box>
   );
