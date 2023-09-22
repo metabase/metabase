@@ -157,21 +157,23 @@
       (log/info "Beginning Audit DB Sync...")
       (sync-metadata/sync-db-metadata! audit-db)
       (log/info "Audit DB Sync Complete.")
-      ;; prevent sync while loading
-      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-         (fn []
-           (ee.internal-user/ensure-internal-user-exists!)
-           (adjust-audit-db-to-source! audit-db)
-           (log/info "Loading Analytics Content...")
-           (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
-           (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
-           ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-           (let [report (log/with-no-logs
-                          (serialization.cmd/v2-load-internal "plugins/instance_analytics"
-                                                              {}
-                                                              :token-check? false))]
-             (if (not-empty (:errors report))
-               (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
-           (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-             (adjust-audit-db-to-host! audit-db))))))))
+      (when (or analytics-zip-resource analytics-dir-resource)
+        ;; prevent sync while loading
+        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
+           (fn []
+             (ee.internal-user/ensure-internal-user-exists!)
+             (adjust-audit-db-to-source! audit-db)
+
+             (log/info "Loading Analytics Content...")
+             (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
+             (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+             (let [report (log/with-no-logs
+                            (serialization.cmd/v2-load-internal "plugins/instance_analytics"
+                                                                {}
+                                                                :token-check? false))]
+               (if (not-empty (:errors report))
+                 (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
+             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+               (adjust-audit-db-to-host! audit-db)))))))))

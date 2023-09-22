@@ -34,6 +34,7 @@
       (with-redefs [audit-db/analytics-zip-resource nil
                     audit-db/analytics-dir-resource nil]
         (is (= nil audit-db/analytics-zip-resource))
+        (is (= nil audit-db/analytics-dir-resource))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
