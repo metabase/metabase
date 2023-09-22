@@ -128,14 +128,12 @@
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
   (cond
-    ;; the zip file:
     zip-resource
     (do (log/info "Unzipping instance_analytics to plugins...")
         (u.files/unzip-file
           analytics-zip-resource
           map-instance-analytics-files-to-plugins-dir)
         (log/info "Unzipping done."))
-    ;; the directory in resources
     dir-resource
     (do
       (log/info "Copying resources/instance_analytics to plugins...")
