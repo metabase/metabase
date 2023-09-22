@@ -3,7 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.js :as lib.js]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.test.util.js :as test.js]))
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
@@ -85,3 +86,21 @@
         "should be a JS array")
     (is (= ["collection"]
            (js->clj extras)))))
+
+(deftest ^:parallel template-tags-test
+  (testing "Snippets in template tags round trip correctly (#33546)"
+    (let [db meta/database
+          snippets {"snippet: my snippet"
+                    {:type :snippet
+                     :name "snippet: my snippet",
+                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4",
+                     :display-name "Snippet: My Snippet",
+                     :snippet-name "my snippet",
+                     :snippet-id 1}}
+          query (lib.js/with-template-tags
+                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                  (clj->js snippets))]
+      (is (= snippets
+             (get-in query [:stages 0 :template-tags])))
+      (is (test.js/= (clj->js snippets)
+                     (lib.js/template-tags query))))))
