@@ -958,8 +958,15 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["field", REVIEWS.RATING, null],
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+            [
+              "field",
+              REVIEWS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+                "base-type": "type/DateTimeWithLocalTZ",
+              },
+            ],
           ],
         },
         type: "query",
