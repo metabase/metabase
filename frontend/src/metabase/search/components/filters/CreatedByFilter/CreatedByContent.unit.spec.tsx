@@ -12,26 +12,37 @@ const TEST_USERS: User[] = [
   createMockUser({ id: 2, common_name: "Bob" }),
 ];
 
-const TestCreatedByContent = ({ onChange }: { onChange: jest.Func }) => {
+const TestCreatedByContent = ({
+  onChange,
+  onApply,
+}: {
+  onChange: jest.Func;
+  onApply: jest.Func;
+}) => {
   const [value, setValue] = useState<CreatedByFilterProps>();
   const onUserChange = (value: CreatedByFilterProps) => {
     setValue(value);
     onChange(value);
   };
-  return <CreatedByContent value={value} onChange={onUserChange} />;
+  return (
+    <CreatedByContent value={value} onChange={onUserChange} onApply={onApply} />
+  );
 };
 
 const setup = async () => {
   setupUsersEndpoints(TEST_USERS);
 
   const mockOnChange = jest.fn();
-  renderWithProviders(<TestCreatedByContent onChange={mockOnChange} />);
+  const mockOnApply = jest.fn();
+  renderWithProviders(
+    <TestCreatedByContent onChange={mockOnChange} onApply={mockOnApply} />,
+  );
 
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 
-  return { mockOnChange };
+  return { mockOnChange, mockOnApply };
 };
 
 describe("CreatedByContent", () => {
@@ -57,5 +68,12 @@ describe("CreatedByContent", () => {
     userEvent.click(screen.getByText("Alice"));
 
     expect(mockOnChange).toHaveBeenCalledWith(1);
+  });
+
+  it("calls onApply when 'Apply Filters' selected", async () => {
+    const { mockOnApply } = await setup();
+
+    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    expect(mockOnApply).toHaveBeenCalled();
   });
 });

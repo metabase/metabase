@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import _ from "underscore";
 import type {
   FilterTypeKeys,
