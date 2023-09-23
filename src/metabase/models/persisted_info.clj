@@ -2,8 +2,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
@@ -52,7 +52,7 @@
      [:base_type ::lib.schema.common/base-type]
      [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
 
-(mu/defn metadata->definition :- ::lib.metadata/persisted-info.definition
+(mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
   [metadata :- Metadata table-name]
   {:table-name        table-name

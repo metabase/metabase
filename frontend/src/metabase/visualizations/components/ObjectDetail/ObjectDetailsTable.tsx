@@ -8,7 +8,7 @@ import ExpandableString from "metabase/query_builder/components/ExpandableString
 import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   isa,
   isID,
@@ -24,7 +24,7 @@ import {
   GridContainer,
   GridCell,
   FitImage,
-} from "./ObjectDetail.styled";
+} from "./ObjectDetailsTable.styled";
 
 export interface DetailsTableCellProps {
   column: any;

@@ -11,6 +11,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 const { normal } = USERS;
@@ -61,7 +62,7 @@ describeEE("audit > auditing", () => {
     cy.log("Download a question");
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     cy.icon("download").click();
-    cy.request("POST", "/api/card/1/query/json");
+    cy.request("POST", `/api/card/${ORDERS_QUESTION_ID}/query/json`);
 
     cy.signIn("nodata");
 
@@ -237,7 +238,7 @@ describeEE("audit > auditing", () => {
       // All questions tab
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
-      cy.findAllByText("Sample Database").should("have.length", 5);
+      cy.findAllByText("Sample Database").should("have.length", 6);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NORMAL_QUESTION);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -36,5 +36,5 @@
   corresponding Table in the Query Processor Store."
   [query]
   (check-all-source-table-ids-are-valid query)
-  (qp.store/fetch-and-store-tables! (query->source-table-ids query))
+  (qp.store/bulk-metadata :metadata/table (query->source-table-ids query))
   query)

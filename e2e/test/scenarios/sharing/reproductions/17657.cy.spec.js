@@ -1,5 +1,6 @@
 import { restore, sidebar, visitDashboard } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const {
   admin: { first_name, last_name },
@@ -14,7 +15,7 @@ describe("issue 17657", () => {
   });
 
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("subscription").click();
 

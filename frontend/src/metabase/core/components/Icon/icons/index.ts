@@ -29,6 +29,8 @@ import arrow_left_component from "./arrow_left.svg?component";
 import arrow_left_source from "./arrow_left.svg?source";
 import arrow_left_to_line_component from "./arrow_left_to_line.svg?component";
 import arrow_left_to_line_source from "./arrow_left_to_line.svg?source";
+import arrow_right_component from "./arrow_right.svg?component";
+import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
 import arrow_split_source from "./arrow_split.svg?source";
 import badge_component from "./badge.svg?component";
@@ -408,6 +410,10 @@ export const Icons = {
   arrow_left_to_line: {
     component: arrow_left_to_line_component,
     source: arrow_left_to_line_source,
+  },
+  arrow_right: {
+    component: arrow_right_component,
+    source: arrow_right_source,
   },
   arrow_split: {
     component: arrow_split_component,

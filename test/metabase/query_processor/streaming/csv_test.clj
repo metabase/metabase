@@ -68,7 +68,7 @@
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
   [rows]
   (driver/with-driver :h2
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (with-open [bos (ByteArrayOutputStream.)
                   os  (BufferedOutputStream. bos)]
         (let [results-writer (qp.si/streaming-results-writer :csv os)]

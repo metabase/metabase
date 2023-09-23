@@ -195,7 +195,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :oracle (mt/db))))))
 
 ;;; see also [[metabase.test.data.oracle/insert-all-test]]
@@ -317,7 +317,7 @@
 (deftest honeysql-test
   (mt/test-driver :oracle
     (testing "Correct HoneySQL form should be generated"
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= (letfn [(id
                          ([field-name database-type]
                           (id oracle.tx/session-schema "test_data_venues" field-name database-type))

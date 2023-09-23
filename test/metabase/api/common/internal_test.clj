@@ -15,7 +15,9 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as jetty]))
+   [ring.adapter.jetty9 :as jetty])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -108,7 +110,7 @@
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
 (deftest defendpoint-test
-  (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
+  (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
         port   (.. server getURI getPort)
         post!  (fn [route body]
                  (http/post (str "http://localhost:" port route)
@@ -186,7 +188,8 @@
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                                                                                             ;; TODO remove .'s from ms schemas
                                                                                             ;; TODO translate received (?)
-                    :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco., received: {:address \"\"}"]}}
+                    :specific-errors
+                    {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
                    (:body (post! "/test-localized-error" {:address ""}))))))))
 
     (testing "auto-coercion"
@@ -294,17 +297,6 @@
      "/:id/etc/:org" [:id :org]
      "/:card-id"     [:card-id])))
 
-(deftest type-args-test
-  (no-route-regexes
-   (are [args expected] (= expected
-                           (#'internal/typify-args args))
-     []             []
-     [:fish]        []
-     [:fish :fry]   []
-     [:id]          [:id "#[0-9]+"]
-     [:id :fish]    [:id "#[0-9]+"]
-     [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
-
 (deftest add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
@@ -331,21 +323,6 @@
     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
-
-(deftest add-route-param-regexes-test
-  (no-route-regexes
-   (are [route expected] (= expected
-                            (internal/add-route-param-regexes route))
-     "/"                                    "/"
-     "/:id"                                 ["/:id" :id "#[0-9]+"]
-     "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
-     "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
-     "/:fish"                               "/:fish"
-     "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
-     ;; don't try to typify route that's already typified
-     ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
-     ;; Check :uuid args
-     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)])))
 
 (deftest let-form-for-arg-test
   (are [arg expected] (= expected

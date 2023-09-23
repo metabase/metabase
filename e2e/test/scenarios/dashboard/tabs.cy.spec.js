@@ -19,8 +19,16 @@ import {
   main,
 } from "e2e/support/helpers";
 
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
+    cy.in;
     restore();
     cy.signInAsAdmin();
   });
@@ -81,6 +89,8 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only fetch cards on the current tab", () => {
+    cy.intercept("PUT", "/api/dashboard/*/cards").as("saveDashboardCards");
+
     visitDashboardAndCreateTab({ dashboardId: 1, save: false });
 
     // Add card to second tab
@@ -91,19 +101,26 @@ describe("scenarios > dashboard > tabs", () => {
     });
     saveDashboard();
 
+    cy.wait("@saveDashboardCards").then(({ response }) => {
+      cy.wrap(response.body.cards[1].id).as("secondTabDashcardId");
+    });
+
     cy.intercept(
       "POST",
-      `/api/dashboard/1/dashcard/1/card/1/query`,
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
       cy.spy().as("firstTabQuery"),
     );
-    cy.intercept(
-      "POST",
-      `/api/dashboard/1/dashcard/2/card/2/query`,
-      cy.spy().as("secondTabQuery"),
-    );
+
+    cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
+      cy.intercept(
+        "POST",
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}/query`,
+        cy.spy().as("secondTabQuery"),
+      );
+    });
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(1, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: 1 } });
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -119,22 +136,25 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("POST", `/api/dashboard/1/public_link`).then(
-      ({ body: { uuid } }) => {
+    cy.request(
+      "POST",
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
+    ).then(({ body: { uuid } }) => {
+      cy.intercept(
+        "GET",
+        `/api/public/dashboard/${uuid}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}?parameters=%5B%5D`,
+        cy.spy().as("publicFirstTabQuery"),
+      );
+      cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
         cy.intercept(
           "GET",
-          `/api/public/dashboard/${uuid}/dashcard/1/card/1?parameters=%5B%5D`,
-          cy.spy().as("publicFirstTabQuery"),
-        );
-        cy.intercept(
-          "GET",
-          `/api/public/dashboard/${uuid}/dashcard/2/card/2?parameters=%5B%5D`,
+          `/api/public/dashboard/${uuid}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}?parameters=%5B%5D`,
           cy.spy().as("publicSecondTabQuery"),
         );
+      });
 
-        cy.visit(`public/dashboard/${uuid}`);
-      },
-    );
+      cy.visit(`public/dashboard/${uuid}`);
+    });
 
     // Check first tab requests
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
@@ -162,7 +182,7 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
   });
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
     editDashboard();

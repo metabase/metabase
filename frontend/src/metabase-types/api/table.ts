@@ -81,5 +81,5 @@ export interface ForeignKey {
   origin_id: FieldId;
   destination?: Field;
   destination_id: FieldId;
-  relationship: string; // enum?
+  relationship: "Mt1";
 }

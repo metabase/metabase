@@ -28,7 +28,10 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
 
     cy.button("Create pulse").click();
 
-    cy.url().should("match", /\/collection\/root$/);
+    cy.url().should(
+      "match",
+      /\/collection\/1-bobby-tables-s-personal-collection$/,
+    );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("pulse title");

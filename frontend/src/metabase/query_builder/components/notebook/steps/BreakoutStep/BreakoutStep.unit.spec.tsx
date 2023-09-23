@@ -4,6 +4,7 @@ import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
+  findAggregationOperator,
   findBinningStrategy,
   findTemporalBucket,
 } from "metabase-lib/test-helpers";
@@ -18,7 +19,7 @@ function createQueryWithBreakout() {
   );
   const column = findColumn("ORDERS", "TAX");
   const query = Lib.breakout(initialQuery, 0, column);
-  return { query, columnInfo: Lib.displayInfo(query, 0, column) };
+  return { query, columnInfo: Lib.displayInfo(query, 0, column), initialQuery };
 }
 
 function createQueryWithBinning(bucketName = "10 bins") {
@@ -48,6 +49,23 @@ function createQueryWithTemporalBreakout() {
     query,
     columnInfo: Lib.displayInfo(query, 0, column),
   };
+}
+
+function applyAggregation(
+  query: Lib.Query,
+  operatorShortName: string,
+  stageIndex = 0,
+): Lib.Query {
+  const operator = findAggregationOperator(query, operatorShortName);
+
+  const findColumn = columnFinder(
+    query,
+    Lib.aggregationOperatorColumns(operator),
+  );
+  const column = findColumn("ORDERS", "TOTAL");
+  const clause = Lib.aggregationClause(operator, column);
+
+  return Lib.aggregate(query, stageIndex, clause);
 }
 
 function setup(step = createMockNotebookStep()) {
@@ -264,6 +282,34 @@ describe("BreakoutStep", () => {
       userEvent.click(screen.getByText("Created At"));
 
       expect(updateQuery).not.toHaveBeenCalled();
+    });
+
+    it("should support binning for nested numeric fields (metabase#13764)", () => {
+      const { query: queryWithBreakout, initialQuery } =
+        createQueryWithBreakout();
+      const query = applyAggregation(queryWithBreakout, "avg");
+
+      setup(
+        createMockNotebookStep({
+          topLevelQuery: Lib.appendStage(query),
+          stageIndex: 1,
+          itemIndex: null,
+          type: "summarize",
+          previous: createMockNotebookStep({
+            topLevelQuery: initialQuery,
+            stageIndex: 0,
+          }),
+        }),
+      );
+
+      userEvent.click(screen.getByText("Pick a column to group by"));
+
+      const option = screen.getByLabelText("Average of Total");
+      expect(option).toBeInTheDocument();
+
+      // TODO [13764]: Enable this test after resolving the issue in MBQLv2
+      // userEvent.hover(option);
+      // expect(within(option).getByText("Auto bin")).toBeInTheDocument();
     });
   });
 });
