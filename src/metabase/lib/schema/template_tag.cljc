@@ -72,7 +72,7 @@
    [:map
     [:type         [:= :snippet]]
     [:snippet-name ::common/non-blank-string]
-    [:snippet-id   ::id/snippet]
+    [:snippet-id {:optional true} ::id/snippet]
     ;; database to which this Snippet belongs. Doesn't always seem to be specified.
     [:database {:optional true} ::id/database]]])
 
