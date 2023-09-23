@@ -1660,10 +1660,16 @@
                  (serdes/identity-hash c3))))))))
 
 (deftest instance-analytics-collections-test
-  (testing "Instance analytics isn't writable. even for admins."
-   (premium-features-test/with-premium-features #{:audit-app}
-     (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
-       (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}]
-         (mt/with-current-user (mt/user->id :crowberto)
-           (is (not (mi/can-write? collection))
-               "Admin isn't able to write to audit collection")))))))
+  (testing "Instance analytics and it's contents isn't writable, even for admins."
+    (premium-features-test/with-premium-features #{:audit-app}
+      (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
+        (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}
+                                 Card       card       {:collection_id (:id collection)}
+                                 Dashboard  dashboard  {:collection_id (:id collection)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (not (mi/can-write? collection))
+                "Admin isn't able to write to audit collection")
+            (is (not (mi/can-write? card))
+                "Admin isn't able to write to audit collection card")
+            (is (not (mi/can-write? dashboard))
+                "Admin isn't able to write to audit collection dashboard")))))))

@@ -52,6 +52,15 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defmethod mi/can-write? Dashboard
+  ([instance]
+   ;; Dashboards in audit collection should be read only
+   (if (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+     false
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
+
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
    :embedding_params mi/transform-json})
