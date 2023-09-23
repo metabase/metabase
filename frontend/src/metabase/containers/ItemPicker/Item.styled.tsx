@@ -49,6 +49,7 @@ export const ItemRoot = styled.div<ItemRootProps>`
           background-color: ${canSelect ? color("brand") : color("white")};
 
           &:hover {
+            color: ${color("brand")};
             & ${ItemIcon} {
               color: ${color("brand")};
             }
