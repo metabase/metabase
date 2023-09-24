@@ -2,11 +2,13 @@ import {
   restore,
   setupSMTP,
   visitQuestion,
-  startNewQuestion,
-  popover,
-  visualize,
   modal,
+  openTable,
 } from "e2e/support/helpers";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -58,14 +60,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should set up an email alert for newly created question", () => {
-    startNewQuestion();
-
-    popover().within(() => {
-      cy.contains("Sample Database").click();
-      cy.contains("People").click();
+    openTable({
+      table: PEOPLE_ID,
     });
-
-    visualize();
 
     cy.icon("bell").click();
 

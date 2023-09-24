@@ -5,7 +5,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -100,7 +100,7 @@ export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
   return async (dispatch, getState) => {
     // clone
-    const card = Utils.copy(nextCard);
+    const card = copy(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage

@@ -782,7 +782,11 @@ describe("Question", () => {
           database: SAMPLE_DB_ID,
           query: {
             "source-table": ORDERS_ID,
-            filter: ["=", ["field", ORDERS.ID, null], 1],
+            filter: [
+              "=",
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              1,
+            ],
           },
         });
       });
@@ -805,8 +809,12 @@ describe("Question", () => {
             "source-table": ORDERS_ID,
             filter: [
               "and",
-              ["=", ["field", ORDERS.ID, null], 1],
-              [">", ["field", ORDERS.TOTAL, null], 50],
+              [
+                "=",
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                1,
+              ],
+              [">", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }], 50],
             ],
           },
         });
@@ -831,8 +839,12 @@ describe("Question", () => {
             "source-table": ORDERS_ID,
             filter: [
               "and",
-              ["=", ["field", ORDERS.ID, null], 1],
-              [">", ["field", ORDERS.TOTAL, null], 20],
+              [
+                "=",
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                1,
+              ],
+              [">", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }], 20],
             ],
           },
         });
@@ -853,8 +865,12 @@ describe("Question", () => {
             "source-table": ORDERS_ID,
             filter: [
               "and",
-              [">", ["field", ORDERS.TOTAL, null], 10],
-              ["=", ["field", ORDERS.ID, null], 1],
+              [">", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }], 10],
+              [
+                "=",
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                1,
+              ],
             ],
           },
         });

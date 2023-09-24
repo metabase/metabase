@@ -15302,6 +15302,21 @@ databaseChangeLog:
                   name: role
       rollback: # not needed, it will be removed with the table
 
+  - changeSet:
+      id: v48.00-016
+      author: calherries
+      comment: Added 0.48.0 - Change the type of collection.slug to varchar(510)
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(510)
+      rollback:
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(254)
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

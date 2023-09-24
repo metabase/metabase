@@ -17,10 +17,11 @@ describe("issue 15342", { tags: "@external" }, () => {
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(MYSQL_DB_NAME).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("People").click();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText(MYSQL_DB_NAME).click();
+      cy.findByText("People").click();
+    });
 
     addJoin({
       leftColumn: "ID",
