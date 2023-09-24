@@ -167,7 +167,9 @@
         (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
 (defn run-in-scope-locked
-  "Run function `f` in a scope on the Liquibase instance `liquibase`."
+  "Run function `f` in a scope on the Liquibase instance `liquibase`.
+  Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+  Clojure). This function initializes the database and the resource accessor which are often required."
   [^Liquibase liquibase f]
   (let [database (.getDatabase liquibase)
         ^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)
@@ -202,15 +204,10 @@
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
   1.  This will force release the locks before start running
-  2.  This will attempt to run each migrations one a time
-  3.  Migrations that fail will be ignored
+  2.  Migrations that fail will be ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
-  #3295.
-
-  Each migration is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
-  without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
-  do anything futher until you clear the error state by doing something like calling `.rollback`.)"
+  #3295."
   [liquibase :- Liquibase]
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
