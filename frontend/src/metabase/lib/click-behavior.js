@@ -35,34 +35,58 @@ export function getDataFromClicked({
       {},
     );
 
+  const tokenParamters = getTokenParameter(dashboard);
+
   const parameterByName =
     dashboard == null
-      ? {}
-      : _.chain(dashboard.parameters)
+      ? tokenParamters
+      : Object.assign(
+        _.chain(dashboard.parameters)
           .filter(p => parameterValuesBySlug[p.slug] != null)
           .map(p => [
             p.name.toLowerCase(),
             { value: parameterValuesBySlug[p.slug] },
           ])
           .object()
-          .value();
+          .value(),
+        tokenParamters
+      );
 
-  const parameterBySlug = _.mapObject(parameterValuesBySlug, value => ({
-    value,
-  }));
+  const parameterBySlug = Object.assign(
+    _.mapObject(parameterValuesBySlug, value => ({
+      value,
+    })),
+    tokenParamters
+  );
 
-  const parameter =
-    dashboard == null
-      ? {}
-      : _.chain(dashboard.parameters)
-          .filter(p => parameterValuesBySlug[p.slug] != null)
-          .map(p => [p.id, { value: parameterValuesBySlug[p.slug] }])
-          .object()
-          .value();
+  const parameter = dashboard == null
+  ? {}
+  : _.chain(dashboard.parameters)
+      .filter(p => parameterValuesBySlug[p.slug] != null)
+      .map(p => [p.id, { value: parameterValuesBySlug[p.slug] }])
+      .object()
+      .value();
 
   const userAttribute = _.mapObject(userAttributes, value => ({ value }));
 
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
+}
+
+function getTokenParameter(dashboard) {
+  return (!dashboard || !dashboard.id || !(dashboard.id instanceof String))
+  ? {}
+  : function(token) {
+    const payload = parseJWTPayload(token);
+    return _.mapObject(payload.params, value => ({
+      value,
+    }));
+  }(dashboard.id);
+}
+
+function parseJWTPayload(token) {
+  var base64Url = token.split('.')[1];
+  var base64 = base64Url.replace('-', '+').replace('_', '/');
+  return JSON.parse(atob(base64));
 }
 
 const { Text, Number, Temporal } = TYPE;
