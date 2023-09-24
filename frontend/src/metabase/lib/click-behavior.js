@@ -73,7 +73,7 @@ export function getDataFromClicked({
 }
 
 function getTokenParameter(dashboard) {
-  return (!dashboard || !dashboard.id || !(dashboard.id instanceof String))
+  return (!dashboard || !dashboard.id || !( typeof dashboard.id === 'string' || dashboard.id instanceof String))
   ? {}
   : function(token) {
     const payload = parseJWTPayload(token);
