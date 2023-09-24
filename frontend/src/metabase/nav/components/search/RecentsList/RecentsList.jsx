@@ -22,7 +22,7 @@ import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 
-import { getTranslatedEntityName } from "metabase/nav/utils";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
   Root,
   EmptyStateContainer,
