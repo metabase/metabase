@@ -22,6 +22,7 @@ const EForm = ({
   resumedValues,
   ...props
 }) => {
+  // custom lazy loading to prevent circular deps problem
   const FormikForm = require("metabase/containers/FormikForm").default;
   const initialValues =
     typeof entityObject?.getPlainObject === "function"
