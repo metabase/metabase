@@ -32,7 +32,9 @@
   [archived user_id]
   {archived [:maybe ms/BooleanString]
    user_id  [:maybe ms/PositiveInt]}
-  (let [user-id (or user_id (when-not api/*is-superuser?* api/*current-user-id*))]
+  (let [user-id (if api/*is-superuser?*
+                  user_id
+                  api/*current-user-id*)]
     (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
                                   :user-id   user-id}) <>
       (filter mi/can-read? <>)
