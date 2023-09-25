@@ -3,7 +3,7 @@ import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Stack } from "metabase/ui";
-import { getTranslatedEntityName } from "metabase/nav/utils";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { EnabledSearchModelType } from "metabase-types/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper";
 

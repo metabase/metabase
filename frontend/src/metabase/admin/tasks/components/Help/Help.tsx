@@ -134,7 +134,7 @@ export const Help = () => {
           <HelpLink
             title={t`Connection Pool Details`}
             description={t`Information about active and idle connections for all pools`}
-            link={UtilApi.connection_pool_details_url}
+            link={UtilApi.get_connection_pool_details_url()}
           />
         </ol>
       </HelpBody>

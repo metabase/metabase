@@ -21,7 +21,7 @@ export const SearchResultsDropdown = ({
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
   const renderFooter: SearchResultsProps["footerComponent"] = metadata =>
-    metadata.total > 0 ? (
+    metadata.total > 1 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"
