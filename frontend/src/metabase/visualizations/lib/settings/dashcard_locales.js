@@ -494,7 +494,7 @@ const TITLE_LOCALES_BN = {
   },
   'venue.wise.urc.pti.dpeo.office.ddoffice.count': {
     'en': 'Statistics of Venues(URC-TRC, PTI, etc)',
-    'bn': 'ট্রেইনিং ভ্যেনু (ইউআরসি-টিআরসি, পিটিআই, ইত্যাদি) পরিসংখ্যান'
+    'bn': 'ট্রেইনিং ভেন্যু (ইউআরসি-টিআরসি, পিটিআই, ইত্যাদি) পরিসংখ্যান'
   },
   'admin.dashboard.officer.c-in-ed.bp-in-ed': {
     'en': 'Statistics of C-in-Ed and DPED Training',
