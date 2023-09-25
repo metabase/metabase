@@ -158,10 +158,8 @@
                       (str/trim (str first_name " " last_name))
                       email)]
     (cond-> user
-      ;; assoc `:common_name` if the user is selected with the required keys
-      (or (and (contains? user :first_name)
-               (contains? user :last_name))
-          (contains? user :email))
+      ;; assoc `:common_name` if `user` contains the required keys
+      (every? (partial contains? user) [:first_name :last_name :email])
       (assoc :common_name common-name))))
 
 (t2/define-after-select :model/User

@@ -524,3 +524,14 @@
         (is (= "47" (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
         (finally
           (setting/set! :last-acknowledged-version nil))))))
+
+(deftest common-name-test
+  (mt/with-temp [User user {:first_name "John"
+                            :last_name  "Smith"
+                            :email      "john.smith@gmail.com"}]
+    (is (= "John Smith"
+           (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
+    (is (= "John Smith"
+           (:common_name (t2/select-one User (:id user)))))
+    (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))
+    (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))))
