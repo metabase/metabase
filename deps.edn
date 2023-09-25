@@ -314,7 +314,7 @@
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.9.0"}
-    thheller/shadow-cljs               {:mvn/version "2.25.3"}}}
+    thheller/shadow-cljs               {:mvn/version "2.25.7"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
