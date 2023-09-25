@@ -121,12 +121,11 @@
         (is (= (-> (db-details)
                    (dissoc :details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
-                   (dissoc :schedules)))))
-
+                   (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
         (is (= (assoc (db-details) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
-                   (dissoc :schedules))))))
+                   (dissoc :schedules :can_upload))))))
 
     (mt/with-temp* [Database [db  {:name "My DB", :engine ::test-driver}]
                     Table    [t1  {:name "Table 1", :db_id (:id db)}]
@@ -156,6 +155,17 @@
     (testing "Invalid `?include` should return an error"
       (is (= {:errors {:include "value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`."}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
+
+(deftest get-database-can-upload-test
+  (testing "GET /api/database"
+    (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+      (doseq [uploads-enabled? [true false]]
+        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+          (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
+                                             uploads-schema-name "public"
+                                             uploads-database-id db-id]
+            (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+              (is (= uploads-enabled? (:can_upload result))))))))))
 
 (deftest get-database-usage-info-test
   (mt/with-temp*
@@ -622,7 +632,8 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (t2/select-one Database :id (mt/id))))
+        (let [expected-keys (-> #{:features :native_permissions :can_upload}
+                                (into (keys (t2/select-one Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
@@ -659,6 +670,19 @@
             (is (= {:data []
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
+
+(deftest databases-list-can-upload-test
+  (testing "GET /api/database"
+    (let [old-ids (t2/select-pks-set Database)]
+      (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
+                                               uploads-schema-name "public"
+                                               uploads-database-id db-id]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= (:total result) 1))
+                (is (= uploads-enabled? (-> result :data first :can_upload)))))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
