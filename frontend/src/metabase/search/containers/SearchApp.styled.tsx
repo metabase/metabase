@@ -3,7 +3,7 @@ import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 
 const SEARCH_BODY_WIDTH = "90rem";
 const SEARCH_SIDEBAR_WIDTH = "15rem";
@@ -23,7 +23,9 @@ export const SearchBody = styled(Flex)`
   }
 `;
 
-export const SearchControls = styled.div`
+export const SearchControls = styled(Stack)`
+  overflow: hidden;
+
   ${breakpointMinMedium} {
     flex: 0 0 ${SEARCH_SIDEBAR_WIDTH};
   }

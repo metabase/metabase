@@ -14,12 +14,15 @@ const mockFilter: SearchSidebarFilterComponent = {
       {!value || value.length === 0 ? "Display" : value}
     </div>
   ),
-  ContentComponent: ({ value, onChange }) => (
+  ContentComponent: ({ value, onChange, onApply }) => (
     <div data-testid="mock-content-component">
       <button onClick={() => onChange(["new value"])}>Update</button>
       <div>{value}</div>
+      <button onClick={() => onApply()}>Apply filters</button>
     </div>
   ),
+  fromUrl: value => value,
+  toUrl: value => value,
 };
 
 const MockSearchSidebarFilter = ({
@@ -98,6 +101,7 @@ describe("SidebarFilter", () => {
     expect(screen.getByText("new value")).toBeInTheDocument();
 
     userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+
     expect(onChange).toHaveBeenCalledWith(["new value"]);
 
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(

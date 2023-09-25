@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import type { SearchAwareLocation, SearchFilters } from "metabase/search/types";
+import type {
+  SearchAwareLocation,
+  URLSearchFilterQueryParams,
+} from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
 export function isSearchPageLocation(location: SearchAwareLocation): boolean {
@@ -19,7 +22,7 @@ export function getSearchTextFromLocation(
 
 export function getFiltersFromLocation(
   location: SearchAwareLocation,
-): SearchFilters {
+): URLSearchFilterQueryParams {
   if (isSearchPageLocation(location)) {
     return _.pick(location.query, Object.values(SearchFilterKeys));
   }
