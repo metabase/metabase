@@ -57,20 +57,19 @@
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
 
-(deftest audit-db-instance-analytics-content-is-unzipped-properly
+(defn- remove-instance-analytics
+  []
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= (:err (sh/sh "ls" "plugins/instance_analytics"))
-         "ls: plugins/instance_analytics: No such file or directory\n"))
+  (is (= 1 (:exit (sh/sh "ls" "plugins/instance_analytics")))))
 
+(deftest audit-db-instance-analytics-content-is-unzipped-properly
+  (remove-instance-analytics)
   (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
   (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))
          ["collections" "databases"])))
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
-  (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= (:err (sh/sh "ls" "plugins/instance_analytics"))
-         "ls: plugins/instance_analytics: No such file or directory\n"))
-
+  (remove-instance-analytics)
   (#'audit-db/ia-content->plugins nil audit-db/analytics-dir-resource)
   (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))
          ["collections" "databases"])))

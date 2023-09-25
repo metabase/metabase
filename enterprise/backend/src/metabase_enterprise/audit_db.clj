@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-db
   (:require
-   [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
    [metabase-enterprise.internal-user :as ee.internal-user]
@@ -12,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
