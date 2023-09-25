@@ -188,9 +188,6 @@ describe("actions > containers > ActionCreatorModal", () => {
       userEvent.type(screen.queryAllByRole("textbox")[1], query);
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
-      userEvent.click(screen.getByRole("button", { name: "Create" }));
-
       fetchMock.post("path:/api/action", {
         name: "New Actiona change",
         dataset_query: {
@@ -213,6 +210,9 @@ describe("actions > containers > ActionCreatorModal", () => {
           fields: {},
         },
       });
+
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Create" }));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toBe(initialRoute);
@@ -289,14 +289,21 @@ describe("actions > containers > ActionCreatorModal", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(action.name)).toBeInTheDocument();
+      });
+
       userEvent.type(screen.getByDisplayValue(action.name), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      fetchMock.reset();
-      fetchMock.put(`path:/api/action/${action.id}`, {
-        ...action,
-        name: `${action.name}a change`,
-      });
+      fetchMock.put(
+        `path:/api/action/${action.id}`,
+        {
+          ...action,
+          name: `${action.name}a change`,
+        },
+        { overwriteRoutes: true },
+      );
 
       userEvent.click(screen.getByRole("button", { name: "Update" }));
 
