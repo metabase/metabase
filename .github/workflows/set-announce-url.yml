@@ -14,18 +14,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - name: Validate inputs
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const announcementUrl = '${{ inputs.announcement-url }}';
-
-            if (!announcementUrl.includes('http')) {
-              throw new Error(`announcement-url must be a valid URL, got: ${announcementUrl}`);
-            }
+      - name: Validate input
+        if: ${{ !startsWith(inputs.announcement-url, 'http') }}
+        run: |
+            echo "announcement url must be a valid URL, got: ${{ inputs.announcement-url }}"
+            exit 1
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
@@ -41,19 +37,23 @@ jobs:
 
             const announcementUrl = '${{ inputs.announcement-url }}';
 
-            const OSSversionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/version-info.json`).then(r => r.json());
-            const EEversionInfo = await fetch(`http://${{ vars.AWS_S3_PUBLIC_BUCKET }}.s3.us-east-1.amazonaws.com/version-info-ee.json`).then(r => r.json());
+            const OSSversionInfo = await fetch(`http://${{ vars.AWS_S3_STATIC_BUCKET }}.s3.${{ vars.AWS_REGION }}.amazonaws.com/version-info.json`).then(r => r.json());
+            const EEversionInfo = await fetch(`http://${{ vars.AWS_S3_STATIC_BUCKET }}.s3.${{ vars.AWS_REGION }}.amazonaws.com/version-info-ee.json`).then(r => r.json());
 
             OSSversionInfo.latest.announcement_url = announcementUrl;
             EEversionInfo.latest.announcement_url = announcementUrl;
+
+            if (!OSSVersion.older.length || !EEVersion.older.length) {
+              throw new Error('No older versions found in version-info.json');
+            }
 
             fs.writeFileSync('version-info.json', JSON.stringify(OSSversionInfo));
             fs.writeFileSync('version-info-ee.json', JSON.stringify(EEversionInfo));
 
       - name: Upload new version-info.json to s3
         run: |
-          aws s3 cp version-info.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/version-info.json
-          aws s3 cp version-info-ee.json s3://${{ vars.AWS_S3_PUBLIC_BUCKET }}/version-info-ee.json
+          aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
+          aws s3 cp version-info-ee.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info-ee.json
       - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
         run: |
           aws cloudfront create-invalidation \
