@@ -545,4 +545,3 @@
            (:common_name (t2/select-one User (:id user)))))
     (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))
     (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))))
-
