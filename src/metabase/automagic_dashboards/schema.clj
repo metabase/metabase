@@ -1,6 +1,5 @@
 (ns metabase.automagic-dashboards.schema
-  (:require [malli.core :as mc]
-            [malli.generator :as mg]))
+  (:require [malli.core :as mc]))
 
 ;; --
 (def context

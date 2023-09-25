@@ -93,7 +93,6 @@
     [java-time :as t]
     [kixi.stats.core :as stats]
     [kixi.stats.math :as math]
-    [malli.core :as mc]
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.filters :as filters]
@@ -999,7 +998,7 @@
   "Return an ordered map of affinity names to the set of dimensions they depend on."
   [affinities :- ads/affinities
    available-dimensions :- [:set [:string {:min 1}]]]
-  ;; Since the affinities contain the exploded base-dims, we simply do a set filter onx the affinity names as that is
+  ;; Since the affinities contain the exploded base-dims, we simply do a set filter on the affinity names as that is
   ;; how we currently match to existing cards.
   (let [met-affinities (filter (fn [{:keys [base-dims] :as _v}]
                                  (set/subset? base-dims available-dimensions))
@@ -1161,16 +1160,16 @@
   (let [{template-dimensions :dimensions
          :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
         model        (t2/select-one :model/Card 2)
-        base-context (make-base-context (->root model))]
-    (let [affinities           (dash-template->affinities dashboard-template)
-          available-dimensions (->> (bind-dimensions base-context template-dimensions)
-                                    (add-field-self-reference base-context))
-          satisfied-affinities (match-affinities affinities (set (keys available-dimensions)))
-          distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)]
-      (update-vals
-        (all-satisfied-bindings distinct-affinity-sets available-dimensions)
-        (fn [v]
-          (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v)))))
+        base-context (make-base-context (->root model))
+        affinities           (dash-template->affinities dashboard-template)
+        available-dimensions (->> (bind-dimensions base-context template-dimensions)
+                                  (add-field-self-reference base-context))
+        satisfied-affinities (match-affinities affinities (set (keys available-dimensions)))
+        distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)]
+    (update-vals
+      (all-satisfied-bindings distinct-affinity-sets available-dimensions)
+      (fn [v]
+        (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
   )
 
 (s/defn ^:private apply-dashboard-template
