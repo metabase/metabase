@@ -100,10 +100,8 @@ function convertQuestionToAction(
     cleanQuestion.parameters(),
   );
 
-  return {
-    id: question.id(),
+  const action: Partial<WritebackQueryAction> = {
     name: question.displayName() as string,
-    description: question.description(),
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
@@ -120,6 +118,21 @@ function convertQuestionToAction(
       },
     },
   };
+
+  // Include id and description only when they're not undefined.
+  // This is needed due to Actions.HACK_getObjectFromAction usage in ActionCreator.
+  const id = question.id();
+  const description = question.description();
+
+  if (typeof id !== "undefined") {
+    action.id = id;
+  }
+
+  if (typeof description !== "undefined") {
+    action.description = description;
+  }
+
+  return action;
 }
 
 function resolveQuestion(
