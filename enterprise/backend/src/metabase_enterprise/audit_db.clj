@@ -135,8 +135,8 @@
         (u.files/unzip-file analytics-zip-resource
                             (fn [entry-name]
                               (str/replace entry-name
-                                           "/resources/instance_analytics/"
-                                           "/plugins/instance_analytics/")))
+                                           "resources/instance_analytics/"
+                                           "plugins/instance_analytics/")))
         (log/info "Unzipping done."))
     dir-resource
     (do
