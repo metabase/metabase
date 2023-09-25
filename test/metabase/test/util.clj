@@ -59,6 +59,7 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent TimeoutException)
+   (org.apache.commons.io FileUtils)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
@@ -1132,7 +1133,7 @@
    (^:once fn* [path]
     (let [file (io/file path)]
       (when (.exists file)
-        (org.apache.commons.io.FileUtils/deleteDirectory file)))
+        (FileUtils/deleteDirectory file)))
     (u.files/create-dir-if-not-exists! (u.files/get-path path))
     (f path))))
 

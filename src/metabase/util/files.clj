@@ -15,7 +15,7 @@
    (java.util.zip ZipInputStream)
    (java.io File FileNotFoundException)
    (java.net URL)
-   (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
+   (java.nio.file CopyOption Files SimpleFileVisitor FileSystem FileSystems FileVisitResult LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
    (java.util Collections)))
 
@@ -92,7 +92,7 @@
 
 (defn copy-files!
   "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as
-  that of the source file — see #11699 for more context."
+  that of the source file — see #11699 for more context. Does not copy subdirectories recursively."
   [^Path source-dir, ^Path dest-dir]
   (doseq [^Path source (files-seq source-dir)
           :let         [target (append-to-path dest-dir (str (.getFileName source)))]]

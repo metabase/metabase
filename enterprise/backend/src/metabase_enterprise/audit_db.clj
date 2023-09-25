@@ -1,9 +1,8 @@
 (ns metabase-enterprise.audit-db
   (:require
-   [clojure.core :as c]
    [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
    [clojure.string :as str]
+   [me.raynes.fs :as fs]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.env :as mdb.env]
@@ -125,6 +124,11 @@
   "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
   (plugins/plugins-dir))
 
+(defn analytics-dir-plugins-path
+  "The path to the analytics content dir in the plugins dir."
+  []
+  (u.files/append-to-path (plugins/plugins-dir) "instance_analytics"))
+
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
@@ -138,11 +142,11 @@
                                            "resources/instance_analytics/"
                                            "plugins/instance_analytics/")))
         (log/info "Unzipping done."))
+
     dir-resource
     (do
-      (log/info "Copying resources/instance_analytics to " plugin-dir "...")
-      ;; TODO add a recursive copy to u.files
-      (sh/sh "cp" "-r" "resources/instance_analytics" (str plugin-dir))
+      (log/info "Copying resources/instance_analytics to plugins...")
+      (fs/copy-dir-into analytics-dir-resource (analytics-dir-plugins-path))
       (log/info "Copying done."))))
 
 (defenterprise ensure-audit-db-installed!
