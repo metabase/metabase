@@ -41,7 +41,6 @@ describe("URLs", () => {
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByTestId("browse-data");
         cy.location("pathname").should("eq", url);
       });
