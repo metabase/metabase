@@ -1,5 +1,5 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   renderWithProviders,
@@ -7,8 +7,9 @@ import {
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
-  setupModelActionsEndpoints,
   setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 
 import type { Card, WritebackAction } from "metabase-types/api";
@@ -16,16 +17,9 @@ import {
   createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/core/utils/types";
 
 import ActionCreatorModal from "./ActionCreatorModal";
-
-jest.mock(
-  "metabase/actions/containers/ActionCreator",
-  () =>
-    function MockActionCreator() {
-      return <div data-testid="mock-action-creator" />;
-    },
-);
 
 const MODEL = createMockCard({ id: 1, dataset: true });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
@@ -43,6 +37,7 @@ async function setup({
   model = MODEL,
   action = ACTION,
 }: SetupOpts) {
+  setupDatabasesEndpoints([]);
   setupCardsEndpoints([model]);
 
   if (action) {
@@ -68,9 +63,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
-
-  return { history };
+  return { history: checkNotNull(history) };
 }
 
 describe("actions > containers > ActionCreatorModal", () => {
@@ -81,18 +74,25 @@ describe("actions > containers > ActionCreatorModal", () => {
   it("renders correctly", async () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
     await setup({ initialRoute });
-    expect(
-      await screen.findByTestId("mock-action-creator"),
-    ).toBeInTheDocument();
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+
+    expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
   });
 
   it("redirects back to the model detail page if the action is not found", async () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION_NOT_FOUND_ID}`;
     const { history } = await setup({ initialRoute, action: null });
 
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
-    expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe(
       `/model/${MODEL_SLUG}/detail/actions`,
     );
   });
@@ -102,9 +102,13 @@ describe("actions > containers > ActionCreatorModal", () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
     const { history } = await setup({ initialRoute, action });
 
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
-    expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe(
       `/model/${MODEL_SLUG}/detail/actions`,
     );
   });
