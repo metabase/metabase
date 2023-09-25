@@ -3,6 +3,7 @@
    [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.env :as mdb.env]
@@ -120,7 +121,9 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def plugin-dir (plugins/plugins-dir))
+(def plugin-dir
+  "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
+  (plugins/plugins-dir))
 
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
@@ -129,7 +132,11 @@
   (cond
     zip-resource
     (do (log/info "Unzipping instance_analytics to " plugin-dir "...")
-        (u.files/unzip-file analytics-zip-resource plugin-dir)
+        (u.files/unzip-file analytics-zip-resource
+                            (fn [entry-name]
+                              (str/replace entry-name
+                                           "/resources/instance_analytics/"
+                                           "/plugins/instance_analytics/")))
         (log/info "Unzipping done."))
     dir-resource
     (do
