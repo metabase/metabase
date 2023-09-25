@@ -57,7 +57,6 @@
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
 
-
 (deftest audit-db-instance-analytics-content-is-unzipped-properly
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
   (is (= (:err (sh/sh "ls" "plugins/instance_analytics"))
