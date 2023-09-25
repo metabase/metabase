@@ -23,6 +23,9 @@ import type {
   User,
   UserListResult,
 } from "metabase-types/api";
+
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+
 import type { AdminPathKey, State } from "metabase-types/store";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type Question from "metabase-lib/Question";
@@ -161,6 +164,7 @@ export const PLUGIN_COLLECTIONS = {
     _: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
+  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
