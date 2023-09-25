@@ -69,7 +69,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
           "Visit embedded question and set its filter through query parameters",
         );
         visitEmbeddedPage(payload, {
-          setFilters: { text: "Foo" },
+          setFilters: "text=Foo",
         });
 
         cy.get(".cellData").should("have.text", "Foo");
