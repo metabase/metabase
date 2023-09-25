@@ -125,7 +125,7 @@
       (testing "Superusers should see DB details"
         (is (= (assoc (db-details) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
-                   (dissoc :schedules :can_upload))))))))
+                   (dissoc :schedules :can_upload))))))
 
     (mt/with-temp* [Database [db  {:name "My DB", :engine ::test-driver}]
                     Table    [t1  {:name "Table 1", :db_id (:id db)}]
