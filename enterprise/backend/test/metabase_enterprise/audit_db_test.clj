@@ -1,5 +1,7 @@
 (ns metabase-enterprise.audit-db-test
   (:require [clojure.java.io :as io]
+            [clojure.java.shell :as sh]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.core :as mbc]
@@ -57,7 +59,8 @@
 
 (deftest audit-db-instance-analytics-content-is-unzipped-properly
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= 1 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
+  (is (= (:err (sh/sh "ls" "plugins/instance_analytics"))
+         "ls: plugins/instance_analytics: No such file or directory\n"))
 
   (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
   (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))
@@ -65,7 +68,8 @@
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= 1 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
+  (is (= (:err (sh/sh "ls" "plugins/instance_analytics"))
+         "ls: plugins/instance_analytics: No such file or directory\n"))
 
   (#'audit-db/ia-content->plugins nil audit-db/analytics-dir-resource)
   (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))

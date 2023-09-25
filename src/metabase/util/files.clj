@@ -160,11 +160,11 @@
 
 (defn unzip-file
   "Decompress a zip archive from input to output."
-  [zip-file mod-fn]
+  [zip-file out-dir]
   (with-open [stream (-> zip-file io/input-stream ZipInputStream.)]
     (loop [entry (.getNextEntry stream)]
       (when entry
-        (let [out-path (mod-fn (.getName entry))
+        (let [out-path (str out-dir File/separatorChar (.getName entry))
               out-file (File. out-path)]
           (if (.isDirectory entry)
             (when-not (.exists out-file) (.mkdirs out-file))
