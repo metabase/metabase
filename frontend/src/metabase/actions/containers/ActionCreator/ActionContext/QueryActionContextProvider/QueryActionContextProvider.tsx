@@ -47,6 +47,7 @@ function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
         database: databaseId ?? null,
         native: {
           query: "",
+          "template-tags": {},
         },
       },
     },
@@ -106,7 +107,18 @@ function convertQuestionToAction(
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
-    visualization_settings: formSettings,
+    type: "query" as const,
+    visualization_settings: {
+      name: "",
+      type: "button" as const,
+      description: "",
+      confirmMessage: "",
+      successMessage: "",
+      ...formSettings,
+      fields: {
+        ...formSettings.fields,
+      },
+    },
   };
 }
 
@@ -126,6 +138,11 @@ function QueryActionContextProvider({
   children,
   onActionChange,
 }: QueryActionContextProviderProps) {
+  const newEmptyAction = convertQuestionToAction(
+    resolveQuestion(undefined, { metadata, databaseId }),
+    initialAction?.visualization_settings || {},
+  );
+
   const [question, setQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
   );
@@ -190,8 +207,12 @@ function QueryActionContextProvider({
   );
 
   const isDirty = useMemo(() => {
-    return canSave && !_.isEqual(action, initialAction);
-  }, [action, canSave, initialAction]);
+    if (initialAction) {
+      return !_.isEqual(action, initialAction);
+    }
+
+    return !_.isEqual(action, newEmptyAction);
+  }, [action, initialAction, newEmptyAction]);
 
   const value = useMemo(
     (): ActionContextType => ({
