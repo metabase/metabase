@@ -8,6 +8,12 @@ const LABEL_FONT_SIZES = {
   md: rem(16),
 };
 
+const LABEL_LINE_HEIGHT = {
+  xs: rem(16),
+  sm: rem(24),
+  md: rem(24),
+};
+
 const SWITCH_PADDING = {
   xs: rem(8),
   sm: rem(8),
@@ -41,12 +47,28 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
     styles: (theme, { error }: SwitchStylesParams, { size = "sm" }) => {
       return {
         labelWrapper: {
-          color: theme.colors.text[2],
+          paddingLeft: getSize({ size, sizes: SWITCH_PADDING }),
         },
         label: {
           fontWeight: 700,
           fontSize: getSize({ size, sizes: LABEL_FONT_SIZES }),
-          paddingLeft: getSize({ size, sizes: SWITCH_PADDING }),
+          lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
+          color: theme.colors.text[2],
+          cursor: "pointer",
+          "&[data-disabled]": {
+            color: theme.colors.text[0],
+            cursor: "default",
+          },
+        },
+        description: {
+          marginTop: rem(8),
+          fontSize: rem(12),
+          color: theme.colors.text[1],
+        },
+        error: {
+          marginTop: rem(8),
+          fontSize: rem(12),
+          color: theme.colors.error[0],
         },
         track: {
           backgroundColor: theme.colors.bg[1],

@@ -6,7 +6,6 @@ export const args = {
   labelPosition: "right",
   label: "Eat all the cheese",
   description: "Every type of cheese will be consumed, regardless of stink.",
-  error: "Lactose intolerant",
   size: "sm",
   disabled: false,
 };
@@ -22,12 +21,9 @@ export const argTypes = {
   description: {
     control: { type: "text" },
   },
-  error: {
-    control: { type: "text" },
-  },
   size: {
     control: { type: "inline-radio" },
-    options: ["xs", "sm", "md", "lg"],
+    options: ["xs", "sm", "md"],
   },
   disabled: {
     control: { type: "boolean" },
