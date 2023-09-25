@@ -18,6 +18,7 @@ runs:
     - name: Build static viz frontend
       run: yarn build-static-viz
       shell: bash
+
     - name: Setup upterm session
       uses: lhotari/action-upterm@v1
     - name: Test database driver
