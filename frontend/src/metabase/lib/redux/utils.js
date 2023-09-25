@@ -11,6 +11,7 @@ import {
   setRequestError,
   setRequestUnloaded,
 } from "metabase/redux/requests";
+import { waitFor } from "metabase/lib/utils";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
@@ -270,45 +271,55 @@ function withCachedData(
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
-    (...args) =>
-    // thunk:
-    (dispatch, getState) => {
-      const options = args[args.length - 1] || {};
-      const { useCachedForbiddenError, reload, properties } = options;
+    (...args) => {
+      async function thunk(dispatch, getState) {
+        const options = args[args.length - 1] || {};
+        const { useCachedForbiddenError, reload, properties } = options;
 
-      const existingStatePath = getExistingStatePath(...args);
-      const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-      const newQueryKey = getQueryKey && getQueryKey(...args);
-      const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey, error } =
-        getIn(getState(), requestStatePath) || {};
+        const existingStatePath = getExistingStatePath(...args);
+        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+        const newQueryKey = getQueryKey && getQueryKey(...args);
+        const existingData = getIn(getState(), existingStatePath);
+        const { loading, loaded, queryKey, error } =
+          getIn(getState(), requestStatePath) || {};
 
-      // Avoid requesting data with permanently forbidded access
-      if (useCachedForbiddenError && error?.status === 403) {
-        throw error;
-      }
+        // Avoid requesting data with permanently forbidded access
+        if (useCachedForbiddenError && error?.status === 403) {
+          throw error;
+        }
 
-      const hasRequestedProperties =
-        properties &&
-        existingData &&
-        _.all(properties, p => existingData[p] !== undefined);
+        const hasRequestedProperties =
+          properties &&
+          existingData &&
+          _.all(properties, p => existingData[p] !== undefined);
 
-      // return existing data if
-      if (
-        // we don't want to reload
-        // the check is a workaround for EntityListLoader passing reload function to children
-        reload !== true &&
-        // reload if the query used to load an entity has changed even if it's already loaded
-        newQueryKey === queryKey &&
-        // and we have a non-error request state or have a list of properties that all exist on the object
-        (loading || loaded || hasRequestedProperties)
-      ) {
-        // TODO: if requestState is LOADING can we wait for the other reques
-        // to complete and return that result instead?
-        return existingData;
-      } else {
+        // return existing data if
+        if (
+          // we don't want to reload
+          // the check is a workaround for EntityListLoader passing reload function to children
+          reload !== true &&
+          // reload if the query used to load an entity has changed even if it's already loaded
+          newQueryKey === queryKey
+        ) {
+          // and we have a non-error request state or have a list of properties that all exist on the object
+          if (loaded || hasRequestedProperties) {
+            return existingData;
+          } else if (loading) {
+            // wait for current loading request to be resolved
+            const result = await waitFor(
+              () => getIn(getState(), requestStatePath)?.loaded,
+            );
+            if (result) {
+              // retry this function after waited request is resolved
+              return thunk(dispatch, getState);
+            }
+          }
+        }
+
         return thunkCreator(...args)(dispatch, getState);
       }
+
+      return thunk;
     };
 }
 

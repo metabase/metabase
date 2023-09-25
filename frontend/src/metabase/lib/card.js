@@ -29,7 +29,14 @@ export async function loadCard(cardId, { dispatch, getState }) {
     await dispatch(
       Questions.actions.fetch(
         { id: cardId },
-        { properties: ["dataset_query", "display", "visualization_settings"] }, // complies with Card interface
+        {
+          properties: [
+            "id",
+            "dataset_query",
+            "display",
+            "visualization_settings",
+          ], // complies with Card interface
+        },
       ),
     );
 

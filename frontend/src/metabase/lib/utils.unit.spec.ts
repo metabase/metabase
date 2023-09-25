@@ -3,7 +3,8 @@ import {
   compareVersions,
   isEmpty,
   isJWT,
-} from "metabase/lib/utils";
+  waitFor,
+} from "./utils";
 
 describe("utils", () => {
   describe("versionToNumericComponents", () => {
@@ -118,6 +119,39 @@ describe("utils", () => {
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXJhbXMiOnsicGFyYW0xIjoidGVzdCIsInBhcmFtMiI6ImFiIiwicGFyYW0zIjoiMjAwMC0wMC0wMFQwMDowMDowMCswMDowMCIsInBhcmFtNCI6Iu-8iO-8iSJ9LCJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjB9fQ.wsNWliHJNwJBv_hx0sPo1EGY0nATdgEa31TM1AYotIA",
         ),
       ).toEqual(true);
+    });
+  });
+
+  describe("waitFor", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("should resolve with true if passed condition is true at the beginning", async () => {
+      expect(await waitFor(() => true)).toBe(true);
+    });
+
+    it("should resolve with true if passed condition gets true within total timeout", async () => {
+      jest.useFakeTimers();
+
+      const now = Date.now();
+      const conditionFn = jest.fn(() => Date.now() - now > 1000);
+
+      const resultPromise = waitFor(conditionFn);
+
+      jest.advanceTimersByTime(1050);
+
+      expect(await resultPromise).toBe(true);
+    });
+
+    it("should resolve with false if passed condition doesn't get true within total timeout", async () => {
+      jest.useFakeTimers();
+
+      const resultPromise = waitFor(() => false);
+
+      jest.advanceTimersByTime(30050);
+
+      expect(await resultPromise).toBe(false);
     });
   });
 });

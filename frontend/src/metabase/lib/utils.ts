@@ -205,3 +205,30 @@ export function compareVersions(
   }
   return 0;
 }
+
+export function waitFor(
+  conditionCb: () => boolean,
+  pollInterval = 50,
+  totalTimeout = 30000,
+): Promise<boolean> {
+  const startTime = Date.now();
+
+  return new Promise((resolve, reject) => {
+    if (conditionCb()) {
+      resolve(true);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (conditionCb()) {
+        resolve(true);
+        clearInterval(interval);
+      }
+
+      if (Date.now() >= startTime + totalTimeout) {
+        resolve(false);
+        clearInterval(interval);
+      }
+    }, pollInterval);
+  });
+}
