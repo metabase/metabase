@@ -6,6 +6,4 @@ export const CreatedAtDatePicker = styled(DateAllOptions)`
   & [data-testid="date-picker-shortcuts"] {
     padding: 0;
   }
-
-  display: block;
 `;

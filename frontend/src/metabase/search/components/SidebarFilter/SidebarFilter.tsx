@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type {
   SearchFilterComponentProps,
+  SearchFilterPropTypes,
   SearchSidebarFilterComponent,
 } from "metabase/search/types";
 import { Group, Text, Box } from "metabase/ui";
@@ -25,13 +26,7 @@ export type SearchSidebarFilterProps = {
 } & SearchFilterComponentProps;
 
 export const SidebarFilter = ({
-  filter: {
-    title,
-    iconName,
-    applyImmediately,
-    DisplayComponent,
-    ContentComponent,
-  },
+  filter: { title, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,
   onChange,
@@ -70,8 +65,8 @@ export const SidebarFilter = ({
     }
   }, [isNavbarOpen, isSmallScreen]);
 
-  const onApplyFilter = () => {
-    onChange(selectedValues);
+  const onApplyFilter = (selected: SearchFilterPropTypes | undefined) => {
+    onChange(selected);
     setIsPopoverOpen(false);
   };
 
@@ -139,11 +134,10 @@ export const SidebarFilter = ({
         sizeToFit
       >
         <SearchEventSandbox>
-          <Box w={popoverWidth ?? "100%"}>
+          <Box miw={popoverWidth ?? "100%"}>
             <ContentComponent
               value={selectedValues}
-              onChange={selected => setSelectedValues(selected)}
-              onApply={onApplyFilter}
+              onChange={selected => onApplyFilter(selected)}
             />
           </Box>
         </SearchEventSandbox>

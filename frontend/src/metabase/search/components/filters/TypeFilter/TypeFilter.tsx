@@ -18,5 +18,4 @@ export const TypeFilter: SearchSidebarFilterComponent<"type"> = {
     }
     return isEnabledSearchModelType(value) ? [value] : [];
   },
-  toUrl: value => value,
 };

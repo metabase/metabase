@@ -34,14 +34,14 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       const { toUrl } = filterMap[key];
       onChange({
         ...value,
-        [key]: toUrl(val),
+        [key]: toUrl?.(val) ?? val,
       });
     }
   };
 
   const getFilter = (key: FilterTypeKeys) => {
     const Filter = filterMap[key];
-    const filterValue = Filter.fromUrl(value[key]);
+    const filterValue = Filter.fromUrl?.(value[key]) ?? value[key];
 
     return (
       <SidebarFilter

@@ -14,11 +14,11 @@ const mockFilter: SearchSidebarFilterComponent = {
       {!value || value.length === 0 ? "Display" : value}
     </div>
   ),
-  ContentComponent: ({ value, onChange, onApply }) => (
+  ContentComponent: ({ value, onChange, onCommit }) => (
     <div data-testid="mock-content-component">
       <button onClick={() => onChange(["new value"])}>Update</button>
       <div>{value}</div>
-      <button onClick={() => onApply()}>Apply filters</button>
+      <button onClick={() => onCommit()}>Apply filters</button>
     </div>
   ),
   fromUrl: value => value,

@@ -22,7 +22,7 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedByFilterProps = UserId | undefined;
+export type CreatedByFilterProps = UserId;
 export type CreatedAtFilterProps = string;
 
 export type SearchFilterPropTypes = {
@@ -53,15 +53,12 @@ export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
 export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   title: string;
   iconName: IconName;
-  applyImmediately?: boolean;
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<
-    { onApply: () => void } & SearchFilterComponentProps<T>
-  >;
+  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
   // two functions for converting strings to the desired prop type and back
   // (e.g. for converting a string to a date)
-  fromUrl: (
+  fromUrl?: (
     value: string | string[] | null | undefined,
   ) => SearchFilterPropTypes[T];
-  toUrl: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
+  toUrl?: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
 };

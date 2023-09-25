@@ -55,4 +55,8 @@ export const DropdownClearButton = styled(Button)<
 
 export const SearchEventSandbox = styled(EventSandbox)`
   display: contents;
+
+  & > div {
+    transition: min-width 1s ease;
+  }
 `;
