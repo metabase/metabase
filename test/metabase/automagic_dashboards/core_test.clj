@@ -2035,7 +2035,11 @@
                                           :database (mt/id)
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates base-context available-values card-def)))))
+                        (#'magic/card-candidates
+                          base-context
+                          {#{} [{}]}
+                          available-values
+                          card-def)))))
             (testing "A card spec that requires both the Count and Lat metrics and dimensions will produce cards that
                       use those bound dimensions."
               (let [card-def {:title      "Some sort of card"
@@ -2050,7 +2054,11 @@
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :breakout     [[:field (mt/id :people :latitude) nil]]
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates base-context available-values card-def)))))))))))
+                        (#'magic/card-candidates
+                          base-context
+                          {#{"Lat"} [{"Lat" (t2/select-one :model/Field (mt/id :people :latitude))}]}
+                          available-values
+                          card-def)))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
@@ -2087,201 +2095,6 @@
                   (-> related
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
-
-;;; -------------------- card-candidates and subfunctions tests --------------------
-
-(deftest potential-card-dimension-bindings-test
-  (testing "potential-card-dimension-bindings will compute the full cartesian product of every possible combination of
-            fields from the context that can satisfy the dimensions, metrics, and filters that are required per the
-            dimensions, metrics, and filters common to both the context and the card."
-    (is (= [{"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
-            {"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}
-            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
-            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"
-               {:matches [{:name "TAX"} {:name "SUBTOTAL"}]}
-               "Date"
-               {:matches
-                [{:name "SALES_DATE"} {:name "ENROLL_DATE"}]}
-               "Income"   {:matches [{:name "Income"} {:name "Realized Income"}]}
-               "Discount" {:matches [{:name "Price Discount"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Date" {}]]
-              :satisfied-metrics    [{"AvgDiscount" {:metric ["/"
-                                                              ["sum" ["dimension" "Discount"]]
-                                                              ["sum" ["dimension" "Income"]]]
-                                                     :name   "Average discount %"}}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) still require a dimension to match on.
-            In this case you would be counting the Source dimension field."
-    (is (= [{"Source" {:name "SOURCE"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "ACTIVE_SUBSCRIPTION"}
-                                                  {:name "TRIAL_CONVERTED"}
-                                                  {:name "LEGACY_PLAN"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Source" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) will match all dimensions if present."
-    (is (= [{"Source"        {:name "SOURCE"}
-             "GenericNumber" {:name "SEATS"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "NO MATCH"}
-                                                  {:name "AT ALL"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Source" {}]
-                                     [:dimension "GenericNumber" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) must have some dimension to count on.
-            Count won't just count a source table or anything, a dimension must be provided."
-    (is (= [{}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "NO MATCH"}
-                                                  {:name "AT ALL"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions []
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimension-only matching is also supported (e.g. show points at Lon-Lat locations)."
-    (is (= [{"Lon" {:name "Longitude"}
-             "Lat" {:name "Latitude"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"Lon" {:matches [{:name "Longitude"}]},
-               "Lat" {:matches [{:name "Latitude"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Lon" {}]
-                                     [:dimension "Lat" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensions can be sourced from a query."
-    (is (= [{"QUERY_FIELD" {:name "Query Field"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"QUERY_FIELD" {:matches [{:name "Query Field"}]}}}
-             {:query [:field [:dimension "QUERY_FIELD"]]}
-             {:satisfied-dimensions []
-              :satisfied-metrics    []
-              :satisfied-filters    []})))))
-
-(deftest potential-card-dimension-bindings-to-entity-type-test
-  (testing "Ensure the branch is called in which the filter-tables branch of some-fn is called."
-    (mt/dataset sample-dataset
-      (testing "The dimension is named in the card query"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query [:field [:dimension dimension-name]]}
-                    {:satisfied-dimensions []
-                     :satisfied-metrics    []
-                     :satisfied-filters    []})))))
-      (testing "The dimension is named in the filters"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query nil}
-                    {:satisfied-dimensions []
-                     :satisfied-metrics    []
-                     :satisfied-filters    [[:dimension dimension-name]]})))))
-      (testing "The dimension is named in the satisfied dimensions"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query nil}
-                    {:satisfied-dimensions [[:dimension dimension-name {}]]
-                     :satisfied-metrics    []
-                     :satisfied-filters    []}))))))))
-
-(deftest potential-card-dimension-bindings-native-query-card-test
-  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
-  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
-  (testing "Card templates can specify dimensions in their queries, which can include table dependencies."
-    (mt/dataset sample-dataset
-      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
-            card-template {:query query}
-            table         (t2/select-one :model/Table :id (mt/id :people))
-            root          (#'magic/->root table)
-            base-context  (#'magic/make-base-context root)
-            [potential-binding :as potential-bindings] (#'magic/potential-card-dimension-bindings
-                                                         base-context
-                                                         {:available-dimensions
-                                                          {"State"  {:matches [{:name "STATE"}]}
-                                                           "UserFK" {:matches [{:name "USER_ID"}]}
-                                                           "UserPK" {:matches [{:name "ID"}]}}}
-                                                         card-template
-                                                         {:satisfied-dimensions []
-                                                          :satisfied-metrics    []
-                                                          :satisfied-filters    []})]
-        (is (= 1 (count potential-bindings)))
-        (is (=? {"State"        {:name "STATE"}
-                 "GenericTable" table
-                 "UserTable"    table
-                 "UserFK"       {:name "USER_ID"}
-                 "UserPK"       {:name "ID"}}
-                potential-binding))))))
-
-(deftest make-cards-native-query-card-test
-  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
-  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
-  (testing "Cards can be generated from a card with a native query."
-    (mt/dataset sample-dataset
-      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
-            card-template {:query query :score 1}
-            table         (t2/select-one :model/Table :id (mt/id :people))
-            root          (#'magic/->root table)
-            base-context  (#'magic/make-base-context root)
-            [card-candidate :as card-candidates] (#'magic/card-candidates
-                                                   base-context
-                                                   {:available-dimensions
-                                                    {"State"  {:matches [{:name "STATE"}]}
-                                                     "UserFK" {:matches [{:name "USER_ID"}]}
-                                                     "UserPK" {:matches [{:name "ID"}]}}}
-                                                   card-template)]
-        (is (= 1 (count card-candidates)))
-        ;; Note that PEOPLE does not contain USER_ID.
-        ;; This is contrived based on the base context data and mocked available dimensions.
-        (is (=? (assoc card-template
-                  :dataset_query {:type     :native
-                                  :native   {:query "select count(*), STATE from PEOPLE join PEOPLE on USER_ID = ID"}
-                                  :database (mt/id)})
-                card-candidate))))))
 
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
@@ -2451,143 +2264,50 @@
               :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
               :filters []})))))
 
-(comment
-  (count
-    (magic/dash-template->affinities
-      {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
-                 {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
-                 {"RowcountLast30Days" {:filters ["Last30Days"] :score 90}}]
-       :metrics [{"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
-       :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
-                 {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
-                 {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
-                 {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
-                 {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
-                 {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]}))
+(deftest all-satisfied-bindings-test
+  (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
+    (is (= {}
+           (let [distinct-affinity-sets []
+                 available-dimensions   {}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "A two-binding affinity with multiple matches will expand out to all options."
+    (is (= {#{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
 
-  (magic/dash-template->affinities
-    {:cards   [{"Rowcount" {:metrics ["TotalOrders"] :score 100}}
-               {"RowcountLast30Days" {:metrics ["TotalOrders"] :filters ["Last30Days"] :score 100}}
-               {"IncomeGrowth" {:dimensions [{"Timestamp" {}}] :metrics ["TotalIncome"] :score 100}}
-               {"IncomeByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["TotalIncome" "TotalOrders"] :score 100}}
-               {"AverageQuantityByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgQuantity"] :score 100}}
-               {"AverageIncomeByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgIncome"] :score 100}}
-               {"AverageDiscountByMonth" {:dimensions [{"Timestamp" {}}] :metrics ["AvgDiscount"] :score 70}}
-               {"OrdersByProduct" {:dimensions [{"ProductMedium" {}}] :metrics ["TotalOrders"] :score 90}}
-               {"OrdersByProductCategory" {:dimensions [{"ProductCategoryMedium" {}}] :metrics ["TotalOrders"] :score 90}}
-               {"OrdersBySource" {:dimensions [{"Timestamp" {}} {"SourceSmall" {}}] :metrics ["TotalOrders"] :score 100}}
-               {"OrdersBySource" {:dimensions [{"SourceMedium" {}}] :metrics ["TotalOrders"] :score 90}}
-               {"CountByCountry" {:dimensions [{"Country" {}}] :metrics ["TotalOrders"] :score 90}}
-               {"CountByState" {:dimensions [{"State" {}}] :metrics ["TotalOrders"] :score 90}}
-               {"CountByCoords" {:dimensions [{"Long" {:aggregation "default"}} {"Lat" {:aggregation "default"}}]
-                                 :metrics    ["TotalOrders"]
-                                 :score      80}}]
-     :metrics [{"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]
-                               :score  100
-                               :name   "Average discount %"}}
-               {"TotalIncome" {:metric ["sum" ["dimension" "Income"]] :score 100 :name "Total income"}}
-               {"AvgIncome" {:metric ["avg" ["dimension" "Income"]] :score 100 :name "Average income per transaction"}}
-               {"AvgQuantity" {:metric ["avg" ["dimension" "Quantity"]] :score 100 :name "Average quantity"}}
-               {"TotalOrders" {:metric ["count"] :score 100 :name "Number of orders"}}]
-     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"] :score 80}}]})
+           (let [distinct-affinity-sets [#{"Lat" "Lon"}]
+                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "Adding in an affinity group with no dimensions produces an empty set of satisfied bindings"
+    (is (= {#{"Category"} []
+            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
 
-  (magic/dash-template->affinities
-    {:metrics [{"Count" {:metric ["count"], :score 100}}
-               {"CountDistinctFKs" {:metric ["distinct" ["dimension" "FK"]], :score 100}}
-               {"Sum" {:metric ["sum" ["dimension" "GenericNumber"]], :score 100}}
-               {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]], :score 100}}],
-     :filters [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
-               {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}],
-     :cards   [{"Rowcount" {:metrics ["Count"], :score 100}}
-               {"RowcountLast30Days" {:metrics ["Count"], :filters ["Last30Days"], :score 100}}
-               {"DistinctFKCounts" {:metrics ["CountDistinctFKs"], :score 100}}
-               {"NumberDistribution" {:dimensions [{"GenericNumber" {:aggregation "default"}}], :metrics ["Count"], :score 90}}
-               {"CountByCategoryMedium" {:dimensions [{"GenericCategoryMedium" {}}], :metrics ["Count"], :score 80}}
-               {"CountByCountry" {:dimensions [{"Country" {}}], :metrics ["Count"], :score 90}}
-               {"CountByState" {:dimensions [{"State" {}}], :metrics ["Count"], :score 90}}
-               {"CountByCoords" {:dimensions [{"Long" {}} {"Lat" {}}], :metrics ["Count"], :score 80}}
-               {"CountByJoinDate" {:dimensions [{"JoinTimestamp" {}}], :metrics ["Count"], :score 90}}
-               {"CountByJoinDate" {:dimensions [{"JoinDate" {}}], :metrics ["Count"], :score 90}}
-               {"CountByCreateDate" {:dimensions [{"CreateTimestamp" {}}], :metrics ["Count"], :score 90}}
-               {"CountByCreateDate" {:dimensions [{"CreateDate" {}}], :metrics ["Count"], :score 90}}
-               {"CountByTimestamp" {:dimensions [{"Timestamp" {}}], :metrics ["Count"], :score 20}}
-               {"CountByTimestamp" {:dimensions [{"Date" {}}], :metrics ["Count"], :score 20}}
-               {"NumberOverTime" {:dimensions [{"Timestamp" {}}], :metrics ["Sum" "Avg"], :score 70}}
-               {"NumberOverTime" {:dimensions [{"Date" {}}], :metrics ["Sum" "Avg"], :score 70}}
-               {"NumberOverJoinDate" {:dimensions [{"JoinTimestamp" {}}], :metrics ["Sum" "Avg"], :score 80}}
-               {"NumberOverJoinDate" {:dimensions [{"JoinDate" {}}], :metrics ["Sum" "Avg"], :score 80}}
-               {"NumberOverCreateDate" {:dimensions [{"CreateTimestamp" {}}], :metrics ["Sum" "Avg"], :score 90}}
-               {"NumberOverCreateDate" {:dimensions [{"CreateDate" {}}], :metrics ["Sum" "Avg"], :score 90}}
-               {"DayOfWeekTimestamp" {:dimensions [{"Timestamp" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
-               {"DayOfWeekTimestamp" {:dimensions [{"Date" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
-               {"HourOfDayTimestamp" {:dimensions [{"Timestamp" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
-               {"HourOfDayTimestamp" {:dimensions [{"Time" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
-               {"MonthOfYearTimestamp" {:dimensions [{"Timestamp" {:aggregation "month-of-year"}}],
-                                        :metrics    ["Count"],
-                                        :score      40}}
-               {"MonthOfYearTimestamp" {:dimensions [{"Date" {:aggregation "month-of-year"}}], :metrics ["Count"], :score 40}}
-               {"QuarterOfYearTimestamp" {:dimensions [{"Timestamp" {:aggregation "quarter-of-year"}}],
-                                          :metrics    ["Count"],
-                                          :score      40}}
-               {"QuarterOfYearTimestamp" {:dimensions [{"Date" {:aggregation "quarter-of-year"}}],
-                                          :metrics    ["Count"],
-                                          :score      40}}
-               {"DayOfWeekCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "day-of-week"}}],
-                                       :metrics    ["Count"],
-                                       :score      60}}
-               {"DayOfWeekCreateDate" {:dimensions [{"CreateDate" {:aggregation "day-of-week"}}],
-                                       :metrics    ["Count"],
-                                       :score      60}}
-               {"HourOfDayCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "hour-of-day"}}],
-                                       :metrics    ["Count"],
-                                       :score      50}}
-               {"HourOfDayCreateDate" {:dimensions [{"CreateTime" {:aggregation "hour-of-day"}}],
-                                       :metrics    ["Count"],
-                                       :score      50}}
-               {"DayOfMonthCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "day-of-month"}}],
-                                        :metrics    ["Count"],
-                                        :score      40}}
-               {"DayOfMonthCreateDate" {:dimensions [{"CreateDate" {:aggregation "day-of-month"}}],
-                                        :metrics    ["Count"],
-                                        :score      40}}
-               {"MonthOfYearCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "month-of-year"}}],
-                                         :metrics    ["Count"],
-                                         :score      40}}
-               {"MonthOfYearCreateDate" {:dimensions [{"CreateDate" {:aggregation "month-of-year"}}],
-                                         :metrics    ["Count"],
-                                         :score      40}}
-               {"QuerterOfYearCreateDate" {:dimensions [{"CreateTimestamp" {:aggregation "quarter-of-year"}}],
-                                           :metrics    ["Count"],
-                                           :score      40}}
-               {"QuerterOfYearCreateDate" {:dimensions [{"CreateDate" {:aggregation "quarter-of-year"}}],
-                                           :metrics    ["Count"],
-                                           :score      40}}
-               {"DayOfWeekJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "day-of-week"}}],
-                                     :metrics    ["Count"],
-                                     :score      60}}
-               {"DayOfWeekJoinDate" {:dimensions [{"JoinDate" {:aggregation "day-of-week"}}], :metrics ["Count"], :score 60}}
-               {"HourOfDayJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "hour-of-day"}}],
-                                     :metrics    ["Count"],
-                                     :score      50}}
-               {"HourOfDayJoinDate" {:dimensions [{"JoinTime" {:aggregation "hour-of-day"}}], :metrics ["Count"], :score 50}}
-               {"DayOfMonthJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "day-of-month"}}],
-                                      :metrics    ["Count"],
-                                      :score      40}}
-               {"DayOfMonthJoinDate" {:dimensions [{"JoinDate" {:aggregation "day-of-month"}}], :metrics ["Count"], :score 40}}
-               {"MonthOfYearJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "month-of-year"}}],
-                                       :metrics    ["Count"],
-                                       :score      40}}
-               {"MonthOfYearJoinDate" {:dimensions [{"JoinDate" {:aggregation "month-of-year"}}],
-                                       :metrics    ["Count"],
-                                       :score      40}}
-               {"QuerterOfYearJoinDate" {:dimensions [{"JoinTimestamp" {:aggregation "quarter-of-year"}}],
-                                         :metrics    ["Count"],
-                                         :score      40}}
-               {"QuerterOfYearJoinDate" {:dimensions [{"JoinDate" {:aggregation "quarter-of-year"}}],
-                                         :metrics    ["Count"],
-                                         :score      40}}
-               {"Singleton" {:dimensions [{"Singleton" {}}], :metrics ["Count"], :score 30}}]}))
+           (let [distinct-affinity-sets [#{"Category"}
+                                         #{"Lat" "Lon"}]
+                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "All affinities match up to potential bindings across multiple affinity sets"
+    (is (= {#{"Category"} [{"Category" {:name "User Category"}}]
+            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
+
+           (let [distinct-affinity-sets [#{"Category"}
+                                         #{"Lat" "Lon"}]
+                 available-dimensions   {"Category" {:matches [{:name "User Category"}]}
+                                         "Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions))))))

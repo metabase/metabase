@@ -158,6 +158,31 @@
      :string
      [:vector dimension-set]]))
 
+(def item
+  "A \"thing\" that we bind to, consisting, generally, of at least a name and id"
+  (mc/schema
+    [:map
+     [:id {:optional true} nat-int?]
+     [:name {:optional true} string?]]))
+
+(def dimension-bindings
+  "A map of named dimensions to a map containing a sequence of matching items satisfying this dimension"
+  (mc/schema
+    [:map-of
+     :string
+     [:map [:matches [:sequential item]]]]))
+
+(def dimension-map
+  "A map of dimension names to item satisfying that dimensions"
+  (mc/schema
+    [:map-of :string item]))
+
+(def dimension-maps
+  "A sequence of dimension maps"
+  (mc/schema
+    [:sequential dimension-map]))
+
+
 (comment
   (require '[malli.generator :as mg])
   (mg/sample dashboard-template)
