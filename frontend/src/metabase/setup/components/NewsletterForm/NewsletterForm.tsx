@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import { useSelector } from "metabase/lib/redux";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import * as Errors from "metabase/core/utils/errors";
 import type { SubscribeInfo } from "metabase-types/store";
