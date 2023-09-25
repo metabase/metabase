@@ -159,8 +159,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      const actionNameInput = screen.getByDisplayValue("New Action");
-      userEvent.type(actionNameInput, "a change");
+      userEvent.type(screen.getByDisplayValue("New Action"), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       history.goBack();
@@ -171,6 +170,62 @@ describe("actions > containers > ActionCreatorModal", () => {
           "Navigating away from here will cause you to lose any changes you have made.",
         ),
       ).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when saving changes", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      const query = "select 1;";
+
+      userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      userEvent.type(screen.queryAllByRole("textbox")[1], query);
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      fetchMock.post("path:/api/action", {
+        name: "New Actiona change",
+        dataset_query: {
+          type: "native",
+          database: DATABASE.id,
+          native: {
+            query,
+            "template-tags": {},
+          },
+        },
+        database_id: DATABASE.id,
+        parameters: [],
+        type: "query",
+        visualization_settings: {
+          name: "",
+          type: "button",
+          description: "",
+          confirmMessage: "",
+          successMessage: "",
+          fields: {},
+        },
+      });
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toBe(initialRoute);
+      });
+
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -209,8 +264,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      const actionNameInput = screen.getByDisplayValue(action.name);
-      userEvent.type(actionNameInput, "a change");
+      userEvent.type(screen.getByDisplayValue(action.name), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       history.goBack();
@@ -235,8 +289,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      const actionNameInput = screen.getByDisplayValue(action.name);
-      userEvent.type(actionNameInput, "a change");
+      userEvent.type(screen.getByDisplayValue(action.name), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       fetchMock.reset();
