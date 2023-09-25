@@ -87,7 +87,7 @@
      :database-id    Optional.  ID of the `Database` related to the activity.
      :table-id       Optional.  ID of the `Table` related to the activity.
      :details-fn     Optional.  Gets called with `object` as the arg and the result is saved as the `:details` of the Activity.
-     :user-id        Optional.  ID of the `User` responsible for the activity.  defaults to (events/object->user-id object)
+     :user-id        Optional.  ID of the `User` responsible for the activity.  defaults to *current-user-id*
      :model          Optional.  name of the model representing the activity.  defaults to (events/topic->model topic)
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
@@ -103,7 +103,7 @@
     (first (t2/insert-returning-instances! Activity
                                            ;; strip off the `:event/` namespace of the topic, added in 0.48.0
                                            :topic       (keyword (name topic))
-                                           :user_id     (or user-id (events/object->user-id object))
+                                           :user_id     (or user-id api/*current-user-id*)
                                            :model       (or model (events/topic->model topic))
                                            :model_id    (or model-id (events/object->model-id topic object))
                                            :database_id database-id

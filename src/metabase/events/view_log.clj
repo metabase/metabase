@@ -1,6 +1,7 @@
 (ns metabase.events.view-log
   (:require
    [java-time :as t]
+   [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.view-log :refer [ViewLog]]
@@ -86,7 +87,7 @@
     (when object
       (let [model                          (events/topic->model topic)
             model-id                       (events/object->model-id topic object)
-            user-id                        (events/object->user-id object)
+            user-id                        api/*current-user-id*
             ;; `:context` comes
             ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
             ;; and it should only be present for `:event/card-query`

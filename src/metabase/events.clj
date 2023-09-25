@@ -138,10 +138,6 @@
     (let [model (topic->model topic)]
       (get object (keyword (format "%s_id" model))))))
 
-(def ^{:arglists '([object])} object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given `object`."
-  (some-fn :actor_id :user_id :creator_id))
-
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
   Expand the object when we need more metadata."
