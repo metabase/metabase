@@ -118,6 +118,54 @@ describe("actions > containers > ActionCreatorModal", () => {
     );
   });
 
+  describe("creating new action", () => {
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/action`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      history.goBack();
+
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      const actionNameInput = screen.getByDisplayValue("New Action");
+      userEvent.type(actionNameInput, "a change");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      history.goBack();
+
+      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("editing existing action", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const action = { ...ACTION };
