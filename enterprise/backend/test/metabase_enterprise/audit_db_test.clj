@@ -1,7 +1,5 @@
 (ns metabase-enterprise.audit-db-test
   (:require [clojure.java.io :as io]
-            [clojure.java.shell :as sh]
-            [clojure.string :as str]
             [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.core :as mbc]
