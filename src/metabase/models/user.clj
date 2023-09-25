@@ -177,7 +177,10 @@
                       email)]
     (cond-> user
       ;; assoc `:common_name` if `user` contains the required keys
-      (every? (partial contains? user) [:first_name :last_name :email])
+      (and (contains? user :first_name)
+           (contains? user :last_name)
+           (or (or first_name last_name)
+               (and (contains? user :email) email)))
       (assoc :common_name common-name))))
 
 (t2/define-after-select :model/User

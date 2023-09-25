@@ -536,12 +536,20 @@
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
 (deftest common-name-test
-  (mt/with-temp [User user {:first_name "John"
-                            :last_name  "Smith"
-                            :email      "john.smith@gmail.com"}]
-    (is (= "John Smith"
-           (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
-    (is (= "John Smith"
-           (:common_name (t2/select-one User (:id user)))))
-    (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))
-    (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))))
+  (testing "common_name should be present depending on what is selected"
+    (mt/with-temp [User user {:first_name "John"
+                              :last_name  "Smith"
+                              :email      "john.smith@gmail.com"}]
+      (is (= "John Smith"
+             (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
+      (is (= "John Smith"
+             (:common_name (t2/select-one User (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
+  (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
+    (mt/with-temp [User user {:first_name nil
+                              :last_name  nil
+                              :email      "john.smith@gmail.com"}]
+      (is (= "john.smith@gmail.com"
+             (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))
