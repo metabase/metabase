@@ -118,51 +118,53 @@ describe("actions > containers > ActionCreatorModal", () => {
     );
   });
 
-  it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-    const action = { ...ACTION };
-    const initialRoute = `/model/${MODEL.id}/detail/actions`;
-    const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
-    const { history } = await setup({ initialRoute, action });
+  describe("editing existing action", () => {
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const action = { ...ACTION };
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
 
-    history.push(actionRoute);
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
 
-    history.goBack();
+      history.goBack();
 
-    expect(
-      screen.queryByText("Changes were not saved"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
+    });
 
-  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-    const action = { ...ACTION };
-    const initialRoute = `/model/${MODEL.id}/detail/actions`;
-    const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
-    const { history } = await setup({ initialRoute, action });
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const action = { ...ACTION };
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
 
-    history.push(actionRoute);
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
 
-    const actionNameInput = screen.getByDisplayValue(ACTION.name);
-    userEvent.type(actionNameInput, "a change");
-    userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      const actionNameInput = screen.getByDisplayValue(ACTION.name);
+      userEvent.type(actionNameInput, "a change");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-    history.goBack();
+      history.goBack();
 
-    expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).toBeInTheDocument();
+      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
