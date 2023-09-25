@@ -132,6 +132,7 @@ export const SidebarFilter = ({
         ignoreTrigger
         autoWidth
         sizeToFit
+        horizontalAttachments={["right"]}
       >
         <SearchEventSandbox>
           <Box miw={popoverWidth ?? "100%"}>
