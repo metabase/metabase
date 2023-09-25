@@ -138,6 +138,10 @@
   [_x]
   nil)
 
+(mu/defmethod temporal-bucket-method :option/temporal-bucketing :- ::lib.schema.temporal-bucketing/unit
+  [option]
+  (:unit option))
+
 (mu/defn raw-temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "Get the raw temporal bucketing `unit` associated with something e.g. a `:field` ref or a ColumnMetadata."
   [x]

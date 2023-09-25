@@ -48,6 +48,7 @@ export interface Database extends DatabaseData {
   points_of_interest?: string;
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
+  can_upload: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

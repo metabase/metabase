@@ -482,6 +482,17 @@ jobs:
         if: github.ref == 'refs/heads/master'
         run: |
           echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Install Chrome v111
+        uses: browser-actions/setup-chrome@v1
+        with:
+          # https://chromium.cypress.io/linux/stable/111.0.5563.146
+          chrome-version: 1097615
+        id: setup-chrome
+      - run: |
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
@@ -493,6 +504,6 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run
+        run: yarn run test-visual-run --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
