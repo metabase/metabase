@@ -10,7 +10,9 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+
+const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
 const FIXTURE_PATH = "../../e2e/support/assets";
 
@@ -205,6 +207,46 @@ describe("permissions", () => {
       cy.findByLabelText("Upload data").should("not.exist");
     });
   });
+
+  it(
+    "should show you upload buttons if you have unrestricted access to the upload schema",
+    { tags: ["@external"] },
+    () => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
+
+      setTokenFeatures("all");
+      enableUploads("postgres");
+
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP]: {
+          [WRITABLE_DB_ID]: {
+            data: {
+              schemas: "block",
+            },
+          },
+        },
+        [NOSQL_GROUP]: {
+          [WRITABLE_DB_ID]: {
+            data: {
+              schemas: "all",
+            },
+          },
+        },
+      });
+
+      cy.updateCollectionGraph({
+        [NOSQL_GROUP]: { root: "write" },
+      });
+
+      cy.signIn("nosql");
+      cy.visit("/collection/root");
+      cy.findByTestId("collection-menu").within(() => {
+        cy.findByLabelText("Upload data").should("exist");
+        cy.findByRole("img", { name: /upload/i }).should("exist");
+      });
+    },
+  );
 });
 
 function uploadFile(testFile, valid = true) {
