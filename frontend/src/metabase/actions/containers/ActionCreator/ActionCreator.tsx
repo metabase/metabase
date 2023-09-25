@@ -105,6 +105,18 @@ function ActionCreator({
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
   const isEditable = isNew || (model != null && model.canWriteActions());
+  const [actionToSubmit, scheduleSubmitAction] = useState<WritebackAction>();
+
+  useEffect(() => {
+    /**
+     * onSubmit and onClose are called in an effect so that
+     * isDirty flag can be updated via the setAction call
+     */
+    if (actionToSubmit) {
+      onSubmit?.(actionToSubmit);
+      onClose?.();
+    }
+  }, [actionToSubmit, onSubmit, onClose]);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -116,17 +128,12 @@ function ActionCreator({
       ...values,
       visualization_settings: formSettings,
     } as WritebackQueryAction);
+
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
-
-    // Sync the editor state with data from save modal form
-    setAction(createdAction);
-
-    // allow setAction to re-render
-    await new Promise(resolve => setTimeout(resolve, 0));
+    setAction(createdAction); // sync the editor state
+    scheduleSubmitAction(createdAction);
 
     setShowSaveModal(false);
-    onSubmit?.(createdAction);
-    onClose?.();
   };
 
   const handleUpdate = async () => {
@@ -136,14 +143,10 @@ function ActionCreator({
         model_id: model?.id(),
         visualization_settings: formSettings,
       });
+
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
-      setAction(updatedAction);
-
-      // allow setAction to re-render
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      onSubmit?.(updatedAction);
-      onClose?.();
+      setAction(updatedAction); // sync the editor state
+      scheduleSubmitAction(updatedAction);
     }
   };
 
