@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   createAction,
   describeWithSnowplow,
@@ -9,7 +10,10 @@ import {
   restore,
   setActionsEnabledForDB,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  NORMAL_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -51,6 +55,7 @@ const typeFilters = [
 ];
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -103,7 +108,10 @@ describe("scenarios > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("ord");
+
       cy.wait("@search");
+
+      cy.findByTestId("app-bar").findByDisplayValue("ord");
       cy.findAllByTestId("search-result-item-name")
         .first()
         .should("have.text", "Orders");
@@ -115,6 +123,8 @@ describe("scenarios > search", () => {
         "eq",
         `/question/${ORDERS_QUESTION_ID}-orders`,
       );
+
+      cy.get("@search.all").should("have.length", 1);
     });
   });
 
@@ -161,24 +171,46 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should hydrate search with search text and filter", () => {
-        const { filterName, resultInfoText } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
-        cy.wait("@search");
+      describe("should hydrate search with search text and filter", () => {
+        it("should hydrate type filter", () => {
+          const { filterName, resultInfoText } = typeFilters[0];
+          cy.visit(`/search?q=orders&type=${filterName}`);
+          cy.wait("@search");
 
-        getSearchBar().should("have.value", "orders");
+          getSearchBar().should("have.value", "orders");
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "orders"').should("exist");
+          });
+
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            cy.wrap(result).should("contain.text", resultInfoText);
+          });
+
+          cy.findByTestId("type-search-filter").within(() => {
+            cy.findByText("Question").should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
         });
 
-        cy.findAllByTestId("result-link-info-text").each(result => {
-          cy.wrap(result).should("contain.text", resultInfoText);
-        });
+        it("should hydrate created_by filter", () => {
+          cy.intercept("GET", "/api/user").as("getUsers");
 
-        cy.findByTestId("type-search-filter").within(() => {
-          cy.findByText("Question").should("exist");
-          cy.findByLabelText("close icon").should("exist");
+          cy.request("GET", "/api/user/current").then(
+            ({ body: { common_name, id } }) => {
+              cy.visit(`/search?q=orders&created_by=${id}`);
+
+              cy.wait("@search");
+              cy.wait("@getUsers");
+
+              cy.findByTestId("created_by-search-filter").within(() => {
+                cy.findByText(common_name).should("exist");
+                cy.findByLabelText("close icon").should("exist");
+              });
+            },
+          );
+
+          // TODO: Add more assertions for search results when we redesign the search result elements to include users.
         });
       });
     });
@@ -255,12 +287,67 @@ describe("scenarios > search", () => {
 
           // Check that we're getting elements other than Questions by checking the
           // result text and checking if there's more than one result-link-info-text text
-          cy.findAllByTestId("result-link-info-text").then($elements => {
-            const textContent = new Set(
-              $elements.toArray().map(el => el.textContent),
-            );
-            expect(textContent.size).to.be.greaterThan(1);
+          cy.findAllByTestId("result-link-info-text").then(
+            $resultTypeDescriptions => {
+              const uniqueTypeDescriptions = new Set(
+                $resultTypeDescriptions.toArray().map(el => el.textContent),
+              );
+              expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+            },
+          );
+        });
+      });
+
+      describe("created_by filter", () => {
+        beforeEach(() => {
+          // create a bunch of questions from a normal user, then we can query the question
+          // created by that user as an admin
+          cy.signInAsNormalUser();
+          for (const question of TEST_QUESTIONS) {
+            cy.createQuestion(question);
+          }
+          cy.signOut();
+
+          cy.signInAsAdmin();
+        });
+
+        it("should filter results by user", () => {
+          cy.visit("/");
+
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
+
+          cy.findByTestId("created_by-search-filter").click();
+
+          popover().within(() => {
+            cy.findByText("Robert Tableton").click();
+            cy.findByText("Apply filters").click();
           });
+          cy.url().should("contain", "created_by");
+
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result).should("contain.text", "Robert's Question");
+          });
+        });
+
+        it("should remove type filter when `X` is clicked on filter", () => {
+          cy.visit(`/search?q=e&created_by=${NORMAL_USER_ID}`);
+
+          cy.findByTestId("created_by-search-filter").within(() => {
+            cy.findByText("Robert Tableton").should("exist");
+            cy.findByLabelText("close icon").click();
+          });
+
+          // Check that we're getting elements from other users by checking for other types,
+          // since all assets, for the user we're querying are questions
+          cy.findAllByTestId("result-link-info-text").then(
+            $resultTypeDescriptions => {
+              const uniqueTypeDescriptions = new Set(
+                $resultTypeDescriptions.toArray().map(el => el.textContent),
+              );
+              expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+            },
+          );
         });
       });
     });
@@ -299,4 +386,12 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
+}
+
+function generateQuestions(prefix, count) {
+  return _.range(count).map(idx => ({
+    name: `${prefix} ${idx + 1}`,
+    query: { "source-table": ORDERS_ID },
+    collection_id: null,
+  }));
 }

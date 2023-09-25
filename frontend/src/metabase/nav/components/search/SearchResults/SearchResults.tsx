@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -45,7 +45,8 @@ export const SearchResults = ({
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
-  const [debouncedSearchText, setDebouncedSearchText] = useState(searchText);
+  const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
+  const isWaitingForDebounce = searchText !== debouncedSearchText;
 
   useDebounce(
     () => {
@@ -55,15 +56,12 @@ export const SearchResults = ({
     [searchText],
   );
 
-  const query = useMemo(
-    () => ({
-      q: debouncedSearchText,
-      limit: DEFAULT_SEARCH_LIMIT,
-      ...searchFilters,
-      models: models ?? searchFilters.type,
-    }),
-    [debouncedSearchText, searchFilters, models],
-  );
+  const query = {
+    q: debouncedSearchText,
+    limit: DEFAULT_SEARCH_LIMIT,
+    ...searchFilters,
+    models: models ?? searchFilters.type,
+  };
 
   const {
     data: list = [],
@@ -72,6 +70,7 @@ export const SearchResults = ({
   } = useSearchListQuery({
     query,
     reload: true,
+    enabled: !!debouncedSearchText,
   });
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
@@ -92,7 +91,7 @@ export const SearchResults = ({
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
 
-  if (isLoading) {
+  if (isLoading || isWaitingForDebounce) {
     return (
       <Stack p="xl" align="center">
         <Loader size="lg" data-testid="loading-spinner" />

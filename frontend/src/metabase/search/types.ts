@@ -5,6 +5,7 @@ import type {
   Collection,
   EnabledSearchModelType,
   SearchResult,
+  UserId,
 } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
 import type { SearchFilterKeys } from "metabase/search/constants";
@@ -21,29 +22,46 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedAtFilterProps = string[];
+export type CreatedByFilterProps = UserId | undefined;
+export type CreatedAtFilterProps = string;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
   [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
+// All URL query parameters are returned as strings so we need to account
+// for that when parsing them to our filter components
+export type URLSearchFilterQueryParams = Partial<
+  Record<FilterTypeKeys, string | string[] | null | undefined>
+>;
+export type SearchAwareLocation = Location<
+  { q?: string } & URLSearchFilterQueryParams
+>;
+
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
   value?: SearchFilterPropTypes[T];
-  onChange: (value: SearchFilterPropTypes[T]) => void;
+  onChange: (value: SearchFilterPropTypes[T] | undefined) => void;
   "data-testid"?: string;
 } & Record<string, unknown>;
-
-export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;
 
 export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   title: string;
   iconName: IconName;
   applyImmediately?: boolean;
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+  ContentComponent: ComponentType<
+    { onApply: () => void } & SearchFilterComponentProps<T>
+  >;
+  // two functions for converting strings to the desired prop type and back
+  // (e.g. for converting a string to a date)
+  fromUrl: (
+    value: string | string[] | null | undefined,
+  ) => SearchFilterPropTypes[T];
+  toUrl: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
 };

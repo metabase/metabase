@@ -238,7 +238,7 @@ describeEE("audit > auditing", () => {
       // All questions tab
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
-      cy.findAllByText("Sample Database").should("have.length", 5);
+      cy.findAllByText("Sample Database").should("have.length", 6);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NORMAL_QUESTION);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

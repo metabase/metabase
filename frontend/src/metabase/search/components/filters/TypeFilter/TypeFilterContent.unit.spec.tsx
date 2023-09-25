@@ -41,9 +41,11 @@ const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
 const TestTypeFilterComponent = ({
   initialValue = [],
   onChangeFilters,
+  onApplyFilters,
 }: {
   initialValue?: EnabledSearchModelType[];
   onChangeFilters: jest.Mock;
+  onApplyFilters: jest.Mock;
 }) => {
   const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
 
@@ -52,7 +54,13 @@ const TestTypeFilterComponent = ({
     setValue(selectedValues);
   };
 
-  return <TypeFilterContent value={value} onChange={onChange} />;
+  return (
+    <TypeFilterContent
+      value={value}
+      onChange={onChange}
+      onApply={onApplyFilters}
+    />
+  );
 };
 
 const TEST_DATABASE = createMockDatabase({
@@ -79,10 +87,12 @@ const setup = async ({
   );
 
   const onChangeFilters = jest.fn();
+  const onApplyFilters = jest.fn();
 
   renderWithProviders(
     <TestTypeFilterComponent
       onChangeFilters={onChangeFilters}
+      onApplyFilters={onApplyFilters}
       initialValue={initialValue}
     />,
   );
@@ -92,6 +102,7 @@ const setup = async ({
 
   return {
     onChangeFilters,
+    onApplyFilters,
   };
 };
 
@@ -160,5 +171,12 @@ describe("TypeFilterContent", () => {
 
     expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
+  });
+
+  it("calls onApply when 'Apply Filters' selected", async () => {
+    const { onApplyFilters } = await setup();
+
+    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    expect(onApplyFilters).toHaveBeenCalled();
   });
 });

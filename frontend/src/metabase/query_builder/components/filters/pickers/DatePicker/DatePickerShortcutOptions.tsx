@@ -60,15 +60,15 @@ const MONTH_OPTIONS: Option[] = [
 
 const MISC_OPTIONS: Option[] = [
   {
-    displayName: t`Specific dates...`,
+    displayName: t`Specific dates…`,
     init: filter => getInitialSpecificDatesShortcut(filter),
   },
   {
-    displayName: t`Relative dates...`,
+    displayName: t`Relative dates…`,
     init: filter => getInitialRelativeDatesShortcut(filter),
   },
   {
-    displayName: t`Exclude...`,
+    displayName: t`Exclude…`,
     init: filter => getInitialExcludeShortcut(filter),
   },
 ];
