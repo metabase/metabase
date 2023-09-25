@@ -20,14 +20,13 @@ describe("issue 28971", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Model").click());
+    popover().findByText("Model").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use the notebook editor").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Sample Database").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Orders").click());
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("Orders").click();
+    });
     cy.button("Save").click();
     modal().button("Save").click();
     cy.wait("@createCard");

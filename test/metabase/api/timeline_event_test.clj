@@ -70,10 +70,10 @@
 (deftest delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"
     (mt/with-temp [Collection    collection {:name "Example Data"}
-                   Timeline      timeline   {:name          "Example Events"
+                   Timeline      timeline   {:name          "Some Events"
                                              :collection_id (u/the-id collection)}
-                   TimelineEvent event      {:name         "Example Event"
-                                             :timeline_id  (u/the-id timeline)}]
+                   TimelineEvent event      {:name        "Example Event"
+                                             :timeline_id (u/the-id timeline)}]
       (let [event-id (u/the-id event)]
         (testing "delete the timeline-event by `id`"
           (is (= "Example Event"

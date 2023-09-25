@@ -18,7 +18,7 @@ import ChartSettingsTableFormatting, {
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   columnSettings,
-  tableColumnSettings,
+  buildTableColumnSettings,
   getTitleForColumn,
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
@@ -148,7 +148,7 @@ export default class Table extends Component {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...tableColumnSettings,
+    ...buildTableColumnSettings(),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,

@@ -1,18 +1,33 @@
-/* eslint "react/prop-types": "warn" */
-
-import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import type { CollectionItemModel } from "metabase-types/api";
+import type { IconName } from "metabase/core/components/Icon";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
-const ArchivedItem = ({
+interface ArchivedItemProps {
+  name: string;
+  model: CollectionItemModel;
+  icon: IconName;
+  color?: string;
+  isAdmin: boolean;
+  onUnarchive?: () => void;
+  onDelete?: () => void;
+  selected: boolean;
+  onToggleSelected: () => void;
+  showSelect: boolean;
+}
+
+export const ArchivedItem = ({
   name,
-  type,
+  model,
   icon,
   color = c("text-light"),
   isAdmin = false,
@@ -21,12 +36,13 @@ const ArchivedItem = ({
   selected,
   onToggleSelected,
   showSelect,
-}) => (
+}: ArchivedItemProps) => (
   <div
     className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
     data-testid={`archive-item-${name}`}
   >
     <Swapper
+      aria-label={"archive-item-swapper"}
       defaultElement={
         <ItemIconContainer>
           <ItemIcon name={icon} color={color} />
@@ -43,7 +59,11 @@ const ArchivedItem = ({
     {isAdmin && (onUnarchive || onDelete) && (
       <span className="ml-auto mr2">
         {onUnarchive && (
-          <Tooltip tooltip={t`Unarchive this ${type}`}>
+          <Tooltip
+            tooltip={t`Unarchive this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
+          >
             <ActionIcon
               onClick={onUnarchive}
               className="hover-child"
@@ -51,8 +71,12 @@ const ArchivedItem = ({
             />
           </Tooltip>
         )}
-        {onDelete && (
-          <Tooltip tooltip={t`Delete this ${type}`}>
+        {model !== "collection" && onDelete && (
+          <Tooltip
+            tooltip={t`Delete this ${getTranslatedEntityName(
+              model,
+            )?.toLowerCase()}`}
+          >
             <ActionIcon
               onClick={onDelete}
               className="hover-child"
@@ -64,19 +88,3 @@ const ArchivedItem = ({
     )}
   </div>
 );
-
-ArchivedItem.propTypes = {
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
-  icon: PropTypes.string.isRequired,
-  color: PropTypes.string,
-  isAdmin: PropTypes.bool,
-  onUnarchive: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-
-  selected: PropTypes.bool.isRequired,
-  onToggleSelected: PropTypes.func.isRequired,
-  showSelect: PropTypes.bool.isRequired,
-};
-
-export default ArchivedItem;
