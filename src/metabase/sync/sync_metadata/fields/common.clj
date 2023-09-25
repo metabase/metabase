@@ -60,12 +60,28 @@
 
 (mu/defn matching-field-metadata :- [:maybe TableMetadataFieldWithOptionalID]
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the
-  corresponding Metabase Field for field metadata from the DB, or vice versa."
+  corresponding Metabase Field for field metadata from the DB, or vice versa. Will prefer exact matches."
   [field-metadata :- TableMetadataFieldWithOptionalID
    other-metadata :- [:set TableMetadataFieldWithOptionalID]]
-  (some
-   (fn [other-field-metadata]
-     (when (= (canonical-name field-metadata)
-              (canonical-name other-field-metadata))
-       other-field-metadata))
-   other-metadata))
+  (let [matches (keep
+                  (fn [other-field-metadata]
+                    (when (= (canonical-name field-metadata)
+                             (canonical-name other-field-metadata))
+                      other-field-metadata))
+                  other-metadata)
+        num-matches (count matches)]
+    (cond
+      (zero? num-matches)
+      nil
+
+      (= 1 num-matches)
+      (first matches)
+
+      :else
+      (or
+        (some (fn [match]
+                (when (= (:name field-metadata) (:name match))
+                  match))
+              matches)
+        ;; Fallback if there's no exact match
+        (first matches)))))
