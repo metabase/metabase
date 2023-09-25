@@ -2,6 +2,8 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
@@ -13,13 +15,15 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
@@ -68,6 +72,16 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
 (t2/define-before-insert :model/User
   [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
@@ -91,6 +105,12 @@
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
+    (let [current-version (:tag config/mb-version-info)]
+      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      ;; Can't use mw.session/with-current-user due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
+        (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
     (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
@@ -196,9 +216,10 @@
 (def UserGroupMembership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  {:id                                su/IntGreaterThanZero
+  [:map
+   [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (schema/optional-key :is_group_manager) schema/Bool})
+   [:is_group_manager {:optional true} :boolean]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -283,18 +304,19 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (su/with-api-error-message
-    {su/KeywordOrString schema/Any}
+  (mu/with-api-error-message
+    [:map-of ms/KeywordOrString :any]
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
-   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
-   :email                                  su/Email
-   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
-   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
+  [:map
+   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
+   [:email                             ms/Email]
+   [:password         {:optional true} [:maybe ms/NonBlankString]]
+   [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
 
 (def DefaultUser
   "Standard form of a user (for consumption by the frontend and such)"
@@ -310,11 +332,11 @@
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  {:email      su/Email
-   :first_name (schema/maybe su/NonBlankString)
-   schema/Any  schema/Any})
+  [:map
+   [:email      ms/Email]
+   [:first_name [:maybe ms/NonBlankString]]])
 
-(schema/defn ^:private insert-new-user!
+(mu/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -325,14 +347,14 @@
   [new-user]
   (insert-new-user! new-user))
 
-(schema/defn create-and-invite-user!
+(mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
+  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(schema/defn create-new-google-auth-user!
+(mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -342,7 +364,7 @@
       (classloader/require 'metabase.email.messages)
       ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
-(schema/defn create-new-ldap-auth-user!
+(mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]

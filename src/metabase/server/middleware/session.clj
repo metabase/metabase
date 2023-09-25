@@ -296,13 +296,19 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
+(def ^:private ^:dynamic *user-local-values-user-id*
+  "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
+  calls to [[with-current-user]] if it is already bound, as this can mess things up since things
+  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  ;; placeholder value so we will end up rebinding [[*user-local-values*]] it if you call
+  ;;
+  ;;    (with-current-user nil
+  ;;      ...)
+  ;;
+  ::none)
 
 (defn do-with-current-user
-  "Impl for `with-current-user`."
+  "Impl for [[with-current-user]]."
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
@@ -310,8 +316,13 @@
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
-            *user-local-values*            (delay (atom (or settings
-                                                            (user-local-settings metabase-user-id))))]
+            ;; as mentioned above, do not rebind this to something new, because changes to its value will not be
+            ;; propagated to frames further up the stack
+            *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
+                                             *user-local-values*
+                                             (delay (atom (or settings
+                                                              (user/user-local-settings metabase-user-id)))))
+            *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request

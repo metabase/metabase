@@ -20,9 +20,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,12 +27,11 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch all alerts"
   [archived user_id]
-  {archived (s/maybe su/BooleanString)
-   user_id  (s/maybe su/IntGreaterThanZero)}
+  {archived [:maybe ms/BooleanString]
+   user_id  [:maybe ms/PositiveInt]}
   (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
                                 :user-id   user_id}) <>
     (filter mi/can-read? <>)
@@ -48,12 +44,11 @@
   (-> (api/read-check (pulse/retrieve-alert id))
       (t2/hydrate :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/question/:id"
+(api/defendpoint GET "/question/:id"
   "Fetch all questions for the given question (`Card`) id"
   [id archived]
-  {id       (s/maybe su/IntGreaterThanZero)
-   archived (s/maybe su/BooleanString)}
+  {id       [:maybe ms/PositiveInt]
+   archived [:maybe ms/BooleanString]}
   (-> (if api/*is-superuser?*
         (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? (Boolean/parseBoolean archived)})
         (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived? (Boolean/parseBoolean archived)}))
@@ -135,16 +130,15 @@
     (assoc card :include_csv true)
     card))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
          :as new-alert-request-body} :body}]
   {alert_condition  pulse/AlertConditions
-   alert_first_only s/Bool
-   alert_above_goal (s/maybe s/Bool)
+   alert_first_only :boolean
+   alert_above_goal [:maybe :boolean]
    card             pulse/CardRef
-   channels         (su/non-empty [su/Map])}
+   channels         [:+ :map]}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check Card (u/the-id card))
@@ -165,17 +159,17 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
-  {alert_condition  (s/maybe pulse/AlertConditions)
-   alert_first_only (s/maybe s/Bool)
-   alert_above_goal (s/maybe s/Bool)
-   card             (s/maybe pulse/CardRef)
-   channels         (s/maybe (su/non-empty [su/Map]))
-   archived         (s/maybe s/Bool)}
+  {id               ms/PositiveInt
+   alert_condition  [:maybe pulse/AlertConditions]
+   alert_first_only [:maybe :boolean]
+   alert_above_goal [:maybe :boolean]
+   card             [:maybe pulse/CardRef]
+   channels         [:maybe [:+ [:map]]]
+   archived         [:maybe :boolean]}
   (try
    (validation/check-has-application-permission :monitoring)
    (catch clojure.lang.ExceptionInfo _e

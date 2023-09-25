@@ -201,34 +201,40 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest post-alert-test
-  (is (= {:errors {:alert_condition "value must be one of: `goal`, `rows`."}}
+  (is (= {:errors {:alert_condition "enum of rows, goal"}
+          :specific-errors {:alert_condition ["should be either rows or goal, received: \"not rows\""]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "not rows"
                                     :card            "foobar"})))
 
-  (is (= {:errors {:alert_first_only "value must be a boolean."}}
+  (is (= {:errors {:alert_first_only "boolean"}
+           :specific-errors {:alert_first_only ["should be a boolean, received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "rows"})))
 
-  (is (= {:errors {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}}
+  (is (= {:errors
+           {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
+           :specific-errors
+           {:card
+            ["value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false})))
 
-  (is (= {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels ["invalid type, received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
                                     :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}})))
 
-  (is (= {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels ["invalid type, received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
                                     :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                     :channels         "foobar"})))
 
-  (is (= {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+  (is (= {:errors {:channels "one or more map"} :specific-errors {:channels [["invalid type, received: \"abc\""]]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false
@@ -404,31 +410,36 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest put-alert-test-2
-  (is (= {:errors {:alert_condition "value may be nil, or if non-nil, value must be one of: `goal`, `rows`."}}
+  (is (= {:errors {:alert_condition "nullable enum of rows, goal"},
+          :specific-errors {:alert_condition ["should be either rows or goal, received: \"not rows\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition "not rows"})))
 
-  (is (= {:errors {:alert_first_only "value may be nil, or if non-nil, value must be a boolean."}}
+  (is (= {:errors {:alert_first_only "nullable boolean"}
+           :specific-errors {:alert_first_only ["should be a boolean, received: 1000"]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_first_only 1000})))
 
-  (is (= {:errors {:card (str "value may be nil, or if non-nil, value must be a map with the keys `id`, `include_csv`, "
-                              "`include_xls`, and `dashboard_card_id`.")}}
+  (is (= {:errors
+           {:card "nullable value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
+           :specific-errors
+           {:card
+            ["value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false
                                      :card             "foobar"})))
 
-  (is (= {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. The "
-                                  "array cannot be empty.")}}
+  (is (= {:errors {:channels "nullable one or more map"}
+          :specific-errors {:channels ["invalid type, received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false
                                      :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                      :channels         "foobar"})))
 
-  (is (= {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. The "
-                                  "array cannot be empty.")}}
+  (is (= {:errors {:channels "nullable one or more map"}
+          :specific-errors {:channels [["invalid type, received: \"abc\""]]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:name             "abc"
                                      :alert_condition  "rows"

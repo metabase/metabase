@@ -27,10 +27,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -70,8 +68,7 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
 
@@ -83,9 +80,9 @@
   This may include subscriptions which the current user does not have collection permissions for, in which case
   some sensitive metadata (the list of cards and recipients) is stripped out."
   [archived dashboard_id creator_or_recipient]
-  {archived           (s/maybe su/BooleanString)
-   dashboard_id       (s/maybe su/IntGreaterThanZero)
-   creator_or_recipient (s/maybe su/BooleanString)}
+  {archived             [:maybe ms/BooleanString]
+   dashboard_id         [:maybe ms/PositiveInt]
+   creator_or_recipient [:maybe ms/BooleanString]}
   (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
         archived?            (Boolean/parseBoolean archived)
         pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
@@ -106,18 +103,17 @@
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
-  {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/Map])
-   skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)
-   parameters          [su/Map]}
+  {name                ms/NonBlankString
+   cards               [:+ pulse/CoercibleToCardRef]
+   channels            [:+ :map]
+   skip_if_empty       [:maybe :boolean]
+   collection_id       [:maybe ms/PositiveInt]
+   collection_position [:maybe ms/PositiveInt]
+   dashboard_id        [:maybe ms/PositiveInt]
+   parameters          [:maybe [:sequential :map]]}
   (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
@@ -143,11 +139,11 @@
      (api/check-500
       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
    (api/check-403 (mi/can-read? pulse))
    (-> pulse
@@ -172,17 +168,17 @@
                  channel))))
     pulse-updates))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
-  {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels      (s/maybe (su/non-empty [su/Map]))
-   skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)
-   archived      (s/maybe s/Bool)
-   parameters    [su/Map]}
+  {id            ms/PositiveInt
+   name          [:maybe ms/NonBlankString]
+   cards         [:maybe [:+ pulse/CoercibleToCardRef]]
+   channels      [:maybe [:+ :map]]
+   skip_if_empty [:maybe :boolean]
+   collection_id [:maybe ms/PositiveInt]
+   archived      [:maybe :boolean]
+   parameters    [:maybe [:sequential ms/Map]]}
   ;; do various perms checks
   (try
    (validation/check-has-application-permission :monitoring)
@@ -222,8 +218,7 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/form_input"
+(api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
@@ -263,10 +258,10 @@
       :context     :pulse
       :card-id     card-id})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card/:id"
+(api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
@@ -277,10 +272,10 @@
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card_info/:id"
+(api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
+  {id ms/PositiveInt}
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
@@ -297,27 +292,26 @@
 
 (def ^:private preview-card-width 400)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card_png/:id"
+(api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/test"
+(api/defendpoint POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
-  {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/Map])
-   skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)}
+  {name                ms/NonBlankString
+   cards               [:+ pulse/CoercibleToCardRef]
+   channels            [:+ :map]
+   skip_if_empty       [:maybe :boolean]
+   collection_id       [:maybe ms/PositiveInt]
+   collection_position [:maybe ms/PositiveInt]
+   dashboard_id        [:maybe ms/PositiveInt]}
   (check-card-read-permissions cards)
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
@@ -325,10 +319,10 @@
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
