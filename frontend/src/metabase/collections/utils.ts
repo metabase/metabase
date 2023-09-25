@@ -14,7 +14,9 @@ export function nonPersonalOrArchivedCollection(
   return !isPersonalCollection(collection) && !collection.archived;
 }
 
-export function isPersonalCollection(collection: Partial<Collection>): boolean {
+export function isPersonalCollection(
+  collection: Partial<Collection> | CollectionItem,
+): boolean {
   return typeof collection.personal_owner_id === "number";
 }
 
