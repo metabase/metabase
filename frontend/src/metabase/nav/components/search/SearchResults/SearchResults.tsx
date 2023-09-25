@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { SearchResult } from "metabase/search/components/SearchResult";
-import { EmptyStateContainer } from "metabase/nav/components/SearchResults.styled";
 import EmptyState from "metabase/components/EmptyState";
 import type { SearchFilters } from "metabase/search/types";
 import {
@@ -15,14 +14,25 @@ import { useSearchListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import Search from "metabase/entities/search";
 import { Loader, Text, Stack } from "metabase/ui";
-import type { CollectionItem, SearchModelType } from "metabase-types/api";
+import type {
+  SearchResults as SearchResultsType,
+  CollectionItem,
+  SearchModelType,
+} from "metabase-types/api";
+import {
+  EmptyStateContainer,
+  SearchResultsList,
+} from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 
-type SearchResultsProps = {
+export type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
   models?: SearchModelType[];
+  footerComponent?:
+    | ((metadata: Omit<SearchResultsType, "data">) => JSX.Element | null)
+    | null;
 };
 
 export const SearchResults = ({
@@ -31,6 +41,7 @@ export const SearchResults = ({
   searchText,
   searchFilters = {},
   models,
+  footerComponent,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
@@ -52,7 +63,11 @@ export const SearchResults = ({
     models: models ?? searchFilters.type,
   };
 
-  const { data: list = [], isLoading } = useSearchListQuery({
+  const {
+    data: list = [],
+    metadata,
+    isLoading,
+  } = useSearchListQuery({
     query,
     reload: true,
     enabled: !!debouncedSearchText,
@@ -74,6 +89,7 @@ export const SearchResults = ({
   }, [searchText, reset]);
 
   const hasResults = list.length > 0;
+  const showFooter = hasResults && footerComponent && metadata;
 
   if (isLoading || isWaitingForDebounce) {
     return (
@@ -87,33 +103,36 @@ export const SearchResults = ({
   }
 
   return (
-    <ul data-testid="search-results-list">
-      {hasResults ? (
-        list.map((item, index) => {
-          const isIndexedEntity = item.model === "indexed-entity";
-          const onClick =
-            onEntitySelect && (isIndexedEntity || forceEntitySelect)
-              ? onEntitySelect
-              : undefined;
-          const ref = getRef(item);
-          const wrappedResult = Search.wrapEntity(item, dispatch);
+    <>
+      <SearchResultsList data-testid="search-results-list">
+        {hasResults ? (
+          list.map((item, index) => {
+            const isIndexedEntity = item.model === "indexed-entity";
+            const onClick =
+              onEntitySelect && (isIndexedEntity || forceEntitySelect)
+                ? onEntitySelect
+                : undefined;
+            const ref = getRef(item);
+            const wrappedResult = Search.wrapEntity(item, dispatch);
 
-          return (
-            <li key={`${item.model}:${item.id}`} ref={ref}>
-              <SearchResult
-                result={wrappedResult}
-                compact={true}
-                isSelected={cursorIndex === index}
-                onClick={onClick}
-              />
-            </li>
-          );
-        })
-      ) : (
-        <EmptyStateContainer>
-          <EmptyState message={t`Didn't find anything`} icon="search" />
-        </EmptyStateContainer>
-      )}
-    </ul>
+            return (
+              <li key={`${item.model}:${item.id}`} ref={ref}>
+                <SearchResult
+                  result={wrappedResult}
+                  compact={true}
+                  isSelected={cursorIndex === index}
+                  onClick={onClick}
+                />
+              </li>
+            );
+          })
+        ) : (
+          <EmptyStateContainer>
+            <EmptyState message={t`Didn't find anything`} icon="search" />
+          </EmptyStateContainer>
+        )}
+      </SearchResultsList>
+      {showFooter && footerComponent(metadata)}
+    </>
   );
 };

@@ -1,36 +1,38 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { useState } from "react";
+import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
+import {
+  createMockDatabase,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
-import type { SearchModelType } from "metabase-types/api";
+import type {
+  EnabledSearchModelType,
+  SearchModelType,
+} from "metabase-types/api";
+import { TypeFilterContent } from "./TypeFilterContent";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+const MODEL_NAME: Record<EnabledSearchModelType, string> = {
+  action: "Action",
   card: "Question",
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
-  metric: "Metric",
-  pulse: "Pulse",
-  segment: "Segment",
   table: "Table",
 };
 
-const TEST_TYPES: Array<SearchModelType> = [
-  "card",
+const TEST_TYPES: Array<EnabledSearchModelType> = [
   "collection",
   "dashboard",
+  "card",
   "database",
-  "dataset",
   "table",
-  "pulse",
-  "segment",
-  "metric",
+  "dataset",
+  "action",
 ];
 
-const TEST_TYPE_SUBSET: Array<SearchModelType> = [
+const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
   "dashboard",
   "collection",
   "database",
@@ -40,28 +42,39 @@ const TestTypeFilterComponent = ({
   initialValue = [],
   onChangeFilters,
 }: {
-  initialValue?: SearchModelType[];
+  initialValue?: EnabledSearchModelType[];
   onChangeFilters: jest.Mock;
 }) => {
-  const [value, setValue] = useState<SearchModelType[]>(initialValue);
+  const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
 
-  onChangeFilters.mockImplementation((value: SearchModelType[]) => {
-    setValue(value);
-  });
+  const onChange = (selectedValues: EnabledSearchModelType[]) => {
+    onChangeFilters(selectedValues);
+    setValue(selectedValues);
+  };
 
-  return <TypeFilter value={value} onChange={onChangeFilters} />;
+  return <TypeFilterContent value={value} onChange={onChange} />;
 };
+
+const TEST_DATABASE = createMockDatabase({
+  settings: {
+    "database-enable-actions": true,
+  },
+});
 
 const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
 }: {
-  availableModels?: SearchModelType[];
-  initialValue?: SearchModelType[];
+  availableModels?: EnabledSearchModelType[];
+  initialValue?: EnabledSearchModelType[];
 } = {}) => {
   setupSearchEndpoints(
     availableModels.map((type, index) =>
-      createMockSearchResult({ model: type, id: index + 1 }),
+      createMockSearchResult({
+        model: type as SearchModelType,
+        id: index + 1,
+        database_id: TEST_DATABASE.id,
+      }),
     ),
   );
 
@@ -88,15 +101,11 @@ const getCheckboxes = () => {
     {},
   ) as HTMLInputElement[];
 };
-
-describe("TypeFilter", () => {
+describe("TypeFilterContent", () => {
   it("should display `Type` and all type labels", async () => {
     await setup();
-    expect(screen.getByText("Type")).toBeInTheDocument();
     for (const entityType of TEST_TYPES) {
-      expect(
-        screen.getByText(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]),
-      ).toBeInTheDocument();
+      expect(screen.getByText(MODEL_NAME[entityType])).toBeInTheDocument();
     }
   });
 

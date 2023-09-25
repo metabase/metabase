@@ -15,9 +15,8 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
-import SearchBar from "metabase/nav/components/SearchBar";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { checkNotNull } from "metabase/core/utils/types";
-import * as domUtils from "metabase/lib/dom";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",
@@ -98,34 +97,6 @@ describe("SearchBar", () => {
     });
   });
 
-  describe("rendering filter button with screen size", () => {
-    it("should not render filter button on small screens", () => {
-      const isSmallScreenMock = jest.spyOn(domUtils, "isSmallScreen");
-      isSmallScreenMock.mockReturnValue(true);
-
-      setup();
-
-      expect(
-        screen.queryByTestId("search-bar-filter-button"),
-      ).not.toBeInTheDocument();
-
-      isSmallScreenMock.mockRestore();
-    });
-
-    it("should render filter button on large screens", () => {
-      const isSmallScreenMock = jest.spyOn(domUtils, "isSmallScreen");
-      isSmallScreenMock.mockReturnValue(false);
-
-      setup();
-
-      expect(
-        screen.getByTestId("search-bar-filter-button"),
-      ).toBeInTheDocument();
-
-      isSmallScreenMock.mockRestore();
-    });
-  });
-
   describe("focusing on search bar", () => {
     it("should render `Recent Searches` list when clicking the search bar", async () => {
       setup();
@@ -141,13 +112,6 @@ describe("SearchBar", () => {
   });
 
   describe("keyboard navigation", () => {
-    it("should focus on the filter bar when the user tabs from the search bar", () => {
-      setup();
-      userEvent.click(getSearchBar());
-      userEvent.tab();
-      expect(screen.getByTestId("search-bar-filter-button")).toHaveFocus();
-    });
-
     it("should allow navigation through the search results with the keyboard", async () => {
       setup();
       userEvent.click(getSearchBar());
@@ -155,9 +119,6 @@ describe("SearchBar", () => {
 
       const resultItems = await screen.findAllByTestId("search-result-item");
       expect(resultItems.length).toBe(2);
-
-      // tab over the filter button
-      userEvent.tab();
 
       // There are two search results, each with a link to `Our analytics`,
       // so we want to navigate to the search result, then the collection link.
@@ -181,30 +142,20 @@ describe("SearchBar", () => {
   });
 
   describe("populating existing query", () => {
-    it("should populate text and highlight filter button when a query is in the search bar", () => {
+    it("should populate text when a query is in the search bar", () => {
       setup({
         initialRoute: "/search?q=foo&type=card",
       });
 
       expect(getSearchBar()).toHaveValue("foo");
-
-      expect(screen.getByTestId("search-bar-filter-button")).toHaveAttribute(
-        "data-is-filtered",
-        "true",
-      );
     });
 
-    it("should not populate text or highlight filter button on non-search pages", () => {
+    it("should not populate text on non-search pages", () => {
       setup({
         initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
       });
 
       expect(getSearchBar()).toHaveValue("");
-
-      expect(screen.getByTestId("search-bar-filter-button")).toHaveAttribute(
-        "data-is-filtered",
-        "false",
-      );
     });
   });
 });

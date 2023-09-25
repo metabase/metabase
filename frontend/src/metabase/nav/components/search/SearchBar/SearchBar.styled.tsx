@@ -11,7 +11,6 @@ import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
 
 const activeInputCSS = css`
   border-radius: 6px;
@@ -154,38 +153,5 @@ export const SearchResultsFloatingContainer = styled.div`
 
   ${breakpointMinSmall} {
     top: 42px;
-  }
-`;
-
-export const SearchResultsContainer = styled.div`
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  overflow-y: auto;
-
-  background-color: ${color("bg-white")};
-  line-height: 24px;
-
-  box-shadow: 0 20px 20px ${color("shadow")};
-
-  ${breakpointMaxSmall} {
-    height: calc(100vh - ${APP_BAR_HEIGHT});
-  }
-
-  ${breakpointMinSmall} {
-    max-height: 400px;
-
-    border: 1px solid ${color("border")};
-    border-radius: 6px;
-    box-shadow: 0 7px 20px ${color("shadow")};
-  }
-`;
-
-export const SearchFunnelButton = styled(Button)<{ isFiltered?: boolean }>`
-  margin-right: 0.25rem;
-  border: none;
-
-  ${({ isFiltered }) => isFiltered && `color: ${color("brand")};`}
-  &:hover {
-    background: transparent;
   }
 `;
