@@ -26,36 +26,22 @@ export function startNewCard(type, databaseId, tableId) {
 // TODO: move to redux
 export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    let question = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
-    });
-
-    const shouldReload = !isFullCardData(question?.card());
-
     await dispatch(
-      Questions.actions.fetch({ id: cardId }, { reload: shouldReload }),
+      Questions.actions.fetch(
+        { id: cardId },
+        { properties: ["dataset_query", "display", "visualization_settings"] }, // complies with Card interface
+      ),
     );
 
-    if (shouldReload || !question) {
-      question = Questions.selectors.getObject(getState(), {
-        entityId: cardId,
-      });
-    }
+    const question = Questions.selectors.getObject(getState(), {
+      entityId: cardId,
+    });
 
     return question?.card();
   } catch (error) {
     console.error("error loading card", error);
     throw error;
   }
-}
-
-function isFullCardData(maybeCard) {
-  // validate that maybeCard complies with Card interface
-  return (
-    maybeCard?.dataset_query != null &&
-    maybeCard?.display != null &&
-    maybeCard?.visualization_settings != null
-  );
 }
 
 function getCleanCard(card) {
