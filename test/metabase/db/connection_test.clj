@@ -75,16 +75,23 @@
     (testing "reuse transaction when creating nested transaction with nested-transaction-rule=:ignore"
       (is (not (user-exists? user-1)))
       (try
+        ;; the top-level transaction cleans up everything
         (t2/with-transaction []
+          ;; This transaction doesn't modify the DB. It catches the exception
+          ;; from the nested transaction and sees its change because the nested
+          ;; transaction doesn't set any new savepoint.
           (t2/with-transaction [t-conn]
             (try
               (t2/with-transaction [_ t-conn {:nested-transaction-rule :ignore}]
+                ;; Create a user...
                 (create-user! user-1)
                 (is (user-exists? user-1))
+                ;; and fail.
                 (throw transaction-exception))
               (catch Exception e
                 (when-not (is-transaction-exception? e)
                   (throw e)))))
+          ;; this user has not been rolled back because of :ignore
           (is (user-exists? user-1))
           (throw transaction-exception))
         (catch Exception e
