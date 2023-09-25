@@ -3,7 +3,7 @@ import Code from "metabase/components/Code";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import Utils from "metabase/lib/utils";
+import { uuid } from "metabase/lib/utils";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 
@@ -15,7 +15,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -32,7 +32,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
       "template-tags": {
         created_at: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "created_at",
           "display-name": "Created At",
           type: "dimension",
@@ -49,7 +49,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -66,14 +66,14 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
       "template-tags": {
         id: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "id",
           "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -90,7 +90,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "dimension",
@@ -109,7 +109,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { price: {{price}} } }]",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "price",
           "display-name": "Price",
           type: "number",
@@ -126,7 +126,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: {{created_at}} }]",
       "template-tags": {
         created_at: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "created_at",
           "display-name": "Created At",
           type: "dimension",
@@ -142,7 +142,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { [[ _id: {{id}} ]] } }]",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "id",
           "display-name": "ID",
           type: "text",
@@ -159,14 +159,14 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
       "template-tags": {
         id: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "id",
           "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -182,7 +182,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
       "template-tags": {
         category: {
-          id: Utils.uuid(),
+          id: uuid(),
           name: "category",
           "display-name": "Category",
           type: "dimension",

@@ -143,6 +143,7 @@ describe("binning related reproductions", () => {
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Raw Data").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18646").click();
     });
@@ -172,7 +173,7 @@ describe("binning related reproductions", () => {
     });
 
     getNotebookStep("summarize").findByText(
-      "Question 4 - Product → Created At: Month",
+      "Question 5 - Product → Created At: Month",
     );
 
     visualize();

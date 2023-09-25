@@ -9,7 +9,7 @@
    [filter])
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as convert]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
@@ -28,11 +28,11 @@
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
-;; TODO: This pattern of "re-export some function and slap a `clj->js` at the end" is going to keep appearing.
-;; Generalize the machinery in `metabase.domain-entities.malli` to handle this case, so we get schema-powered automatic
-;; conversion for incoming args and outgoing return values. I'm imagining something like
-;; `(mu/js-export lib.core/recognize-template-tags)` where that function has a Malli schema and it works like
-;; `metabase.shared.util.namespaces/import-fn` plus wrapping it with conversion for all args and the return value.
+(defn- convert-js-template-tags [tags]
+  (update-vals (js->clj tags) #(-> %
+                                   (update-keys keyword)
+                                   (update :type keyword))))
+
 (defn ^:export extract-template-tags
   "Extract the template tags from a native query's text.
 
@@ -48,10 +48,9 @@
   Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
   ([query-text] (extract-template-tags query-text {}))
   ([query-text existing-tags]
-   (->> existing-tags
-        lib.core/->TemplateTags
+   (->> (convert-js-template-tags existing-tags)
         (lib.core/extract-template-tags query-text)
-        lib.core/TemplateTags->)))
+        clj->js)))
 
 (defn ^:export suggestedName
   "Return a nice description of a query."
@@ -65,7 +64,7 @@
       <>
       (assoc <> :type :query))
     (mbql.normalize/normalize <>)
-    (convert/->pMBQL <>)))
+    (lib.convert/->pMBQL <>)))
 
 (defn ^:export metadataProvider
   "Convert metadata to a metadata provider if it is not one already."
@@ -98,7 +97,7 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> query-map lib.convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new blank stage to the end of the pipeline"
@@ -496,7 +495,7 @@
   [column]
   (-> column
       lib.core/ref
-      convert/->legacy-MBQL
+      lib.convert/->legacy-MBQL
       (update 2 update-vals #(if (qualified-keyword? %)
                                (u/qualified-name %)
                                %))
@@ -506,7 +505,7 @@
   (-> legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
-      convert/->pMBQL))
+      lib.convert/->pMBQL))
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
@@ -524,9 +523,9 @@
 
   Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found."
   [a-query stage-number legacy-columns legacy-refs]
-  ;; Set up this query stage's `:aggregation` list as the context for [[convert/->pMBQL]] to convert legacy
+  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
-  (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [haystack (mapv ->column-or-ref legacy-columns)
           needles  (map legacy-ref->pMBQL legacy-refs)]
       #_{:clj-kondo/ignore [:discouraged-var]}
@@ -723,7 +722,7 @@
 (defn ^:export with-template-tags
   "Updates the native query's template tags."
   [a-query tags]
-  (lib.core/with-template-tags a-query (lib.core/->TemplateTags tags)))
+  (lib.core/with-template-tags a-query (convert-js-template-tags tags)))
 
 (defn ^:export raw-native-query
   "Returns the native query string"
@@ -733,7 +732,7 @@
 (defn ^:export template-tags
   "Returns the native query's template tags"
   [a-query]
-  (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
+  (clj->js (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
   "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
@@ -742,6 +741,13 @@
   (to-array
    (map u/qualified-name
         (lib.core/required-native-extras (metadataProvider database-id metadata)))))
+
+(defn ^:export has-write-permission
+  "Returns whether the database has native write permissions.
+   This is only filled in by [[metabase.api.database/add-native-perms-info]]
+   and added to metadata when pulling a database from the list of dbs in js."
+  [a-query]
+  (lib.core/has-write-permission a-query))
 
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
@@ -761,6 +767,12 @@
   "Returns the extra keys for native queries associated with this query."
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
+
+(defn ^:export engine
+  "Returns the database engine.
+   Must be a native query"
+  [a-query]
+  (name (lib.core/engine a-query)))
 
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
@@ -848,8 +860,8 @@
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
 
   Each type of drill-thru has a different effect on the query."
-  [a-query stage-number a-drill-thru]
-  (lib.core/drill-thru a-query stage-number a-drill-thru))
+  [a-query stage-number a-drill-thru & args]
+  (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
@@ -860,3 +872,9 @@
   "Returns an array of pivotable columns of the specified type."
   [a-drill-thru pivot-type]
   (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
+
+(defn ^:export with-different-table
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [a-query table-id]
+  (lib.core/with-different-table a-query table-id))

@@ -117,10 +117,15 @@ describe("scenarios > question > joined questions", () => {
       native: { query: "select 'foo' as a_column" },
     });
 
-    cy.createNativeQuestion({
-      name: "question b",
-      native: { query: "select 'foo' as b_column" },
-    });
+    cy.createNativeQuestion(
+      {
+        name: "question b",
+        native: { query: "select 'foo' as b_column" },
+      },
+      {
+        wrapId: true,
+      },
+    );
 
     // start a custom question with question a
     startNewQuestion();
@@ -142,8 +147,11 @@ describe("scenarios > question > joined questions", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 5 - A_COLUMN → B Column");
+
+    cy.get("@questionId").then(questionId => {
+      cy.findByText(`Question ${questionId} - A_COLUMN → B Column`);
+    });
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -164,14 +172,19 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    cy.createQuestion({
-      name: "Q2",
-      query: {
-        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
-        breakout: [["field", PRODUCTS.ID, null]],
-        "source-table": PRODUCTS_ID,
+    cy.createQuestion(
+      {
+        name: "Q2",
+        query: {
+          aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+          breakout: [["field", PRODUCTS.ID, null]],
+          "source-table": PRODUCTS_ID,
+        },
       },
-    });
+      {
+        wrapId: true,
+      },
+    );
 
     startNewQuestion();
     popover().within(() => {
@@ -185,12 +198,19 @@ describe("scenarios > question > joined questions", () => {
 
     popover().within(() => {
       cy.icon("chevronleft").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("Q2").click();
     });
 
-    popover().findByText("Product ID").click();
-    popover().findByText("ID").click();
+    getNotebookStep("join").within(() => {
+      cy.findByLabelText("Left column")
+        .should("contain", "Q1")
+        .should("contain", "Product ID");
+      cy.findByLabelText("Right column")
+        .should("contain", "Products")
+        .should("contain", "ID");
+    });
 
     visualize();
 
@@ -202,9 +222,11 @@ describe("scenarios > question > joined questions", () => {
     // that a question could be made by joining two previously saved questions
     cy.icon("add_data").click();
 
-    enterCustomColumnDetails({
-      formula: "[Question 5 - Product → Sum of Rating] / [Sum of Total]",
-      name: "Sum Divide",
+    cy.get("@questionId").then(questionId => {
+      enterCustomColumnDetails({
+        formula: `[Question ${questionId} - Product → Sum of Rating] / [Sum of Total]`,
+        name: "Sum Divide",
+      });
     });
 
     cy.button("Done").click();
@@ -379,6 +401,7 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().findByText("Sample Database").click();
+    popover().findByText("Raw Data").click();
     popover().findByText("Saved Questions").click();
     popover().findByText("15578").click();
 

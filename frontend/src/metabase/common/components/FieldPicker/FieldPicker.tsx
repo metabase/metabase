@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import CheckBox from "metabase/core/components/CheckBox";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
+import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import * as Lib from "metabase-lib";
 import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
 

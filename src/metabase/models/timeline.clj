@@ -7,7 +7,6 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def Timeline
@@ -25,13 +24,9 @@
 
 ;;;; schemas
 
-(def icons
-  "Valid Timeline and TimelineEvent icons"
-  ["star" "balloons" "mail" "warning" "bell" "cloud"])
-
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
-  (apply s/enum icons))
+ [:enum "star" "balloons" "mail" "warning" "bell" "cloud"])
 
 (def DefaultIcon
   "Timeline default icon"

@@ -45,6 +45,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
     popover().within(() => {
       cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByText(questionDetails.name).click();
     });
@@ -93,7 +94,10 @@ function saveQuestion(name) {
   cy.findByText("Save").click();
   // TODO -- this name is all wrong but the metadata for Question 4 appears to be missing here for whatever reason,
   //  if we fix that bug then this should actually be `Orders + 22859-Q1`
-  cy.findByDisplayValue("Orders + Question 4").clear().type(name).blur();
+  cy.findByDisplayValue(/Orders \+ Question \d+/)
+    .clear()
+    .type(name)
+    .blur();
 
   cy.button("Save").click();
   cy.wait(100);
