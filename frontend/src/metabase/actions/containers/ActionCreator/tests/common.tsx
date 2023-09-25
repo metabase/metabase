@@ -1,5 +1,6 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   renderWithProviders,
@@ -66,10 +67,16 @@ export async function setup({
   }
 
   renderWithProviders(
-    <ActionCreator
-      actionId={action?.id}
-      modelId={model?.id}
-      databaseId={database.id}
+    <Route
+      path="/"
+      component={props => (
+        <ActionCreator
+          actionId={action?.id}
+          modelId={model?.id}
+          databaseId={database.id}
+          {...props}
+        />
+      )}
     />,
     {
       storeInitialState: createMockState({
@@ -81,6 +88,7 @@ export async function setup({
           "site-url": SITE_URL,
         }),
       }),
+      withRouter: true,
     },
   );
 
