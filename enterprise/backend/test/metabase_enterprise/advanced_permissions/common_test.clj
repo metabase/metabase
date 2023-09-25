@@ -723,7 +723,7 @@
                     (is (some? (api.card-test/upload-example-csv! nil false)))))))))))))
 
 (deftest get-database-can-upload-test
-  (mt/test-driver (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
     (mt/with-empty-db
       (let [db-id (u/the-id (mt/db))]
         (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
