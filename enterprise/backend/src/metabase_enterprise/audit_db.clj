@@ -2,6 +2,7 @@
   (:require
    [clojure.core :as c]
    [clojure.java.io :as io]
+   [clojure.java.shell :as sh]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.env :as mdb.env]
@@ -54,10 +55,6 @@
                              :creator_id       nil
                              :auto_run_queries true})))))
 
-
-(def analytics-root-dir-resource
-  "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics.zip"))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -116,11 +113,38 @@
       ::no-op)))
 
 (defn- map-instance-analytics-files-to-plugins-dir [path]
-  (let [pattern (re-pattern (str ".*" File/separatorChar "(instance_analytics" File/separatorChar ".*)"))]
+  (let [sep File/separatorChar
+        pattern (re-pattern (str ".*" sep "(instance_analytics" sep ".*)"))]
     (->> path
          (re-find pattern)
          second
-         (str "plugins" File/separatorChar))))
+         (str "plugins" sep))))
+
+(def analytics-zip-resource
+  "A zip file containing analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "instance_analytics.zip"))
+
+(def analytics-dir-resource
+  "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "instance_analytics"))
+
+(defn- plug-in-ia-content
+  "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
+   and put it into plugins/instance_analytics"
+  [zip-resource dir-resource]
+  (cond
+    zip-resource
+    (do (log/info "Unzipping instance_analytics to plugins...")
+        (u.files/unzip-file
+          analytics-zip-resource
+          map-instance-analytics-files-to-plugins-dir)
+        (log/info "Unzipping done."))
+    dir-resource
+    (do
+      (log/info "Copying resources/instance_analytics to plugins...")
+      ;; TODO use clojure.java.io or fs library?
+      (sh/sh "cp" "-r" "resources/instance_analytics" "plugins")
+      (log/info "Copying done."))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
@@ -133,25 +157,16 @@
       (log/info "Beginning Audit DB Sync...")
       (sync-metadata/sync-db-metadata! audit-db)
       (log/info "Audit DB Sync Complete.")
-
-      ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
-      (when analytics-root-dir-resource
+      (when (or analytics-zip-resource analytics-dir-resource)
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
            (fn []
              (ee.internal-user/ensure-internal-user-exists!)
              (adjust-audit-db-to-source! audit-db)
+
              (log/info "Loading Analytics Content...")
-             (log/info "Unzipping instance_analytics to plugins...")
-             (log/info "analytics-root-dir-resource is:"
-                       (pr-str analytics-root-dir-resource)
-                       " | "
-                       analytics-root-dir-resource)
-             (u.files/unzip-file
-               analytics-root-dir-resource
-               map-instance-analytics-files-to-plugins-dir)
-             (log/info "Unzipping done.")
-             (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
+             (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
+             (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
              (let [report (log/with-no-logs
                             (serialization.cmd/v2-load-internal "plugins/instance_analytics"
