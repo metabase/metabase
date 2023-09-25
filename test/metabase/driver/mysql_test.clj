@@ -700,19 +700,21 @@
     (when-not (mysql/mariadb? (mt/db))
       (testing "`table-privileges` should return the correct data for current_user and role privileges"
         (drop-if-exists-and-create-db! "table_privileges_test")
-        (let [details         (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
-              spec            (sql-jdbc.conn/connection-details->spec :mysql details)
-              supports-roles? (<= 8 (get-db-version spec))
-              get-privileges  (fn []
-                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                  [spec [:mysql (assoc details
-                                                       :user "table_privileges_test_user"
-                                                       :password "password"
-                                                       :ssl true
-                                                       :additional-options "trustServerCertificate=true")]]
-                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                    (driver/current-user-table-privileges driver/*driver*
-                                                                          (assoc (mt/db) :name "table_privileges_test")))))]
+        (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
+              spec             (sql-jdbc.conn/connection-details->spec :mysql details)
+              mysql8-or-above? (<= 8 (get-db-version spec))
+              get-privileges   (fn []
+                                 (let [new-connection-details (cond-> (assoc details
+                                                                             :user "table_privileges_test_user",
+                                                                             :password "password")
+                                                                mysql8-or-above?
+                                                                (assoc :ssl true
+                                                                       :additional-options "trustServerCertificate=true"))]
+                                   (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                     [spec [:mysql new-connection-details]]
+                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                       (driver/current-user-table-privileges driver/*driver*
+                                                                             (assoc (mt/db) :name "table_privileges_test"))))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
@@ -733,7 +735,7 @@
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
-            (when supports-roles?
+            (when mysql8-or-above?
               (testing "should return privileges on roles that the user has been granted"
                 (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
                               (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
