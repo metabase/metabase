@@ -98,7 +98,7 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
-(mu/defn field :- ColumnMetadata
+(mu/defn field :- [:maybe ColumnMetadata]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- MetadataProviderable
    field-id              :- ::lib.schema.id/field]

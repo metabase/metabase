@@ -58,6 +58,7 @@ export class Mode {
         clicked?.dimensions,
       );
 
+      // TODO: those calculations are really expensive and should be memoized at some level
       drills = availableDrillThrus
         .flatMap(drill => {
           const drillDisplayInfo = Lib.displayInfo(query, stageIndex, drill);

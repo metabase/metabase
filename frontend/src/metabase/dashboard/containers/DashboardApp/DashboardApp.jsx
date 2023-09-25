@@ -5,8 +5,8 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -119,7 +119,8 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty } = props;
+  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
+    props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -135,7 +136,6 @@ const DashboardApp = props => {
   });
 
   const slowToastId = useUniqueId();
-  useBeforeUnload(isEditing && isDirty);
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -188,6 +188,8 @@ const DashboardApp = props => {
 
   return (
     <div className="shrink-below-content-size full-height">
+      <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
+
       <Dashboard
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
@@ -230,6 +232,7 @@ DashboardApp.propTypes = {
   related: PropTypes.arrayOf(PropTypes.object),
   hasSidebar: PropTypes.bool,
   children: PropTypes.node,
+  route: PropTypes.object,
 };
 
 export default _.compose(

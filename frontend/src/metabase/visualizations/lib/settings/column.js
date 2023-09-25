@@ -502,52 +502,94 @@ export const getTitleForColumn = (column, series, settings) => {
 
 export const buildTableColumnSettings = ({
   getIsColumnVisible = col => col.visibility_type !== "details-only",
-} = {}) => ({
-  // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-  //   { name: "COLUMN_NAME", enabled: true }
-  //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-  "table.columns": {
-    section: t`Columns`,
-    title: t`Columns`,
-    widget: ChartSettingTableColumns,
-    getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }]) => {
-      const columns = card.visualization_settings["table.columns"];
-      const enabledColumns = columns.filter(column => column.enabled);
-      // If "table.columns" happened to be an empty array,
-      // it will be treated as "all columns are hidden",
-      // This check ensures it's not empty,
-      // otherwise it will be overwritten by `getDefault` below
-      return (
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          enabledColumns,
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        )
-      );
-    },
-    getDefault: ([
-      {
-        data: { cols },
-      },
-    ]) =>
-      cols.map(col => ({
-        name: col.name,
-        fieldRef: col.field_ref,
-        enabled: getIsColumnVisible(col),
-      })),
-    getProps: (series, settings) => {
-      const [
-        {
-          data: { cols },
-        },
-      ] = series;
+} = {}) => {
+  const isValid = ([{ card, data }], settings) => {
+    const columns = settings["table.columns"] || [];
+    const enabledColumns = columns.filter(column => column.enabled);
+    // If "table.columns" happened to be an empty array,
+    // it will be treated as "all columns are hidden",
+    // This check ensures it's not empty,
+    // otherwise it will be overwritten by `getDefault` below
+    return (
+      columns.length !== 0 &&
+      _.all(
+        enabledColumns,
+        columnSetting =>
+          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+      )
+    );
+  };
 
-      return {
-        columns: cols,
-        getColumnName: column => getTitleForColumn(column, series, settings),
-      };
+  const getValue = (series, settings) => {
+    const [
+      {
+        data: { cols = [] },
+      },
+    ] = series;
+
+    const columnSettings = settings["table.columns"];
+
+    if (!columnSettings) {
+      // default settings
+      return getDefault(series, settings);
+    }
+
+    if (!isValid(series, settings)) {
+      return getDefault(series, settings);
+    }
+
+    const datasetColumnsNotInSettings = cols.filter(
+      datasetColumn =>
+        findColumnIndexForColumnSetting(columnSettings, datasetColumn) < 0,
+    );
+
+    const extraColumnSettings = datasetColumnsNotInSettings.map(
+      datasetColumn => ({
+        name: datasetColumn.name,
+        enabled: false,
+        fieldRef: datasetColumn.field_ref,
+      }),
+    );
+
+    return columnSettings.concat(extraColumnSettings);
+  };
+
+  const getDefault = ([
+    {
+      data: { cols },
     },
-  },
-});
+  ]) => {
+    return cols.map(col => ({
+      name: col.name,
+      fieldRef: col.field_ref,
+      enabled: getIsColumnVisible(col),
+    }));
+  };
+
+  return {
+    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+    //   { name: "COLUMN_NAME", enabled: true }
+    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
+    "table.columns": {
+      section: t`Columns`,
+      title: t`Columns`,
+      widget: ChartSettingTableColumns,
+      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+      isValid,
+      getDefault,
+      getValue,
+      getProps: (series, settings) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = series;
+
+        return {
+          columns: cols,
+          getColumnName: column => getTitleForColumn(column, series, settings),
+        };
+      },
+    },
+  };
+};
