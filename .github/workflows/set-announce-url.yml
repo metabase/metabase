@@ -59,4 +59,3 @@ jobs:
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_PUBLIC_ID }} \
           --paths "/version-info.json" "/version-info-ee.json"
-
