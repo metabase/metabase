@@ -168,7 +168,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
   describe("editing existing action", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-      const action = { ...ACTION };
+      const action = ACTION;
       const initialRoute = `/model/${MODEL.id}/detail/actions`;
       const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
       const { history } = await setup({ initialRoute, action });
@@ -191,7 +191,7 @@ describe("actions > containers > ActionCreatorModal", () => {
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-      const action = { ...ACTION };
+      const action = ACTION;
       const initialRoute = `/model/${MODEL.id}/detail/actions`;
       const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
       const { history } = await setup({ initialRoute, action });
