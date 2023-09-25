@@ -836,7 +836,7 @@
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [{:keys [query-filter] :as context}
-   all-satisfied-bindings
+   satisfied-bindings
    {:keys [available-metrics available-filters] :as available-values}
    {required-dimensions :dimensions
     required-metrics    :metrics
@@ -852,7 +852,7 @@
                               :satisfied-filters    satisfied-filters}
         dimension-locations  [satisfied-dimensions satisfied-metrics satisfied-filters]
         used-dimensions      (set (dashboard-templates/collect-dimensions dimension-locations))]
-    (->> (all-satisfied-bindings (set used-dimensions))
+    (->> (satisfied-bindings (set used-dimensions))
          (filter (partial valid-bindings? context satisfied-dimensions))
          (map (partial build-dashcard context available-values card-template satisfied-values)))))
 
@@ -1080,13 +1080,13 @@
   [context :- ads/context
    available-values :- ads/available-values
    satisfied-affinities :- ads/affinity-matches
-   all-satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
+   satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
    layout-producer :- [:fn #(satisfies? CardTemplateProducer %)]]
   (some->> satisfied-affinities
            (map-indexed (fn [position [affinity-name affinities]]
                           (let [card-template (create-template layout-producer affinity-name affinities)]
                             (some->> (assoc card-template :position position)
-                                     (card-candidates context all-satisfied-bindings available-values)
+                                     (card-candidates context satisfied-bindings available-values)
                                      not-empty
                                      (hash-map (name affinity-name))))))
            (apply merge-with (partial max-key (comp :score first)) {})
@@ -1200,11 +1200,10 @@
         ;; get the suitable matches for them
         satisfied-affinities   (match-affinities affinities (set (keys available-dimensions)))
         distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)
-        all-satisfied-bindings (all-satisfied-bindings distinct-affinity-sets available-dimensions)
         cards                  (make-cards base-context
                                            available-values
                                            satisfied-affinities
-                                           all-satisfied-bindings
+                                           (all-satisfied-bindings distinct-affinity-sets available-dimensions)
                                            (card-based-layout dashboard-template))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
