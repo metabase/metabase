@@ -28,7 +28,7 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
@@ -217,6 +217,7 @@ function QueryBuilder(props) {
     card,
     isLoadingComplete,
     closeQB,
+    route,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -301,7 +302,6 @@ function QueryBuilder(props) {
   const shouldShowUnsavedChangesWarning = useSelector(
     getShouldShowUnsavedChangesWarning,
   );
-  useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
     cancelQuery();
@@ -398,21 +398,28 @@ function QueryBuilder(props) {
   }, []);
 
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-      toggleBookmark={onClickBookmark}
-      onDismissToast={onDismissToast}
-      onConfirmToast={onConfirmToast}
-      isShowingToaster={isShowingToaster}
-    />
+    <>
+      <View
+        {...props}
+        modal={uiControls.modal}
+        recentlySaved={uiControls.recentlySaved}
+        onOpenModal={openModal}
+        onCloseModal={closeModal}
+        onSetRecentlySaved={setRecentlySaved}
+        onSave={handleSave}
+        onCreate={handleCreate}
+        handleResize={forceUpdateDebounced}
+        toggleBookmark={onClickBookmark}
+        onDismissToast={onDismissToast}
+        onConfirmToast={onConfirmToast}
+        isShowingToaster={isShowingToaster}
+      />
+
+      <LeaveConfirmationModal
+        isEnabled={shouldShowUnsavedChangesWarning}
+        route={route}
+      />
+    </>
   );
 }
 
