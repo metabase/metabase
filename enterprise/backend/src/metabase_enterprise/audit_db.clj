@@ -12,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
