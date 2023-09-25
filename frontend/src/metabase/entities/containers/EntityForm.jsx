@@ -1,12 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component, lazy, Suspense } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import entityType from "./EntityType";
-const Form = lazy(() => import("metabase/containers/FormikForm"));
 
 export function getForm(entityDef) {
   // 1. default `form`
@@ -25,20 +22,19 @@ const EForm = ({
   resumedValues,
   ...props
 }) => {
+  const FormikForm = require("metabase/containers/FormikForm").default;
   const initialValues =
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
       : entityObject;
   return (
-    <Suspense fallback={<LoadingAndErrorWrapper loading />}>
-      <Form
-        {...props}
-        form={form}
-        initialValues={{ ...initialValues, ...resumedValues }}
-        onSubmit={onSubmit}
-        onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
-      />
-    </Suspense>
+    <FormikForm
+      {...props}
+      form={form}
+      initialValues={{ ...initialValues, ...resumedValues }}
+      onSubmit={onSubmit}
+      onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
+    />
   );
 };
 
