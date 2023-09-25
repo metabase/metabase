@@ -68,16 +68,14 @@
                     (when (= (canonical-name field-metadata)
                              (canonical-name other-field-metadata))
                       other-field-metadata))
-                  other-metadata)
-        num-matches (count matches)]
-    (cond
-      (zero? num-matches)
+                  other-metadata)]
+    (case (count matches)
+      0
       nil
 
-      (= 1 num-matches)
+      1
       (first matches)
 
-      :else
       (or
         (some (fn [match]
                 (when (= (:name field-metadata) (:name match))
