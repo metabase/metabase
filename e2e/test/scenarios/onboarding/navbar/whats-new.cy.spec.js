@@ -25,6 +25,7 @@ describe("nav > what's new notification", () => {
 
   it("should show a notification with a link to the release notes, and allow the dismissal of it", () => {
     cy.signInAsAdmin();
+    cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
 
     loadHomepage();
     navigationSidebar().findByText("See what's new");
@@ -42,6 +43,7 @@ describe("nav > what's new notification", () => {
 
   it("it should show the notification for other users after one user dismissed it", () => {
     cy.signInAsAdmin();
+    cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
     loadHomepage();
     navigationSidebar().findByText("See what's new");
     navigationSidebar().icon("close").click();
