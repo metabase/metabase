@@ -80,7 +80,7 @@ class ArchiveApp extends Component {
                 rowHeight={ROW_HEIGHT}
                 renderItem={({ item }) => (
                   <ArchivedItem
-                    type={item.type}
+                    model={item.model}
                     name={item.getName()}
                     icon={item.getIcon().name}
                     color={item.getColor()}
