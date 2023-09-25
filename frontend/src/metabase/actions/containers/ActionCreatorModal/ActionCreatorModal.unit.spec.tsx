@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
@@ -13,6 +14,7 @@ import {
 } from "__support__/server-mocks";
 
 import type { Card, WritebackAction } from "metabase-types/api";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import {
   createMockCard,
   createMockQueryAction,
@@ -25,6 +27,9 @@ const MODEL = createMockCard({ id: 1, dataset: true });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
 const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;
+const DATABASE = createSampleDatabase({
+  settings: { "database-enable-actions": true },
+});
 
 type SetupOpts = {
   initialRoute: string;
@@ -37,7 +42,7 @@ async function setup({
   model = MODEL,
   action = ACTION,
 }: SetupOpts) {
-  setupDatabasesEndpoints([]);
+  setupDatabasesEndpoints([DATABASE]);
   setupCardsEndpoints([model]);
 
   if (action) {
@@ -111,5 +116,30 @@ describe("actions > containers > ActionCreatorModal", () => {
     expect(history.getCurrentLocation().pathname).toBe(
       `/model/${MODEL_SLUG}/detail/actions`,
     );
+  });
+
+  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+    const action = { ...ACTION };
+    const initialRoute = `/model/${MODEL.id}/detail/actions`;
+    const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+    const { history } = await setup({ initialRoute, action });
+
+    history.push(actionRoute);
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByTestId("loading-spinner"),
+    );
+
+    const actionNameInput = screen.getByDisplayValue(ACTION.name);
+    userEvent.type(actionNameInput, "a change");
+    userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+    history.goBack();
+
+    expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Navigating away from here will cause you to lose any changes you have made.",
+      ),
+    ).toBeInTheDocument();
   });
 });
