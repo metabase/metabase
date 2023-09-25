@@ -9,7 +9,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -112,14 +111,6 @@
       :else
       ::no-op)))
 
-(defn- map-instance-analytics-files-to-plugins-dir [path]
-  (let [sep File/separatorChar
-        pattern (re-pattern (str ".*" sep "(instance_analytics" sep ".*)"))]
-    (->> path
-         (re-find pattern)
-         second
-         (str "plugins" sep))))
-
 (def analytics-zip-resource
   "A zip file containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics.zip"))
@@ -128,21 +119,19 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn- plug-in-ia-content
+(defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
   [zip-resource dir-resource]
   (cond
     zip-resource
     (do (log/info "Unzipping instance_analytics to plugins...")
-        (u.files/unzip-file
-          analytics-zip-resource
-          map-instance-analytics-files-to-plugins-dir)
+        (u.files/unzip-file analytics-zip-resource "plugins")
         (log/info "Unzipping done."))
     dir-resource
     (do
       (log/info "Copying resources/instance_analytics to plugins...")
-      ;; TODO use clojure.java.io or fs library?
+      ;; TODO use clojure.java.io or fs lib?
       (sh/sh "cp" "-r" "resources/instance_analytics" "plugins")
       (log/info "Copying done."))))
 
@@ -159,21 +148,18 @@
       (log/info "Audit DB Sync Complete.")
       (when (or analytics-zip-resource analytics-dir-resource)
         ;; prevent sync while loading
-        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-           (fn []
-             (ee.internal-user/ensure-internal-user-exists!)
-             (adjust-audit-db-to-source! audit-db)
-
-             (log/info "Loading Analytics Content...")
-             (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
-             (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
-             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-             (let [report (log/with-no-logs
-                            (serialization.cmd/v2-load-internal "plugins/instance_analytics"
-                                                                {}
-                                                                :token-check? false))]
-               (if (not-empty (:errors report))
-                 (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
-             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-               (adjust-audit-db-to-host! audit-db)))))))))
+        (ee.internal-user/ensure-internal-user-exists!)
+        (adjust-audit-db-to-source! audit-db)
+        (log/info "Loading Analytics Content...")
+        (ia-content->plugins analytics-zip-resource analytics-dir-resource)
+        (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
+        ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+        (let [report (log/with-no-logs
+                       (serialization.cmd/v2-load-internal "plugins/instance_analytics"
+                                                           {}
+                                                           :token-check? false))]
+          (if (not-empty (:errors report))
+            (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
