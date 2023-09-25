@@ -5,6 +5,7 @@ import { Route } from "react-router";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
@@ -55,7 +56,14 @@ async function setup({
     <>
       <Route
         path="/model/:slug/detail/actions/:actionId"
-        component={ActionCreatorModal}
+        component={routeProps => (
+          <ActionCreatorModal
+            {...routeProps}
+            onClose={() => {
+              history?.push(`/model/${MODEL.id}/detail/actions`);
+            }}
+          />
+        )}
       />
       <Route
         path="/model/:slug/detail/actions"
@@ -213,6 +221,44 @@ describe("actions > containers > ActionCreatorModal", () => {
           "Navigating away from here will cause you to lose any changes you have made.",
         ),
       ).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when saving changes", async () => {
+      const action = ACTION;
+
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
+
+      history.push(actionRoute);
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      const actionNameInput = screen.getByDisplayValue(action.name);
+      userEvent.type(actionNameInput, "a change");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      fetchMock.reset();
+      fetchMock.put(`path:/api/action/${action.id}`, {
+        ...action,
+        name: `${action.name}a change`,
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toBe(initialRoute);
+      });
+
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 });
