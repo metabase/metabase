@@ -775,15 +775,6 @@
          (map filters/field-reference->id)
          set)))
 
-(defn- potential-card-dimension-bindings
-  "Compute all potential assignments (bindings) of identified fields (assigned to dimensions) to
-  required dimensions in the card definition."
-  [satisfied-froobs
-   {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}]
-  (let [dimension-locations [satisfied-dimensions satisfied-metrics satisfied-filters]
-        used-dimensions     (dashboard-templates/collect-dimensions dimension-locations)]
-    (satisfied-froobs (set used-dimensions))))
-
 (defn- build-dashcard
   "Build a dashcard from the given context, card template, common entities, and field bindings.
 
