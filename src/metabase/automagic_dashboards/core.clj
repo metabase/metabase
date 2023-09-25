@@ -119,8 +119,8 @@
     [metabase.util.date-2 :as u.date]
     [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
     [metabase.util.log :as log]
-    #_{:clj-kondo/ignore [:deprecated-namespace]}
     [metabase.util.malli :as mu]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
     [metabase.util.schema :as su]
     [potemkin :as p]
     [ring.util.codec :as codec]
