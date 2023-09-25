@@ -341,9 +341,9 @@
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
-    [:map-of
-     :keyword
-     [:enum "disabled" "enabled" "locked"]]
+    [:maybe [:map-of
+             :keyword
+             [:enum "disabled" "enabled" "locked"]]]
     (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale

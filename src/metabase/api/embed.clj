@@ -36,10 +36,8 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -91,14 +89,14 @@
   (or (not (string? v))
       (not (str/blank? v))))
 
-(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
+(mu/defn ^:private validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- su/EmbeddingParams
-   token-params            :- {s/Keyword s/Any}
-   user-params             :- {s/Keyword s/Any}]
+  [object-embedding-params :- ms/EmbeddingParams
+   token-params            :- [:map-of :keyword :any]
+   user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
                     (set (keys (m/filter-vals valid-param? token-params)))
                     (set (keys (m/filter-vals valid-param? user-params))))
@@ -115,11 +113,11 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
-(s/defn ^:private remove-locked-and-disabled-params
+(mu/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card embedding-params :- su/EmbeddingParams]
+  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
   (let [params-to-remove (set (concat (for [[param status] embedding-params
                                             :when          (not= status "enabled")]
                                         param)
@@ -158,10 +156,12 @@
                 card))
             ordered-cards))))
 
-(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
-                                                  :type   s/Keyword
-                                                  :target s/Any
-                                                  :value  s/Any}])
+(mu/defn ^:private apply-slug->value :- [:maybe [:sequential
+                                                 [:map
+                                                  [:slug ms/NonBlankString]
+                                                  [:type :keyword]
+                                                  [:target :any]
+                                                  [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]
@@ -186,12 +186,12 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
+(mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/run-query-for-dashcard-async]]."
-  [dashboard-id :- su/IntGreaterThanZero
-   slug->value  :- {s/Any s/Any}]
+  [dashboard-id :- ms/PositiveInt
+   slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters Dashboard :id dashboard-id)
         slug->id   (into {} (map (juxt :slug :id)) parameters)]
     (vec (for [[slug value] slug->value
@@ -204,7 +204,7 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+(mu/defn ^:private normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
@@ -395,8 +395,6 @@
    & {:keys [constraints qp-runner]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
-  {dashcard-id ms/PositiveInt
-   card-id     ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -526,7 +524,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
+(mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]

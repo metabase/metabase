@@ -26,7 +26,7 @@ import {
 } from "metabase/dashboard/utils";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
