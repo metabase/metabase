@@ -18,6 +18,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.integrations.ldap :as ldap.test]
@@ -513,14 +514,23 @@
                                               (salt)
                                               new-hashed-password)))))))))
 
-(deftest has-a-last-acknowledged-version
+(deftest last-acknowledged-version-can-be-read-and-set
   (testing "last-acknowledged-version can be read and set"
     (mt/with-test-user :rasta
-      (try
-        (is (nil? (setting/get :last-acknowledged-version)))
-        (setting/set! :last-acknowledged-version "47")
-        (is (= "47" (setting/get :last-acknowledged-version)))
-        ;; Ensure it's saved on the user, not globally:
-        (is (= "47" (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
-        (finally
-          (setting/set! :last-acknowledged-version nil))))))
+      (let [old-version (setting/get :last-acknowledged-version)
+            new-version "v0.47.1"]
+        (try
+          (is (not= new-version old-version))
+          (setting/set! :last-acknowledged-version new-version)
+          (is (= new-version (setting/get :last-acknowledged-version)))
+          ;; Ensure it's saved on the user, not globally:
+          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+          (finally
+            (setting/set! :last-acknowledged-version old-version)))))))
+
+(deftest last-acknowledged-version-is-set-on-create
+  (testing "last-acknowledged-version is automatically set for new users"
+    (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
+      (t2.with-temp/with-temp [User {user-id :id} {}]
+        (mw.session/with-current-user user-id
+          (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
