@@ -201,7 +201,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      const actionNameInput = screen.getByDisplayValue(ACTION.name);
+      const actionNameInput = screen.getByDisplayValue(action.name);
       userEvent.type(actionNameInput, "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
