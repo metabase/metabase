@@ -193,7 +193,7 @@
      :or {change-set-filters []}}]
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
-         log-iterator   (ChangeLogIterator. change-log change-set-filters)
+         log-iterator   (ChangeLogIterator. change-log (into-array liquibase.changelog.filter.ChangeSetFilter change-set-filters))
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
          runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
      (run-in-scope-locked

@@ -140,7 +140,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.15"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.3"}             ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "4.23.2"              ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "4.21.1"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
