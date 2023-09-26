@@ -202,7 +202,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    // Save Question 1
     cy.createQuestion({
       name: "12928_Q1",
       query: {
@@ -237,50 +236,52 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    // Save Question 2
-    cy.createQuestion({
-      name: "12928_Q2",
-      query: {
-        "source-table": REVIEWS_ID,
-        aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
-        breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", REVIEWS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-        ],
+    cy.createQuestion(
+      {
+        name: "12928_Q2",
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", REVIEWS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+        },
       },
-    });
+      {
+        wrapId: true,
+        idAlias: "joinedQuestionId",
+      },
+    );
 
-    // Join two previously saved questions
     startNewQuestion();
     selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/Products? → Category/).click();
-
-    popover()
-      .contains(/Products? → Category/)
-      .click();
+    popover().findByText("Products → Category").click();
+    popover().findByText("Products → Category").click();
 
     visualize();
 
-    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2026");
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("12928_Q1");
-      cy.findByText("12928_Q2");
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      assertJoinValid({
+        lhsTable: "12928_Q1",
+        rhsTable: "12928_Q2",
+        lhsSampleColumn: "Products → Category",
+        rhsSampleColumn: `Question ${joinedQuestionId} → Category`,
+      });
     });
 
-    cy.findAllByText(/Products? → Category/).should("have.length", 1);
-    cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
+    cy.findByTestId("question-row-count").contains("Showing 20 rows");
   });
 
   it("should allow joins on multiple dimensions", () => {
