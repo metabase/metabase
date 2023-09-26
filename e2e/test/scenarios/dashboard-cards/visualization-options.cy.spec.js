@@ -6,6 +6,7 @@ import {
   editDashboard,
   showDashboardCardActions,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {
@@ -14,7 +15,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
   });
 
   it("should allow empty card title (metabase#12013)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByTextEnsureVisible("Orders");
     cy.findByTestId("legend-caption").should("exist");
@@ -30,7 +31,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
   });
 
   it("column reordering should work (metabase#16229)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
@@ -61,7 +62,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
   });
 
   it("should refelct column settings accurately when changing (metabase#30966)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();

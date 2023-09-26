@@ -27,38 +27,50 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard();
+      cy.createDashboard({}, { wrapId: true });
 
-      cy.createNativeQuestion({
-        name: "Question",
-        native: {
-          query: "select * from products where {{category}} and {{vendor}}",
-          "template-tags": {
-            category: {
-              id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
-              name: "category",
-              "display-name": "CATEGORY",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "string/=",
-            },
-            vendor: {
-              id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
-              name: "vendor",
-              "display-name": "VENDOR",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.VENDOR, null],
-              "widget-type": "string/=",
+      cy.createNativeQuestion(
+        {
+          name: "Question",
+          native: {
+            query: "select * from products where {{category}} and {{vendor}}",
+            "template-tags": {
+              category: {
+                id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+                name: "category",
+                "display-name": "CATEGORY",
+                type: "dimension",
+                dimension: ["field", PRODUCTS.CATEGORY, null],
+                "widget-type": "string/=",
+              },
+              vendor: {
+                id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
+                name: "vendor",
+                "display-name": "VENDOR",
+                type: "dimension",
+                dimension: ["field", PRODUCTS.VENDOR, null],
+                "widget-type": "string/=",
+              },
             },
           },
         },
-      });
+        { wrapId: true },
+      );
 
-      addOrUpdateDashboardCard({ dashboard_id: 2, card_id: 4 });
+      cy.get("@questionId").then(questionId => {
+        cy.get("@dashboardId").then(dashboardId => {
+          addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: questionId,
+          });
+        });
+      });
     });
 
     it("should show filters by search for Vendor", () => {
-      visitQuestion(4);
+      cy.get("@questionId").then(questionId => {
+        visitQuestion(questionId);
+      });
 
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
@@ -69,7 +81,9 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      visitQuestion(4);
+      cy.get("@questionId").then(questionId => {
+        visitQuestion(questionId);
+      });
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
@@ -95,7 +109,9 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      visitDashboard(2);
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 

@@ -48,7 +48,9 @@ describe("scenarios > alert", () => {
 
       it("educational screen should show for the first alert, but not for the second", () => {
         cy.intercept("POST", "/api/alert").as("savedAlert");
-        cy.intercept("POST", "/api/card/2/query").as("questionLoaded");
+        cy.intercept("POST", `/api/card/${ORDERS_COUNT_QUESTION_ID}/query`).as(
+          "questionLoaded",
+        );
 
         // Open the first alert screen and create an alert
         visitQuestion(ORDERS_QUESTION_ID);

@@ -4,7 +4,7 @@ import {
 } from "metabase/dashboard/actions";
 import type {
   ClickObject,
-  Drill,
+  LegacyDrill,
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
 } from "metabase/visualizations/types";
@@ -60,7 +60,7 @@ function getAction(
   }
 }
 
-export const DashboardClickAction: Drill = ({
+export const DashboardClickAction: LegacyDrill = ({
   question,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {

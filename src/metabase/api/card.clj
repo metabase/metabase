@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -61,8 +62,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
@@ -211,7 +210,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
+        (events/publish-event! :event/card-read (assoc <> :actor_id api/*current-user-id*))))))
 
 (defn- card-columns-from-names
   [card names]
@@ -248,8 +247,8 @@
            false
 
            ;; both or neither primary dimension must be dates
-           (not= (lib.types.isa/date? (first initial-dimensions))
-                 (lib.types.isa/date? (first new-dimensions)))
+           (not= (lib.types.isa/temporal? (first initial-dimensions))
+                 (lib.types.isa/temporal? (first new-dimensions)))
            false
 
            ;; both or neither primary dimension must be numeric
@@ -257,8 +256,8 @@
            (and (not= (lib.types.isa/numeric? (first initial-dimensions))
                       (lib.types.isa/numeric? (first new-dimensions)))
                 (not (and
-                      (lib.types.isa/date? (first initial-dimensions))
-                      (lib.types.isa/date? (first new-dimensions)))))
+                      (lib.types.isa/temporal? (first initial-dimensions))
+                      (lib.types.isa/temporal? (first new-dimensions)))))
            false
 
            :else true))))
@@ -412,7 +411,7 @@
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata dataset?]}]
-  (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
+  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
@@ -542,7 +541,7 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :card-create card))
+       (events/publish-event! :event/card-create card))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
@@ -558,22 +557,21 @@ saved later when it is ready."
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
-  {name                   su/NonBlankString
-   dataset_query          su/Map
-   parameters             (s/maybe [su/Parameter])
-   parameter_mappings     (s/maybe [su/ParameterMapping])
-   description            (s/maybe su/NonBlankString)
-   display                su/NonBlankString
-   visualization_settings su/Map
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)}
+  {name                   ms/NonBlankString
+   dataset_query          ms/Map
+   parameters             [:maybe [:sequential ms/Parameter]]
+   parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
+   description            [:maybe ms/NonBlankString]
+   display                ms/NonBlankString
+   visualization_settings ms/Map
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe qr/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -615,11 +613,11 @@ saved later when it is ready."
   (let [event (cond
                 ;; card was archived
                 (and archived?
-                     (not (:archived card))) :card-archive
+                     (not (:archived card))) :event/card-archive
                 ;; card was unarchived
                 (and (false? archived?)
-                     (:archived card))       :card-unarchive
-                :else                        :card-update)]
+                     (:archived card))       :event/card-unarchive
+                :else                        :event/card-update)]
     (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
 
 (defn- card-archived? [old-card new-card]
@@ -785,30 +783,30 @@ saved later when it is ready."
           (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
                    cache_ttl dataset collection_preview]
             :as   card-updates} :body}]
-  {name                   (s/maybe su/NonBlankString)
-   parameters             (s/maybe [su/Parameter])
-   dataset_query          (s/maybe su/Map)
-   dataset                (s/maybe s/Bool)
-   display                (s/maybe su/NonBlankString)
-   description            (s/maybe s/Str)
-   visualization_settings (s/maybe su/Map)
-   archived               (s/maybe s/Bool)
-   enable_embedding       (s/maybe s/Bool)
-   embedding_params       (s/maybe su/EmbeddingParams)
-   collection_id          (s/maybe su/IntGreaterThanZero)
-   collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)
-   collection_preview     (s/maybe s/Bool)}
+  {id                     ms/PositiveInt
+   name                   [:maybe ms/NonBlankString]
+   parameters             [:maybe [:sequential ms/Parameter]]
+   dataset_query          [:maybe ms/Map]
+   dataset                [:maybe :boolean]
+   display                [:maybe ms/NonBlankString]
+   description            [:maybe :string]
+   visualization_settings [:maybe ms/Map]
+   archived               [:maybe :boolean]
+   enable_embedding       [:maybe :boolean]
+   embedding_params       [:maybe ms/EmbeddingParams]
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe qr/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]
+   collection_preview     [:maybe :boolean]}
   (let [card-before-update (t2/hydrate (api/write-check Card id)
-                                    [:moderation_reviews :moderator_details])]
+                                       [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -848,7 +846,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -921,12 +919,12 @@ saved later when it is ready."
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/collections"
+(api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
-  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  {card_ids      [:sequential ms/PositiveInt]
+   collection_id [:maybe ms/PositiveInt]}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
@@ -1157,16 +1155,50 @@ saved later when it is ready."
        :num-columns (count (first rows))
        :num-rows    (count (rest rows))})))
 
+(defn- can-upload-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
+  [db schema-name]
+  (let [driver (driver.u/database->driver db)]
+    (cond
+      (not (public-settings/uploads-enabled))
+      (ex-info (tru "Uploads are not enabled.")
+               {:status-code 422})
+      (premium-features/sandboxed-user?)
+      (ex-info (tru "Uploads are not permitted for sandboxed users.")
+               {:status-code 403})
+      (not (driver/database-supports? driver :uploads nil))
+      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
+               {:status-code 422})
+      (and (str/blank? schema-name)
+           (driver/database-supports? driver :schemas db))
+      (ex-info (tru "A schema has not been set.")
+               {:status-code 422})
+      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                            (perms/data-perms-path (u/the-id db) schema-name)))
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403})
+      (and (some? schema-name)
+           (not (driver.s/include-schema? db schema-name)))
+      (ex-info (tru "The schema {0} is not syncable." schema-name)
+               {:status-code 422}))))
+
+(defn- check-can-upload
+  "Throws an error if the user cannot upload to the given database and schema."
+  [db schema-name]
+  (when-let [error (can-upload-error db schema-name)]
+    (throw error)))
+
+(defn can-upload?
+  "Returns true if the user can upload to the given database and schema, and false otherwise."
+  [db schema-name]
+  (nil? (can-upload-error db schema-name)))
+
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
   DB errors."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
-  (when (not (public-settings/uploads-enabled))
-    (throw (Exception. (tru "Uploads are not enabled."))))
-  (when (premium-features/sandboxed-user?)
-    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
@@ -1175,21 +1207,9 @@ saved later when it is ready."
                                 (throw (Exception. (tru "The uploads database does not exist."))))
           driver            (driver.u/database->driver database)
           schema-name       (public-settings/uploads-schema-name)
-          _check-schema     (when (and (str/blank? schema-name)
-                                       (driver/database-supports? driver :schemas database))
-                              (throw (ex-info (tru "A schema has not been set.")
-                                              {:status-code 422})))
-          _check_perms      (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                                                            (perms/data-perms-path db-id schema-name)))
-
-          _check-schema     (when-not (or (nil? schema-name)
-                                          (driver.s/include-schema? database schema-name))
-                              (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
-                                              {:status-code 422})))
+          _                 (check-can-upload database schema-name)
           filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                                 filename)
-          _check-setting    (when-not (driver/database-supports? driver :uploads nil)
-                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
           table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
                                  (upload/unique-table-name driver)
                                  (u/lower-case-en))

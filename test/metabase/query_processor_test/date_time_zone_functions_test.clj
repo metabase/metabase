@@ -489,7 +489,7 @@
                                       :limit  1})
                                    (mt/formatted-rows [int int])
                                    first)
-                results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
+                results-timezone (mt/with-metadata-provider (mt/id) (qp.timezone/results-timezone-id))
                 now              (t/local-date-time (t/zone-id results-timezone))]
             (is (true? (close-minute? minute (.getMinute now))))
             (is (true? (close-hour? hour (.getHour now))))))))))

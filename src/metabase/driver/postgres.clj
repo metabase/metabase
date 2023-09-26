@@ -22,7 +22,9 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.models.field :as field]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -31,7 +33,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
@@ -306,7 +309,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(defn- quoted? [database-type]
+(mu/defn ^:private quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
@@ -451,22 +454,22 @@
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
-  (let [field-type        (:database_type nfc-field)
-        nfc-path          (:nfc_path nfc-field)
+  (let [field-type        (:database-type nfc-field)
+        nfc-path          (:nfc-path nfc-field)
         parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (qp.store/field id-or-name))
+                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
-      (= (:database_type stored-field) "money")
+      (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (field/json-field? stored-field)
+      (lib.field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
@@ -485,14 +488,16 @@
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
   (let [stored-field-ids (map second breakout-fields)
-        stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
+        stored-fields    (map #(when (integer? %)
+                                 (lib.metadata/field (qp.store/metadata-provider) %))
+                              stored-field-ids)
         parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
                                                 #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some field/json-field? stored-fields)
+    (if (some lib.field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
@@ -502,10 +507,10 @@
   (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
         stored-field-id (-> clause (second) (second))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
-                          (qp.store/field stored-field-id))]
+                          (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
     (and
       (some? stored-field)
-      (field/json-field? stored-field))))
+      (lib.field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -748,7 +753,7 @@
   (case upload-type
     ::upload/varchar_255 "VARCHAR(255)"
     ::upload/text        "TEXT"
-    ::upload/int         "INTEGER"
+    ::upload/int         "BIGINT"
     ::upload/float       "FLOAT"
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"
@@ -813,11 +818,38 @@
                          (StringReader.))]
            (.copyIn copy-manager ^String sql tsvs)))))))
 
+(defmethod driver/current-user-table-privileges :postgres
+  [_driver database]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/query
+     conn-spec
+     (str/join
+        "\n"
+        ["with table_privileges as ("
+         "select"
+         "  NULL as role,"
+         "  t.schemaname as schema,"
+         "  t.tablename as table,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+         "from pg_catalog.pg_tables t"
+         "where t.schemaname !~ '^pg_'"
+         "  and t.schemaname <> 'information_schema'"
+         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+         ")"
+         "select t.*"
+         "from table_privileges t"
+         "where t.select or t.update or t.insert or t.delete"]))))
+
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/set-role-statement :postgres
   [_ role]
-  (format "SET ROLE %s;" role))
+  (if (= (u/upper-case-en role) "NONE")
+   (format "SET ROLE %s;" role)
+   (format "SET ROLE \"%s\";" role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

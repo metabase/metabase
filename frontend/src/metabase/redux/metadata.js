@@ -39,14 +39,11 @@ export const updateSegment = segment => {
   return Segments.actions.update(segment);
 };
 
-export const FETCH_REAL_DATABASES = Databases.actions.fetchList.toString();
 export const fetchRealDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchRealDatabases");
   return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
-export const FETCH_DATABASE_METADATA =
-  Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
@@ -102,13 +99,11 @@ export const fetchField = createThunkAction(
   },
 );
 
-export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
 export const fetchFieldValues = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchFieldValues");
   return Fields.actions.fetchFieldValues({ id }, reload);
 };
 
-export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
@@ -126,22 +121,17 @@ export const addFields = fieldMaps => {
   return Fields.actions.addFields(fieldMaps);
 };
 
-export const UPDATE_FIELD = Fields.actions.update.toString();
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 
-export const DELETE_FIELD_DIMENSION =
-  Fields.actions.deleteFieldDimension.toString();
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
-export const UPDATE_FIELD_DIMENSION =
-  Fields.actions.updateFieldDimension.toString();
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
   return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);

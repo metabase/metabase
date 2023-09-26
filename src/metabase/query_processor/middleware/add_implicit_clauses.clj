@@ -32,14 +32,14 @@
   [table-id :- ms/PositiveInt]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
-      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))
+      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
                       {:table-id table-id
                        :type     qp.error-type/invalid-query})))
     (mapv
      (fn [field]
        ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
        ;; default bucketing of `:day`
-       [:field (u/the-id field) (when (lib.types.isa/date? field) ; misnomer; this is for all temporal columns.
+       [:field (u/the-id field) (when (lib.types.isa/temporal? field)
                                   {:temporal-unit :default})])
      fields)))
 
@@ -101,7 +101,8 @@
                         [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
+        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
+                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
                         {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))

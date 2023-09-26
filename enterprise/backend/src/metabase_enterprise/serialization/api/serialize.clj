@@ -6,13 +6,12 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.api.common :as api]
    [metabase.models.collection :refer [Collection]]
-   [metabase.util.i18n :refer [tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/data-model"
+(api/defendpoint POST "/data-model"
   "This endpoint should serialize: the data model, settings.yaml, and all the selected Collections
 
   The data model should only change if the user triggers a manual sync or scan (since the scheduler is turned off)
@@ -24,11 +23,14 @@
 
   - The collections that they want to serialize (using selective serialization)"
   [:as {{:keys [collection_ids path]} :body}]
-  {collection_ids (su/with-api-error-message
-                    (su/distinct (su/non-empty [su/IntGreaterThanZero]))
-                    "Non-empty, distinct array of Collection IDs")
-   path           (su/with-api-error-message su/NonBlankString
-                    "Valid directory to serialize results to")}
+  {collection_ids (mu/with-api-error-message
+                    [:fn (fn [x] (and (seq x)
+                                      (= (count x) (count (set x)))
+                                      (every? pos? x)))]
+                    (deferred-tru "Non-empty, distinct array of Collection IDs"))
+   path           (mu/with-api-error-message
+                    ms/NonBlankString
+                    (deferred-tru "Valid directory to serialize results to"))}
   ;; Make sure all the specified collection IDs exist.
   (let [existing-collection-ids (t2/select-pks-set Collection :id [:in (set collection_ids)])]
     (when-not (= (set collection_ids) (set existing-collection-ids))

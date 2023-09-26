@@ -11,18 +11,19 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.filter])))
+   [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -182,18 +183,18 @@
 (def ColumnWithOperators
   "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
-    [:operators {:optional true} [:sequential ::lib.schema.filter/operator]]]])
+    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
 
 (mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
   "Returns the operators for which `filterable-column` is applicable."
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
 
-(defn add-column-operators
+(mu/defn add-column-operators :- ColumnWithOperators
   "Extend the column metadata with the available operators if any."
-  [column]
+  [column :- ::lib.schema.metadata/column]
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
 
@@ -227,11 +228,14 @@
 (mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
-  [filter-operator :- ::lib.schema.filter/operator
-   column :- lib.metadata/ColumnMetadata
+  [filter-operator :- [:or ::lib.schema.filter/operator :keyword :string]
+   column          :- ::lib.schema.metadata/column
    & args]
-  (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
-                                 (map lib.common/->op-arg args))))
+  (let [tag (if (map? filter-operator)
+              (:short filter-operator)
+              (keyword filter-operator))]
+    (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
+                                   (map lib.common/->op-arg args)))))
 
 (mu/defn filter-operator :- ::lib.schema.filter/operator
   "Return the filter operator of the boolean expression `filter-clause`
@@ -244,9 +248,9 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op _ first-arg] a-filter-clause
-         stage (lib.util/query-stage query stage-number)
+         stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col (lib.equality/closest-matching-metadata first-arg columns)]
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))
                       (lib.filter.operator/operator-def op)))))
@@ -259,16 +263,61 @@
     legacy-filter]
    (find-filter-for-legacy-filter query -1 legacy-filter))
 
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    legacy-filter]
-   (let [query-filters (vec (filters query stage-number))
-         matching-filters (clojure.core/filter #(clojure.core/= (lib.convert/->legacy-MBQL %)
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    legacy-filter :- some?]
+   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+         query-filters    (vec (filters query stage-number))
+         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
+                                                                 [:query :filter]
+                                                                 (lib.convert/->legacy-MBQL %))
                                                                 legacy-filter)
                                                query-filters)]
      (when (seq matching-filters)
        (if (next matching-filters)
-         (throw (ex-info "Multiple matching filters found" {:legacy-filter legacy-filter
-                                                            :query-filters query-filters
+         (throw (ex-info "Multiple matching filters found" {:legacy-filter    legacy-filter
+                                                            :query-filters    query-filters
                                                             :matching-filters matching-filters}))
          (first matching-filters))))))
+
+;; TODO: Refactor this away - handle legacy refs in `lib.js` and call `lib.equality` from there.
+(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
+  "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
+  ([query legacy-ref]
+   (find-filterable-column-for-legacy-ref query -1 legacy-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?]
+   (let [a-ref   (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref)
+         columns (filterable-columns query stage-number)]
+     (lib.equality/find-matching-column a-ref columns))))
+
+(def ^:private FilterParts
+  [:map
+   [:lib/type [:= :mbql/filter-parts]]
+   [:operator ::lib.schema.filter/operator]
+   [:options ::lib.schema.common/options]
+   [:column [:maybe ColumnWithOperators]]
+   [:args [:sequential :any]]])
+
+(mu/defn filter-parts :- FilterParts
+  "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
+  Might obsolate [[filter-operator]]."
+  ([query a-filter-clause]
+   (filter-parts query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op options first-arg & rest-args] a-filter-clause
+         stage   (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
+     {:lib/type :mbql/filter-parts
+      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                               (lib.filter.operator/filter-operators col))
+                                 (lib.filter.operator/operator-def op))
+      :options  options
+      :column   (some-> col add-column-operators)
+      :args     (vec rest-args)})))

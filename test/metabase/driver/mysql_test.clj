@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
@@ -37,7 +38,9 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -418,41 +421,31 @@
                                 "mysql-connect-with-ssl-and-pem-cert-test"
                                 "MB_MYSQL_SSL_TEST_SSL_CERT")))))
 
+(deftest ^:parallel json-query-test
+  (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
+    (testing "Transforming MBQL query with JSON in it to mysql query works"
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boop-field))))))
+    (testing "What if types are weird and we have lists"
+      (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
+        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier weird-field))))))
+    (testing "Doesn't complain when field is boolean"
+      (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
+        (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+
 ;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
 ;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
 ;; construed as text.
 ;; You could even have mixed JSON / non JSON columns...
 ;; Therefore, we can't just automatically get JSON columns in MariaDB. Therefore, no JSON support.
 ;; Therefore, no JSON tests.
-(defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
-
-(defn is-mariadb?
-  "Returns true if the database is MariaDB, false otherwise."
-  [driver db-id]
-  (and (= driver :mysql)
-       (str/includes?
-         (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-         "Maria")))
-
-(deftest json-query-test
-  (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
-    (testing "Transforming MBQL query with JSON in it to mysql query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\""]
-               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boop-field))))))
-    (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
-               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier weird-field))))))
-    (testing "Doesn't complain when field is boolean"
-      (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
-               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
-
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :mysql
-      (when-not (is-mariadb? driver/*driver* (u/id (mt/db)))
+      (when-not (mysql/mariadb? (mt/db))
         (drop-if-exists-and-create-db! "composite_pks_test")
         (with-redefs [metadata-queries/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
@@ -484,7 +477,7 @@
 
 (deftest json-alias-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
+    (when (not (mysql/mariadb? (mt/db)))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
           (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
@@ -510,14 +503,14 @@
 
 (deftest complicated-json-identifier-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
+    (when (not (mysql/mariadb? (mt/db)))
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
                 table    (t2/select-one Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
             (let [field    (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
-              (mt/with-everything-store
+              (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,
                                                               :num-bins 100,
@@ -643,3 +636,140 @@
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
                                               :type       :query}))))))))))))
+
+(deftest parse-grant-test
+  (testing "`parse-grant` should work correctly"
+    (is (= {:type            :privileges
+            :privilege-types #{:select :insert :update :delete}
+            :level           :database
+            :object          "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type            :privileges
+            :privilege-types #{:select :insert :update :delete}
+            :level           :database
+            :object          "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type            :privileges
+            :privilege-types #{:select}
+            :level           :database
+            :object          "`test-data`.*"}
+           (#'mysql/parse-grant "GRANT SELECT, DELETE (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (is (= {:type            :privileges
+            :privilege-types #{:select :insert :update :delete}
+            :level           :table
+            :object          "`test-data`.`foo`"}
+           (#'mysql/parse-grant "GRANT ALL PRIVILEGES ON `test-data`.`foo` TO 'metabase'@'localhost'")))
+    (is (= {:type  :roles
+            :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
+           (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
+
+(deftest table-name->privileges-test
+  (testing "table-names->privileges should work correctly"
+    (is (= {"foo" #{:select}, "bar" #{:select}}
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select}
+                                              :level           :database
+                                              :object          "`test-data`.*"}]
+                                            "test-data"
+                                            ["foo" "bar"])))
+    (is (= {"foo" #{:select}, "bar" #{:select}}
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select}
+                                              :level           :global
+                                              :object          "*.*"}]
+                                            "test-data"
+                                            ["foo" "bar"])))
+    (is (= {"foo" #{:select :insert :update :delete}}
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select :insert :update :delete}
+                                              :level           :table
+                                              :object          "`test-data`.`foo`"}]
+                                            "test-data"
+                                            ["foo" "bar"])))))
+
+(defn- get-db-version [conn-spec]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :mysql
+   conn-spec
+   nil
+   (fn [^java.sql.Connection conn]
+     (#'mysql/db-version (.getMetaData conn)))))
+
+(deftest table-privileges-test
+  (mt/test-driver :mysql
+    (when-not (mysql/mariadb? (mt/db))
+      (testing "`table-privileges` should return the correct data for current_user and role privileges"
+        (drop-if-exists-and-create-db! "table_privileges_test")
+        (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
+              spec             (sql-jdbc.conn/connection-details->spec :mysql details)
+              mysql8-or-above? (<= 8 (get-db-version spec))
+              get-privileges   (fn []
+                                 (let [new-connection-details (cond-> (assoc details
+                                                                             :user "table_privileges_test_user",
+                                                                             :password "password")
+                                                                mysql8-or-above?
+                                                                (assoc :ssl true
+                                                                       :additional-options "trustServerCertificate=true"))]
+                                   (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                     [spec [:mysql new-connection-details]]
+                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                       (driver/current-user-table-privileges driver/*driver*
+                                                                             (assoc (mt/db) :name "table_privileges_test"))))))]
+          (try
+            (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
+                          "CREATE TABLE `baz` (id INTEGER);"
+                          "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
+                          (str "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'")]]
+              (jdbc/execute! spec stmt))
+            (testing "should return privileges on the table"
+              (is (= [{:role   nil
+                       :schema nil
+                       :table  "bar"
+                       :select true
+                       :update false
+                       :insert false
+                       :delete false}]
+                     (get-privileges))))
+            (testing "should return privileges on the database"
+              (jdbc/execute! spec (str "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'"))
+              (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
+                      {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                     (get-privileges))))
+            (when mysql8-or-above?
+              (testing "should return privileges on roles that the user has been granted"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
+                              (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                              "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
+                  (jdbc/execute! spec stmt))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                       (get-privileges))))
+              (testing "should return privileges for multiple roles that the user has been granted"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
+                              (str "GRANT INSERT ON `baz` TO 'table_privileges_test_role_2'")
+                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_user'"]]
+                  (jdbc/execute! spec stmt))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
+                       (get-privileges))))
+              (testing "should return privileges from recursively granted roles"
+                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_3'"
+                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_3'")
+                              "GRANT 'table_privileges_test_role_3' TO 'table_privileges_test_role'"]]
+                  (try (jdbc/execute! spec stmt)
+                    (catch SQLException e
+                           (log/error "Error executing SQL:")
+                           (log/errorf "Caught SQLException:\n%s\n"
+                                       (with-out-str (jdbc/print-sql-exception-chain e)))
+                           (throw e))))
+                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
+                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
+                       (get-privileges)))))
+            (finally
+              (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
+              (when mysql8-or-above?
+                (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
+                              "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
+                              "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
+                  (jdbc/execute! spec stmt))))))))))

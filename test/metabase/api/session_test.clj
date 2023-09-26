@@ -58,7 +58,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          client/UUIDString
+                        :device_id          su/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
@@ -66,11 +66,11 @@
                        (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
-            response (mt/client-full-response :post 200 "session" body)]
+            response (mt/client-real-response :post 200 "session" body)]
         ;; clj-http sets :expires key in response when Max-Age attribute is set
         (is (get-in response [:cookies session-cookie :expires])))
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
-            response (mt/client-full-response :post 200 "session" body)]
+            response (mt/client-real-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
@@ -90,21 +90,21 @@
   (reset-throttlers!)
   (testing "POST /api/session"
     (testing "Test for required params"
-      (is (= {:errors {:username "value must be a non-blank string."}}
-             (mt/client :post 400 "session" {})))
+      (is (=? {:errors {:username "value must be a non-blank string."}}
+              (mt/client :post 400 "session" {})))
 
-      (is (= {:errors {:password "value must be a non-blank string."}}
-             (mt/client :post 400 "session" {:username "anything@metabase.com"}))))
+      (is (=? {:errors {:password "value must be a non-blank string."}}
+              (mt/client :post 400 "session" {:username "anything@metabase.com"}))))
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
-      (is (= {:errors {:_error "Your account is disabled."}}
-             (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
+      (is (=? {:errors {:_error "Your account is disabled."}}
+              (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
-      (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
-                                             (assoc :password "something else"))))))))
+      (is (=? {:errors {:password "did not match stored password"}}
+              (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
+                                                 (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
   (reset-throttlers!)
@@ -215,7 +215,7 @@
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          client/UUIDString
+                        :device_id          su/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
@@ -255,8 +255,8 @@
                                     {:email (:username (mt/user->credentials :rasta))})
               (is (mt/received-email-body? :rasta (re-pattern my-url)))))))
       (testing "test that email is required"
-        (is (= {:errors {:email "value must be a valid email address."}}
-               (mt/client :post 400 "session/forgot_password" {}))))
+        (is (=? {:errors {:email "value must be a valid email address."}}
+                (mt/client :post 400 "session/forgot_password" {}))))
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
@@ -317,27 +317,27 @@
   (reset-throttlers!)
   (testing "POST /api/session/reset_password"
     (testing "Test that token and password are required"
-      (is (= {:errors {:token "value must be a non-blank string."}}
-             (mt/client :post 400 "session/reset_password" {})))
-      (is (= {:errors {:password "password is too common."}}
-             (mt/client :post 400 "session/reset_password" {:token "anything"}))))
+      (is (=? {:errors {:token "value must be a non-blank string."}}
+              (mt/client :post 400 "session/reset_password" {})))
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/reset_password" {:token "anything"}))))
 
     (testing "Test that malformed token returns 400"
-      (is (= {:errors {:password "Invalid reset token"}}
-             (mt/client :post 400 "session/reset_password" {:token    "not-found"
-                                                            :password "whateverUP12!!"}))))
+      (is (=? {:errors {:password "Invalid reset token"}}
+              (mt/client :post 400 "session/reset_password" {:token    "not-found"
+                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that invalid token returns 400"
-      (is (= {:errors {:password "Invalid reset token"}}
-             (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
-                                                            :password "whateverUP12!!"}))))
+      (is (=? {:errors {:password "Invalid reset token"}}
+              (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
+                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
-        (is (= {:errors {:password "Invalid reset token"}}
-               (mt/client :post 400 "session/reset_password" {:token    token
-                                                              :password "whateverUP12!!"})))))))
+        (is (=? {:errors {:password "Invalid reset token"}}
+                (mt/client :post 400 "session/reset_password" {:token    token
+                                                               :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
   (reset-throttlers!)
@@ -421,9 +421,8 @@
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
       (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
-               (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
+               (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
-
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
