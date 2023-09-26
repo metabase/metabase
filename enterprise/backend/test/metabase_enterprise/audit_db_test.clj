@@ -59,16 +59,16 @@
 
 (deftest audit-db-instance-analytics-content-is-unzipped-properly
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= 1 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
+  (is (not= 0 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
 
   (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
-  (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))
-         ["collections" "databases"])))
+  (is (= ["collections" "databases"]
+         (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics"))))))
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
   (sh/sh "rm" "-rf" "plugins/instance_analytics")
-  (is (= 1 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
+  (is (not= 0 (:exit (sh/sh "ls" "plugins/instance_analytics"))))
 
   (#'audit-db/ia-content->plugins nil audit-db/analytics-dir-resource)
-  (is (= (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics")))
-         ["collections" "databases"])))
+  (is (= ["collections" "databases"]
+         (str/split-lines (:out (sh/sh "ls" "plugins/instance_analytics"))))))
