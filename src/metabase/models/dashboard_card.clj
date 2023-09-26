@@ -5,6 +5,7 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
+   [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
@@ -15,10 +16,10 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -104,11 +105,17 @@
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (action/select-action :id)))
+
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
   (-> (t2/select-one :model/DashboardCard :id id)
-      (hydrate :series)))
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which are other cards with respect to this dashboard card
@@ -223,7 +230,7 @@
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
         (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
-            (hydrate :series))))))
+            (t2/hydrate :series))))))
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
@@ -344,6 +351,14 @@
                  card))
              dashcards))
       dashcards)))
+
+(defn dashcard-comparator
+  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
+  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
+  [{row-1 :row col-1 :col} {row-2 :row col-2 :col}]
+  (if (= row-1 row-2)
+    (compare col-1 col-2)
+    (compare row-1 row-2)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.

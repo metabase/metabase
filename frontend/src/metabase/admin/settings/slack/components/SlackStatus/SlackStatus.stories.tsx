@@ -15,7 +15,6 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 };
 
 Default.args = {
-  // eslint-disable-next-line react/display-name
   Form: () => <div />,
   isValid: true,
 };

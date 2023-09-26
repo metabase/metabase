@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -9,13 +10,13 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]
-   [schema.core :as s]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
+;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 (defn InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
@@ -24,8 +25,17 @@
       ...)"
   [model]
   (mu/with-api-error-message
-   [:fn #(models.dispatch/instance-of? model %)]
-   (deferred-tru "value must be an instance of {0}" (name model))))
+    [:fn
+     {:error/message (format "value must be an instance of %s" (name model))}
+     #(models.dispatch/instance-of? model %)]
+    (deferred-tru "value must be an instance of {0}" (name model))))
+
+(defn InstanceOfClass
+  "Helper for creating schemas to check whether something is an instance of a given class."
+  [^Class klass]
+  [:fn
+   {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+   (partial instance? klass)])
 
 (defn maps-with-unique-key
   "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
@@ -45,9 +55,7 @@
 ;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
-  (mu/with-api-error-message
-    [:string {:min 1}]
-    (deferred-tru "value must be a non-blank string.")))
+  (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -151,7 +159,7 @@
   "Schema for a valid Field for API usage."
   (mu/with-api-error-message
     [:fn (fn [k]
-           ((comp (complement (s/checker mbql.s/Field))
+           ((comp (mc/validator mbql.s/Field)
                   mbql.normalize/normalize-tokens) k))]
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 
@@ -186,7 +194,7 @@
   (mu/with-api-error-message
     [:and
      :string
-     [:fn u.password/is-valid?]]
+     [:fn (every-pred string? #'u.password/is-valid?)]]
     (deferred-tru "password is too common.")))
 
 (def IntString
@@ -220,7 +228,7 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
-    [:enum "true" "false"]
+    [:enum "true" "false" "TRUE" "FALSE"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def TemporalString
@@ -267,6 +275,28 @@
      [:value_field {:optional true} Field]
      [:label_field {:optional true} Field]]))
 
+(def RemappedFieldValue
+  "Has two components:
+    1. <value-of-field>          (can be anything)
+    2. <value-of-remapped-field> (must be a string)"
+  [:tuple :any :string])
+
+(def NonRemappedFieldValue
+  "Has one component: <value-of-field>"
+  [:tuple :any])
+
+(def FieldValuesList
+  "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
+  [:or
+   [:sequential RemappedFieldValue]
+   [:sequential NonRemappedFieldValue]])
+
+(def FieldValuesResult
+  "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
+  [:map
+   [:has_more_values :boolean]
+   [:values FieldValuesList]])
+
 #_(def ParameterSource
       (mc/schema
         [:multi {:dispatch :values_source_type}
@@ -311,9 +341,9 @@
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
-    [:map-of
-     :keyword
-     [:enum "disabled" "enabled" "locked"]]
+    [:maybe [:map-of
+             :keyword
+             [:enum "disabled" "enabled" "locked"]]]
     (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale

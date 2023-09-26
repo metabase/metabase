@@ -6,6 +6,10 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
+export function main() {
+  return cy.get("main");
+}
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
@@ -66,6 +70,10 @@ export function filterWidget() {
   return cy.get("fieldset");
 }
 
+export function clearFilterWidget(index = 0) {
+  return filterWidget().eq(index).icon("close").click();
+}
+
 export const openQuestionActions = () => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 };
@@ -104,10 +112,6 @@ export const moveColumnDown = (column, distance) => {
 
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
-};
-
-export const dashboardHeader = () => {
-  return cy.get("main header");
 };
 
 export const dashboardParametersContainer = () => {

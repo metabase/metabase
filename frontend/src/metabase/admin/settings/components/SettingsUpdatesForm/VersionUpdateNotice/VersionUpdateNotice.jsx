@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
@@ -12,6 +14,7 @@ import {
   HostingCTAIconContainer,
   HostingCTARoot,
   NewVersionContainer,
+  OnLatestVersionMessage,
 } from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
@@ -45,14 +48,14 @@ CloudCustomers.propTypes = {
 };
 
 function OnLatestVersion({ currentVersion }) {
-  const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
+  const isPaidPlan = useSelector(getIsPaidPlan);
 
   return (
     <div>
-      <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+      <OnLatestVersionMessage>
         {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-      </div>
-      {shouldShowHostedCta && <HostingCTA />}
+      </OnLatestVersionMessage>
+      {!isPaidPlan && <HostingCTA />}
     </div>
   );
 }
@@ -64,6 +67,7 @@ OnLatestVersion.propTypes = {
 function NewVersionAvailable({ currentVersion }) {
   const latestVersion = MetabaseSettings.latestVersion();
   const versionInfo = MetabaseSettings.versionInfo();
+  const isPaidPlan = useSelector(getIsPaidPlan);
 
   return (
     <div>
@@ -101,7 +105,7 @@ function NewVersionAvailable({ currentVersion }) {
           ))}
       </div>
 
-      {!MetabaseSettings.isHosted() && <HostingCTA />}
+      {!isPaidPlan && <HostingCTA />}
     </div>
   );
 }
@@ -111,10 +115,6 @@ NewVersionAvailable.propTypes = {
 };
 
 function HostingCTA() {
-  if (MetabaseSettings.isEnterprise()) {
-    return null;
-  }
-
   return (
     <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
       <HostingCTAContent>

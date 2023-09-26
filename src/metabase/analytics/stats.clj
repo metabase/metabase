@@ -47,6 +47,7 @@
   considered to add a count of `1`, while non-truthy values do not affect the result count."
   [ms]
   (reduce (partial merge-with +)
+          {}
           (for [m ms]
             (m/map-vals #(cond
                            (number? %) %
@@ -151,7 +152,7 @@
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
-                               :sso       (= :google (:sso_source  user))}))})
+                               :sso       (= :google (:sso_source user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:

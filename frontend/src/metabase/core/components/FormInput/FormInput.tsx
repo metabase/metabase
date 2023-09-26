@@ -1,7 +1,9 @@
-import { ChangeEvent, forwardRef, ReactNode, Ref, useCallback } from "react";
+import type { ChangeEvent, ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import Input, { InputProps } from "metabase/core/components/Input";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
 import FormField from "metabase/core/components/FormField";
 
 export interface FormInputProps
@@ -11,18 +13,25 @@ export interface FormInputProps
   > {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
+  infoTooltip?: string;
   nullable?: boolean;
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormTextInput from "metabase/forms"
+ */
 const FormInput = forwardRef(function FormInput(
   {
     name,
     className,
     style,
     title,
+    actions,
     description,
+    infoTooltip,
     nullable,
     optional,
     ...props
@@ -45,7 +54,9 @@ const FormInput = forwardRef(function FormInput(
       className={className}
       style={style}
       title={title}
+      actions={actions}
       description={description}
+      infoTooltip={infoTooltip}
       htmlFor={id}
       error={touched ? error : undefined}
       optional={optional}

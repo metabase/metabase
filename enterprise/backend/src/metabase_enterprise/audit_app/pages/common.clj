@@ -20,11 +20,10 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.urls :as urls]
-   [schema.core :as s]))
+   [metabase.util.urls :as urls]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,7 +120,8 @@
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
-                cols     (sql-jdbc.execute/column-metadata driver rsmeta)
+                cols     (for [col (sql-jdbc.execute/column-metadata driver rsmeta)]
+                           (update col :name u/lower-case-en))
                 metadata {:cols cols}
                 rf       (rff metadata)]
             (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))))
@@ -207,7 +207,7 @@
 (def DateTimeUnitStr
   "Scheme for a valid QP DateTime unit as a string (the format they will come into the audit QP). E.g. something
   like `day` or `day-of-week`."
-  (apply s/enum (keys datetime-unit-str->base-type)))
+  (into [:enum] (keys datetime-unit-str->base-type)))
 
 (defn grouped-datetime
   "Group a datetime expression by `unit` using the appropriate SQL QP `date` implementation for our application

@@ -73,8 +73,8 @@
 
 (deftest identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
-                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]]
+    (mt/with-temp [Database db    {:name "field-db" :engine :h2}
+                   Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
       (let [db-hash (serdes/identity-hash db)]
         (is (= "0395fe49"
                (serdes/raw-hash ["PUBLIC" "widget" db-hash])

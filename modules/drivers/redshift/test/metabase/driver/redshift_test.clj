@@ -25,7 +25,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -148,48 +148,48 @@
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
 ;;
-(deftest test-external-table
+(deftest ^:parallel test-external-table
   (mt/test-driver :redshift
     (testing "expects spectrum schema to exist"
-      (is (= [{:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "buyerid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :buyerid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :buyerid)
-               :visibility_type :normal
-               :display_name    "Buyerid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}
-              {:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "salesid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :salesid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :salesid)
-               :visibility_type :normal
-               :display_name    "Salesid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}]
-             ;; in different Redshift instances, the fingerprint on these columns is different.
-             (map #(dissoc % :fingerprint)
-                  (get-in (qp/process-query (mt/mbql-query extsales
-                                              {:limit    1
-                                               :fields   [$buyerid $salesid]
-                                               :order-by [[:asc $buyerid]
-                                                          [:asc $salesid]]
-                                               :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                          [:data :cols])))))))
+      (is (=? [{:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "buyerid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :buyerid)
+                :visibility_type :normal
+                :display_name    "Buyerid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}
+               {:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "salesid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :salesid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :salesid)
+                :visibility_type :normal
+                :display_name    "Salesid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}]
+              ;; in different Redshift instances, the fingerprint on these columns is different.
+              (map #(dissoc % :fingerprint)
+                   (get-in (qp/process-query (mt/mbql-query extsales
+                                               {:limit    1
+                                                :fields   [$buyerid $salesid]
+                                                :order-by [[:asc $buyerid]
+                                                           [:asc $salesid]]
+                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                           [:data :cols])))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -311,18 +311,22 @@
         (try
           (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
             (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
-                (let [schemas (reduce conj
-                                      #{}
-                                      (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                               conn
-                                                                               (.getMetaData conn)
-                                                                               nil
-                                                                               nil))]
-                  (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                    (is (contains? schemas random-schema)))
-                  (testing "should not contain the current session-schema name (since that was never granted)"
-                    (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+              (sql-jdbc.execute/do-with-connection-with-options
+               :redshift
+               db
+               nil
+               (fn [^java.sql.Connection conn]
+                 (let [schemas (reduce conj
+                                       #{}
+                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                                conn
+                                                                                (.getMetaData conn)
+                                                                                nil
+                                                                                nil))]
+                   (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                     (is (contains? schemas random-schema)))
+                   (testing "should not contain the current session-schema name (since that was never granted)"
+                     (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
           (finally
             (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
                            "DROP USER IF EXISTS %s;%n"
@@ -341,19 +345,22 @@
                                                                    (eduction
                                                                     cat
                                                                     [(orig metadata) [fake-schema-name]])))]
-            (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-              (with-open [conn (jdbc/get-connection jdbc-spec)]
-                (letfn [(schemas []
-                          (reduce
-                           conj
-                           #{}
-                           (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
-                  (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                    (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                      reducible)]
-                      (is (contains? (schemas) fake-schema-name))))
-                  (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                    (is (not (contains? (schemas) fake-schema-name)))))))))))))
+            (sql-jdbc.execute/do-with-connection-with-options
+             :redshift
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (letfn [(schemas []
+                         (reduce
+                          conj
+                          #{}
+                          (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+                 (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                     reducible)]
+                     (is (contains? (schemas) fake-schema-name))))
+                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                   (is (not (contains? (schemas) fake-schema-name)))))))))))))
 
 (mt/defdataset numeric-unix-timestamps
   [["timestamps"

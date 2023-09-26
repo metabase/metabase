@@ -2,6 +2,8 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
    [hiccup.core :refer [html]]
@@ -32,8 +34,10 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -54,7 +58,7 @@
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
-  (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
+  (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
 (defn- logo-url []
@@ -103,7 +107,6 @@
    :colorTextLight            style/color-text-light
    :colorTextMedium           style/color-text-medium
    :colorTextDark             style/color-text-dark
-   :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -184,11 +187,13 @@
      :message-type :html
      :message      message-body)))
 
-(defn send-login-from-new-device-email!
+(mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
-  [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+                         (throw (ex-info (tru "User {0} does not exist" user-id)
+                                         {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
@@ -300,7 +305,16 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse dashboard]
+(defn generate-pulse-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
+                           :email email
+                           :pulse-id pulse-id}))))
+
+(defn- pulse-context [pulse dashboard non-user-email]
   (let [dashboard-id (:id dashboard)]
    (merge (common-context)
           {:emailType                 "pulse"
@@ -310,7 +324,16 @@
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
            :creator                   (-> pulse :creator :common_name)
-           :sectionStyle              (style/style (style/section-style))}
+           :sectionStyle              (style/style (style/section-style))
+           :notificationText          (if (nil? non-user-email)
+                                        "Manage your subscriptions"
+                                        "Unsubscribe")
+           :notificationManagementUrl (if (nil? non-user-email)
+                                        (urls/notification-management-url)
+                                        (str (urls/unsubscribe-url)
+                                             "?hash=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)
+                                             "&email=" non-user-email
+                                             "&pulse-id=" (:id pulse)))}
           (pulse-link-context pulse))))
 
 (defn- create-temp-file
@@ -378,8 +401,7 @@
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! database-id)
+    (qp.store/with-metadata-provider database-id
       (binding [qp.xlsx/*parse-temporal-string-values* true]
         (let [w                           (qp.si/streaming-results-writer export-format os)
               cols                        (-> results :data :cols)
@@ -495,10 +517,10 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard parts]
+  [timezone pulse dashboard parts non-user-email]
   (render-message-body pulse
                        :pulse
-                       (pulse-context pulse dashboard)
+                       (pulse-context pulse dashboard non-user-email)
                        timezone
                        dashboard
                        (assoc-attachment-booleans pulse parts)))
@@ -575,12 +597,18 @@
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert channel]
+  [alert channel non-user-email]
   (let [{card-id :id, card-name :name} (first-card alert)]
-    {:title         card-name
-     :titleUrl      (urls/card-url card-id)
-     :alertSchedule (alert-schedule-text channel)
-     :creator       (-> alert :creator :common_name)}))
+    {:title                     card-name
+     :titleUrl                  (urls/card-url card-id)
+     :alertSchedule             (alert-schedule-text channel)
+     :notificationManagementUrl (if (nil? non-user-email)
+                                  (urls/notification-management-url)
+                                  (str (urls/unsubscribe-url)
+                                       "?hash=" (generate-pulse-unsubscribe-hash (:id alert) non-user-email)
+                                       "&email=" non-user-email
+                                       "&pulse-id=" (:id alert)))
+     :creator                   (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "This question has reached its goal of %s." goal-value)
@@ -588,10 +616,10 @@
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} channel results goal-value]
+  [timezone {:keys [alert_first_only] :as alert} channel results goal-value non-user-email]
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert channel))]
+                      (alert-context alert channel non-user-email))]
     (render-message-body alert
                          :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)

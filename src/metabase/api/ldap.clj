@@ -8,7 +8,6 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,11 +97,10 @@
       current-password
       new-password)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/settings"
+(api/defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings :map}
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (select-keys (keys ldap/mb-settings->ldap-details))

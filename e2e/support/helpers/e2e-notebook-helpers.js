@@ -61,3 +61,33 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
     cy.findByText(field).click();
   });
 }
+
+export function removeSummaryGroupingField({ field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("breakout-step")
+    .findByText(field)
+    .icon("close")
+    .click();
+}
+
+export function selectSavedQuestionsToJoin(
+  firstQuestionName,
+  secondQuestionName,
+) {
+  cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText("Saved Questions").click();
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText(firstQuestionName).click();
+  cy.wait("@loadSchemas");
+
+  // join to question b
+  cy.icon("join_left_outer").click();
+
+  popover().within(() => {
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Raw Data").click();
+    cy.findByTextEnsureVisible("Saved Questions").click();
+    cy.findByText(secondQuestionName).click();
+  });
+}

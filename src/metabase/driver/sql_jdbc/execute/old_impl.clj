@@ -1,13 +1,19 @@
 (ns metabase.driver.sql-jdbc.execute.old-impl
-  "Old implementation of `metabase.driver.sql-jdbc.execute` for non-reducible results (i.e., for implementing
-  `driver/execute-query` rather than `driver/execute-reducible-query`).
-
-  All methods and functions in this namespace should be considered deprecated with the exception of `set-parameter`,
-  which will be moved to `metabase.driver.sql-jdbc.execute` when this namespace is removed."
+  "Old implementations of [[metabase.driver.sql-jdbc.execute]] methods. All methods and functions in this namespace
+  should be considered deprecated and will be removed in future releases."
   (:require
    [metabase.driver :as driver]))
 
 (set! *warn-on-reflection* true)
+
+(defmulti connection-with-timezone
+  "Deprecated in Metabase 47. Implement [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]] instead.
+  This method will be removed in or after Metabase 50."
+  {:added      "0.35.0"
+   :deprecated "0.47.0"
+   :arglists   '(^java.sql.Connection [driver database ^String timezone-id])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 (defmulti set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.
@@ -17,8 +23,8 @@
     \"SET @@session.time_zone = %s;\"
 
   This method is only called for drivers using the default implementation
-  of [[metabase.driver.sql-jdbc.execute/connection-with-timezone]]; it should be considered deprecated in favor of
-  implementing `connection-with-timezone` directly."
+  of [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]]; it should be considered deprecated in
+  favor of implementing [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]] directly."
   {:deprecated "0.35.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

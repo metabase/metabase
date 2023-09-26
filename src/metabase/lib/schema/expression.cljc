@@ -6,8 +6,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types/keep-me)
 
@@ -57,7 +56,7 @@
 
 (defmethod type-of-method :default
   [expr]
-  (throw (ex-info (i18n/tru "Don''t know how to determine the type of {0}" (pr-str expr))
+  (throw (ex-info (i18n/tru "{0}: Don''t know how to determine the type of {1}" `type-of (pr-str expr))
                   {:expr expr})))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
@@ -140,7 +139,12 @@
 
 (def equality-comparable-types
   "Set of base types that can be campared with equality."
-   #{:type/Boolean :type/Text :type/Number :type/Temporal})
+   #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array})
+
+(mr/def ::emptyable
+  [:or
+   [:ref ::string]
+   (expression-schema :type/MongoBSONID "expression returning a BSONID")])
 
 (mr/def ::equality-comparable
   [:maybe

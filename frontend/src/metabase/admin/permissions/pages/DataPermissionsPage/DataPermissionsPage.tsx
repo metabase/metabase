@@ -1,14 +1,15 @@
-import { useEffect, useCallback, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useCallback } from "react";
 import _ from "underscore";
-import { Route } from "react-router";
+import type { Route } from "react-router";
 
 import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
-import { DatabaseId, Group } from "metabase-types/api";
+import type { DatabaseId, Group } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
@@ -57,6 +58,7 @@ function DataPermissionsPage({
         Tables.actions.fetchList({
           dbId,
           include_hidden: true,
+          remove_inactive: true,
         }),
       ),
     [dispatch],

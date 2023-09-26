@@ -9,7 +9,6 @@ import cx from "classnames";
 import "./LineAreaBarChart.css";
 
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -22,6 +21,7 @@ import {
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { isEmpty } from "metabase/lib/validate";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 import {
@@ -31,52 +31,9 @@ import {
 import LegendLayout from "./legend/LegendLayout";
 import CardRenderer from "./CardRenderer";
 
-const MUTE_STYLE = "opacity: 0.25;";
-for (let i = 0; i < MAX_SERIES; i++) {
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .area`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .line`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .bar`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .dc-tooltip._${i} .dot`,
-    MUTE_STYLE,
-  );
-
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bar`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .line`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .dot`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`,
-    MUTE_STYLE,
-  );
-
-  // row charts don't support multiseries
-  addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
-}
-
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
   static supportsSeries = true;
-
-  static minSize = { width: 4, height: 3 };
-  static defaultSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
     return (
@@ -265,15 +222,17 @@ export default class LineAreaBarChart extends Component {
     const {
       card,
       series,
+      settings,
       visualizationIsClickable,
       onEditSeries,
       onVisualizationClick,
       onChangeCardAndRun,
     } = this.props;
 
-    const single = isReversed
-      ? series[series.length - index - 1]
-      : series[index];
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
+
+    const single = orderedSeries[index];
+
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {
@@ -302,6 +261,7 @@ export default class LineAreaBarChart extends Component {
       onHoverChange,
       onRemoveSeries,
       settings,
+      canRemoveSeries,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -339,6 +299,7 @@ export default class LineAreaBarChart extends Component {
           />
         )}
         <LegendLayout
+          canRemoveSeries={canRemoveSeries}
           labels={labels}
           colors={colors}
           hovered={hovered}
@@ -427,7 +388,10 @@ function transformSingleSeries(s, series, seriesIndex) {
           // show series title if it's multiseries
           series.length > 1 && card.name,
           // always show grouping value
-          formatValue(breakoutValue, { column: cols[seriesColumnIndex] }),
+          formatValue(
+            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
+            { column: cols[seriesColumnIndex] },
+          ),
         ]
           .filter(n => n)
           .join(": "),

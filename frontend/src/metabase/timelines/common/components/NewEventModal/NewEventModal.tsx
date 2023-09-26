@@ -2,15 +2,14 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
-import {
+import type {
   Collection,
   Timeline,
   TimelineEventData,
   TimelineEventSource,
 } from "metabase-types/api";
+import ModalContent from "metabase/components/ModalContent";
 import EventForm from "../../containers/EventForm";
-import ModalBody from "../ModalBody";
-import ModalHeader from "../ModalHeader";
 
 export interface NewEventModalProps {
   timelines?: Timeline[];
@@ -55,17 +54,14 @@ const NewEventModal = ({
   );
 
   return (
-    <div>
-      <ModalHeader title={t`New event`} onClose={onClose} />
-      <ModalBody>
-        <EventForm
-          initialValues={initialValues}
-          timelines={availableTimelines}
-          onSubmit={handleSubmit}
-          onCancel={onCancel}
-        />
-      </ModalBody>
-    </div>
+    <ModalContent onClose={onClose} formModal title={t`New event`}>
+      <EventForm
+        initialValues={initialValues}
+        timelines={availableTimelines}
+        onSubmit={handleSubmit}
+        onCancel={onCancel}
+      />
+    </ModalContent>
   );
 };
 

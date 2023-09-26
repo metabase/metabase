@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
@@ -9,9 +10,14 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
+  #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
   {})
@@ -41,7 +47,7 @@
 (def ^:private stage-keys
   #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
-(defn- clean-stage [almost-stage]
+(defn- clean-stage-schema-errors [almost-stage]
   (loop [almost-stage almost-stage
          removals []]
     (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
@@ -61,6 +67,17 @@
           almost-stage
           (recur new-stage (conj removals [error-type error-location]))))
       almost-stage)))
+
+(defn- clean-stage-ref-errors [almost-stage]
+  (reduce (fn [almost-stage [loc _]]
+              (clean-location almost-stage ::lib.schema/invalid-ref loc))
+          almost-stage
+          (lib.schema/ref-errors-for-stage almost-stage)))
+
+(defn- clean-stage [almost-stage]
+  (-> almost-stage
+      clean-stage-schema-errors
+      clean-stage-ref-errors))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
@@ -100,27 +117,83 @@
   [query]
   query)
 
+(def legacy-default-join-alias
+  "In legacy MBQL, join `:alias` was optional, and if unspecified, this was the default alias used. In reality all joins
+  normally had an explicit `:alias` since the QB would generate one and you generally need one to do useful things
+  with the join anyway.
+
+  Since the new pMBQL schema makes `:alias` required, we'll explicitly add the implicit default when we encounter a
+  join without an alias, and remove it so we can round-trip without changes."
+  "__join")
+
+(defn- deduplicate-join-aliases
+  "Join `:alias`es had to be unique in legacy MBQL, but they were optional. Since we add [[legacy-default-join-alias]]
+  to each join that doesn't have an explicit `:alias` for pMBQL compatibility now, we need to deduplicate the aliases
+  if it is used more than once.
+
+  Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
+  aliases and truncate them or anything like that."
+  [joins]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (mapv (fn [join]
+            (cond-> join
+              (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
+          joins)))
+
+(defn- stage-source-card-id->pMBQL
+  "If a query `stage` has a legacy `card__<id>` `:source-table`, convert it to a pMBQL-style `:source-card`."
+  [stage]
+  (if (string? (:source-table stage))
+    (-> stage
+        (assoc :source-card (lib.util/legacy-string-table-id->card-id (:source-table stage)))
+        (dissoc :source-table))
+    stage))
+
+#?(:clj
+   (defmacro with-aggregation-list
+     "Macro for capturing the context of a query stage's `:aggregation` list, so any legacy `[:aggregation 0]` indexed
+     refs can be converted correctly to UUID-based pMBQL refs."
+     [aggregations & body]
+     `(let [aggregations#  ~aggregations
+            legacy->pMBQL# (into {}
+                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
+                                                [~'idx ~'ag-uuid]))
+                                 aggregations#)
+            pMBQL->legacy# (into {}
+                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
+                                                [~'ag-uuid ~'idx]))
+                                 aggregations#)]
+        (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL#
+                  *pMBQL-uuid->legacy-index* pMBQL->legacy#]
+          ~@body))))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
-        expressions (->> stage
-                         :expressions
-                         (mapv (fn [[k v]]
-                                 (-> v
-                                     ->pMBQL
-                                     (lib.util/named-expression-clause k))))
-                         not-empty)]
-    (binding [*legacy-index->pMBQL-uuid* (into {}
-                                               (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                              [idx ag-uuid]))
-                                               aggregations)]
-      (reduce
-        (fn [stage k]
-          (if-not (get stage k)
-            stage
-            (update stage k ->pMBQL)))
-        (m/assoc-some stage :aggregation aggregations :expressions expressions)
-        (disj stage-keys :aggregation :expressions)))))
+        expressions  (->> stage
+                          :expressions
+                          (mapv (fn [[k v]]
+                                  (-> v
+                                      ->pMBQL
+                                      (lib.util/named-expression-clause k))))
+                          not-empty)]
+    (metabase.lib.convert/with-aggregation-list aggregations
+      (let [stage (-> stage
+                      stage-source-card-id->pMBQL
+                      (m/assoc-some :aggregation aggregations :expressions expressions))
+            stage (reduce
+                   (fn [stage k]
+                     (if-not (get stage k)
+                       stage
+                       (update stage k ->pMBQL)))
+                   stage
+                   (disj stage-keys :aggregation :expressions))]
+        (cond-> stage
+          (:joins stage) (update :joins deduplicate-join-aliases))))))
+
+(defmethod ->pMBQL :mbql.stage/native
+  [stage]
+  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->pMBQL))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -131,7 +204,8 @@
       (:fields join) (update :fields (fn [fields]
                                        (if (seqable? fields)
                                          (mapv ->pMBQL fields)
-                                         (keyword fields)))))))
+                                         (keyword fields))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -143,6 +217,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
 
@@ -162,10 +237,10 @@
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
         ;; in pMBQL, `:effective-type` is a required key for `:value`. `:value` SHOULD have always had `:base-type`,
-        ;; but on the off chance it did not give this `:type/*` so the schema doesn't fail entirely.
+        ;; but on the off chance it did not, get the type from value so the schema doesn't fail entirely.
         opts (assoc opts :effective-type (or (:effective-type opts)
                                              (:base-type opts)
-                                             :type/*))]
+                                             (lib.schema.expression/type-of value)))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (defmethod ->pMBQL :case
@@ -213,14 +288,21 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- disqualify
-  "Remove any keys starting with the `:lib/` namespace from map `m`.
+(defn- metabase-lib-keyword?
+  "Does keyword `k` have a`:lib/` or a `:metabase.lib.*/` namespace?"
+  [k]
+  (and (qualified-keyword? k)
+       (when-let [symb-namespace (namespace k)]
+         (or (= symb-namespace "lib")
+             (str/starts-with? symb-namespace "metabase.lib.")))))
 
-  No args = return transducer to remove `:lib/` keys from a map. One arg = update a map `m`."
+(defn- disqualify
+  "Remove any keys starting with the `:lib/` `:metabase.lib.*/` namespaces from map `m`.
+
+  No args = return transducer to remove keys from a map. One arg = update a map `m`."
   ([]
    (remove (fn [[k _v]]
-             (and (qualified-keyword? k)
-                  (= (namespace k) "lib")))))
+             (metabase-lib-keyword? k))))
   ([m]
    (into {} (disqualify) m)))
 
@@ -320,9 +402,14 @@
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
-    (let [opts (options->legacy-MBQL opts)]
-      (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
-        opts (conj opts)))
+    (try
+      (let [opts (options->legacy-MBQL opts)]
+        (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
+          opts (conj opts)))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (lib.util/format "Error converting aggregation reference to pMBQL: %s" (ex-message e))
+                        {:ref ag}
+                        e))))
     ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
     ag))
 
@@ -359,7 +446,8 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (disqualify join)]
+  (let [base (cond-> (disqualify join)
+               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
@@ -368,14 +456,22 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (chain-stages base))))
 
-(defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
-  (binding [*pMBQL-uuid->legacy-index* (into {}
-                                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                            [ag-uuid idx]))
-                                             (:aggregation stage))]
+(defn- source-card->legacy-source-table
+  "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."
+  [stage]
+  (if-let [source-card-id (:source-card stage)]
+    (-> stage
+        (dissoc :source-card)
+        (assoc :source-table (str "card__" source-card-id)))
+    stage))
+
+(defmethod ->legacy-MBQL :mbql.stage/mbql
+  [stage]
+  (metabase.lib.convert/with-aggregation-list (:aggregation stage)
     (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
             (-> stage
                 disqualify
+                source-card->legacy-source-table
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}
@@ -396,14 +492,44 @@
       (update-vals ->legacy-MBQL)))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
-  (let [base        (disqualify query)
-        parameters  (:parameters base)
-        inner-query (chain-stages base)
-        query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
-                      :native
-                      :query)]
-    (merge (-> base
-               (dissoc :stages :parameters)
-               (update-vals ->legacy-MBQL))
-           (cond-> {:type query-type query-type inner-query}
-             (seq parameters) (assoc :parameters parameters)))))
+  (try
+    (let [base        (disqualify query)
+          parameters  (:parameters base)
+          inner-query (chain-stages base)
+          query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
+                        :native
+                        :query)]
+      (merge (-> base
+                 (dissoc :stages :parameters :lib.convert/converted?)
+                 (update-vals ->legacy-MBQL))
+             (cond-> {:type query-type query-type inner-query}
+               (seq parameters) (assoc :parameters parameters))))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
+                      {:query query}
+                      e)))))
+
+;; TODO: Look into whether this function can be refactored away - it's called from several places but I (Braden) think
+;; legacy refs shouldn't make it out of `lib.js`.
+(mu/defn legacy-ref->pMBQL :- ::lib.schema.ref/ref
+  "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to pMBQL. Normalizes the reference if needed,
+  and handles JS -> Clj conversion as needed."
+  ([query legacy-ref]
+   (legacy-ref->pMBQL query -1 legacy-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?]
+   (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
+                                          (mbql.normalize/normalize-fragment nil))
+         {aggregations :aggregation} (lib.util/query-stage query stage-number)]
+     (with-aggregation-list aggregations
+       (try
+         (->pMBQL legacy-ref)
+         (catch #?(:clj Throwable :cljs :default) e
+           (throw (ex-info (lib.util/format "Error converting legacy ref to pMBQL: %s" (ex-message e))
+                           {:query                    query
+                            :stage-number             stage-number
+                            :legacy-ref               legacy-ref
+                            :legacy-index->pMBQL-uuid *legacy-index->pMBQL-uuid*}
+                           e))))))))

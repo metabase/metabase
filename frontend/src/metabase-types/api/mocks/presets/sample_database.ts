@@ -1,8 +1,9 @@
-import {
+import type {
   Database,
+  DatasetColumn,
   Field,
   FieldDimensionOption,
-  FieldValues,
+  FieldValuesResult,
   Table,
 } from "metabase-types/api";
 import {
@@ -14,6 +15,7 @@ import {
   createMockTextFieldFingerprint,
   createMockNumberFieldFingerprint,
   createMockDateTimeFieldFingerprint,
+  createMockColumn,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
@@ -74,19 +76,19 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
-export const PRODUCT_CATEGORY_VALUES: FieldValues = {
+export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
   has_more_values: false,
 };
 
-export const PRODUCT_VENDOR_VALUES: FieldValues = {
+export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.VENDOR,
   values: [["Vendor 1"], ["Vendor 2"], ["Vendor 3"], ["Vendor 4"]],
   has_more_values: true,
 };
 
-export const PEOPLE_SOURCE_VALUES: FieldValues = {
+export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
   has_more_values: false,
@@ -1339,3 +1341,121 @@ function createNumericFieldBinningOptions() {
 function createCoordinateFieldBinningOptions() {
   return Object.values(createCoordinateBinningOptions());
 }
+
+export const createOrdersIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersIdField(),
+    id: ORDERS.ID,
+    source: "fields",
+    field_ref: ["field", ORDERS.ID, null],
+    semantic_type: "type/PK",
+    ...opts,
+  });
+
+export const createOrdersUserIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersUserIdField(),
+    id: ORDERS.USER_ID,
+    source: "fields",
+    field_ref: ["field", ORDERS.USER_ID, null],
+    ...opts,
+  });
+
+export const createOrdersProductIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersProductIdField(),
+    id: ORDERS.PRODUCT_ID,
+    source: "fields",
+    field_ref: ["field", ORDERS.PRODUCT_ID, null],
+    ...opts,
+  });
+
+export const createOrdersSubtotalDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersSubtotalField(),
+    id: ORDERS.SUBTOTAL,
+    source: "fields",
+    field_ref: ["field", ORDERS.SUBTOTAL, null],
+    ...opts,
+  });
+
+export const createOrdersTaxDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersTaxField(),
+    id: ORDERS.TAX,
+    source: "fields",
+    field_ref: ["field", ORDERS.TAX, null],
+    ...opts,
+  });
+
+export const createOrdersTotalDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersTotalField(),
+    id: ORDERS.TOTAL,
+    source: "fields",
+    field_ref: ["field", ORDERS.TOTAL, null],
+    ...opts,
+  });
+
+export const createOrdersDiscountDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersDiscountField(),
+    id: ORDERS.DISCOUNT,
+    source: "fields",
+    field_ref: ["field", ORDERS.DISCOUNT, null],
+    ...opts,
+  });
+
+export const createOrdersCreatedAtDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersCreatedAtField(),
+    id: ORDERS.CREATED_AT,
+    source: "fields",
+    field_ref: [
+      "field",
+      ORDERS.CREATED_AT,
+      {
+        "temporal-unit": "default",
+      },
+    ],
+    ...opts,
+  });
+
+export const createOrdersQuantityDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createOrdersQuantityField(),
+    id: ORDERS.QUANTITY,
+    source: "fields",
+    field_ref: ["field", ORDERS.QUANTITY, null],
+    ...opts,
+  });
+
+export const createOrdersTableDatasetColumns = () => [
+  createOrdersIdDatasetColumn(),
+  createOrdersUserIdDatasetColumn(),
+  createOrdersProductIdDatasetColumn(),
+  createOrdersSubtotalDatasetColumn(),
+  createOrdersTaxDatasetColumn(),
+  createOrdersTotalDatasetColumn(),
+  createOrdersDiscountDatasetColumn(),
+  createOrdersCreatedAtDatasetColumn(),
+  createOrdersQuantityDatasetColumn(),
+];

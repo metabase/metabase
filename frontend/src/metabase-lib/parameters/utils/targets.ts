@@ -1,23 +1,18 @@
-import type {
-  Card,
-  ParameterDimensionTarget,
-  ParameterVariableTarget,
-  ParameterTarget,
-} from "metabase-types/api";
+import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function isVariableTarget(target: ParameterTarget) {
   return target?.[0] === "variable";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1]) {
+  if (!target?.[1] || target?.[0] === "text-tag") {
     return null;
   }
 
@@ -48,19 +43,15 @@ export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
   return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string) {
+export function buildTextTagTarget(tagName: string): ["text-tag", string] {
   return ["text-tag", tagName];
 }
 
 export function getTargetFieldFromCard(
-  target: ParameterVariableTarget | ParameterDimensionTarget,
+  target: ParameterTarget,
   card: Card,
   metadata: Metadata,
 ) {
-  if (!card?.dataset_query) {
-    return null;
-  }
-
   const question = new Question(card, metadata);
   const field = getParameterTargetField(target, metadata, question);
   return field ?? null;

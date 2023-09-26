@@ -10,9 +10,11 @@ import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermission
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
 import { createMockGroup } from "metabase-types/api/mocks/group";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { setupPermissionsGraphEndpoint } from "__support__/server-mocks/permissions";
-import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import {
+  setupDatabasesEndpoints,
+  setupPermissionsGraphEndpoint,
+  setupGroupsEndpoint,
+} from "__support__/server-mocks";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import GroupsPermissionsPage from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { delay } from "metabase/lib/promise";

@@ -1,0 +1,8 @@
+:local(.queryButton) {
+  composes: flex align-center no-decoration text-brand py1 from "style";
+}
+
+:local(.queryButtonText) {
+  composes: flex-full ml2 from "style";
+  max-width: 100%;
+}

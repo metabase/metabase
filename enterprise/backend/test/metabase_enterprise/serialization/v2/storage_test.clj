@@ -15,18 +15,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- file-set [dir]
+(defn- file-set [^java.io.File dir]
   (let [base (.toPath dir)]
-    (set (for [file (file-seq dir)
-               :when (.isFile file)
-               :let [rel (.relativize base (.toPath file))]]
+    (set (for [^java.io.File file (file-seq dir)
+               :when              (.isFile file)
+               :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
-      (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
-                         Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
+      (ts/with-temp-dpc [Collection parent {:name "Some Collection"}
+                         Collection child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]
         (let [export          (into [] (extract/extract nil))
               parent-filename (format "%s_some_collection"  (:entity_id parent))
               child-filename  (format "%s_child_collection" (:entity_id child))]
@@ -61,17 +61,17 @@
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
-      (ts/with-temp-dpc [Collection  [grandparent {:name     "Grandparent Collection"
-                                                   :location "/"}]
-                         Collection  [parent      {:name     "Parent Collection"
-                                                   :location (str "/" (:id grandparent) "/")}]
-                         Collection  [child       {:name     "Child Collection"
-                                                   :location (str "/" (:id grandparent) "/" (:id parent) "/")}]
-                         Card        [c1          {:name "root card"        :collection_id nil}]
-                         Card        [c2          {:name "grandparent card" :collection_id (:id grandparent)}]
-                         Card        [c3          {:name "parent card"      :collection_id (:id parent)}]
-                         Card        [c4          {:name "child card"       :collection_id (:id child)}]
-                         Dashboard   [d1          {:name "parent dash"      :collection_id (:id parent)}]]
+      (ts/with-temp-dpc [Collection  grandparent {:name     "Grandparent Collection"
+                                                  :location "/"}
+                         Collection  parent      {:name     "Parent Collection"
+                                                  :location (str "/" (:id grandparent) "/")}
+                         Collection  child       {:name     "Child Collection"
+                                                  :location (str "/" (:id grandparent) "/" (:id parent) "/")}
+                         Card        c1          {:name "root card"        :collection_id nil}
+                         Card        c2          {:name "grandparent card" :collection_id (:id grandparent)}
+                         Card        c3          {:name "parent card"      :collection_id (:id parent)}
+                         Card        c4          {:name "child card"       :collection_id (:id child)}
+                         Dashboard   d1          {:name "parent dash"      :collection_id (:id parent)}]
         (let [export          (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
@@ -91,19 +91,19 @@
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
-      (ts/with-temp-dpc [Collection         [grandparent {:name      "Grandparent Collection"
-                                                          :namespace :snippets
-                                                          :location  "/"}]
-                         Collection         [parent      {:name      "Parent Collection"
-                                                          :namespace :snippets
-                                                          :location  (str "/" (:id grandparent) "/")}]
-                         Collection         [child       {:name      "Child Collection"
-                                                          :namespace :snippets
-                                                          :location  (str "/" (:id grandparent) "/" (:id parent) "/")}]
-                         NativeQuerySnippet [c1          {:name "root snippet"        :collection_id nil}]
-                         NativeQuerySnippet [c2          {:name "grandparent snippet" :collection_id (:id grandparent)}]
-                         NativeQuerySnippet [c3          {:name "parent snippet"      :collection_id (:id parent)}]
-                         NativeQuerySnippet [c4          {:name "child snippet"       :collection_id (:id child)}]]
+      (ts/with-temp-dpc [Collection         grandparent {:name      "Grandparent Collection"
+                                                         :namespace :snippets
+                                                         :location  "/"}
+                         Collection         parent      {:name      "Parent Collection"
+                                                         :namespace :snippets
+                                                         :location  (str "/" (:id grandparent) "/")}
+                         Collection         child       {:name      "Child Collection"
+                                                         :namespace :snippets
+                                                         :location  (str "/" (:id grandparent) "/" (:id parent) "/")}
+                         NativeQuerySnippet c1          {:name "root snippet"        :collection_id nil}
+                         NativeQuerySnippet c2          {:name "grandparent snippet" :collection_id (:id grandparent)}
+                         NativeQuerySnippet c3          {:name "parent snippet"      :collection_id (:id parent)}
+                         NativeQuerySnippet c4          {:name "child snippet"       :collection_id (:id child)}]
         (let [export          (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -125,11 +125,11 @@
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
-      (ts/with-temp-dpc [Database    [db      {:name "My Company Data"}]
-                         Table       [table   {:name "Customers" :db_id (:id db)}]
-                         Field       [website {:name "Company/organization website" :table_id (:id table)}]
-                         FieldValues [_       {:field_id (:id website)}]
-                         Table       [_       {:name "Orders/Invoices" :db_id (:id db)}]]
+      (ts/with-temp-dpc [Database    db      {:name "My Company Data"}
+                         Table       table   {:name "Customers" :db_id (:id db)}
+                         Field       website {:name "Company/organization website" :table_id (:id table)}
+                         FieldValues _       {:field_id (:id website)}
+                         Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
         (let [export          (into [] (extract/extract {:include-field-values true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"

@@ -5,7 +5,6 @@
    [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -23,16 +22,16 @@
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-              (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
+          (-> lib.tu/venues-query
+              (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel expression-validation-tests
-  (let [int-field (lib/field "VENUES" "CATEGORY_ID")
-        string-field (lib/field "VENUES" "NAME")
-        float-field (lib/field "VENUES" "LATITUDE")
-        dt-field (lib/field "USERS" "LAST_LOGIN")
-        #_#_boolean-field (lib/->= 1 (lib/field "VENUES" "CATEGORY_ID"))]
+  (let [int-field (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        float-field (meta/field-metadata :venues :latitude)
+        dt-field (meta/field-metadata :users :last-login)
+        #_#_boolean-field (lib/->= 1 (meta/field-metadata :venues :category-id))]
     (doseq [[expr typ] (partition-all
                          2
                          [(lib/+ 1.1 2 int-field) :type/Number
@@ -76,7 +75,7 @@
                           (lib/upper string-field) :type/Text
                           (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
-        (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+        (let [query (-> lib.tu/venues-query
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
@@ -88,7 +87,7 @@
            :name         "double-price"
            :display-name "double-price"
            :lib/source   :source/expressions}
-          (lib.metadata.calculation/metadata
+          (lib/metadata
             (-> lib.tu/venues-query
                 (lib/expression "double-price"
                                 (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
@@ -107,7 +106,7 @@
               :display-name "prev_month"
               :base-type    :type/DateTime
               :lib/source   :source/expressions}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib/returned-columns query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
@@ -116,9 +115,9 @@
                 -1
                 :day]]
     (is (= "DATE_minus_1_day"
-           (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name lib.tu/venues-query -1 clause)))
     (is (= "Date - 1 day"
-           (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name lib.tu/venues-query -1 clause)))))
 
 (deftest ^:parallel expression-reference-names-test
   (let [query (-> lib.tu/venues-query
@@ -130,20 +129,20 @@
                {:lib/uuid (str (random-uuid))}
                [:expression {:lib/uuid (str (random-uuid))} "double-price"]]]
     (is (= "Sum of double-price"
-           (lib.metadata.calculation/display-name query -1 expr)))
+           (lib/display-name query -1 expr)))
     (is (= "sum"
-           (lib.metadata.calculation/column-name query -1 expr)))))
+           (lib/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
-           (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
-           (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name lib.tu/venues-query -1 clause)))))
 
 (defn- infer-first
   [expr]
-  (lib.metadata.calculation/metadata
+  (lib/metadata
     (-> lib.tu/venues-query
         (lib/expression "expr" expr))
     -1
@@ -190,7 +189,7 @@
            :name         "last-login-plus-2"
            :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
-          (lib.metadata.calculation/metadata
+          (lib/metadata
            (-> lib.tu/venues-query
                (lib/expression "last-login-plus-2"
                                [:datetime-add
@@ -206,7 +205,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs js/Error)
           #"No expression named \"double-price\""
-          (lib.metadata.calculation/metadata
+          (lib/metadata
             (-> lib.tu/venues-query
                 (lib/expression "one-hundred" (lib/+ 100 0)))
             -1
@@ -226,7 +225,7 @@
           (is (= (condp = arg-2
                    1   :type/Integer
                    1.0 :type/Number)
-                 (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))
+                 (lib/type-of lib.tu/venues-query clause)))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
@@ -234,19 +233,19 @@
             (is (= :type/Float
                    (lib.schema.expression/type-of clause)))
             (is (= :type/Float
-                   (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))))
+                   (lib/type-of lib.tu/venues-query clause)))))))))
 
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
               :display-name "expr"}]
-            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+            (-> lib.tu/venues-query
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions-metadata))))
   (testing "collisions with other column names are detected and rejected"
-    (let [query (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
-                  (lib/expression query "ID" (lib/field "CATEGORIES" "NAME"))
+                  (lib/expression query "ID" (meta/field-metadata :categories :name))
                   nil
                   (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                     e))]
@@ -258,25 +257,25 @@
              (ex-data ex))))))
 
 (deftest ^:parallel literal-expression-test
-  (is (=? [{:lib/type :metadata/field,
+  (is (=? [{:lib/type :metadata/column,
             :base-type :type/Integer,
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> lib.tu/venues-query
               (lib/expression "expr" "value")
               (lib/expressions)))))
 
 (deftest ^:parallel expressionable-columns-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
                   (lib/expression "a" 1)
                   (lib/expression "b" 2))
         expressionable-expressions-for-position (fn [pos]
@@ -286,5 +285,16 @@
     (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
-    (is (= (lib.metadata.calculation/visible-columns query)
+    (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
+
+(deftest ^:parallel infix-display-name-with-expressions-test
+  (testing "#32063"
+    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:orders lib.tu/mock-cards))
+          query (-> query
+                    (lib/expression "Unit price" (lib//
+                                                  (lib.tu/field-literal-ref query "SUBTOTAL")
+                                                  (lib.tu/field-literal-ref query "QUANTITY"))))]
+      (is (= ["ID" "Subtotal" "Total" "Tax" "Discount" "Quantity" "Created At" "Product ID" "User ID" "Unit price"]
+             (map (partial lib/display-name query)
+                  (lib/returned-columns query)))))))

@@ -1,8 +1,11 @@
-import { useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import Tooltip from "metabase/core/components/Tooltip";
-import { executeRowAction } from "metabase/dashboard/actions";
+import {
+  executeRowAction,
+  reloadDashboardCards,
+} from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
@@ -13,12 +16,12 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { useQuestionQuery } from "metabase/common/hooks";
 import {
   getDashcardParamValues,
-  getNotProvidedActionParameters,
   getMappedActionParameters,
+  getNotProvidedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
@@ -29,14 +32,19 @@ interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   parameterValues: { [id: string]: ParameterValueOrArray };
+}
+
+interface StateProps {
   isEditingDashcard: boolean;
+
   dispatch: Dispatch;
 }
 
 export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
-  OwnProps;
+  OwnProps &
+  StateProps;
 
-function ActionComponent({
+const ActionComponent = ({
   dashcard,
   dashboard,
   dispatch,
@@ -44,7 +52,11 @@ function ActionComponent({
   settings,
   parameterValues,
   isEditingDashcard,
-}: ActionProps) {
+}: ActionProps) => {
+  const { data: model } = useQuestionQuery({
+    id: dashcard.action?.model_id,
+  });
+
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
     settings?.actionDisplayType ?? actionSettings?.type ?? "button";
@@ -82,15 +94,24 @@ function ActionComponent({
     shouldConfirm
   );
 
+  const canWrite = model?.canWriteActions();
+
   const onSubmit = useCallback(
-    (parameters: ParametersForActionExecution) =>
-      executeRowAction({
+    async (parameters: ParametersForActionExecution) => {
+      const result = await executeRowAction({
         dashboard,
         dashcard,
         parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
+      });
+
+      if (result.success) {
+        dispatch(reloadDashboardCards());
+      }
+
+      return result;
+    },
     [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 
@@ -106,10 +127,11 @@ function ActionComponent({
       isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      canEditAction={canWrite}
       onSubmit={onSubmit}
     />
   );
-}
+};
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
@@ -133,7 +155,7 @@ function ActionFn(props: ActionProps) {
 
     return (
       <Tooltip tooltip={tooltip}>
-        <FullContainer>
+        <FullContainer data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"

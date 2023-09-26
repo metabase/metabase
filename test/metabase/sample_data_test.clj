@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -102,7 +101,7 @@
                  ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in
                  ;; sync and setting anything else is reserved for admins, however we fill in what we think should be
                  ;; the appropiate value with the hydration fn
-                 (hydrate :has_field_values)
+                 (t2/hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
 
@@ -169,13 +168,13 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
-          (testing "add column"
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
-            (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
-          (testing "remove column"
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-          (testing "drop table"
-              (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-              (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+           (testing "add column"
+             (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+             (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+            (testing "remove column"
+              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+              (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (testing "drop table"
+                 (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
+                 (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))

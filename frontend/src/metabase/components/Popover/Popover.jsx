@@ -10,7 +10,7 @@ import { isCypressActive } from "metabase/env";
 
 import "./Popover.css";
 
-// space we should leave berween page edge and popover edge
+// space we should leave between page edge and popover edge
 const PAGE_PADDING = 10;
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
@@ -95,7 +95,9 @@ export default class Popover extends Component {
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
+      this._popoverElement.dataset.testid = "popover";
       document.body.appendChild(this._popoverElement);
+
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
         if (this.state.width !== width || this.state.height !== height) {
@@ -200,11 +202,12 @@ export default class Popover extends Component {
       this._tether.destroy();
       delete this._tether;
     }
+
     if (this._popoverElement) {
-      ReactDOM.unmountComponentAtNode(this._popoverElement);
       if (this._popoverElement.parentNode) {
         this._popoverElement.parentNode.removeChild(this._popoverElement);
       }
+
       delete this._popoverElement;
       clearInterval(this._timer);
       delete this._timer;
@@ -349,51 +352,32 @@ export default class Popover extends Component {
 
   _getTargetElement() {
     let target;
+
     if (this.props.targetEvent) {
       // create a fake element at the event coordinates
       target = document.getElementById("popover-event-target");
+
       if (!target) {
         target = document.createElement("div");
         target.id = "popover-event-target";
         document.body.appendChild(target);
       }
+
       target.style.left = this.props.targetEvent.clientX - 3 + "px";
       target.style.top = this.props.targetEvent.clientY - 3 + "px";
     } else if (this.props.target) {
       if (typeof this.props.target === "function") {
-        target = ReactDOM.findDOMNode(this.props.target());
+        target = this.props.target();
       } else {
-        target = ReactDOM.findDOMNode(this.props.target);
+        target = this.props.target;
       }
     }
+
     if (target == null) {
       target = this._popoverElement;
     }
+
     return target;
-  }
-
-  _renderPopover(isOpen) {
-    const popoverElement = this._getPopoverElement(isOpen);
-    if (popoverElement) {
-      if (isOpen) {
-        popoverElement.classList.add("PopoverContainer--open");
-        popoverElement.classList.add("popover");
-        popoverElement.dataset.state = "visible";
-      } else {
-        popoverElement.classList.remove("PopoverContainer--open");
-        popoverElement.classList.remove("popover");
-        popoverElement.dataset.state = "hidden";
-      }
-    }
-
-    if (isOpen) {
-      return ReactDOM.createPortal(
-        <span>{isOpen ? this._popoverComponent() : null}</span>,
-        popoverElement,
-      );
-    } else {
-      return <span className="hide" />;
-    }
   }
 
   constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
@@ -413,6 +397,28 @@ export default class Popover extends Component {
   }
 
   render() {
-    return this._renderPopover(this.props.isOpen);
+    const isOpen = this.props.isOpen;
+
+    const popoverElement = this._getPopoverElement(isOpen);
+    if (popoverElement) {
+      if (isOpen) {
+        popoverElement.classList.add("PopoverContainer--open");
+        popoverElement.classList.add("popover");
+        popoverElement.dataset.state = "visible";
+      } else {
+        popoverElement.classList.remove("PopoverContainer--open");
+        popoverElement.classList.remove("popover");
+        popoverElement.dataset.state = "hidden";
+      }
+    }
+
+    if (isOpen) {
+      return ReactDOM.createPortal(
+        <span>{isOpen ? this._popoverComponent() : null}</span>,
+        popoverElement,
+      );
+    }
+
+    return <span className="hide" />;
   }
 }

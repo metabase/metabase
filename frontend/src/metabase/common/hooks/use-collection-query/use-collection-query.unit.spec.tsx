@@ -1,14 +1,15 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockCollection } from "metabase-types/api/mocks";
 import {
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+  setupCollectionsWithError,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { createMockCollection } from "metabase-types/api/mocks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useCollectionQuery } from "./use-collection-query";
 
 const TEST_COLLECTION = createMockCollection();
@@ -26,8 +27,14 @@ const TestComponent = () => {
 };
 
 const setup = ({ error }: { error?: string } = {}) => {
-  setupCollectionsEndpoints([TEST_COLLECTION]);
+  if (error) {
+    setupCollectionsWithError({ error });
+  } else {
+    setupCollectionsEndpoints({ collections: [TEST_COLLECTION] });
+  }
+
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION], error });
+
   renderWithProviders(<TestComponent />);
 };
 

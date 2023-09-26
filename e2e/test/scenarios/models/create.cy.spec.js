@@ -1,10 +1,6 @@
-import {
-  getCollectionIdFromSlug,
-  modal,
-  popover,
-  restore,
-  visitCollection,
-} from "e2e/support/helpers";
+import { modal, popover, restore, visitCollection } from "e2e/support/helpers";
+
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const modelName = "A name";
 
@@ -50,9 +46,7 @@ describe("scenarios > models > create", () => {
   });
 
   it("suggest the currently viewed collection when saving a new native query", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage();
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
@@ -66,14 +60,12 @@ describe("scenarios > models > create", () => {
   });
 
   it("suggest the currently viewed collection when saving a new structured query", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage("structured");
 
     popover().within(() => {
-      cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 

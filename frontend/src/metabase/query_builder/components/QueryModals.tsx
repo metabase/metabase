@@ -11,13 +11,13 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Modal from "metabase/components/Modal";
 
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
 
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -30,15 +30,24 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { Alert, Card, Collection, User } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
-import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
+import type { Alert, Card, Collection, User } from "metabase-types/api";
+import type {
+  QueryBuilderMode,
+  QueryBuilderUIControls,
+  State,
+} from "metabase-types/store";
+import { getQuestionWithParameters } from "metabase/query_builder/selectors";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Question from "metabase-lib/Question";
+import type { UpdateQuestionOpts } from "../actions/core/updateQuestion";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
+
+const mapStateToProps = (state: State) => ({
+  questionWithParameters: getQuestionWithParameters(state) as Question,
+});
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
@@ -51,7 +60,9 @@ interface QueryModalsProps {
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
-  originalQuestion: Question | null;
+  setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
+  originalQuestion: Question;
+  questionWithParameters: Question;
   card: Card;
   onCreate: (question: Question) => void;
   onSave: (question: Question, config?: { rerunQuery: boolean }) => void;
@@ -94,11 +105,13 @@ class QueryModals extends Component<QueryModalsProps> {
       modal,
       modalContext,
       question,
+      questionWithParameters,
       initialCollectionId,
       onCloseModal,
       onOpenModal,
       updateQuestion,
       setQueryBuilderMode,
+      setUIControls,
     } = this.props;
 
     switch (modal) {
@@ -284,11 +297,12 @@ class QueryModals extends Component<QueryModalsProps> {
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  question
+                  questionWithParameters
                     .setDisplayName(formValues.name)
                     .setCollectionId(formValues.collection_id)
                     .setDescription(formValues.description || null),
                 );
+
                 return { payload: { object } };
               }}
               onClose={onCloseModal}
@@ -345,6 +359,7 @@ class QueryModals extends Component<QueryModalsProps> {
           <Modal fit onClose={onCloseModal}>
             <ConvertQueryModal
               onUpdateQuestion={updateQuestion}
+              onSetUIControls={setUIControls}
               onClose={onCloseModal}
             />
           </Modal>
@@ -356,4 +371,4 @@ class QueryModals extends Component<QueryModalsProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(QueryModals);
+export default connect(mapStateToProps, mapDispatchToProps)(QueryModals);

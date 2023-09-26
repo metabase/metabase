@@ -12,9 +12,12 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
+import { updateDashboard } from "metabase/dashboard/actions/save";
+import {
+  isParameterValueEmpty,
+  PULSE_PARAM_EMPTY,
+} from "metabase-lib/parameters/utils/parameter-values";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -136,6 +139,7 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
@@ -189,7 +193,12 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
+
+    return {
+      id: parameterId,
+      value: isParameterValueEmpty(value) ? PULSE_PARAM_EMPTY : value,
+      isDraft: isSettingDraftParameterValues,
+    };
   },
 );
 
@@ -317,12 +326,9 @@ export const setOrUnsetParameterValues =
 export const setParameterValuesFromQueryParams =
   queryParams => (dispatch, getState) => {
     const parameters = getParameters(getState());
-    const metadata = getMetadata(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
-      metadata,
-      { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
     );
 
     dispatch(setParameterValues(parameterValues));
@@ -336,13 +342,14 @@ export const toggleAutoApplyFilters = createThunkAction(
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
+      dispatch(applyDraftParameterValues());
       dispatch(
         setDashboardAttributes({
           id: dashboardId,
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
-      dispatch(saveDashboardAndCards(true));
+      dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);
       }

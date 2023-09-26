@@ -21,17 +21,11 @@
             Field
             FieldValues
             LoginHistory
-            Metric
-            NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
             Revision
-            Segment
             Setting
             Table
             TaskHistory
@@ -58,6 +52,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -158,14 +153,14 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address         "0:0:0:0:0:0:0:1"})
 
-   Metric
+   :model/Metric
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
 
-   NativeQuerySnippet
+   :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (tu.random/random-name)
             :content    "1 = 1"})
@@ -184,19 +179,19 @@
             :created_at    (t/zoned-date-time)
             :creator_id    (rasta-id)})
 
-   PermissionsGroup
+   :model/PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
-   Pulse
+   :model/Pulse
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   PulseCard
+   :model/PulseCard
    (fn [_] {:position    0
             :include_csv false
             :include_xls false})
 
-   PulseChannel
+   :model/PulseChannel
    (constantly {:channel_type  :email
                 :details       {}
                 :schedule_type :daily
@@ -207,7 +202,7 @@
             :is_creation  false
             :is_reversion false})
 
-   Segment
+   :model/Segment
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
@@ -247,7 +242,7 @@
       :time_matters true
       :creator_id   (rasta-id)})
 
-   User
+   :model/User
    (fn [_] {:first_name (tu.random/random-name)
             :last_name  (tu.random/random-name)
             :email      (tu.random/random-email)
@@ -380,41 +375,47 @@
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
-                       (#'setting/resolve-setting setting-k)
-                       (catch Exception e
-                         (when-not raw-setting?
-                           (throw e))))]
+                        (#'setting/resolve-setting setting-k)
+                        (catch Exception e
+                          (when-not raw-setting?
+                            (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-         (if raw-setting?
-           (upsert-raw-setting! original-value setting-k value)
-           (setting/set! setting-k value))
-         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-           (thunk))
-         (catch Throwable e
-           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                           {:setting  setting-k
-                            :location (symbol (name (:namespace setting)) (name setting-k))
-                            :value    value}
-                           e)))
-         (finally
           (try
-           (if raw-setting?
-             (restore-raw-setting! original-value setting-k)
-             (setting/set! setting-k original-value))
-           (catch Throwable e
-             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                             {:setting        setting-k
-                              :location       (symbol (name (:namespace setting)) setting-k)
-                              :original-value original-value}
-                             e))))))))))
+            (if raw-setting?
+              (upsert-raw-setting! original-value setting-k value)
+              ;; bypass the feature check when setting up mock data
+              (with-redefs [setting/has-feature? (constantly true)]
+                (setting/set! setting-k value)))
+            (catch Throwable e
+              (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                              {:setting  setting-k
+                               :location (symbol (name (:namespace setting)) (name setting-k))
+                               :value    value}
+                              e))))
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (finally
+            (try
+              (if raw-setting?
+                (restore-raw-setting! original-value setting-k)
+                ;; bypass the feature check when reset settings to the original value
+                (with-redefs [setting/has-feature? (constantly true)]
+                  (setting/set! setting-k original-value)))
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) setting-k)
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
@@ -427,7 +428,6 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -440,7 +440,6 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -523,6 +522,15 @@
   (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
                  data))
+
+(defmacro let-url
+  "Like normal `let`, but adds `testing` context with the `url` you've bound."
+  {:style/indent 1}
+  [[url-binding url] & body]
+  `(let [url# ~url
+         ~url-binding url#]
+     (testing (str "\nGET /api/" url# "\n")
+       ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -621,7 +629,7 @@
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (mdb.u/primary-key model))))
+                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
                                                                             :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
@@ -631,7 +639,7 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id            (or (get model->old-max-id model)
                                                  0)
-                       max-id-condition      [:> (mdb.u/primary-key model) old-max-id]
+                       max-id-condition      [:> (first (t2/primary-keys model)) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
@@ -744,6 +752,73 @@
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(declare with-discard-model-updates)
+
+(defn do-with-discard-model-updates
+  "Impl for `with-discard-model-changes`."
+  [models thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
+  (if (= (count models) 1)
+   (let [model             (first models)
+         pk->original      (atom {})
+         method-unique-key (str (random-uuid))
+         before-method-fn  (fn [_model row]
+                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             row)]
+     (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
+     (try
+      (thunk)
+      (finally
+       (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
+       (doseq [[id orignal-val] @pk->original]
+         (t2/update! model id orignal-val)))))
+   (with-discard-model-updates (rest models)
+     (thunk))))
+
+(defmacro with-discard-model-updates
+  "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
+  [models & body]
+  (if (> (count models) 1)
+    (let [[model & more] models]
+      `(with-discard-model-updates [~model]
+         (with-discard-model-updates [~@more]
+           ~@body)))
+    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+
+(deftest with-discard-model-changes-test
+  (t2.with-temp/with-temp
+    [:model/Card      {card-id :id :as card} {:name "A Card"}
+     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
+    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
+
+      (testing "with single model"
+        (with-discard-model-updates [:model/Card]
+          (t2/update! :model/Card card-id {:name "New Card name"})
+          (testing "the changes takes affect inside the macro"
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= card (t2/select-one :model/Card card-id)))))
+
+      (testing "with multiple models"
+        (with-discard-model-updates [:model/Card :model/Dashboard]
+          (testing "the changes takes affect inside the macro"
+            (t2/update! :model/Card card-id {:name "New Card name"})
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
+
+            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
+            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
+
+        (testing "outside macro, the changes should be reverted"
+          (is (= (dissoc card :updated_at)
+                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
+          (is (= (dissoc dash :updated_at)
+                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
+
+      (testing "make sure that we cleaned up the aux methods after"
+        (is (= count-aux-method-before
+               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
@@ -986,7 +1061,7 @@
   "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
-  something in to it.
+  something in to it. The file, if created, will be deleted in a `finally` block after `body` concludes.
 
   DOES NOT CREATE A FILE!
 

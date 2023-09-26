@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-
+import type { Dashboard } from "metabase-types/api";
 import { Container } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {
@@ -11,18 +12,20 @@ function QuestionIllustration() {
 }
 
 interface DashboardEmptyStateProps {
+  dashboard: Dashboard;
   isNightMode: boolean;
   addQuestion: () => void;
   closeNavbar: () => void;
 }
 
 export function DashboardEmptyState({
+  dashboard,
   isNightMode,
   addQuestion,
   closeNavbar,
 }: DashboardEmptyStateProps) {
   return (
-    <Container isNightMode={isNightMode}>
+    <Container isNightMode={isNightMode} data-testid="dashboard-empty-state">
       <EmptyState
         illustrationElement={<QuestionIllustration />}
         title={t`This dashboard is looking empty.`}
@@ -34,7 +37,11 @@ export function DashboardEmptyState({
             {t`, or `}
             <Link
               variant="brandBold"
-              to="/question/new"
+              to={Urls.newQuestion({
+                mode: "notebook",
+                creationType: "custom_question",
+                collectionId: dashboard.collection_id ?? undefined,
+              })}
               className="text-bold text-brand"
               onClick={closeNavbar}
             >
@@ -47,11 +54,13 @@ export function DashboardEmptyState({
   );
 }
 
-interface TabEmptyStateProps {
+interface DashboardEmptyStateWithoutAddPromptProps {
   isNightMode: boolean;
 }
 
-export function TabEmptyState({ isNightMode }: TabEmptyStateProps) {
+export function DashboardEmptyStateWithoutAddPrompt({
+  isNightMode,
+}: DashboardEmptyStateWithoutAddPromptProps) {
   return (
     <Container isNightMode={isNightMode}>
       <EmptyState title={t`There's nothing here, yet.`} />

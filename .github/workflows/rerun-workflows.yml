@@ -4,13 +4,14 @@ on:
   workflow_run:
     workflows: [Backend, Driver Tests, E2E Tests, Frontend]
     types: [completed]
-    branches: [master, 'release-**']
+    branches: [master, 'release-x.**']
 
 jobs:
   rerun-on-failure:
     name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
     runs-on: ubuntu-22.04
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    # Do not re-run scheduled workflow runs. That's only Replay.io E2E tests for now.
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule'
     steps:
       - name: Generate job summary
         run: |
@@ -21,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: lts/Hydrogen # 18.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
         uses: actions/github-script@v6

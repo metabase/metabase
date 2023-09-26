@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import {
   setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -9,35 +11,21 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockDashboard,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import ItemPicker from "./ItemPicker";
-
-function collection({
-  id,
-  name,
-  location = "/",
-  personal_owner_id = null,
-  can_write = true,
-}) {
-  return {
-    id,
-    name,
-    location,
-    personal_owner_id,
-    can_write,
-    archived: false,
-  };
-}
-
-function dashboard({ id, name, collection_id = null }) {
-  return {
-    id,
-    name,
-    collection_id,
-    archived: false,
-    model: "dashboard",
-  };
-}
+import {
+  getItemPickerHeader,
+  getItemPickerList,
+  openCollectionWait,
+} from "./test-utils";
 
 const CURRENT_USER = createMockUser({
   id: 1,
@@ -46,59 +34,96 @@ const CURRENT_USER = createMockUser({
 });
 
 const COLLECTION = {
-  ROOT: collection({ id: "root", name: "Our analytics", location: null }),
-  PERSONAL: collection({
+  ROOT: createMockCollection({
+    ...ROOT_COLLECTION,
+    can_write: true,
+  }),
+  PERSONAL: createMockCollection({
     id: CURRENT_USER.personal_collection_id,
     name: "My personal collection",
     personal_owner_id: CURRENT_USER.id,
+    can_write: true,
   }),
-  REGULAR: collection({ id: 1, name: "Regular collection" }),
-  READ_ONLY: collection({
+  REGULAR: createMockCollection({
+    id: 1,
+    name: "Regular collection",
+    can_write: true,
+  }),
+  REGULAR_2: createMockCollection({
+    id: 6,
+    name: "Regular collection 2",
+    can_write: true,
+  }),
+  READ_ONLY: createMockCollection({
     id: 2,
     name: "Read only collection",
     can_write: false,
   }),
 };
 
-COLLECTION.REGULAR_CHILD = collection({
+COLLECTION.REGULAR_CHILD = createMockCollection({
   id: 3,
   name: "Regular collection's child",
   location: `/${COLLECTION.REGULAR.id}/`,
+  can_write: true,
 });
 
-const COLLECTION_READ_ONLY_CHILD_WRITABLE = collection({
+const COLLECTION_READ_ONLY_CHILD_WRITABLE = createMockCollection({
   id: 4,
   name: "Read-only collection's child (writable)",
   location: `/${COLLECTION.READ_ONLY.id}/`,
+  can_write: true,
 });
 
-const COLLECTION_OTHER_USERS = collection({
+const COLLECTION_OTHER_USERS = createMockCollection({
   id: 5,
   name: "John Lennon's personal collection",
   personal_owner_id: CURRENT_USER.id + 1,
+  can_write: true,
 });
 
 const DASHBOARD = {
-  REGULAR: dashboard({ id: 1, name: "Regular dashboard" }),
-  REGULAR_CHILD: dashboard({
+  REGULAR: createMockDashboard({
+    id: 1,
+    name: "Regular dashboard",
+    model: "dashboard",
+  }),
+  REGULAR_CHILD: createMockDashboard({
     id: 2,
     name: "Regular dashboard (nested)",
+    model: "dashboard",
     collection_id: COLLECTION.REGULAR.id,
+  }),
+  PERSONAL_CHILD: createMockDashboard({
+    id: 3,
+    name: "Personal dashboard",
+    model: "dashboard",
+    collection_id: COLLECTION.PERSONAL.id,
   }),
 };
 
 async function setup({
   models = ["dashboard"],
-  extraCollections = [],
+  collections = Object.values(COLLECTION),
+  rootCollection = COLLECTION.ROOT,
+  query,
   ...props
 } = {}) {
-  setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
-  setupCollectionsEndpoints(Object.values(COLLECTION).concat(extraCollections));
+  if (models.includes("dashboard")) {
+    setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
+  }
+
+  setupCollectionsEndpoints({ collections, rootCollection });
+  setupSearchEndpoints([
+    DASHBOARD.REGULAR,
+    DASHBOARD.REGULAR_CHILD,
+    DASHBOARD.PERSONAL_CHILD,
+  ]);
 
   const onChange = jest.fn();
 
   renderWithProviders(
-    <ItemPicker models={models} onChange={onChange} {...props} />,
+    <ItemPicker models={models} query={query} onChange={onChange} {...props} />,
     {
       storeInitialState: {
         currentUser: CURRENT_USER,
@@ -109,26 +134,6 @@ async function setup({
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
   return { onChange };
-}
-
-function getItemPickerHeader() {
-  return screen.getByTestId("item-picker-header");
-}
-
-function getItemPickerList() {
-  return screen.getByTestId("item-picker-list");
-}
-
-function queryListItem(itemName) {
-  return within(getItemPickerList())
-    .queryByText(itemName)
-    .closest("[data-testid=item-picker-item]");
-}
-
-async function openCollection(itemName) {
-  const collectionNode = within(queryListItem(itemName));
-  userEvent.click(collectionNode.getByLabelText("chevronright icon"));
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
 describe("ItemPicker", () => {
@@ -143,8 +148,9 @@ describe("ItemPicker", () => {
     // Content
     expect(screen.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.REGULAR_2.name)).toBeInTheDocument();
     expect(screen.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(4);
   });
 
   it("does not display read-only collections", async () => {
@@ -155,14 +161,19 @@ describe("ItemPicker", () => {
   });
 
   it("displays read-only collections if they have writable children", async () => {
-    await setup({ extraCollections: [COLLECTION_READ_ONLY_CHILD_WRITABLE] });
+    await setup({
+      collections: [
+        ...Object.values(COLLECTION),
+        COLLECTION_READ_ONLY_CHILD_WRITABLE,
+      ],
+    });
     expect(screen.getByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
   });
 
   it("can open nested collection", async () => {
     await setup();
 
-    await openCollection(COLLECTION.REGULAR.name);
+    await openCollectionWait(COLLECTION.REGULAR.name);
 
     const header = within(getItemPickerHeader());
     const list = within(getItemPickerList());
@@ -179,7 +190,7 @@ describe("ItemPicker", () => {
 
   it("can navigate back from a currently open nested collection", async () => {
     await setup();
-    await openCollection(COLLECTION.REGULAR.name);
+    await openCollectionWait(COLLECTION.REGULAR.name);
     let header = within(getItemPickerHeader());
 
     userEvent.click(header.getByText(/Our analytics/i));
@@ -191,8 +202,9 @@ describe("ItemPicker", () => {
 
     expect(list.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.REGULAR_2.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(list.getAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(4);
   });
 
   it("calls onChange when selecting an item", async () => {
@@ -213,7 +225,9 @@ describe("ItemPicker", () => {
   });
 
   it("groups personal collections into single folder if there are more than one", async () => {
-    await setup({ extraCollections: [COLLECTION_OTHER_USERS] });
+    await setup({
+      collections: [...Object.values(COLLECTION), COLLECTION_OTHER_USERS],
+    });
 
     userEvent.click(screen.getByText(/All personal collections/i));
 
@@ -240,5 +254,130 @@ describe("ItemPicker", () => {
 
     const list = within(getItemPickerList());
     expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
+  });
+
+  describe("preserves order of collections coming from API endpoint", () => {
+    it("[personal, regular, regular 2]", async () => {
+      const collections = [
+        COLLECTION.PERSONAL,
+        COLLECTION.REGULAR,
+        COLLECTION.REGULAR_2,
+      ];
+
+      await setup({ collections });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
+    });
+
+    it("[personal, regular 2, regular]", async () => {
+      const collections = [
+        COLLECTION.PERSONAL,
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+      ];
+
+      await setup({ collections });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
+    });
+
+    it("always shows personal collection first", async () => {
+      const collections = [
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+        COLLECTION.PERSONAL,
+      ];
+
+      await setup({ collections });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(COLLECTION.PERSONAL.name);
+      expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
+      expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
+    });
+
+    it("should filter collections", async () => {
+      await setup({
+        query: "foo",
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections),
+      });
+
+      expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
+    });
+
+    it("should show search results", async () => {
+      await setup();
+
+      userEvent.click(screen.getByRole("img", { name: /search/ }));
+      userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+
+      expect(
+        await screen.findByText(/^regular dashboard$/i),
+      ).toBeInTheDocument();
+      expect(await screen.findByText(/nested/i)).toBeInTheDocument();
+      expect(await screen.findByText(/personal/i)).toBeInTheDocument();
+    });
+
+    it("should not show items of filtered collections when searching", async () => {
+      await setup({
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections),
+      });
+
+      userEvent.click(screen.getByRole("img", { name: /search/ }));
+      userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+
+      expect(
+        await screen.findByText(/^regular dashboard$/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("preserves order of snippet collections coming from API endpoint", () => {
+    it("[regular, regular 2]", async () => {
+      const collections = [COLLECTION.REGULAR, COLLECTION.REGULAR_2];
+
+      await setup({
+        collections,
+        entity: SnippetCollections,
+        query: { namespace: "snippets" },
+      });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+    });
+
+    it("[regular 2, regular]", async () => {
+      const collections = [COLLECTION.REGULAR_2, COLLECTION.REGULAR];
+
+      await setup({
+        collections,
+        entity: SnippetCollections,
+        query: { namespace: "snippets" },
+      });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+    });
   });
 });

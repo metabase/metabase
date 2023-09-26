@@ -46,37 +46,41 @@
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private sync-and-update! :- su/IntGreaterThanOrEqualToZero
+(mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}]
+  [table       :- i/TableInstance
+   db-metadata :- [:set i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fetch-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be somethings that have changed after calling
      ;; `sync-instances`
      (sync-metadata/update-metadata! table db-metadata (fetch-metadata/our-metadata table))))
 
-(s/defn sync-fields-for-table!
+(mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance, table :- i/TableInstance]
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance]
    (sync-util/with-error-handling (trs "Error syncing Fields for Table ''{0}''" (sync-util/name-for-logging table))
      (let [db-metadata (fetch-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 
 
-(s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
-                                  :total-fields   su/IntGreaterThanOrEqualToZero})
+(mu/defn sync-fields! :- [:maybe
+                          [:map
+                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
+                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
   (->> database

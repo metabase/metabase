@@ -9,6 +9,8 @@ import {
   visitQuestionAdhoc,
   enterCustomColumnDetails,
   openProductsTable,
+  selectSavedQuestionsToJoin,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -32,13 +34,11 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
-    // Pluralization isn't reliable so we have to guard against it
-    const joinedTable = new RegExp(/Reviews? - Products?/);
-
     openOrdersTable({ mode: "notebook" });
 
     // join to Reviews on orders.product_id = reviews.product_id
     cy.icon("join_left_outer").click();
+    getNotebookStep("join").findByText("Pick data…").should("exist");
 
     popover().contains("Reviews").click();
     popover().contains("Product ID").click();
@@ -57,7 +57,13 @@ describe("scenarios > question > joined questions", () => {
     filter();
 
     cy.get(".Modal").within(() => {
+      // Temporal compat between MLv1 and MLv2
+      // MLv2 does a better job naming joined tables,
+      // but simple mode's summarization sidebar still uses MLv1
+      // Once it's ported, we should just look for "Review"
+      const joinedTable = new RegExp(/Reviews? - Products?/);
       cy.findByText(joinedTable).click();
+
       cy.findByTestId("filter-field-Rating").contains("2").click();
       cy.button("Apply Filters").click();
       cy.wait("@dataset");
@@ -72,12 +78,12 @@ describe("scenarios > question > joined questions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Average of ...").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Rating").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Reviewer").click();
 
     visualize();
@@ -111,25 +117,19 @@ describe("scenarios > question > joined questions", () => {
       native: { query: "select 'foo' as a_column" },
     });
 
-    cy.createNativeQuestion({
-      name: "question b",
-      native: { query: "select 'foo' as b_column" },
-    });
+    cy.createNativeQuestion(
+      {
+        name: "question b",
+        native: { query: "select 'foo' as b_column" },
+      },
+      {
+        wrapId: true,
+      },
+    );
 
     // start a custom question with question a
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("question a").click();
-
-    // join to question b
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("question b").click();
-    });
+    selectSavedQuestionsToJoin("question a", "question b");
 
     // select the join columns
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -147,8 +147,11 @@ describe("scenarios > question > joined questions", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 5 → B Column");
+
+    cy.get("@questionId").then(questionId => {
+      cy.findByText(`Question ${questionId} → B Column`);
+    });
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -169,17 +172,23 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    cy.createQuestion({
-      name: "Q2",
-      query: {
-        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
-        breakout: [["field", PRODUCTS.ID, null]],
-        "source-table": PRODUCTS_ID,
+    cy.createQuestion(
+      {
+        name: "Q2",
+        query: {
+          aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+          breakout: [["field", PRODUCTS.ID, null]],
+          "source-table": PRODUCTS_ID,
+        },
       },
-    });
+      {
+        wrapId: true,
+      },
+    );
 
     startNewQuestion();
     popover().within(() => {
+      // cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("Q1").click();
     });
@@ -190,6 +199,7 @@ describe("scenarios > question > joined questions", () => {
 
     popover().within(() => {
       cy.icon("chevronleft").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("Q2").click();
     });
@@ -207,9 +217,11 @@ describe("scenarios > question > joined questions", () => {
     // that a question could be made by joining two previously saved questions
     cy.icon("add_data").click();
 
-    enterCustomColumnDetails({
-      formula: "[Question 5 → Sum of Rating] / [Sum of Total]",
-      name: "Sum Divide",
+    cy.get("@questionId").then(questionId => {
+      enterCustomColumnDetails({
+        formula: `[Question ${questionId} → Sum of Rating] / [Sum of Total]`,
+        name: "Sum Divide",
+      });
     });
 
     cy.button("Done").click();
@@ -221,10 +233,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.intercept("GET", "/api/table/card__*/query_metadata").as(
-      "cardQueryMetadata",
-    );
-
     // Save Question 1
     cy.createQuestion({
       name: "12928_Q1",
@@ -284,22 +292,7 @@ describe("scenarios > question > joined questions", () => {
 
     // Join two previously saved questions
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q1").click();
-    cy.wait("@cardQueryMetadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q2").click();
-    cy.wait("@cardQueryMetadata");
+    selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Products? → Category/).click();
@@ -310,7 +303,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
+    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2026");
 
     cy.findByTestId("question-table-badges").within(() => {
       cy.findByText("12928_Q1");
@@ -400,6 +393,7 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().findByText("Sample Database").click();
+    popover().findByText("Raw Data").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

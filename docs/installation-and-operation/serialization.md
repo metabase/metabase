@@ -12,6 +12,8 @@ Once you really get rolling with Metabase, it's often the case that you'll have 
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
+> We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
+
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
@@ -21,14 +23,14 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 Metabase only includes some artifacts in its exports.
 
-- Collections (except for personal collections, unless specified by the `--user` flag)
+- Collections (except for personal collections, unless specified by the `--collection` flag)
 - Dashboards
 - Saved questions
 - Actions
 - Models
 - SQL Snippets
-- Data model settings
-- Segments and Metrics defined in the Data Model
+- Table Metadata settings
+- Segments and Metrics defined in the Table Metadata
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#the-general-settings-that-metabase-exports)
 - Database connection settings
@@ -119,7 +121,7 @@ Otherwise, you're good.
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java -jar metabase.jar export [export_name]
+java -jar metabase.jar export export_name
 ```
 
 ## Export options
@@ -130,15 +132,13 @@ To view a list of `export` options, use the `help` command:
 java -jar metabase.jar help export
 ```
 
-Which will print something like:
+Which will run and then print something like:
 
 ```
 export path & options
 	 Serialize Metabase instance into directory at `path`.
 	 Options:
-	   -u, --user EMAIL                Include collections owned by the specified user
 	   -c, --collection ID             Export only specified ID; may occur multiple times.
-	       --collections ID_LIST       (Legacy-style) Export collections in comma-separated list of IDs, e.g. '123,456'.
 	   -C, --no-collections            Do not export any content in collections.
 	   -S, --no-settings               Do not export settings.yaml
 	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
@@ -146,23 +146,21 @@ export path & options
 	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
 ```
 
-### `--user`
-
-The `user` flag tells Metabase to include collections owned by the specified user, identified by email. QUESTION: What about accounts created with SSO?
-
 ### `--collection`
+
+By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag.
 
 The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
 
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export --collection 1,3,5,9
+java -jar metabase.jar export export_name --collection 1,2,3
 ```
 
-### `--no-collection`
+### `--no-collections`
 
-The `--no-collection` flag (alias `-C`) tells Metabase to exclude all collections from the export.
+The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collections from the export.
 
 ### `--no-settings`
 
@@ -170,7 +168,7 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 ### `--no-data-model`
 
-The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 ### `--include-field-values`
 
@@ -178,14 +176,14 @@ The `--include-field-values` flag (alias `-f`) tells Metabase to include the sam
 
 ### `--include-database-secrets`
 
-The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase. 
+The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
 
 ## Importing to a Metabase
 
-To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `[my_export]` is the path to the export you want to import:
+To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java -jar metabase.jar import [my_export]
+java -jar metabase.jar import path_to_export
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
@@ -272,6 +270,26 @@ custom-formatting
 ```
 
 For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md)
+
+## Migrating from the old serialization commands
+
+If you're upgrading from Metabase version 46.X or older, here's what you need to know:
+
+- The `export` command replaces the `dump` command.
+- The `import` command replace the `load` command.
+
+A few other changes to call out:
+
+- The exported YAML files have a slightly different structure:
+  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+  - The file tree is slightly different.
+- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
+
+If you've written scripts to automate serialization, you'll need to:
+
+- Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
+- Update those scripts with the new commands. See the new [export options](#export-options).
+- If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
 
 ## Further reading
 

@@ -1,4 +1,4 @@
-import { Location } from "history";
+import type { Location } from "history";
 import { createSelector } from "@reduxjs/toolkit";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -7,17 +7,16 @@ import {
   getDashboardId,
 } from "metabase/dashboard/selectors";
 import {
-  getOriginalQuestion,
+  getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 export interface RouterProps {
   location: Location;
 }
 
-const HOMEPAGE_PATH = /^\/$/;
 const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /\/model\/.*\/query/,
@@ -25,11 +24,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/model\/query/,
   /\/model\/metadata/,
 ];
-const EMBEDDED_PATHS_WITH_NAVBAR = [
-  HOMEPAGE_PATH,
-  /^\/collection\/.*/,
-  /^\/archive/,
-];
+
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
@@ -38,11 +33,11 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
-  return props.location.pathname;
+  return props?.location?.pathname ?? window.location.pathname;
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
-  return props.location.hash;
+  return props?.location?.hash ?? window.location.hash;
 };
 
 export const getIsAdminApp = createSelector([getRouterPath], path => {
@@ -64,12 +59,9 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) =>
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset() &&
+  [getIsSavedQuestionChanged, getRouterPath],
+  (isSavedQuestionChanged, path) =>
+    isSavedQuestionChanged &&
     PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
 
@@ -88,9 +80,7 @@ export const getIsNavBarEnabled = createSelector(
     if (isEmbedded && !embedOptions.side_nav) {
       return false;
     }
-    if (isEmbedded && embedOptions.side_nav === "default") {
-      return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
-    }
+
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
   },
 );

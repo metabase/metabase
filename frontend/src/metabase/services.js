@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
@@ -248,7 +248,7 @@ export const PublicApi = {
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
-  prefetchValues: GET(
+  prefetchDashcardValues: GET(
     "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
@@ -340,7 +340,6 @@ export const MetabaseApi = {
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
-  db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -441,6 +440,8 @@ export const SessionApi = {
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
   password_reset_token_valid: GET("/api/session/password_reset_token_valid"),
+  unsubscribe: POST("/api/session/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {
@@ -497,8 +498,14 @@ export const UtilApi = {
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
   bug_report_details: GET("/api/util/bug_report_details"),
-  // this one does not need an HTTP verb because it's opened as an external link
-  connection_pool_details_url: "/api/util/diagnostic_info/connection_pool_info",
+  get_connection_pool_details_url: () => {
+    // this one does not need an HTTP verb because it's opened as an external link
+    // and it can be deployed at subpath
+    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const { href } = new URL(api.basename + path, location.origin);
+
+    return href;
+  },
 };
 
 export const GeoJSONApi = {
@@ -577,7 +584,8 @@ export const ActionsApi = {
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET(
+  prefetchValues: GET("/api/action/:id/execute"),
+  prefetchDashcardValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
   executeDashcardAction: POST(

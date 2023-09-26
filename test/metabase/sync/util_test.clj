@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
@@ -11,6 +12,7 @@
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -67,15 +69,15 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'metabase.sync.util/log-sync-summary
-        orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
-    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database operation-metadata]
-                                                           (swap! step-info-atom conj operation-metadata)
-                                                           (orig-log-fn operation database operation-metadata))
-                  metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
-                                                           (let [result (orig-store-fn operation database operation-metadata)]
-                                                             (swap! created-task-history-ids concat result)
-                                                             result))]
+        orig-log-fn              @#'sync-util/log-sync-summary
+        orig-store-fn            @#'sync-util/store-sync-summary!]
+    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
+                                                  (swap! step-info-atom conj operation-metadata)
+                                                  (orig-log-fn operation database operation-metadata))
+                  sync-util/store-sync-summary! (fn [operation database operation-metadata]
+                                                  (let [result (orig-store-fn operation database operation-metadata)]
+                                                    (swap! created-task-history-ids concat result)
+                                                    result))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -195,14 +197,17 @@
           (is (= true
                  (str/includes? results "4.0 s"))))))))
 
-(deftest error-handling-test
+(derive ::sync-error-handling-begin ::sync-util/event)
+(derive ::sync-error-handling-end ::sync-util/event)
+
+(deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
     (mt/dataset sample-dataset
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
                                  "inner, this one triggers the failure"))
-            actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+            actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)
@@ -216,8 +221,9 @@
         (is (= 1 (count (:steps actual))))
         (is (= "failure-step" step-name))
         (is (= {:throwable expected :log-summary-fn nil}
-               (dissoc result :start-time :end-time))))))
+               (dissoc result :start-time :end-time)))))))
 
+(deftest ^:parallel error-handling-test-2
   (doseq [ex [(java.io.IOException.
                "outer, does not trigger"
                (java.net.SocketException. "inner, this one does not trigger"))
@@ -229,7 +235,7 @@
                 (java.lang.IllegalArgumentException.
                  "third level, does not trigger")))]]
     (testing "Other errors will not cause sync to stop"
-      (let [actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+      (let [actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)
@@ -299,3 +305,34 @@
             db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))))
+
+(deftest initial-sync-status-table-only-test
+  ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
+  ;; incomplete, but then marked as complete after the sync is finished.
+  (mt/dataset sample-dataset
+    (testing "If `initial-sync-status` on a DB is already `complete`"
+      (let [[active-table inactive-table] (t2/select Table :db_id (mt/id))
+            get-active-table #(t2/select-one Table :id (:id active-table))
+            get-inactive-table #(t2/select-one Table :id (:id inactive-table))]
+        (t2/update! Table (:id active-table) {:initial_sync_status "complete" :active true})
+        (t2/update! Table (:id inactive-table) {:initial_sync_status "complete" :active false})
+        (let [syncing-chan   (a/chan)
+              completed-chan (a/chan)]
+          (let [sync-fields! sync-fields/sync-fields!]
+            (with-redefs [sync-fields/sync-fields! (fn [database]
+                                                     (a/>!! syncing-chan ::syncing)
+                                                     (sync-fields! database))]
+              (future
+                (sync/sync-database! (mt/db))
+                (a/>!! completed-chan ::sync-completed))
+              (a/<!! syncing-chan)
+              (testing "for existing tables initial_sync_status is complete while sync is running"
+                (is (= "complete"   (:initial_sync_status (get-active-table)))))
+              (testing "for new or previously inactive tables, initial_sync_status is incomplete while sync is running"
+                (is (= "incomplete" (:initial_sync_status (get-inactive-table)))))
+              (a/<!! completed-chan)
+              (testing "initial_sync_status is complete after the sync is finished"
+                (is (= "complete"   (:initial_sync_status (get-active-table))))
+                (is (= "complete"   (:initial_sync_status (get-inactive-table)))))))
+          (a/close! syncing-chan)
+          (a/close! completed-chan))))))

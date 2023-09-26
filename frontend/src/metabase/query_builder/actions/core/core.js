@@ -5,7 +5,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -100,7 +100,7 @@ export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
   return async (dispatch, getState) => {
     // clone
-    const card = Utils.copy(nextCard);
+    const card = copy(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
@@ -186,9 +186,10 @@ export const apiCreateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
       .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
       dispatch,
@@ -229,6 +230,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     question = question || getQuestion(getState());
 
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
 
     if (question.isDataset()) {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
@@ -236,7 +238,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       );
     }
 
-    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
+    if (question.isStructured()) {
+      rerunQuery = rerunQuery ?? isResultDirty;
+    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -249,7 +253,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       // as calling table() method down the line would bring unwanted consequences
       // such as dropping joins (as joins are treated differently between pure questions and datasets)
       .setQuery(question.setDataset(false).query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
@@ -296,9 +300,21 @@ export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
-    return { id: parameterId, value };
+    return { id: parameterId, value: normalizeValue(value) };
   },
 );
+
+function normalizeValue(value) {
+  if (value === "") {
+    return null;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(

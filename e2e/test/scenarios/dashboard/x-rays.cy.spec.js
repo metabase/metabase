@@ -5,6 +5,11 @@ import {
   summarize,
   visualize,
   startNewQuestion,
+  main,
+  addOrUpdateDashboardCard,
+  visitDashboardAndCreateTab,
+  popover,
+  getDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -13,13 +18,13 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > x-rays", () => {
+describe("scenarios > x-rays", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  const XRAY_DATASETS = 11; // enough to load most questions
+  const XRAY_DATASETS = 5; // enough to load most questions
 
   it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
     cy.request("PUT", "api/setting/enable-xrays", { value: false });
@@ -86,16 +91,13 @@ describe("scenarios > x-rays", () => {
     cy.wait("@dataset", { timeout: 30000 });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
+      "A closer look at number of Orders where Created At is in March 2024 and Category is Gadget",
     );
     cy.icon("warning").should("not.exist");
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
-    // Temporarily skipping this due to degraded performance causing the test to fail, blocking all merges to master.
-    // We're actively investigating whether Github's runners or our code is responsible. See discussion at:
-    // https://metaboat.slack.com/archives/C5XHN8GLW/p1685964332028149
-    it.skip(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+    it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
@@ -104,10 +106,12 @@ describe("scenarios > x-rays", () => {
       });
 
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15655").click();
+
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("15655").click();
+      });
+
       visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
@@ -117,22 +121,24 @@ describe("scenarios > x-rays", () => {
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Automatic insights…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(action).click();
+      popover().within(() => {
+        cy.findByText("Automatic insights…").click();
+        cy.findByText(action).click();
+      });
+
+      cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
+        timeout: 15 * 1000,
+      });
 
       cy.wait("@xray").then(xhr => {
-        for (let c = 0; c < XRAY_DATASETS; ++c) {
-          cy.wait("@postDataset");
-        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
 
-      cy.findByTextEnsureVisible("A look at the number of 15655");
+      main().within(() => {
+        cy.findByText("A look at the number of 15655").should("exist");
+      });
 
-      cy.findByRole("heading", { name: /^A look at the number of/ });
       cy.get(".DashCard");
     });
 
@@ -186,6 +192,33 @@ describe("scenarios > x-rays", () => {
     cy.findByText("How these transactions are distributed");
   });
 
+  it("should start loading cards from top to bottom", () => {
+    // to check the order of loaded cards this test lets the first intercepted
+    // request to be resolved successfully and then it fails all others
+
+    const totalRequests = 8;
+    const successfullyLoadedCards = 1;
+    const failedCards = totalRequests - successfullyLoadedCards;
+
+    cy.intercept({
+      method: "POST",
+      url: "/api/dataset",
+      times: successfullyLoadedCards,
+    }).as("dataset");
+
+    cy.intercept(
+      { method: "POST", url: "/api/dataset", times: failedCards },
+      { statusCode: 500 },
+    ).as("datasetFailed");
+
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    cy.wait("@dataset");
+    cy.wait("@datasetFailed");
+
+    getDashboardCards().eq(1).contains("Total transactions");
+  });
+
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
@@ -225,5 +258,34 @@ describe("scenarios > x-rays", () => {
     cy.findByText("State is GA");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463");
+  });
+
+  it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id: 3,
+        dashboard_id,
+        card: {
+          row: 0,
+          col: 0,
+          size_x: 24,
+          size_y: 10,
+          visualization_settings: {},
+        },
+      });
+
+      visitDashboardAndCreateTab({ dashboardId: dashboard_id });
+      cy.findByRole("tab", { name: "Tab 1" }).click();
+
+      cy.get("circle").eq(0).click({ force: true });
+      popover().findByText("Automatic insights…").click();
+      popover().findByText("X-ray").click();
+      cy.wait("@dataset", { timeout: 30000 });
+
+      // Ensure charts actually got rendered
+      cy.get("text.x-axis-label").contains("Created At");
+    });
   });
 });

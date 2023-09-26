@@ -6,10 +6,9 @@ import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
-import ExpressionEditorHelpText, {
-  ExpressionEditorHelpTextProps,
-} from "./ExpressionEditorHelpText";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import type { ExpressionEditorHelpTextProps } from "./ExpressionEditorHelpText";
+import ExpressionEditorHelpText from "./ExpressionEditorHelpText";
 
 describe("ExpressionEditorHelpText", () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });

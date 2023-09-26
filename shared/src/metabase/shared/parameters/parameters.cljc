@@ -132,21 +132,23 @@
     :else
     (str value)))
 
-(def ^:private escaped-chars-regex
+(def escaped-chars-regex
+  "Used markdown characters."
   #"[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
 
-(defn- escape-chars
-  [text]
-  (str/replace text escaped-chars-regex #(str \\ %)))
+(defn escape-chars
+  "Escape markdown characters."
+  [text regex]
+  (str/replace text regex #(str \\ %)))
 
 (defn- value
-  [tag-name tag->param locale]
+  [tag-name tag->param locale escape-markdown]
   (let [param    (get tag->param tag-name)
         value    (:value param)
         tyype    (:type param)]
     (when value
-      (try (-> (formatted-value tyype value locale)
-               escape-chars)
+      (try (cond-> (formatted-value tyype value locale)
+             escape-markdown (escape-chars escaped-chars-regex))
            (catch #?(:clj Throwable :cljs js/Error) _
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value
@@ -209,11 +211,11 @@
 (defn- add-values-to-variables
   "Given `split-text`, containing a list of alternating strings and TextParam, add a :value key to any TextParams
   with a corresponding value in `tag->normalized-param`."
-  [tag->normalized-param locale split-text]
+  [tag->normalized-param locale escape-markdown split-text]
   (map
    (fn [maybe-variable]
      (if (TextParam? maybe-variable)
-         (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale))
+         (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale escape-markdown))
          maybe-variable))
    split-text))
 
@@ -251,10 +253,11 @@
 
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
-  formatted and escaped appropriately."
+  formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
+  output isn't being rendered directly as markdown, such as in header cards."
   ([text tag->param]
-   (substitute_tags text tag->param "en"))
-  ([text tag->param locale]
+   (substitute_tags text tag->param "en" true))
+  ([text tag->param locale escape-markdown]
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
@@ -270,6 +273,6 @@
        ;; 4. `strip-optional-blocks` => "3"
        (->> text
             split-on-tags
-            (add-values-to-variables tag->normalized-param locale)
+            (add-values-to-variables tag->normalized-param locale escape-markdown)
             join-consecutive-strings
             strip-optional-blocks)))))

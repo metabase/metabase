@@ -26,7 +26,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
@@ -37,14 +36,6 @@
 (defn- job-context->job-type
   [job-context]
   (select-keys (qc/from-job-data job-context) ["db-id" "persisted-id" "type"]))
-
-(def ^:private refreshable-states
-  "States of `persisted_info` records which can be refreshed."
-  #{"creating" "persisted" "error"})
-
-(def ^:private prunable-states
-  "States of `persisted_info` records which can be pruned"
-  #{"deletable" "off"})
 
 (p/defprotocol+ Refresher
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
@@ -67,7 +58,7 @@
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
-  (when (contains? refreshable-states (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
+  (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
     (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
     (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
@@ -109,7 +100,7 @@
     (when (= task-type "persist-refresh")
       (when-let [error-details (seq (:error-details task-details))]
         (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-              persisted-infos (->> (hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
+              persisted-infos (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
                                             [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
           (messages/send-persistent-model-error-email!
@@ -135,7 +126,7 @@
                                    (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
                                          card-info     (t2/select-one [Card :archived :dataset]
                                                                       :id (:card_id persisted-info))]
-                                     (if (or (contains? prunable-states current-state)
+                                     (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
                                              (not (:dataset card-info)))
                                        (let [database (-> persisted-info :database_id db-id->db)]
@@ -164,7 +155,7 @@
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
               :where     [:or
                           [:and
-                           [:in :state prunable-states]
+                           [:in :state (persisted-info/prunable-states)]
                            ;; Buffer deletions for an hour if the
                            ;; prune job happens soon after setting state.
                            ;; 1. so that people have a chance to change their mind.
@@ -183,7 +174,7 @@
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
               :where     [:and
                           [:= :p.database_id database-id]
-                          [:in :p.state refreshable-states]
+                          [:in :p.state (persisted-info/refreshable-states)]
                           [:= :c.archived false]
                           [:= :c.dataset true]]}))
 
@@ -417,9 +408,9 @@
 
 (defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
-  `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
+  `:persist-models-enabled` in the settings at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (t2/select Database))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select Database))
         cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

@@ -50,6 +50,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       can_write: true,
       cache_ttl: null,
       auto_apply_filters: true,
+      archived: false,
       "last-edit-info": {
         id: 1,
         email: "",
@@ -59,9 +60,9 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       },
       ordered_cards: [1, 2],
       ordered_tabs: [
-        getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" }),
-        getDefaultTab({ tabId: 2, dashId: 1, name: "Page 2" }),
-        getDefaultTab({ tabId: 3, dashId: 1, name: "Page 3" }),
+        getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
+        getDefaultTab({ tabId: 2, dashId: 1, name: "Tab 2" }),
+        getDefaultTab({ tabId: 3, dashId: 1, name: "Tab 3" }),
       ],
     },
   },

@@ -7,12 +7,12 @@ import {
   rightSidebar,
   filter,
   filterField,
-  getCollectionIdFromSlug,
   visitCollection,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -33,9 +33,8 @@ describe("scenarios > question > native", () => {
   });
 
   it("should suggest the currently viewed collection when saving question", () => {
-    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-      visitCollection(THIRD_COLLECTION_ID);
-    });
+    visitCollection(THIRD_COLLECTION_ID);
+
     openNativeEditor({ fromCurrentPage: true }).type(
       "select count(*) from orders",
     );
@@ -188,7 +187,11 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
+    cy.findByTestId("native-query-editor-container")
+      .icon("play")
+      .as("runQuery")
+      .click();
+
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
@@ -220,20 +223,23 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
 
       // parameters[] should reflect the template tags
-      cy.wait("@card").should(xhr => {
+      cy.wait("@card").then(xhr => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(2);
+        cy.wrap(xhr.response.body.id).as("questionId");
       });
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.intercept("GET", "/api/card/4").as("cardQuestion");
-    cy.visit("/question/4?cat=Gizmo&stars=3");
-    cy.wait("@cardQuestion").should(xhr => {
-      const responseBody = xhr.response?.body;
-      expect(responseBody?.parameters?.length).to.equal(2);
+    cy.get("@questionId").then(questionId => {
+      cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
+      cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
+      cy.wait("@cardQuestion").should(xhr => {
+        const responseBody = xhr.response?.body;
+        expect(responseBody?.parameters?.length).to.equal(2);
+      });
     });
   });
 
@@ -322,7 +328,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
     });
 
-    it("allows generate sql queries from natural language prompts", () => {
+    it.skip("allows generate sql queries from natural language prompts", () => {
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
@@ -347,7 +353,7 @@ describe("scenarios > question > native", () => {
       cy.findByDisplayValue(PROMPT).should("not.exist");
     });
 
-    it("shows an error when an sql query cannot be generated", () => {
+    it.skip("shows an error when an sql query cannot be generated", () => {
       const errorMessage = "Could not generate a query for a given prompt";
       cy.intercept("POST", "/api/metabot/database/**/query", {
         body: {

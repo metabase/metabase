@@ -13,17 +13,18 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.models.field :as field]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -32,7 +33,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
@@ -50,11 +52,12 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:convert-timezone true
-                              :datetime-diff    true
-                              :now              true
-                              :persist-models   true
-                              :schemas          true}]
+(doseq [[feature supported?] {:convert-timezone         true
+                              :datetime-diff            true
+                              :now                      true
+                              :persist-models           true
+                              :schemas                  true
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -66,10 +69,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
-
-(defmethod driver/database-supports? [:postgres :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
 
 (doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -211,15 +210,6 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-;; Describe the nested fields present in a table (currently and maybe forever just JSON),
-;; including if they have proper keyword and type stability.
-;; Not to be confused with existing nested field functionality for mongo,
-;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
-(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
-  [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -319,7 +309,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(defn- quoted? [database-type]
+(mu/defn ^:private quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
@@ -464,22 +454,22 @@
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
-  (let [field-type        (:database_type nfc-field)
-        nfc-path          (:nfc_path nfc-field)
+  (let [field-type        (:database-type nfc-field)
+        nfc-path          (:nfc-path nfc-field)
         parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (qp.store/field id-or-name))
+                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
-      (= (:database_type stored-field) "money")
+      (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (field/json-field? stored-field)
+      (lib.field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
@@ -498,14 +488,16 @@
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
   (let [stored-field-ids (map second breakout-fields)
-        stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
+        stored-fields    (map #(when (integer? %)
+                                 (lib.metadata/field (qp.store/metadata-provider) %))
+                              stored-field-ids)
         parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
                                                 #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some field/json-field? stored-fields)
+    (if (some lib.field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
@@ -515,10 +507,10 @@
   (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
         stored-field-id (-> clause (second) (second))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
-                          (qp.store/field stored-field-id))]
+                          (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
     (and
       (some? stored-field)
-      (field/json-field? stored-field))))
+      (lib.field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -620,7 +612,7 @@
     (default-base-types column)))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
-  [_ database-type _]
+  [_driver database-type _column-name]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
   (case database-type
     "json"  :type/SerializedJSON
@@ -805,17 +797,60 @@
        (map sanitize-value)
        (str/join "\t")))
 
-(defmethod driver/insert-into :postgres
+(defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (let [copy-manager (CopyManager. (.unwrap (jdbc/get-connection conn) PgConnection))
-          [sql & _]    (sql/format {::copy       (keyword table-name)
-                                    :columns     (map keyword column-names)
-                                    ::from-stdin "''"}
-                                   :quoted true
-                                   :dialect (sql.qp/quote-style driver))
-          tsvs         (->> values
-                            (map row->tsv)
-                            (str/join "\n")
-                            (StringReader.))]
-      (.copyIn copy-manager ^String sql tsvs))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-id
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (let [copy-manager (CopyManager. (.unwrap conn PgConnection))
+           [sql & _]    (sql/format {::copy       (keyword table-name)
+                                     :columns     (map keyword column-names)
+                                     ::from-stdin "''"}
+                                    :quoted true
+                                    :dialect (sql.qp/quote-style driver))]
+       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+       (doseq [slice-of-values (partition-all 100 values)]
+         (let [tsvs (->> slice-of-values
+                         (map row->tsv)
+                         (str/join "\n")
+                         (StringReader.))]
+           (.copyIn copy-manager ^String sql tsvs)))))))
+
+(defmethod driver/current-user-table-privileges :postgres
+  [_driver database]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/query
+     conn-spec
+     (str/join
+        "\n"
+        ["with table_privileges as ("
+         "select"
+         "  NULL as role,"
+         "  t.schemaname as schema,"
+         "  t.tablename as table,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
+         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+         "from pg_catalog.pg_tables t"
+         "where t.schemaname !~ '^pg_'"
+         "  and t.schemaname <> 'information_schema'"
+         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+         ")"
+         "select t.*"
+         "from table_privileges t"
+         "where t.select or t.update or t.insert or t.delete"]))))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/set-role-statement :postgres
+  [_ role]
+  (if (= (u/upper-case-en role) "NONE")
+   (format "SET ROLE %s;" role)
+   (format "SET ROLE \"%s\";" role)))
+
+(defmethod driver.sql/default-database-role :postgres
+  [_ _]
+  "NONE")

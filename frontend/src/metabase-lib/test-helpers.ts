@@ -65,3 +65,51 @@ export const columnFinder =
 
     return column;
   };
+
+export const findBinningStrategy = (
+  query: ML.Query,
+  column: ML.ColumnMetadata,
+  bucketName: string,
+) => {
+  if (bucketName === "Don't bin") {
+    return null;
+  }
+  const buckets = ML.availableBinningStrategies(query, 0, column);
+  const bucket = buckets.find(
+    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
+  );
+  if (!bucket) {
+    throw new Error(`Could not find binning strategy ${bucketName}`);
+  }
+  return bucket;
+};
+
+export const findTemporalBucket = (
+  query: ML.Query,
+  column: ML.ColumnMetadata,
+  bucketName: string,
+) => {
+  const buckets = ML.availableTemporalBuckets(query, 0, column);
+  const bucket = buckets.find(
+    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
+  );
+  if (!bucket) {
+    throw new Error(`Could not find temporal bucket ${bucketName}`);
+  }
+  return bucket;
+};
+
+export const findAggregationOperator = (
+  query: ML.Query,
+  operatorShortName: string,
+) => {
+  const operators = ML.availableAggregationOperators(query, 0);
+  const operator = operators.find(
+    operator =>
+      ML.displayInfo(query, 0, operator).shortName === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};

@@ -1,15 +1,14 @@
-import { TickRendererProps } from "@visx/axis";
+import type { TickRendererProps } from "@visx/axis";
 import { getTicks } from "@visx/scale";
 import { timeWeek, timeMonth } from "d3-time";
 
 import type { TimeInterval } from "d3-time";
-import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
+import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
+import { formatDate } from "metabase/static-viz/lib/dates";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
-  formatNumber,
-  NumberFormatOptions,
-} from "metabase/static-viz/lib/numbers";
-import {
-  measureText,
+  measureTextWidth,
   measureTextHeight,
   truncateText,
 } from "metabase/static-viz/lib/text";
@@ -23,7 +22,7 @@ import type {
   XScale,
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
-import { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;
@@ -83,7 +82,7 @@ export const getXTicksDimensions = (
     .flatMap(s => s.data)
     .map(datum => {
       const tick = formatXTick(getX(datum), settings.type, settings.format);
-      return measureText(tick.toString(), fontSize);
+      return measureTextWidth(tick.toString(), fontSize);
     })
     .reduce((a, b) => Math.max(a, b), 0);
 
@@ -137,7 +136,7 @@ export const calculateYTickWidth = (
 ) => {
   const domainValuesWidths = domain
     .map(value => formatNumber(value, settings))
-    .map(formatted => measureText(formatted, fontSize));
+    .map(formatted => measureTextWidth(formatted, fontSize));
 
   return Math.max(...domainValuesWidths);
 };

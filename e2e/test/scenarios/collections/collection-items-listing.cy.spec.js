@@ -34,15 +34,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
       // so the test won't fail if we change the default database
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
 
       _.times(ADDED_DASHBOARDS, i =>
         cy.createDashboard({ name: `dashboard ${i}` }),
@@ -91,15 +83,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in a default dataset,
       // so it's easier to test sorting
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
     });
 
     it("should allow to sort unpinned items by columns asc and desc", () => {
@@ -149,6 +133,7 @@ describe("scenarios > collection items listing", () => {
         const dashboardsFirst = _.chain(sortedNames)
           .sortBy(name => name.toLowerCase().includes("question"))
           .sortBy(name => name.toLowerCase().includes("collection"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
@@ -211,6 +196,7 @@ describe("scenarios > collection items listing", () => {
           .reverse()
           .sortBy(name => name.toLowerCase().includes("collection"))
           .sortBy(name => name.toLowerCase().includes("personal"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });
@@ -259,4 +245,20 @@ function getAllCollectionItemNames() {
 function visitRootCollection() {
   cy.visit("/collection/root");
   cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+}
+
+function archiveAll() {
+  cy.request("GET", "/api/collection/root/items").then(response => {
+    response.body.data.forEach(({ model, id }) => {
+      if (model !== "collection") {
+        cy.request(
+          "PUT",
+          `/api/${model === "dataset" ? "card" : model}/${id}`,
+          {
+            archived: true,
+          },
+        );
+      }
+    });
+  });
 }

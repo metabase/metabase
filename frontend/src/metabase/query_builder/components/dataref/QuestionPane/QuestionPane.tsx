@@ -11,8 +11,9 @@ import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
-import Table from "metabase-lib/metadata/Table";
-import Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
 import {
@@ -57,7 +58,7 @@ const QuestionPane = ({
         </QuestionPaneDescription>
         <QuestionPaneDetail>
           <QuestionPaneDetailLink
-            href={question.getUrl()}
+            href={ML_Urls.getUrl(question)}
             target="_blank"
             rel="noreferrer"
           >

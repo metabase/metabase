@@ -1,5 +1,5 @@
 import _ from "underscore";
-import {
+import type {
   CardId,
   DatabaseId,
   FieldId,
@@ -7,6 +7,8 @@ import {
   MetricId,
   SchemaId,
   SegmentId,
+  SettingKey,
+  Settings,
   TableId,
 } from "metabase-types/api";
 import type Question from "../Question";
@@ -26,6 +28,7 @@ interface MetadataOpts {
   metrics?: Record<string, Metric>;
   segments?: Record<string, Segment>;
   questions?: Record<string, Question>;
+  settings?: Settings;
 }
 
 class Metadata {
@@ -36,6 +39,7 @@ class Metadata {
   metrics: Record<string, Metric> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
+  settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
     Object.assign(this, opts);
@@ -59,6 +63,10 @@ class Metadata {
    */
   tablesList(): Table[] {
     return Object.values(this.tables);
+  }
+
+  fieldsList(): Field[] {
+    return Object.values(this.fields);
   }
 
   /**
@@ -112,6 +120,10 @@ class Metadata {
 
   question(cardId: CardId | undefined | null): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
+  }
+
+  setting<T extends SettingKey>(key: T): Settings[T] | null {
+    return this.settings ? this.settings[key] : null;
   }
 }
 

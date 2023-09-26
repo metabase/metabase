@@ -137,7 +137,7 @@
   (is (=? {:database 1
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1
-                       :aggregation  [[:count]]}]}
+                       :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
           (lib.util/update-query-stage {:database 1
                                         :type     :query
                                         :query    {:source-table 1}}
@@ -145,7 +145,7 @@
                                        update
                                        :aggregation
                                        conj
-                                       [:count])))
+                                       [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))
   (are [stage expected] (=? expected
                             (lib.util/update-query-stage {:database 1
                                                           :type     :query
@@ -154,22 +154,22 @@
                                                          update
                                                          :aggregation
                                                          conj
-                                                         [:count]))
+                                                         [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]))
     0 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1
-                   :aggregation  [[:count]]}
+                   :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}
                   {:lib/type :mbql.stage/mbql}]}
     1 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1}
                   {:lib/type    :mbql.stage/mbql
-                   :aggregation [[:count]]}]}
+                   :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
     -1 {:database 1
         :stages   [{:lib/type     :mbql.stage/mbql
                     :source-table 1}
                    {:lib/type    :mbql.stage/mbql
-                    :aggregation [[:count]]}]})
+                    :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]})
   (testing "out of bounds"
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs js/Error)
@@ -181,7 +181,7 @@
                                       update
                                       :aggregation
                                       conj
-                                      [:count])))))
+                                      [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))))
 
 (deftest ^:parallel ensure-mbql-final-stage-test
   (is (=? {:database 1

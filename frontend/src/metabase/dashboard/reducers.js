@@ -5,7 +5,7 @@ import _ from "underscore";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-
+import Actions from "metabase/entities/actions";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
@@ -43,8 +43,9 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
+  FETCH_CARD_DATA_PENDING,
 } from "./actions";
-import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
+import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
@@ -237,6 +238,20 @@ const dashcards = handleActions(
           ? assocIn(dashcard, ["card"], card)
           : dashcard,
       ),
+    [Actions.actionTypes.UPDATE]: (state, { payload: { object: action } }) =>
+      _.mapObject(state, dashcard =>
+        dashcard.action?.id === action?.id
+          ? {
+              ...dashcard,
+              action: {
+                ...action,
+
+                database_enabled_actions:
+                  dashcard?.action.database_enabled_actions || false,
+              },
+            }
+          : dashcard,
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcards,
 );
@@ -294,7 +309,11 @@ const slowCards = handleActions(
 
 const parameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) }, // reset values
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    },
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
@@ -313,7 +332,6 @@ const parameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [RESET]: { next: state => ({}) },
   },
   INITIAL_DASHBOARD_STATE.parameterValues,
 );
@@ -353,25 +371,24 @@ const loadingDashCards = handleActions(
         loadingStatus: "idle",
       }),
     },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => {
-        const cardIds = Object.values(payload.entities.dashcard || {})
-          .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id);
+    [FETCH_DASHBOARD_CARD_DATA]: {
+      next: (state, { payload: { currentTime, loadingIds } }) => {
         return {
           ...state,
-          dashcardIds: cardIds,
-          loadingIds: cardIds,
-          loadingStatus: "idle",
+          loadingIds,
+          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          startTime: loadingIds.length > 0 ? currentTime : null,
         };
       },
     },
-    [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime } }) => ({
-        ...state,
-        loadingStatus: state.loadingIds.length > 0 ? "running" : "idle",
-        startTime: state.loadingIds.length > 0 ? currentTime : null,
-      }),
+    [FETCH_CARD_DATA_PENDING]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.concat(dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+        };
+      },
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, currentTime } }) => {

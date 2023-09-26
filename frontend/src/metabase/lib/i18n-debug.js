@@ -45,7 +45,6 @@ export function enableTranslatedStringReplacement() {
   c3po.ngettext = (...args) => {
     return obfuscateString(args[0][0], _ngettext(...args));
   };
-  // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {
     const elements = _jt(...args);
     return <span style={{ backgroundColor: "currentcolor" }}>{elements}</span>;

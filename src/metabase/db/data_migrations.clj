@@ -17,14 +17,19 @@
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; # Migration Helpers
+(def DataMigrations
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/DataMigrations)
 
-(models/defmodel ^:deprecated DataMigrations :data_migrations)
+(methodical/defmethod t2/table-name :model/DataMigrations [_model] :data_migrations)
+(derive :model/DataMigrations :metabase/model)
 
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
@@ -45,7 +50,7 @@
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
            (throw e))))
-      (t2/insert! DataMigrations
+      (t2/insert! :model/DataMigrations
         :id        migration-name
         :timestamp :%now))))
 
@@ -62,7 +67,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (t2/select-pks-set DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set :model/DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))

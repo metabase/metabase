@@ -29,6 +29,8 @@ import arrow_left_component from "./arrow_left.svg?component";
 import arrow_left_source from "./arrow_left.svg?source";
 import arrow_left_to_line_component from "./arrow_left_to_line.svg?component";
 import arrow_left_to_line_source from "./arrow_left_to_line.svg?source";
+import arrow_right_component from "./arrow_right.svg?component";
+import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
 import arrow_split_source from "./arrow_split.svg?source";
 import badge_component from "./badge.svg?component";
@@ -159,6 +161,8 @@ import hourglass_component from "./hourglass.svg?component";
 import hourglass_source from "./hourglass.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
+import info_filled_component from "./info_filled.svg?component";
+import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -291,6 +295,8 @@ import sidebar_open_component from "./sidebar_open.svg?component";
 import sidebar_open_source from "./sidebar_open.svg?source";
 import slack_component from "./slack.svg?component";
 import slack_source from "./slack.svg?source";
+import slack_colorized_component from "./slack_colorized.svg?component";
+import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
 import snippet_component from "./snippet.svg?component";
@@ -404,6 +410,10 @@ export const Icons = {
   arrow_left_to_line: {
     component: arrow_left_to_line_component,
     source: arrow_left_to_line_source,
+  },
+  arrow_right: {
+    component: arrow_right_component,
+    source: arrow_right_source,
   },
   arrow_split: {
     component: arrow_split_component,
@@ -664,6 +674,10 @@ export const Icons = {
   info: {
     component: info_component,
     source: info_source,
+  },
+  info_filled: {
+    component: info_filled_component,
+    source: info_filled_source,
   },
   info_outline: {
     component: info_outline_component,
@@ -928,6 +942,10 @@ export const Icons = {
   slack: {
     component: slack_component,
     source: slack_source,
+  },
+  slack_colorized: {
+    component: slack_colorized_component,
+    source: slack_colorized_source,
   },
   smartscalar: {
     component: smartscalar_component,

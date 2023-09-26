@@ -1,4 +1,5 @@
-import { ComponentType, useCallback, useMemo, useState } from "react";
+import type { ComponentType } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Button from "metabase/core/components/Button";

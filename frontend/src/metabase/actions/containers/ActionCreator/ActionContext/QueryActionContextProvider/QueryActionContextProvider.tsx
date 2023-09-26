@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import _ from "underscore";
-import { CreateQueryActionParams } from "metabase/entities/actions";
+import type { CreateQueryActionParams } from "metabase/entities/actions";
 
 import type {
   Card,
@@ -20,7 +20,8 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 
 import { getDefaultFormSettings } from "../../../../utils";
 
-import { ActionContext, ActionContextType } from "../ActionContext";
+import type { ActionContextType } from "../ActionContext";
+import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 import {
@@ -72,6 +73,7 @@ function convertActionToQuestionCard(
     result_metadata: [],
     cache_ttl: null,
     last_query_start: null,
+    average_query_time: null,
     archived: false,
   };
 }

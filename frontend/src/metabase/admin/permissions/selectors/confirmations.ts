@@ -18,7 +18,15 @@ export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
-const PERM_LEVELS = ["write", "read", "all", "controlled", "none", "block"];
+const PERM_LEVELS = [
+  "write",
+  "read",
+  "all",
+  "impersonated",
+  "controlled",
+  "none",
+  "block",
+];
 function hasGreaterPermissions(
   a: string,
   b: string,
@@ -112,7 +120,9 @@ export function getRawQueryWarningModal(
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") !== "all"
+    !["all", "impersonated"].includes(
+      getSchemasPermission(permissions, groupId, entityId, "data"),
+    )
   ) {
     return {
       title: t`Allow native query editing?`,

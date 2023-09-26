@@ -11,7 +11,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > model indexes", () => {
-  const modelId = 4;
+  let modelId;
 
   beforeEach(() => {
     restore();
@@ -21,11 +21,19 @@ describe("scenarios > model indexes", () => {
     cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
     cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
+    cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion({
-      name: "Products Model",
-      query: { "source-table": PRODUCTS_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "Products Model",
+        query: { "source-table": PRODUCTS_ID },
+        dataset: true,
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.get("@modelId").then(_modelId => {
+      modelId = _modelId;
     });
   });
 
@@ -146,12 +154,25 @@ describe("scenarios > model indexes", () => {
   });
 
   it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion({
-      name: "People Model",
-      query: { "source-table": PEOPLE_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "People Model",
+        query: { "source-table": PEOPLE_ID },
+        dataset: true,
+      },
+      {
+        wrapId: true,
+        idAlias: "people_model_id",
+      },
+    );
+
+    cy.get("@people_model_id").then(peopleModelId => {
+      createModelIndex({
+        modelId: peopleModelId,
+        pkName: "ID",
+        valueName: "NAME",
+      });
     });
-    createModelIndex({ modelId: 5, pkName: "ID", valueName: "NAME" });
 
     cy.visit("/");
 
@@ -168,6 +189,50 @@ describe("scenarios > model indexes", () => {
       cy.findByText(/We're a little lost/i).should("not.exist");
       cy.findAllByText("Anais Zieme").should("have.length", 2);
     });
+  });
+
+  it("should not reload the model for record in the same model", () => {
+    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+
+    cy.visit("/");
+
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .type("marble shoes");
+
+    cy.wait("@searchQuery");
+
+    cy.findByTestId("search-results-list")
+      .findByText("Small Marble Shoes")
+      .click();
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Product");
+      cy.findByText("Small Marble Shoes");
+      cy.findByText("Doohickey");
+    });
+
+    // for some reason we hit this endpoint twice on initial load
+    expectCardQueries(2);
+
+    cy.get("body").type("{esc}");
+
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .clear()
+      .type("silk coat");
+
+    cy.findByTestId("search-results-list")
+      .findByText("Ergonomic Silk Coat")
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Upton, Kovacek and Halvorson");
+    });
+
+    expectCardQueries(2);
   });
 });
 
@@ -206,3 +271,8 @@ function createModelIndex({ modelId, pkName, valueName }) {
     },
   );
 }
+
+const expectCardQueries = num =>
+  cy.get("@cardGet.all").then(interceptions => {
+    expect(interceptions).to.have.length(num);
+  });

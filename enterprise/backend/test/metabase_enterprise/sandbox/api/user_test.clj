@@ -8,7 +8,6 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -19,35 +18,28 @@
 ;; are an example usage of this. Segmented users should not have that ability. Instead they should only see
 ;; themselves. This test checks that GET /api/user for a segmented user only returns themselves
 (deftest segmented-user-list-test
-  (testing "GET /api/user for a segmented user should return themselves"
+  (testing "GET /api/user for a segmented user should not return data."
     (met/with-gtaps {:gtaps {:venues {}}}
       ;; Now do the request
-      (is (= [{:common_name "Rasta Toucan"
-               :last_name   "Toucan"
-               :first_name  "Rasta"
-               :email       "rasta@metabase.com"
-               :id          true}]
-             (tu/boolean-ids-and-timestamps ((mt/user-http-request :rasta :get 200 "user") :data))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "user")))
       (testing "Should return themselves when the user is a segmented group manager"
-        (mt/with-group [group {:name "a group"}]
-          (let [membership (t2/select-one PermissionsGroupMembership
-                                          :group_id (u/the-id group)
-                                          :user_id (mt/user->id :rasta))]
-            (t2/update! PermissionsGroupMembership :id (:id membership)
-                        {:is_group_manager true}))
-          (is (= [{:common_name "Rasta Toucan"
-                   :last_name   "Toucan"
-                   :first_name  "Rasta"
-                   :email       "rasta@metabase.com"
-                   :id          true}]
-                 (tu/boolean-ids-and-timestamps
-                  (-> (mt/user-http-request :rasta :get 200
-                                            (str "user?group_id=" (u/the-id group)))
-                      :data)))))))))
+        (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-group [group {:name "a group"}]
+            (let [membership (t2/select-one PermissionsGroupMembership
+                                            :group_id (u/the-id group)
+                                            :user_id (mt/user->id :rasta))]
+              (t2/update! PermissionsGroupMembership :id (:id membership)
+                          {:is_group_manager true}))
+            (let [result (mt/user-http-request :rasta :get 200 "user")]
+              (is (= ["rasta@metabase.com"]
+                     (map :email (:data result))))
+              (is (= 1 (count (:data result))))
+              (is (= 1 (:total result))))))))))
 
 (deftest get-user-attributes-test
   (testing "requires sandbox enabled"
-    (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+    (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
 
   (premium-features-test/with-premium-features #{:sandboxes}
@@ -66,7 +58,7 @@
 
 (deftest update-user-attributes-test
   (testing "requires sandbox enabled"
-    (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+    (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
 
   (premium-features-test/with-premium-features #{:sandboxes}

@@ -7,6 +7,7 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -52,7 +53,7 @@
                                  :target [:variable [:template-tag (name field)]]
                                  :value  param-value}]))))
 
-(deftest template-tag-param-test
+(deftest ^:parallel template-tag-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (letfn [(count-with-params [table param-name param-type value & [options]]
               (run-count-query
@@ -73,6 +74,19 @@
               (is (= 1
                      (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
 
+(deftest template-tag-generation-test
+  (testing "Generating template tags produces correct types for running process-query (#31252)"
+    (t2.with-temp/with-temp
+      [Card {card-id :id} {:dataset       true
+                           :dataset_query (mt/native-query {:query "select * from checkins"})}]
+      (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
+            tt  (lib-native/extract-template-tags q)
+            res (qp/process-query
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query         q
+                              :template-tags tt}})]
+        (is (some? res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
@@ -109,7 +123,7 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(deftest field-filter-param-test
+(deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
               (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
@@ -165,7 +179,7 @@
                  (mt/formatted-rows :checkins
                    (qp/process-query query)))))))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (set (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters)))
     (testing "Make sure field filter parameters are properly escaped"
@@ -174,7 +188,7 @@
         (is (= [[1]]
                (mt/formatted-rows [int] results)))))))
 
-(deftest native-with-spliced-params-test
+(deftest ^:parallel native-with-spliced-params-test
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Multiple values"
       (mt/dataset airports
@@ -211,7 +225,7 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
-(deftest params-in-comments-test
+(deftest ^:parallel params-in-comments-test
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
@@ -248,7 +262,33 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
-(deftest ignore-parameters-for-unparameterized-native-query-test
+(deftest ^:parallel better-error-when-parameter-mismatch
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters)
+                        (filter #(isa? driver/hierarchy % :sql))
+                        ;; These do not support ParameterMetadata.getParameterCount
+                        (remove #{:athena
+                                  :bigquery-cloud-sdk
+                                  :presto-jdbc
+                                  :redshift
+                                  :snowflake
+                                  :sparksql
+                                  :vertica}))
+    (is (thrown-with-msg?
+          Exception
+          #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
+          (qp/process-query
+            {:type       :native
+             :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
+                          :template-tags {"name"
+                                          {:name         "name"
+                                           :display-name "Name"
+                                           :type         :text}}}
+             :database   (mt/id)
+             :parameters [{:type   :category
+                           :target [:variable [:template-tag "name"]]
+                           :value "foobar"}]})))))
+
+(deftest ^:parallel ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"
     (let [query {:database (mt/id)
                  :type     :native
@@ -264,7 +304,7 @@
                  (m/dissoc-in [:data :native_form :params])
                  (m/dissoc-in [:data :results_metadata :checksum])))))))
 
-(deftest legacy-parameters-with-no-widget-type-test
+(deftest ^:parallel legacy-parameters-with-no-widget-type-test
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
     (mt/dataset sample-dataset
       (let [query (mt/native-query
@@ -312,7 +352,7 @@
                 (is (= [[0]]
                        (mt/rows (qp/process-query query))))))))))))
 
-(deftest multiple-native-query-parameters-test
+(deftest ^:parallel multiple-native-query-parameters-test
   (mt/dataset sample-dataset
     (let [sql   (str/join
                  \newline
@@ -375,7 +415,7 @@
                           (= people-name "Emilie Goyette"))
                         rows)))))))))
 
-(deftest inlined-number-test
+(deftest ^:parallel inlined-number-test
   (testing "Number parameters are inlined into the SQL query and not parameterized (#29690)"
     (mt/dataset sample-dataset
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"

@@ -148,7 +148,7 @@ describe("scenarios > visualizations > line chart", () => {
         type: "native",
         native: {
           query:
-            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
+            "SELECT '2026-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2026-03-01'::date, '', 44\nUNION ALL\nSELECT  '2026-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2026-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2026-03-02'::date, '', 50\nUNION ALL\nSELECT  '2026-03-02'::date, 'cat3', 58",
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,
@@ -170,9 +170,9 @@ describe("scenarios > visualizations > line chart", () => {
       cy.wait(500);
     });
     // Now do the same for the input with no value
-    openSeriesSettings("Unknown", true);
+    openSeriesSettings("(empty)", true);
     popover().within(() => {
-      cy.findAllByLabelText("series-name-input").type("cat2").blur();
+      cy.findAllByLabelText("series-name-input").clear().type("cat2").blur();
       cy.findByDisplayValue("cat2");
     });
     cy.button("Done").click();
@@ -203,6 +203,69 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.get(`.sub._0`).find("circle").should("have.length", 2);
+  });
+
+  it("should show the trend line", () => {
+    visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.show_trendline": true,
+        "graph.show_goal": false,
+        "graph.show_values": false,
+        "graph.metrics": ["count"],
+      },
+    });
+
+    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+  });
+
+  it("should show label for empty value series breakout (metabase#32107)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+            select 1 id, 50 val1, null val2
+            union all select 2, 75, null
+            union all select 3, 175, null
+            union all select 4, 200, null
+            union all select 5, 280, null
+          `,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["ID", "VAL2"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["VAL1"],
+      },
+    });
+
+    cy.findByTestId("visualization-root")
+      .findByTestId("legend-item")
+      .findByText("(empty)")
+      .should("be.visible");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("(empty)");
   });
 
   describe("y-axis splitting (metabase#12939)", () => {
@@ -342,13 +405,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
             });
           });
@@ -391,13 +454,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
             });
           });
@@ -423,7 +486,7 @@ describe("scenarios > visualizations > line chart", () => {
         dashboard_id: dashboardId,
         card_id: firstCardId,
         card: {
-          size_x: 18,
+          size_x: 24,
           size_y: 12,
           series: [
             {

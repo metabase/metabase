@@ -16,6 +16,7 @@ import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
+import { TargetTrigger } from "./ClickMappings.styled";
 
 class ClickMappingsInner extends Component {
   render() {
@@ -169,11 +170,7 @@ function TargetWithoutSource({
   return (
     <Select
       key={id}
-      triggerElement={
-        <div className="flex p1 rounded align-center full mb1 text-bold bg-light-hover text-brand-hover">
-          {name}
-        </div>
-      }
+      triggerElement={<TargetTrigger>{name}</TargetTrigger>}
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
         name: {
@@ -294,7 +291,6 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }

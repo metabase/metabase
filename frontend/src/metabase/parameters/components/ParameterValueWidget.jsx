@@ -15,8 +15,8 @@ import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
-import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
-import TextWidget from "metabase/components/TextWidget";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import { TextWidget } from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -33,7 +33,7 @@ import {
 } from "metabase-lib/parameters/utils/parameter-type";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
-import S from "./ParameterWidget.css";
+import S from "./ParameterValueWidget.css";
 
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,

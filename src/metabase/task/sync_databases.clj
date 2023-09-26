@@ -9,7 +9,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time :as t]
+   [malli.core :as mc]
    [metabase.db.query :as mdb.query]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
@@ -21,9 +23,10 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
@@ -36,7 +39,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
+(mu/defn ^:private job-context->database-id :- [:maybe ::lib.schema.id/database]
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
@@ -107,52 +110,63 @@
 ;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::class
+  [:fn {:error/message "a Class"} class?])
+
 (def ^:private TaskInfo
   "One-off schema for information about the various sync tasks we run for a DB."
-  {:key                s/Keyword
-   :db-schedule-column s/Keyword
-   :job-class          Class})
+  [:map
+   [:key                :keyword]
+   [:db-schedule-column :keyword]
+   [:job-class          ::class]])
 
-(s/def ^:private sync-analyze-task-info :- TaskInfo
+(def ^:private sync-analyze-task-info
   {:key                :sync-and-analyze
    :db-schedule-column :metadata_sync_schedule
    :job-class          SyncAndAnalyzeDatabase})
 
-(s/def ^:private field-values-task-info :- TaskInfo
+(assert (mc/validate TaskInfo sync-analyze-task-info))
+
+(def ^:private field-values-task-info
   {:key                :update-field-values
    :db-schedule-column :cache_field_values_schedule
    :job-class          UpdateFieldValues})
+
+(assert (mc/validate TaskInfo field-values-task-info))
 
 
 ;; These getter functions are not strictly necessary but are provided primarily so we can get some extra validation by
 ;; using them
 
-(s/defn ^:private job-key :- JobKey
+(mu/defn ^:private job-key :- (ms/InstanceOfClass JobKey)
   "Return an appropriate string key for the job described by `task-info` for `database-or-id`."
-  [task-info :- TaskInfo]
+  ^JobKey [task-info :- TaskInfo]
   (jobs/key (format "metabase.task.%s.job" (name (:key task-info)))))
 
-(s/defn ^:private trigger-key :- TriggerKey
+(mu/defn ^:private trigger-key :- (ms/InstanceOfClass TriggerKey)
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
-  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
+  ^TriggerKey [database  :- (mi/InstanceOf Database)
+               task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
-(s/defn ^:private cron-schedule :- u.cron/CronScheduleString
+(mu/defn ^:private cron-schedule :- u.cron/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
-  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
+  [database  :- (mi/InstanceOf Database)
+   task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
-(s/defn ^:private job-class :- Class
+(mu/defn ^:private job-class :- ::class
   "Get the Job class for `task-info`."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
-(s/defn ^:private trigger-description :- s/Str
+(mu/defn ^:private trigger-description :- :string
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
-  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
+  [database  :- (mi/InstanceOf Database)
+   task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
-(s/defn ^:private job-description :- s/Str
+(mu/defn ^:private job-description :- :string
   "Return an appropriate description string for a job"
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
@@ -162,15 +176,16 @@
 ;;; |                                            DELETING TASKS FOR A DB                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private delete-task!
+(mu/defn ^:private delete-task!
   "Cancel a single sync task for `database-or-id` and `task-info`."
-  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
+  [database  :- (mi/InstanceOf Database)
+   task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
                    (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
-(s/defn unschedule-tasks-for-db!
+(mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
   [database :- (mi/InstanceOf Database)]
   (doseq [task [sync-analyze-task-info field-values-task-info]]
@@ -181,10 +196,10 @@
 ;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private job :- JobDetail
+(mu/defn ^:private job :- (ms/InstanceOfClass JobDetail)
   "Build a durable Quartz Job for `task-info`. Durable in Quartz allows the job to exist even if there are no triggers
   for it."
-  [task-info :- TaskInfo]
+  ^JobDetail [task-info :- TaskInfo]
   (jobs/build
    (jobs/with-description (job-description task-info))
    (jobs/of-type (job-class task-info))
@@ -194,9 +209,10 @@
 (s/def ^:private sync-analyze-job (job sync-analyze-task-info))
 (s/def ^:private field-values-job (job field-values-task-info))
 
-(s/defn ^:private trigger :- CronTrigger
+(mu/defn ^:private trigger :- (ms/InstanceOfClass CronTrigger)
   "Build a Quartz Trigger for `database` and `task-info`."
-  [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
+  ^CronTrigger [database  :- (mi/InstanceOf Database)
+                task-info :- TaskInfo]
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
    (triggers/with-identity (trigger-key database task-info))
@@ -213,8 +229,7 @@
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
-#_ {:clj-kondo/ignore [:unused-private-var]}
-(s/defn ^:private check-and-schedule-tasks-for-db!
+(mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (mi/InstanceOf Database)]
   (let [sync-job (task/job-info (job-key sync-analyze-task-info))
@@ -270,7 +285,7 @@
 (defn- randomize-db-schedules-if-needed
   []
   ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
-  (transduce (comp (map (partial models/do-post-select Database))
+  (transduce (comp (map (partial mi/do-after-select Database))
                    (filter metabase-controls-schedule?))
              (fn
                ([] 0)

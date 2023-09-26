@@ -1,26 +1,25 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import * as React from "react";
-// eslint-disable-next-line import/named
-import { Placement } from "tippy.js";
+import type { CSSProperties, ReactNode } from "react";
+import type { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import resizeObserver from "metabase/lib/resize-observer";
+import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+
 import { EllipsifiedRoot } from "./Ellipsified.styled";
 
 interface EllipsifiedProps {
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   className?: string;
   showTooltip?: boolean;
   alwaysShowTooltip?: boolean;
-  tooltip?: string;
-  children?: React.ReactNode;
-  tooltipMaxWidth?: React.CSSProperties["maxWidth"];
+  tooltip?: ReactNode;
+  children?: ReactNode;
+  tooltipMaxWidth?: CSSProperties["maxWidth"];
   lines?: number;
   placement?: Placement;
   "data-testid"?: string;
 }
 
-const Ellipsified = ({
+export const Ellipsified = ({
   style,
   className,
   showTooltip = true,
@@ -32,36 +31,20 @@ const Ellipsified = ({
   placement = "top",
   "data-testid": dataTestId,
 }: EllipsifiedProps) => {
-  const [isTruncated, setIsTruncated] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    const element = rootRef.current;
-    if (!element) {
-      return;
-    }
-    const handleResize = () => {
-      const isTruncated =
-        element.scrollHeight > element.clientHeight ||
-        element.offsetWidth < element.scrollWidth;
-      setIsTruncated(isTruncated);
-    };
-
-    handleResize();
-    resizeObserver.subscribe(element, handleResize);
-
-    return () => resizeObserver.unsubscribe(element, handleResize);
-  }, []);
+  const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
+  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
+    disabled: canSkipTooltipRendering,
+  });
 
   return (
     <Tooltip
-      tooltip={tooltip || children || " "}
+      tooltip={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       isEnabled={(showTooltip && (isTruncated || alwaysShowTooltip)) || false}
       maxWidth={tooltipMaxWidth}
       placement={placement}
     >
       <EllipsifiedRoot
-        ref={rootRef}
+        ref={ref}
         className={className}
         lines={lines}
         style={style}
@@ -72,6 +55,3 @@ const Ellipsified = ({
     </Tooltip>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Ellipsified;

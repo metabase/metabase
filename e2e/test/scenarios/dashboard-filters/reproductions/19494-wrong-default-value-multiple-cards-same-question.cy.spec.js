@@ -7,6 +7,8 @@ import {
   updateDashboardCards,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 const filter1 = {
   name: "Card 1 Filter",
   slug: "card1_filter",
@@ -36,21 +38,21 @@ describe("issue 19494", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 8,
+          size_x: 11,
           size_y: 8,
         },
         {
           card_id: 1,
           row: 0,
           col: 8,
-          size_x: 8,
+          size_x: 11,
           size_y: 8,
         },
       ],
     });
 
     // Add two dashboard filters (not yet connected to any of the cards)
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [filter1, filter2],
     });
   });
@@ -58,7 +60,7 @@ describe("issue 19494", () => {
   it("should correctly apply different filters with default values to all cards of the same question (metabase#19494)", () => {
     // Instead of using the API to connect filters to the cards,
     // let's use UI to replicate user experience as closely as possible
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
 

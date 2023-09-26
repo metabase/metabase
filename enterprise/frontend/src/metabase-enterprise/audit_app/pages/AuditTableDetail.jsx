@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import EntityName from "metabase/entities/containers/EntityName";
+import { t } from "ttag";
+
+import { EntityName } from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
 
@@ -28,7 +30,7 @@ const AuditTableAuditLogTab = ({ tableId }) => (
 );
 
 AuditTableDetail.tabs = [
-  { path: "log", title: "Audit log", component: AuditTableAuditLogTab },
+  { path: "log", title: t`Audit log`, component: AuditTableAuditLogTab },
 ];
 
 export default AuditTableDetail;

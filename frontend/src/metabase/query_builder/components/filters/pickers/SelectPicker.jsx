@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -88,7 +87,7 @@ export default class SelectPicker extends Component {
     }
 
     return (
-      <div>
+      <div data-testid="select-picker">
         {validOptions.length <= 10 && !regex ? null : (
           <div className="px1 pt1">
             <ListSearchField

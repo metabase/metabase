@@ -11,20 +11,20 @@ import Search from "metabase/entities/search";
 
 import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
+import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
+import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import type {
   DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
 } from "./types";
-
-import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
-import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
+import { getDataTypes } from "./utils";
 
 import DataPickerView from "./DataPickerView";
 

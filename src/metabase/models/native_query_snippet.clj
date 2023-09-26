@@ -6,37 +6,40 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.models :as models]
+   [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel NativeQuerySnippet :native_query_snippet)
+(def NativeQuerySnippet
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/NativeQuerySnippet)
 
-(defmethod collection/allowed-namespaces NativeQuerySnippet
+(methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
+
+(doto :model/NativeQuerySnippet
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
+
+(defmethod collection/allowed-namespaces :model/NativeQuerySnippet
   [_]
   #{:snippets})
 
-(defn- pre-insert [snippet]
+(t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 snippet
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
 
-(defn- pre-update [{:keys [creator_id id], :as updates}]
-  (u/prog1 updates
+(t2/define-before-update :model/NativeQuerySnippet
+  [{:keys [creator_id id], :as snippet}]
+  (u/prog1 (t2/changes snippet)
     ;; throw an Exception if someone tries to update creator_id
-    (when (contains? updates :creator_id)
-      (when (not= creator_id (t2/select-one-fn :creator_id NativeQuerySnippet :id id))
+    (when (contains? <> :creator_id)
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
-    (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
-
-(mi/define-methods
- NativeQuerySnippet
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :pre-insert pre-insert
-  :pre-update pre-update})
+    (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
 
 (defmethod serdes/hash-fields NativeQuerySnippet
   [_snippet]
@@ -63,11 +66,13 @@
 
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
-  (su/with-api-error-message
-    (s/pred (every-pred
+  (mu/with-api-error-message
+    [:fn (fn [x]
+           ((every-pred
              string?
              (complement #(boolean (re-find #"^\s+" %)))
-             (complement #(boolean (re-find #"}" %)))))
+             (complement #(boolean (re-find #"}" %))))
+            x))]
     (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

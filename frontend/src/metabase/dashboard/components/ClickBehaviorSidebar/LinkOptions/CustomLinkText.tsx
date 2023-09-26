@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import * as React from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -18,7 +17,7 @@ interface Props {
 
 const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: { target: HTMLInputElement }) => {
       updateSettings({
         ...clickBehavior,
         linkTextTemplate: e.target.value,

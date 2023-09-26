@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -52,7 +52,7 @@ const setup = async ({
   readOnly = false,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
-  setupCollectionsEndpoints([ROOT_COLLECTION]);
+  setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
 
   const storeInitialState = createMockState({

@@ -74,6 +74,7 @@ xcuserdata
 dev/src/dev/nocommit/
 *~
 **/cypress_sample_database.json
+**/cypress_sample_instance_data.json
 /frontend/src/cljs
 /frontend/src/cljs_release
 .shadow-cljs

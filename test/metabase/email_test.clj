@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -29,7 +30,7 @@
   "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
-  (doseq [recipient (:to email)]
+  (doseq [recipient (concat (:to email) (:bcc email))]
     (swap! inbox assoc recipient (-> (get @inbox recipient [])
                                      (conj email)))))
 
@@ -105,9 +106,10 @@
                        (for [{:keys [body] :as email} emails-for-recipient
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
-                         (-> email
-                             (update :to set)
-                             (assoc :body matches)))))
+                         (cond-> email
+                             (:to email)  (update :to set)
+                             (:bcc email) (update :bcc set)
+                             true         (assoc :body matches)))))
          (m/filter-vals seq))))
 
 (defn regex-email-bodies
@@ -180,25 +182,28 @@
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
     (m/map-vals (fn [emails-for-recipient]
                   (for [email emails-for-recipient]
-                    (-> email
-                        (update :to set)
-                        (update :body (fn [email-body-seq]
-                                        (doall
-                                         (for [{email-type :type :as email-part} email-body-seq]
-                                           (if (string? email-type)
-                                             (email-body->regex-boolean email-part)
-                                             (summarize-attachment email-part)))))))))
+                    (cond-> email
+                      (:to email)  (update :to set)
+                      (:bcc email) (update :bcc set)
+                      true         (update :body (fn [email-body-seq]
+                                                   (doall
+                                                    (for [{email-type :type :as email-part} email-body-seq]
+                                                      (if (string? email-type)
+                                                        (email-body->regex-boolean email-part)
+                                                        (summarize-attachment email-part)))))))))
                 @inbox)))
 
 (defn email-to
   "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  [user-kwd & [email-map]]
-  (let [{:keys [email]} (test.users/fetch-user user-kwd)]
-    {email [(merge {:from (if-let [from-name (email/email-from-name)]
-                            (str from-name " <" (email/email-from-address) ">")
-                            (email/email-from-address))
-                    :to #{email}}
-                   email-map)]}))
+  ([user-kwd & [email-map]]
+   (let [{:keys [email]} (test.users/fetch-user user-kwd)
+         to-type         (if (:bcc? email-map) :bcc :to)
+         email-map       (dissoc email-map :bcc?)]
+     {email [(merge {:from   (if-let [from-name (email/email-from-name)]
+                               (str from-name " <" (email/email-from-address) ">")
+                               (email/email-from-address))
+                     to-type #{email}}
+                    email-map)]})))
 
 (defn temp-csv
   [file-basename content]
@@ -237,6 +242,28 @@
               :message-type :html
               :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
+    (testing "metrics collection"
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc #(swap! calls conj %)]
+          (with-fake-inbox
+            (email/send-message!
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person")))
+        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
+        (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
+    (testing "error metrics collection"
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc #(swap! calls conj %)
+                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+          (email/send-message!
+            :subject      "101 Reasons to use Metabase"
+            :recipients   ["test@test.com"]
+            :message-type :html
+            :message      "101. Metabase will make you a better person"))
+        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
+        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

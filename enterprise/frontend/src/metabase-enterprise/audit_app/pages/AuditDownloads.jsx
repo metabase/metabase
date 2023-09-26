@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import { t } from "ttag";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
@@ -6,7 +6,7 @@ import AuditTable from "../containers/AuditTable";
 import * as DownloadsCards from "../lib/cards/downloads";
 
 const AuditDownloads = props => (
-  <AuditContent {...props} title="Downloads" tabs={AuditDownloads.tabs} />
+  <AuditContent {...props} title={t`Downloads`} tabs={AuditDownloads.tabs} />
 );
 
 const AuditDownloadsOverviewTab = () => (
@@ -24,8 +24,12 @@ const AuditDownloadsAllTab = () => (
 );
 
 AuditDownloads.tabs = [
-  { path: "overview", title: "Overview", component: AuditDownloadsOverviewTab },
-  { path: "all", title: "All downloads", component: AuditDownloadsAllTab },
+  {
+    path: "overview",
+    title: t`Overview`,
+    component: AuditDownloadsOverviewTab,
+  },
+  { path: "all", title: t`All downloads`, component: AuditDownloadsAllTab },
 ];
 
 export default AuditDownloads;

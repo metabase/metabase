@@ -15,14 +15,15 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -83,7 +84,7 @@
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
            #{(perms/table-read-path table)}
-           (metabase.models.user/permissions-set (mt/user->id :rasta)))))))
+           (user/permissions-set (mt/user->id :rasta)))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 
@@ -186,7 +187,7 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (premium-features-test/with-premium-features #{:sso}
+          (premium-features-test/with-premium-features #{:sso-ldap}
             (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
@@ -194,11 +195,12 @@
                        (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                            (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
-  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-    (mt/with-temporary-setting-values [enable-password-login false]
-      (ldap.test/with-ldap-server
-        (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
+ (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+   (premium-features-test/with-premium-features #{:disable-password-login}
+     (mt/with-temporary-setting-values [enable-password-login false]
+       (ldap.test/with-ldap-server
+         (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+         (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -301,14 +303,14 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (t2/hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
           (is (= '[(user/add-group-ids <users>)
                    (user/add-group-ids <users>)]
                  (as-> (map test.users/fetch-user [:rasta :lucky]) users
-                   (hydrate users :group_ids)
+                   (t2/hydrate users :group_ids)
                    (mapv :group_ids users)))))))
 
     (testing "should be done in a single DB call"
@@ -415,9 +417,9 @@
                (t2/select-one-fn :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User [{user-id :id}]]
+      (t2.with-temp/with-temp [User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
+          (t2/insert! Session {:id (str (random-uuid)), :user_id user-id}))
         (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -464,16 +466,16 @@
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
-    (mt/with-temp* [User                  [{user-id :id}]
-                    Pulse                 [{pulse-id :id}]
-                    PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
-                    PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
+    (t2.with-temp/with-temp [User                  {user-id :id}          {}
+                             Pulse                 {pulse-id :id}         {}
+                             PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
       (letfn [(subscription-exists? []
                 (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! User user-id {:is_active true})))
+          (is (pos? (t2/update! User user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
           (is (pos? (t2/update! User user-id {:is_active false}))))
@@ -511,3 +513,24 @@
               (is (u.password/verify-password plaintext-password
                                               (salt)
                                               new-hashed-password)))))))))
+
+(deftest last-acknowledged-version-can-be-read-and-set
+  (testing "last-acknowledged-version can be read and set"
+    (mt/with-test-user :rasta
+      (let [old-version (setting/get :last-acknowledged-version)
+            new-version "v0.47.1"]
+        (try
+          (is (not= new-version old-version))
+          (setting/set! :last-acknowledged-version new-version)
+          (is (= new-version (setting/get :last-acknowledged-version)))
+          ;; Ensure it's saved on the user, not globally:
+          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings User :id (mt/user->id :rasta)))))
+          (finally
+            (setting/set! :last-acknowledged-version old-version)))))))
+
+(deftest last-acknowledged-version-is-set-on-create
+  (testing "last-acknowledged-version is automatically set for new users"
+    (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
+      (t2.with-temp/with-temp [User {user-id :id} {}]
+        (mw.session/with-current-user user-id
+          (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))

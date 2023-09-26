@@ -5,11 +5,11 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
    [metabase.util.honey-sql-2 :as h2x]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;; Two-series timeseries that includes total number of Dashboard views and saves broken out by a `datetime-unit`.
-(s/defmethod audit.i/internal-query ::views-and-saves-by-time
-  [_ datetime-unit :- common/DateTimeUnitStr]
+(mu/defmethod audit.i/internal-query ::views-and-saves-by-time
+  [_query-type datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date  {:display_name "Date",  :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:views {:display_name "Views", :base_type :type/Integer}]
               [:saves {:display_name "Saves", :base_type :type/Integer}]]
@@ -68,7 +68,7 @@
                                            :where     [:= :vl.model (h2x/literal "dashboard")]
                                            :group-by  [:d.id]
                                            :order-by  [[:%count.* :desc]]
-                                           :limit     10}]
+                                           :limit     [:inline 10]}]
                            [:card_running_time {:select   [:qe.card_id
                                                            [[:avg :qe.running_time] :avg_running_time]]
                                                 :from     [[:query_execution :qe]]
@@ -130,8 +130,8 @@
                :limit    10})})
 
 ;; Internal audit app query powering a table of different Dashboards with lots of extra info about them.
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    (dashboards/table query-string)))

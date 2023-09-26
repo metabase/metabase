@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  HTMLAttributes,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 import { useField } from "formik";
 
@@ -16,6 +11,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -35,9 +31,9 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
-
-const ITEM_PICKER_MODELS = ["collection"];
 
 function ItemName({
   id,
@@ -60,6 +56,8 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  initialOpenCollectionId,
+  onOpenCollectionChange,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -96,6 +94,9 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -106,18 +107,33 @@ function FormCollectionPicker({
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
-          models={ITEM_PICKER_MODELS}
+          models={["collection"]}
           entity={entity}
-          onChange={({ id }: { id: CollectionId }) => {
+          onChange={({ id }) => {
             setValue(id);
             closePopover();
           }}
           showSearch={hasSearch}
           width={width}
-        />
+          initialOpenCollectionId={initialOpenCollectionId}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
+        >
+          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
+        </PopoverItemPicker>
       );
     },
-    [value, type, width, setValue],
+    [
+      value,
+      type,
+      width,
+      setValue,
+      initialOpenCollectionId,
+      openCollectionId,
+      onOpenCollectionChange,
+    ],
   );
 
   return (

@@ -25,7 +25,7 @@ export const HeaderActions = styled.div`
 `;
 
 interface CollectionHeaderButtonProps {
-  to: string;
+  to?: string;
 }
 
 export const CollectionHeaderButton = styled(

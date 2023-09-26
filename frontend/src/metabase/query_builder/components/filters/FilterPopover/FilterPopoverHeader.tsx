@@ -1,7 +1,6 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import OperatorSelector from "../OperatorSelector";
 import SidebarHeader from "../../SidebarHeader";
 
@@ -15,8 +14,7 @@ type Props = {
   onBack: () => void;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterPopoverHeader({
+export function FilterPopoverHeader({
   className,
   showFieldPicker,
   forceShowOperatorSelector,
@@ -44,7 +42,7 @@ export default function FilterPopoverHeader({
 
   return showHeader ? (
     <div
-      className={cx(className, "text-medium p1 mb1 border-bottom", {
+      className={cx(className, "text-medium p1", {
         "flex align-center": !showOperatorSelectorOnOwnRow,
       })}
     >

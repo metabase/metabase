@@ -18,7 +18,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))

@@ -1,16 +1,17 @@
-import * as React from "react";
+import type * as React from "react";
 import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";
-import { createMemoryHistory, History } from "history";
-import { Router } from "react-router";
+import type { History } from "history";
+import { createMemoryHistory } from "history";
+import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import type { MatcherFunction } from "@testing-library/dom";
+import { ThemeProvider } from "metabase/ui";
 
 import type { State } from "metabase-types/store";
 
@@ -59,9 +60,13 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   }
 
-  const history = withRouter
-    ? createMemoryHistory({ entries: [initialRoute] })
-    : undefined;
+  // We need to call `useRouterHistory` to ensure the history has a `query` object,
+  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const browserHistory = useRouterHistory(createMemoryHistory)({
+    entries: [initialRoute],
+  });
+  const history = withRouter ? browserHistory : undefined;
 
   let reducers = mode === "default" ? mainReducers : publicReducers;
 
@@ -116,7 +121,7 @@ function Wrapper({
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider theme={{}}>
+        <ThemeProvider>
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
@@ -158,8 +163,8 @@ function MaybeDNDProvider({
   );
 }
 
-export function getIcon(name: string, role: ByRoleMatcher = "img") {
-  return screen.getByRole(role, { name: `${name} icon` });
+export function getIcon(name: string) {
+  return screen.getByLabelText(`${name} icon`);
 }
 
 export function queryIcon(name: string, role: ByRoleMatcher = "img") {
@@ -168,13 +173,22 @@ export function queryIcon(name: string, role: ByRoleMatcher = "img") {
 
 /**
  * Returns a matcher function to find text content that is broken up by multiple elements
+ * There is also a version of this for e2e tests - e2e/support/helpers/e2e-misc-helpers.js
+ * In case of changes, please, add them there as well
  *
- * @param {string} textToFind
  * @example
  * screen.getByText(getBrokenUpTextMatcher("my text with a styled word"))
  */
 export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
-  return (content, element) => element?.textContent === textToFind;
+  return (content, element) => {
+    const hasText = (node: Element | null | undefined) =>
+      node?.textContent === textToFind;
+    const childrenDoNotHaveText = element
+      ? Array.from(element.children).every(child => !hasText(child))
+      : true;
+
+    return hasText(element) && childrenDoNotHaveText;
+  };
 }
 
 export * from "@testing-library/react";

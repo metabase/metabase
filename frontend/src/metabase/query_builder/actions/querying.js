@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
@@ -10,6 +9,7 @@ import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/Question";
@@ -23,6 +23,7 @@ import {
   getQuestion,
   getTimeoutId,
   getIsResultDirty,
+  getOriginalQuestionWithParameterValues,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -109,7 +110,7 @@ export const runQuestionQuery = ({
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
-        question.card().id == null
+        question.id() == null
       : true;
 
     if (shouldUpdateUrl) {
@@ -150,7 +151,7 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
+    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -176,7 +177,7 @@ export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
-    const originalQuestion = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const isDirty =
       question.query().isEditable() &&
       question.isDirtyComparedTo(originalQuestion);
@@ -188,16 +189,12 @@ export const queryCompleted = (question, queryResults) => {
           queryResults[0],
         );
       }
-      // Only update the display if the question is new or has been changed.
-      // Otherwise, trust that the question was saved with the correct display.
-      question = question
-        // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .maybeUnlockDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .setDefaultDisplay()
-        .switchTableScalar(data);
+
+      question = question.maybeResetDisplay(
+        data,
+        getSensibleDisplays(data),
+        prevData && getSensibleDisplays(prevData),
+      );
     }
 
     const card = question.card();

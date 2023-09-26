@@ -4,10 +4,12 @@
     :refer [Action Card Collection Dashboard Database Metric
             ModelIndexValue Segment Table]]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the Metabase navbar?")
+  (deferred-tru "Enable typeahead search in the {0} navbar?"
+                (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -99,7 +101,8 @@
 (defmethod searchable-columns-for-model "table"
   [_]
   [:name
-   :display_name])
+   :display_name
+   :description])
 
 (defmethod searchable-columns-for-model "indexed-entity"
   [_]
@@ -163,6 +166,7 @@
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
    [:model-index.pk_ref         :pk_ref]
+   [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]

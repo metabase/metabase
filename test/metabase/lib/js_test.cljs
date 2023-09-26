@@ -1,9 +1,12 @@
 (ns metabase.lib.js-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib.js :as lib.js]))
+   [metabase.lib.js :as lib.js]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.test.util.js :as test.js]))
 
-(deftest query=-test
+(deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
           q2 [nil js/undefined]]
     (is (lib.js/query= q1 q2)))
@@ -50,7 +53,7 @@
   Object
   (raw [_this] guts))
 
-(deftest query=-unwrapping-test
+(deftest ^:parallel query=-unwrapping-test
   (testing "JS wrapper types like Join get unwrapped"
     ;; This doesn't use the real Join classes, just pretends it has one.
     (let [join         #js {"alias" "Products"
@@ -59,8 +62,45 @@
           basic-query  #js {"type"  "query"
                             "query" #js {"joins" #js [join]}}
           classy-query #js {"type"  "query"
-                            "query" #js {"joins" #js [join-class]}}
-          ]
+                            "query" #js {"joins" #js [join-class]}}]
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
+
+(deftest ^:parallel available-join-strategies-test
+  (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
+    (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
+      (is (array? strategies))
+      (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
+              {:lib/type :option/join.strategy, :strategy :right-join}
+              {:lib/type :option/join.strategy, :strategy :inner-join}]
+             (vec strategies))))))
+
+(deftest ^:parallel required-native-extras-test
+  (let [db                (update meta/database :features conj :native-requires-specified-collection)
+        metadata-provider (lib.tu/mock-metadata-provider {:database db})
+        extras            (lib.js/required-native-extras (:id db) metadata-provider)]
+    ;; apparently #js ["collection"] is not equal to #js ["collection"]
+    (is (= js/Array
+           (type extras))
+        "should be a JS array")
+    (is (= ["collection"]
+           (js->clj extras)))))
+
+(deftest ^:parallel template-tags-test
+  (testing "Snippets in template tags round trip correctly (#33546)"
+    (let [db meta/database
+          snippets {"snippet: my snippet"
+                    {:type :snippet
+                     :name "snippet: my snippet",
+                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4",
+                     :display-name "Snippet: My Snippet",
+                     :snippet-name "my snippet",
+                     :snippet-id 1}}
+          query (lib.js/with-template-tags
+                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                  (clj->js snippets))]
+      (is (= snippets
+             (get-in query [:stages 0 :template-tags])))
+      (is (test.js/= (clj->js snippets)
+                     (lib.js/template-tags query))))))

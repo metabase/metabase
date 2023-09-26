@@ -2,13 +2,15 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -22,13 +24,17 @@
 
 (derive :model/PersistedInfo :metabase/model)
 
+(defn transform-definition-out
+  "Parse the value of `:definition` when it comes out of the application Database."
+  [definition]
+  (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
+    (update definition :field-definitions (fn [field-definitions]
+                                            (mapv #(update % :base-type keyword)
+                                                  field-definitions)))))
+
 (t2/deftransforms :model/PersistedInfo
   {:definition {:in  mi/json-in
-                :out (fn [definition]
-                       (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
-                         (update definition :field-definitions (fn [field-definitions]
-                                                                 (mapv #(update % :base-type keyword)
-                                                                       field-definitions)))))}})
+                :out transform-definition-out}})
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -39,25 +45,22 @@
 
 (def ^:private Metadata
   "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [(su/open-schema
-    {:name s/Str, (s/optional-key :effective_type) s/Keyword, :base_type s/Keyword})])
+  [:maybe
+   [:sequential
+    [:map
+     [:name      :string]
+     [:base_type ::lib.schema.common/base-type]
+     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
 
-(def Definition
-  "Definition spec for a cached table."
-  {:table-name su/NonBlankString
-   :field-definitions [{:field-name su/NonBlankString
-                        ;; TODO check (isa? :type/Integer :type/*)
-                        :base-type  s/Keyword}]})
-
-(s/defn metadata->definition :- Definition
+(mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
   [metadata :- Metadata table-name]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
-(defn query-hash
+(mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query]
+  [query :- :map]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*
@@ -74,6 +77,23 @@
        (take 10)
        (apply str)))
 
+(defenterprise refreshable-states
+  "States of `persisted_info` records which can be refreshed.
+
+   'off' needs to be handled here even though setting the state to off is only possible with :cache-granular-controls
+   enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
+   have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
+   refreshable with the feature flag disabled."
+  metabase-enterprise.advanced-config.caching
+  []
+  #{"creating" "persisted" "error" "off"})
+
+(defenterprise prunable-states
+  "States of `persisted_info` records which can be pruned."
+  metabase-enterprise.advanced-config.caching
+  []
+  #{"deletable"})
+
 (mi/define-batched-hydration-method persisted?
   :persisted
   "Hydrate a card :is_persisted for the frontend."
@@ -81,7 +101,7 @@
   (when (seq cards)
     (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
                                          :card_id [:in (map :id cards)]
-                                         :state [:not-in ["off" "deletable"]])]
+                                         :state [:in (refreshable-states)])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))

@@ -55,6 +55,10 @@
   "URL for the notification management page in account settings."
   []
   (str (site-url) "/account/notifications"))
+(defn unsubscribe-url
+  "URL for nonusers to unsubscribe from alerts"
+  []
+  (str (site-url) "/unsubscribe"))
 
 (defn collection-url
   "Return an appropriate URL for a `Collection` with ID or nil for root.

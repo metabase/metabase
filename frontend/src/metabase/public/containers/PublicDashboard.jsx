@@ -13,11 +13,10 @@ import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import title from "metabase/hoc/Title";
 
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import PublicMode from "metabase/modes/components/modes/PublicMode";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import {
   getDashboardComplete,
@@ -41,6 +40,7 @@ import EmbedFrame from "../components/EmbedFrame";
 import {
   DashboardContainer,
   DashboardGridContainer,
+  Separator,
 } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
@@ -60,7 +60,6 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
-  fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
 };
@@ -76,7 +75,6 @@ class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
-
     if (uuid) {
       setPublicDashboardEndpoints();
     } else if (token) {
@@ -86,7 +84,9 @@ class PublicDashboard extends Component {
     initialize();
     try {
       await fetchDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clearCache: true });
+      if (this.props.dashboard.ordered_tabs.length === 0) {
+        await fetchDashboardCardData({ reload: false, clearCache: true });
+      }
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -106,6 +106,12 @@ class PublicDashboard extends Component {
       return this._initialize();
     }
 
+    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
+      this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
+      return;
+    }
+
     if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
@@ -120,6 +126,7 @@ class PublicDashboard extends Component {
       isFullscreen,
       isNightMode,
     } = this.props;
+
     const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
@@ -146,7 +153,8 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs />
+              <DashboardTabs location={this.props.location} />
+              <Separator />
               <DashboardGridContainer>
                 <DashboardGrid
                   {...this.props}

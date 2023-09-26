@@ -1,10 +1,10 @@
 import PopularItems from "metabase/entities/popular-items";
-import { PopularItem } from "metabase-types/api";
-import {
-  useEntityListQuery,
+import type { PopularItem } from "metabase-types/api";
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "../use-entity-list-query";
+import { useEntityListQuery } from "../use-entity-list-query";
 
 export const usePopularItemListQuery = (
   props: UseEntityListQueryProps = {},
@@ -15,5 +15,6 @@ export const usePopularItemListQuery = (
     getLoading: PopularItems.selectors.getLoading,
     getLoaded: PopularItems.selectors.getLoaded,
     getError: PopularItems.selectors.getError,
+    getListMetadata: PopularItems.selectors.getListMetadata,
   });
 };

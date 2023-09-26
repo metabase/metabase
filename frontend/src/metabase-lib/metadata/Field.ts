@@ -76,6 +76,7 @@ class FieldInner extends Base {
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
   base_type: string | null;
+  effective_type?: string | null;
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
@@ -351,16 +352,16 @@ class FieldInner extends Base {
     return getFilterOperators(this, this.table, selected);
   }
 
-  filterOperatorsLookup() {
+  filterOperatorsLookup = _.once(() => {
     return createLookupByProperty(this.filterOperators(), "name");
-  }
+  });
 
   filterOperator(operatorName) {
     return this.filterOperatorsLookup()[operatorName];
   }
 
   // AGGREGATIONS
-  aggregationOperators() {
+  aggregationOperators = _.once(() => {
     return this.table
       ? this.table
           .aggregationOperators()
@@ -370,11 +371,11 @@ class FieldInner extends Base {
               aggregation.validFieldsFilters[0]([this]).length === 1,
           )
       : null;
-  }
+  });
 
-  aggregationOperatorsLookup() {
+  aggregationOperatorsLookup = _.once(() => {
     return createLookupByProperty(this.aggregationOperators(), "short");
-  }
+  });
 
   aggregationOperator(short) {
     return this.aggregationOperatorsLookup()[short];
@@ -511,7 +512,7 @@ class FieldInner extends Base {
       }));
   };
 
-  clone(fieldMetadata) {
+  clone(fieldMetadata?: FieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }
@@ -591,9 +592,6 @@ class FieldInner extends Base {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Field extends memoizeClass<FieldInner>(
-  "filterOperators",
-  "filterOperatorsLookup",
-  "aggregationOperators",
-  "aggregationOperatorsLookup",
-)(FieldInner) {}
+export default class Field extends memoizeClass<FieldInner>("filterOperators")(
+  FieldInner,
+) {}

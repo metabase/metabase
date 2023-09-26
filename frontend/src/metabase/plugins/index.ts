@@ -1,11 +1,11 @@
-import { HTMLAttributes } from "react";
-import * as React from "react";
+import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
+  DataPermission,
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -16,15 +16,18 @@ import type {
   CollectionAuthorityLevelConfig,
   Dataset,
   Group,
+  GroupPermissions,
   GroupsPermissions,
   Revision,
   User,
   UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type Question from "metabase-lib/Question";
 
-import { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type Database from "metabase-lib/metadata/Database";
+import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -51,9 +54,20 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 // functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
+export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
+  sections: typeof ADMIN_SETTINGS_SECTIONS,
+) => void)[] = [];
 
 // admin permissions
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = {
+  impersonated: null,
+};
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
+  impersonated: [],
+};
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
@@ -67,9 +81,25 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
   controlled: null,
 };
 
-export const PLUGIN_DATA_PERMISSIONS = {
-  getPermissionsPayloadExtraData: (_state: State) => ({}),
-  hasChanges: (_state: State) => false,
+export const PLUGIN_DATA_PERMISSIONS: {
+  permissionsPayloadExtraSelectors: ((
+    state: State,
+  ) => Record<string, unknown>)[];
+  hasChanges: ((state: State) => boolean)[];
+  updateNativePermission:
+    | ((
+        permissions: GroupsPermissions,
+        groupId: number,
+        { databaseId }: DatabaseEntityId,
+        value: any,
+        database: Database,
+        permission: DataPermission,
+      ) => GroupPermissions)
+    | null;
+} = {
+  permissionsPayloadExtraSelectors: [],
+  hasChanges: [],
+  updateNativePermission: null,
 };
 
 // user form fields, e.x. login attributes
@@ -88,12 +118,12 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomColors: (state: State) => false,
-  canWhitelabel: (state: State) => false,
-  getLoadingMessage: (state: State) => t`Doing science...`,
+  canWhitelabel: (_state: State) => false,
+  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getIsWhiteLabeling: (_state: State) => false,
 };
 
-export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};
+export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -122,18 +152,18 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Collection | Bookmark) => true,
+  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
 };
 
-type CollectionAuthorityLevelIcon = React.ComponentType<
+type CollectionAuthorityLevelIcon = ComponentType<
   Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
 >;
 
-type FormCollectionAuthorityLevelPicker = React.ComponentType<
+type FormCollectionAuthorityLevelPicker = ComponentType<
   HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
 >;
 
@@ -170,35 +200,42 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
-  databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
+  shared: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
+  shared: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
-  addDatabasePermissionOptions: (permissions: any[]) => permissions,
+  addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
+    permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
+  isAccessPermissionDisabled: (
+    _value: string,
+    _subject: "schemas" | "tables" | "fields",
+  ) => false,
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
@@ -221,7 +258,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
 };
 
 export const PLUGIN_APPLICATION_PERMISSIONS = {
-  getRoutes: (): React.ReactNode => null,
+  getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
     canManageSubscriptions: (_state: any) => true,
@@ -244,4 +281,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
   getMenuItems: (question?: any, onChange?: any) => ({}),
+};
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
 };

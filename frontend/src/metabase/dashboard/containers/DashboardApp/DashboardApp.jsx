@@ -1,12 +1,12 @@
-/* eslint-disable react/prop-types */
 import { useCallback, useEffect } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -16,7 +16,6 @@ import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -72,26 +71,26 @@ function getDashboardId({ dashboardId, params }) {
   return Urls.extractEntityId(params.slug);
 }
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = state => {
   const metadata = getMetadata(state);
+
   return {
-    dashboardId: getDashboardId(props),
-    canManageSubscriptions: canManageSubscriptions(state, props),
-    isAdmin: getUserIsAdmin(state, props),
+    canManageSubscriptions: canManageSubscriptions(state),
+    isAdmin: getUserIsAdmin(state),
     isNavbarOpen: getIsNavbarOpen(state),
-    isEditing: getIsEditing(state, props),
-    isSharing: getIsSharing(state, props),
-    dashboardBeforeEditing: getDashboardBeforeEditing(state, props),
-    isEditingParameter: getIsEditingParameter(state, props),
-    isDirty: getIsDirty(state, props),
-    dashboard: getDashboardComplete(state, props),
-    dashcardData: getCardData(state, props),
-    slowCards: getSlowCards(state, props),
+    isEditing: getIsEditing(state),
+    isSharing: getIsSharing(state),
+    dashboardBeforeEditing: getDashboardBeforeEditing(state),
+    isEditingParameter: getIsEditingParameter(state),
+    isDirty: getIsDirty(state),
+    dashboard: getDashboardComplete(state),
+    dashcardData: getCardData(state),
+    slowCards: getSlowCards(state),
     databases: metadata.databases,
-    editingParameter: getEditingParameter(state, props),
-    parameters: getParameters(state, props),
-    parameterValues: getParameterValues(state, props),
-    draftParameterValues: getDraftParameterValues(state, props),
+    editingParameter: getEditingParameter(state),
+    parameters: getParameters(state),
+    parameterValues: getParameterValues(state),
+    draftParameterValues: getDraftParameterValues(state),
     metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
@@ -114,21 +113,14 @@ const mapDispatchToProps = {
   ...dashboardActions,
   closeNavbar,
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
-  fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
 };
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const {
-    isRunning,
-    isLoadingComplete,
-    dashboard,
-    closeDashboard,
-    isEditing,
-    isDirty,
-  } = props;
+  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
+    props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -136,12 +128,14 @@ const DashboardApp = props => {
 
   const dispatch = useDispatch();
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
-  useUnmount(props.reset);
+  useUnmount(() => {
+    dispatch(dashboardActions.reset());
+    dispatch(dashboardActions.closeDashboard());
+  });
 
   const slowToastId = useUniqueId();
-  useBeforeUnload(isEditing && isDirty);
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -192,13 +186,12 @@ const DashboardApp = props => {
     onTimeout,
   });
 
-  useUnmount(() => {
-    closeDashboard();
-  });
-
   return (
     <div className="shrink-below-content-size full-height">
+      <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
+
       <Dashboard
+        dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
         {...props}
@@ -207,6 +200,39 @@ const DashboardApp = props => {
       {props.children}
     </div>
   );
+};
+
+DashboardApp.propTypes = {
+  dashboardId: PropTypes.number,
+  isEditing: PropTypes.bool,
+  isDirty: PropTypes.bool,
+  isRunning: PropTypes.bool,
+  isLoadingComplete: PropTypes.bool,
+  dashboard: PropTypes.object,
+  closeDashboard: PropTypes.func,
+  reset: PropTypes.func,
+  pageFavicon: PropTypes.string,
+  documentTitle: PropTypes.string,
+  loadingStartTime: PropTypes.number,
+  isEditable: PropTypes.bool,
+  isFullscreen: PropTypes.bool,
+  isNightMode: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool,
+  isAdditionalInfoVisible: PropTypes.bool,
+  refreshPeriod: PropTypes.number,
+  setRefreshElapsedHook: PropTypes.func,
+  createBookmark: PropTypes.func,
+  deleteBookmark: PropTypes.func,
+  onChangeLocation: PropTypes.func,
+  toggleSidebar: PropTypes.func,
+  addActionToDashboard: PropTypes.func,
+  triggerToast: PropTypes.func,
+  saveDashboard: PropTypes.func,
+  invalidateCollections: PropTypes.func,
+  related: PropTypes.arrayOf(PropTypes.object),
+  hasSidebar: PropTypes.bool,
+  children: PropTypes.node,
+  route: PropTypes.object,
 };
 
 export default _.compose(

@@ -1,0 +1,18 @@
+name: Backport Reminder
+
+on:
+  pull_request:
+    types: [auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
+    branches:
+      - "master"
+
+jobs:
+  backport-reminder:
+    name: Decide whether to backport or not
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'backport, no-backport'
+          disable-reviews: true

@@ -1,8 +1,9 @@
-import * as React from "react";
+import type * as React from "react";
 import cx from "classnames";
-import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
+import type { ControlPosition, DraggableBounds } from "react-draggable";
+import Draggable from "react-draggable";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -42,6 +43,7 @@ interface CellProps {
   hasTopBorder?: boolean;
   onClick?: ((e: React.SyntheticEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
+  showTooltip?: boolean;
 }
 
 export function Cell({
@@ -58,6 +60,7 @@ export function Cell({
   hasTopBorder,
   onClick,
   onResize,
+  showTooltip = true,
 }: CellProps) {
   return (
     <PivotTableCell
@@ -80,7 +83,7 @@ export function Cell({
     >
       <>
         <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-          <Ellipsified>{value}</Ellipsified>
+          <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
           {icon && <div className="pl1">{icon}</div>}
         </div>
         {!!onResize && (
@@ -195,6 +198,7 @@ interface BodyCellProps {
   isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
+  showTooltip?: boolean;
 }
 
 export const BodyCell = ({
@@ -203,6 +207,7 @@ export const BodyCell = ({
   isNightMode,
   getCellClickHandler,
   cellWidths,
+  showTooltip = true,
 }: BodyCellProps) => {
   return (
     <div style={style} className="flex">
@@ -217,6 +222,7 @@ export const BodyCell = ({
             value={value}
             isEmphasized={isSubtotal}
             isBold={isSubtotal}
+            showTooltip={showTooltip}
             isBody
             onClick={getCellClickHandler(clicked)}
             backgroundColor={backgroundColor}

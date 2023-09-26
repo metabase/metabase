@@ -113,10 +113,6 @@
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
 
-(define-initialization :events
-  (classloader/require 'metabase.test.initialize.events)
-  ((resolve 'metabase.test.initialize.events/init!)))
-
 (defn- all-components
   "Set of all components/initialization steps that are defined."
   []

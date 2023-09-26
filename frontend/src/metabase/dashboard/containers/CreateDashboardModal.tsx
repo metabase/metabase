@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import type { LocationDescriptor } from "history";
 
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import ModalContent from "metabase/components/ModalContent";
 
 import * as Urls from "metabase/lib/urls";
@@ -11,9 +12,8 @@ import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import CreateDashboardForm, {
-  CreateDashboardFormOwnProps,
-} from "./CreateDashboardForm";
+import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
+import CreateDashboardForm from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
@@ -49,13 +49,18 @@ function CreateDashboardModal({
   );
 
   return (
-    <ModalContent title={t`New dashboard`} onClose={onClose}>
-      <CreateDashboardForm
-        {...props}
-        onCreate={handleCreate}
-        onCancel={onClose}
-      />
-    </ModalContent>
+    <CreateCollectionOnTheGo>
+      {({ resumedValues }) => (
+        <ModalContent title={t`New dashboard`} onClose={onClose}>
+          <CreateDashboardForm
+            {...props}
+            onCreate={handleCreate}
+            onCancel={onClose}
+            initialValues={resumedValues}
+          />
+        </ModalContent>
+      )}
+    </CreateCollectionOnTheGo>
   );
 }
 

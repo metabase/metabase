@@ -2,29 +2,16 @@
   "Utility functions for querying the application database."
   (:require
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
-  (or
-    ;; toucan 2 models
-    (isa? model :metabase/model)
-    ;; toucan 1 models
-    (isa? model :toucan1/model)))
-
-(defn primary-key
-  "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
-  In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
-  [model]
-  (if (keyword? model)
-   (first (t2/primary-keys model))
-   #_{:clj-kondo/ignore [:discouraged-var]}
-   (models/primary-key model)))
+  (isa? model :metabase/model))
 
 (defn qualify
   "Returns a qualified field for [modelable] with [field-name]."

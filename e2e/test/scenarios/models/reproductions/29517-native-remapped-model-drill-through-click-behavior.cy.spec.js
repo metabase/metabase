@@ -5,6 +5,7 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const questionDetails = {
   name: "29517",
@@ -88,7 +89,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     cy.findByTestId("qb-filters-panel").should(
       "contain",
-      "Created At is May, 2018",
+      "Created At is May 2024",
     );
     cy.findByTestId("view-footer").should("contain", "Showing 520 rows");
   });
@@ -98,11 +99,13 @@ describe("issue 29517 - nested question based on native model with remapped valu
       visitDashboard(id);
     });
 
-    cy.intercept("GET", "/api/dashboard/1").as("loadTargetDashboard");
-    cy.get("circle").eq(25).click({ force: true });
+    cy
+      .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
+      .as("loadTargetDashboard"),
+      cy.get("circle").eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
-    cy.location("pathname").should("eq", "/dashboard/1");
+    cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.get(".cellData").contains("37.65");
   });
 });

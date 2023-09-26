@@ -1,4 +1,4 @@
-import { FC, ReactElement } from "react";
+import type { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
@@ -27,6 +27,12 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   img {
     max-width: 100%;
     height: auto;
+  }
+
+  hr {
+    border: none;
+    border-bottom: 1px solid
+      ${props => (props.dark ? color("bg-dark") : color("border"))};
   }
 `;
 

@@ -1,5 +1,5 @@
 import { checkNotNull } from "metabase/core/utils/types";
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -75,7 +75,7 @@ describe("metabase/selectors/data", () => {
     it("user does not have permissions to write to at least one database", () => {
       const databases = setup([
         createMockDatabase({
-          native_permissions: "read",
+          native_permissions: "none",
         }),
       ]);
 

@@ -7,17 +7,24 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
 
-(models/defmodel Query :query)
+(def Query
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/Query)
 
-(mi/define-methods
- Query
- {:types       (constantly {:query :json})
-  :primary-key (constantly :query_hash)})
+(methodical/defmethod t2/table-name :model/Query [_model] :query)
+(methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
+
+(t2/deftransforms :model/Query
+ {:query mi/transform-json})
+
+(derive :model/Query :metabase/model)
 
 ;;; Helper Fns
 

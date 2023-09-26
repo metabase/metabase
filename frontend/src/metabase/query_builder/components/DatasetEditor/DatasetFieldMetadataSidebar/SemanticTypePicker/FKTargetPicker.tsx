@@ -7,7 +7,7 @@ import Select from "metabase/core/components/Select";
 
 import Databases from "metabase/entities/databases";
 
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 type FieldObject = {
   id: number;
@@ -93,6 +93,9 @@ function FKTargetPicker({
       onChange={onChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
+      buttonProps={{
+        "aria-label": t`Foreign key target`,
+      }}
       optionValueFn={getOptionValue}
       optionNameFn={getFieldName}
       optionIconFn={getOptionIcon}

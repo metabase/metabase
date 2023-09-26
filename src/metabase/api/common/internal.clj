@@ -16,9 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+   [potemkin.types :as p.types])
   (:import
    (metabase.async.streaming_response StreamingResponse)))
 
@@ -46,8 +44,8 @@
                (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
                ;; /api/ee/sandbox -> /api/mt
                (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
-               ;; /api/ee/content-management -> /api/moderation-review
-               (str/replace #"^metabase-enterprise\.content-management\.api\." "/api/moderation-review/")
+               ;; /api/ee/content-verification -> /api/moderation-review
+               (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
                ;; /api/ee/sso/sso/ -> /auth/sso
                (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
                ;; this should be only the replace for enterprise once we resolved #22687
@@ -78,20 +76,6 @@
              {arg nil})))
 
 (defn- dox-for-schema
-  "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
-  wrapping the schema with `with-api-error-message`."
-  [schema route-str]
-  (if-not schema
-    ""
-    (or (su/api-error-message schema)
-        ;; Don't try to i18n this stuff! It's developer-facing only.
-        (when config/is-dev?
-          (log/warn
-           (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
-                                     "Consider wrapping it in `su/with-api-error-message`.")
-                           (u/pprint-to-str schema) (u/add-period route-str)))))))
-
-(defn- malli-dox-for-schema
   "Generate the docstring for `schema` for use in auto-generated API documentation."
   [schema route-str]
   (try (umd/describe schema)
@@ -112,7 +96,7 @@
         (:api-param-name schema))
       (name param-symb)))
 
-(defn- malli-format-route-schema-dox
+(defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
@@ -123,16 +107,7 @@
                    (for [[param-symb schema] param-symb->schema]
                      (format "*  **`%s`** %s"
                              (param-name param-symb schema)
-                             (malli-dox-for-schema schema route-str)))))))
-
-(defn- format-route-schema-dox
-  "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
-  `param-symb->schema` map passed in after the argslist."
-  [param-symb->schema route-str]
-  (when (seq param-symb->schema)
-    (str "\n\n### PARAMS:\n\n"
-         (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
-                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
+                             (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -142,14 +117,6 @@
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
 
-(defn- malli-format-route-dox
-  "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
-  [route-str docstr param->schema]
-  (str (format "## `%s`" route-str)
-       (when (seq docstr)
-         (str "\n\n" (u/add-period docstr)))
-       (malli-format-route-schema-dox param->schema route-str)))
-
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
@@ -157,17 +124,8 @@
     (or (contains? body '(check-superuser))
         (contains? body '(api/check-superuser)))))
 
-(defn malli-route-dox
-  "Prints a markdown route doc for defendpoint"
-  [method route docstr args param->schema body]
-  (malli-format-route-dox (endpoint-name method route)
-                          (str (u/add-period docstr) (when (contains-superuser-check? body)
-                                                       "\n\nYou must be a superuser to do this."))
-                          (merge (args-form-symbols args)
-                                 param->schema)))
-
 (defn route-dox
-  "Generate a documentation string for a `defendpoint` route."
+  "Prints a markdown route doc for defendpoint"
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
                     (str (u/add-period docstr) (when (contains-superuser-check? body)
@@ -235,27 +193,6 @@
   (->> (re-seq #":([\w-]+)" route)
        (map second)
        (map keyword)))
-
-(defn- typify-args
-  "Given a sequence of keyword `args`, return a sequence of `[:arg pattern :arg pattern ...]` for args that have
-  matching types."
-  [args]
-  (->> args
-       (mapcat route-param-regex)
-       (filterv identity)))
-
-(defn add-route-param-regexes
-  "Expand a `route` string like \"/:id\" into a Compojure route form that uses regexes to match parameters whose name
-  matches a regex from `auto-parse-arg-name-patterns`.
-
-    (add-route-param-regexes \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
-  [route]
-  (if (vector? route)
-    route
-    (let [arg-types (typify-args (route-arg-keywords route))]
-      (if (empty? arg-types)
-        route
-        (apply vector route arg-types)))))
 
 (defn- ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
@@ -370,7 +307,7 @@
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn malli-validate-param
+(defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
   (when-not (mc/validate schema value)
@@ -383,25 +320,8 @@
                                            me/with-spell-checking
                                            (me/humanize {:wrap mu/humanize-include-value}))}}))))
 
-(defn validate-param
-  "Validate a parameter against its respective schema, or throw an Exception."
-  [field-name value schema]
-  (try (s/validate schema value)
-       (catch Throwable e
-         (throw (ex-info (tru "Invalid field: {0}" field-name)
-                         {:status-code 400
-                          :errors      {(keyword field-name) (or (su/api-error-message schema)
-                                                                 (:message (ex-data e))
-                                                                 (.getMessage e))}})))))
-
-(defn malli-validate-params
-  "Generate a series of `malli-validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
-  [param->schema]
-  (for [[param schema] param->schema]
-    `(malli-validate-param '~param ~param ~schema)))
-
 (defn validate-params
-  "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
+  "Generate a series of `validate-param` calls for each param and malli schema pair in PARAM->SCHEMA."
   [param->schema]
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))

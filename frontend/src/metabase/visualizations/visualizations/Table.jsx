@@ -18,11 +18,15 @@ import ChartSettingsTableFormatting, {
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   columnSettings,
-  tableColumnSettings,
+  buildTableColumnSettings,
   getTitleForColumn,
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import {
   isMetric,
   isDimension,
@@ -44,7 +48,8 @@ export default class Table extends Component {
   static iconName = "table";
   static canSavePng = false;
 
-  static minSize = { width: 4, height: 3 };
+  static minSize = getMinSize("table");
+  static defaultSize = getDefaultSize("table");
 
   static isSensible({ cols, rows }) {
     return true;
@@ -143,7 +148,7 @@ export default class Table extends Component {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...tableColumnSettings,
+    ...buildTableColumnSettings(),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,

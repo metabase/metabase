@@ -14,12 +14,14 @@ import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 import { saveCardsAndTabs } from "./tabs";
 
-export const SAVE_DASHBOARD_AND_CARDS =
-  "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
+export const UPDATE_DASHBOARD_AND_CARDS =
+  "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
 
-export const saveDashboardAndCards = createThunkAction(
-  SAVE_DASHBOARD_AND_CARDS,
-  function (preserveParameters = false) {
+export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
+
+export const updateDashboardAndCards = createThunkAction(
+  UPDATE_DASHBOARD_AND_CARDS,
+  function () {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -91,14 +93,6 @@ export const saveDashboardAndCards = createThunkAction(
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      // update the dashboard itself
-      if (dashboard.isDirty) {
-        const { id, name, description, parameters } = dashboard;
-        await dispatch(
-          Dashboards.actions.update({ id }, { name, description, parameters }),
-        );
-      }
-
       // update the dashboard cards and tabs
       const dashcardsToUpdate = dashboard.ordered_cards.filter(
         dc => !dc.isRemoved,
@@ -130,7 +124,33 @@ export const saveDashboardAndCards = createThunkAction(
       await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null, { preserveParameters })); // disable using query parameters when saving
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: false }),
+      ); // disable using query parameters when saving
+    };
+  },
+);
+
+export const updateDashboard = createThunkAction(
+  UPDATE_DASHBOARD,
+  function ({ attributeNames }) {
+    return async function (dispatch, getState) {
+      const state = getState();
+      const { dashboards, dashboardId } = state.dashboard;
+      const dashboard = dashboards[dashboardId];
+
+      if (attributeNames.length > 0) {
+        const attributes = _.pick(dashboard, attributeNames);
+
+        await dispatch(
+          Dashboards.actions.update({ id: dashboardId }, attributes),
+        );
+      }
+
+      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: true }),
+      );
     };
   },
 );

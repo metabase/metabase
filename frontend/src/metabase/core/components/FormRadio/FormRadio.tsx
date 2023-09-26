@@ -1,6 +1,8 @@
-import { forwardRef, Key, ReactNode, Ref } from "react";
+import type { Key, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import { useField } from "formik";
-import Radio, { RadioOption, RadioProps } from "metabase/core/components/Radio";
+import type { RadioOption, RadioProps } from "metabase/core/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import FormField from "metabase/core/components/FormField";
 
 export interface FormRadioProps<
@@ -12,10 +14,14 @@ export interface FormRadioProps<
   > {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormRadioGroup from "metabase/ui"
+ */
 const FormRadio = forwardRef(function FormRadio<
   TValue extends Key,
   TOption = RadioOption<TValue>,
@@ -25,6 +31,7 @@ const FormRadio = forwardRef(function FormRadio<
     className,
     style,
     title,
+    actions,
     description,
     optional,
     ...props
@@ -39,6 +46,7 @@ const FormRadio = forwardRef(function FormRadio<
       className={className}
       style={style}
       title={title}
+      actions={actions}
       description={description}
       error={touched ? error : undefined}
       optional={optional}

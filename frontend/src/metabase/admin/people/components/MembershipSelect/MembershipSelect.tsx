@@ -9,7 +9,7 @@ import {
   isAdminGroup,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import { Group, Member } from "metabase-types/api";
+import type { Group, Member } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
 import GroupSummary from "../GroupSummary";
 import {

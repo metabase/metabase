@@ -1,6 +1,6 @@
-import { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef } from "react";
 import remarkGfm from "remark-gfm";
-import ReactMarkdown from "react-markdown";
+import type ReactMarkdown from "react-markdown";
 import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -8,6 +8,7 @@ const REMARK_PLUGINS = [remarkGfm];
 export interface MarkdownProps
   extends ComponentPropsWithRef<typeof ReactMarkdown> {
   className?: string;
+  dark?: boolean;
   disallowHeading?: boolean;
   unstyleLinks?: boolean;
   children: string;
@@ -16,6 +17,7 @@ export interface MarkdownProps
 const Markdown = ({
   className,
   children = "",
+  dark,
   disallowHeading = false,
   unstyleLinks = false,
   ...rest
@@ -30,6 +32,7 @@ const Markdown = ({
   return (
     <MarkdownRoot
       className={className}
+      dark={dark}
       remarkPlugins={REMARK_PLUGINS}
       linkTarget={"_blank"}
       unstyleLinks={unstyleLinks}

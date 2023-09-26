@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import {
+import type {
   Aggregation as AggregationObject,
   FieldId,
   MetricId,
@@ -9,10 +9,11 @@ import {
 import { TYPE } from "metabase-lib/types/constants";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Metric from "metabase-lib/metadata/Metric";
+import type Metric from "metabase-lib/metadata/Metric";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
-import StructuredQuery from "../StructuredQuery";
-import Dimension, { AggregationDimension } from "../../Dimension";
+import type StructuredQuery from "../StructuredQuery";
+import type Dimension from "../../Dimension";
+import { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
@@ -156,24 +157,7 @@ export default class Aggregation extends MBQLClause {
    * Predicate function to test if a given aggregation clause is valid
    */
   isValid() {
-    if (this.hasOptions()) {
-      return this.aggregation().isValid();
-    } else if (this.isStandard() && this.dimension()) {
-      const dimension = this.dimension()?.getMLv1CompatibleDimension();
-      const aggregationOperator = this.query().aggregationOperator(this[0]);
-      return (
-        aggregationOperator &&
-        (!aggregationOperator.requiresField ||
-          this.query()
-            .aggregationFieldOptions(aggregationOperator)
-            .hasDimension(dimension))
-      );
-    } else if (this.isMetric()) {
-      return !!this.metric();
-    } else {
-      // FIXME: custom aggregation validation
-      return true;
-    }
+    return true;
   }
 
   // There are currently 3 "classes" of aggregations that are handled differently, "standard", "segment", and "custom"
@@ -251,7 +235,10 @@ export default class Aggregation extends MBQLClause {
    */
   dimension(): Dimension | null | undefined {
     if (this.isStandard() && this.length > 1) {
-      return this._query.parseFieldReference(this.getFieldReference());
+      const dimension = this._query.parseFieldReference(
+        this.getFieldReference(),
+      );
+      return dimension?.getMLv1CompatibleDimension?.();
     }
   }
 

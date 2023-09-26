@@ -13,7 +13,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -40,7 +39,7 @@
 
 (defn- select-items! [model ids]
   (when (seq ids)
-    (for [model (hydrate (models-query model ids) :moderation_reviews)
+    (for [model (t2/hydrate (models-query model ids) :moderation_reviews)
           :let [reviews (:moderation_reviews model)
                 status  (->> reviews
                              (filter :most_recent)
@@ -137,7 +136,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
-    (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
+    (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
       (if (mi/can-read? dashboard)
         dashboard
         api/generic-204-no-content))

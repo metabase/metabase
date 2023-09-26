@@ -12,7 +12,9 @@ import {
   setColumnType,
   mapColumnTo,
   setModelMetadata,
+  sidebar,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
@@ -29,32 +31,29 @@ describe("scenarios > models metadata", () => {
   describe("GUI model", () => {
     beforeEach(() => {
       // Convert saved question "Orders" into a model
-      cy.request("PUT", "/api/card/1", {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "GUI Model",
         dataset: true,
       });
 
-      cy.visit("/model/1");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     });
 
     it("should edit GUI model metadata", () => {
       openQuestionActions();
 
-      popover().within(() => {
-        cy.findByTextEnsureVisible("89%").trigger("mouseenter");
+      popover().findByTextEnsureVisible("89%").trigger("mouseenter");
+
+      cy.findByTestId("tooltip-content").within(() => {
+        cy.findByText(
+          "Some columns are missing a column type, description, or friendly name.",
+        );
+        cy.findByText(
+          "Adding metadata makes it easier for your team to explore this data.",
+        );
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Some columns are missing a column type, description, or friendly name.",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Adding metadata makes it easier for your team to explore this data.",
-      );
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit metadata").click();
+      popover().findByText("Edit metadata").click();
 
       cy.url().should("include", "/metadata");
       cy.findByTextEnsureVisible("Product ID");
@@ -68,15 +67,13 @@ describe("scenarios > models metadata", () => {
       startQuestionFromModel("GUI Model");
 
       visualize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pre-tax ($)");
+      cy.findByTestId("TableInteractive-root").findByText("Pre-tax ($)");
     });
 
     it("allows for canceling changes", () => {
       openQuestionActions();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit metadata").click();
+      popover().findByText("Edit metadata").click();
 
       openColumnOptions("Subtotal");
 
@@ -85,15 +82,13 @@ describe("scenarios > models metadata", () => {
 
       cy.button("Cancel").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subtotal");
+      cy.findByTestId("TableInteractive-root").findByText("Subtotal");
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
       openQuestionActions();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit metadata").click();
+      popover().findByText("Edit metadata").click();
 
       openColumnOptions("Subtotal");
 
@@ -102,14 +97,10 @@ describe("scenarios > models metadata", () => {
       cy.button("Save changes").click();
 
       openQuestionActions();
-      popover().within(() => {
-        cy.findByText("Turn back to saved question").click();
-      });
+      popover().findByText("Turn back to saved question").click();
 
       cy.wait("@dataset");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subtotal");
+      cy.findByTestId("TableInteractive-root").findByText("Subtotal");
     });
   });
 
@@ -131,17 +122,16 @@ describe("scenarios > models metadata", () => {
       cy.findByTextEnsureVisible("37%").trigger("mouseenter");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Most columns are missing a column type, description, or friendly name.",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Adding metadata makes it easier for your team to explore this data.",
-    );
+    cy.findByTestId("tooltip-content").within(() => {
+      cy.findByText(
+        "Most columns are missing a column type, description, or friendly name.",
+      );
+      cy.findByText(
+        "Adding metadata makes it easier for your team to explore this data.",
+      );
+    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit metadata").click();
+    popover().findByText("Edit metadata").click();
 
     cy.url().should("include", "/metadata");
     cy.findByTextEnsureVisible("PRODUCT_ID");
@@ -159,8 +149,7 @@ describe("scenarios > models metadata", () => {
     startQuestionFromModel("Native Model");
 
     visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pre-tax ($)");
+    cy.findByTestId("TableInteractive-root").findByText("Pre-tax ($)");
   });
 
   it("should allow setting column relations (metabase#29318)", () => {
@@ -175,15 +164,12 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit metadata").click();
+    popover().findByText("Edit metadata").click();
     openColumnOptions("USER_ID");
     setColumnType("No special type", "Foreign Key");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a target").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("People → ID").click();
-    cy.button("Save changes").click();
+    sidebar().findByText("Select a target").click();
+    popover().findByText("People → ID").click();
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
     // TODO: Not much to do with it at the moment beyond saving it.
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
@@ -242,8 +228,7 @@ describe("scenarios > models metadata", () => {
       .and("not.contain", "SUBTOTAL");
 
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit metadata").click();
+    popover().findByText("Edit metadata").click();
 
     cy.findByTextEnsureVisible("TAX");
 
@@ -349,7 +334,7 @@ describe("scenarios > models metadata", () => {
           addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: modelId,
-            card: { size_x: 18, size_y: 9 },
+            card: { size_x: 24, size_y: 9 },
           });
 
           visitDashboard(dashboardId);
@@ -392,12 +377,13 @@ describe("scenarios > models metadata", () => {
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
       openQuestionActions();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Vendor").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit metadata").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Vendor").should("be.visible");
+      cy.findByTestId("TableInteractive-root")
+        .findByText("Vendor")
+        .should("not.exist");
+      popover().findByText("Edit metadata").click();
+      cy.findByTestId("TableInteractive-root")
+        .findByText("Vendor")
+        .should("be.visible");
     });
   });
 });

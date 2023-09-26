@@ -654,7 +654,7 @@
   (mt/test-driver :druid
     (testing "parse-filter should generate the correct filter clauses"
       (tqpt/with-flattened-dbdef
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (tools.macro/macrolet [(parse-filter [filter-clause]
                                    `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
             (testing "normal non-compound filters should work as expected"

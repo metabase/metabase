@@ -4,6 +4,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :as migrations]
    [metabase.models :refer [Card Dashboard DashboardCard Setting]]
    [metabase.models.permissions-group :as perms-group]
@@ -15,189 +16,203 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest fix-click-through-test
-  (let [migrate (fn [card dash]
-                  (:visualization_settings
-                   (#'migrations/fix-click-through {:id                     1
-                                                    :dashcard_visualization dash
-                                                    :card_visualization     card})))]
-    (testing "toplevel"
-      (let [card {"some_setting:"       {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting" {"bar" 123}}]
-        (is (= {"other_setting"  {"bar" 123}
-                "click_behavior" {"type"         "link"
-                                  "linkType"     "url"
-                                  "linkTemplate" "http://example.com/{{col_name}}"}}
-               (migrate card dash)))))
+(defn- migrate-click-thru [card dash]
+  (:visualization_settings
+   (#'migrations/fix-click-through {:id                     1
+                                    :dashcard_visualization dash
+                                    :card_visualization     card})))
 
-    (testing "top level disabled"
-      (let [card {"some_setting:"       {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting"       {"bar" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "menu"}]
-        ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
-        (is (nil? (migrate card dash)))))
-    (testing "column settings"
-      (let [card {"some_setting" {"foo" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as"       "link"
-                    "link_template" "http://example.com/{{id}}"
-                    "link_text"     "here is my id: {{id}}"}}}
-            dash {"other_setting" {"bar" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
-                   "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
-        (is (= {"other_setting" {"bar" 123}
+(deftest ^:parallel fix-click-through-test-1
+  (testing "toplevel"
+    (let [card {"some_setting:"       {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting" {"bar" 123}}]
+      (is (= {"other_setting"  {"bar" 123}
+              "click_behavior" {"type"         "link"
+                                "linkType"     "url"
+                                "linkTemplate" "http://example.com/{{col_name}}"}}
+             (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-2
+  (testing "top level disabled"
+    (let [card {"some_setting:"       {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting"       {"bar" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "menu"}]
+      ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
+      (is (nil? (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-3
+  (testing "column settings"
+    (let [card {"some_setting" {"foo" 123}
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
-                 {"fun_formatting" "foo"
-                  "click_behavior" {"type"             "link"
-                                    "linkType"         "url"
-                                    "linkTemplate"     "http://example.com/{{id}}"
-                                    "linkTextTemplate" "here is my id: {{id}}"}}
+                 {"view_as"       "link"
+                  "link_template" "http://example.com/{{id}}"
+                  "link_text"     "here is my id: {{id}}"}}}
+          dash {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
+                 "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
+      (is (= {"other_setting" {"bar" 123}
+              "column_settings"
+              {"[\"ref\",[\"field-id\",1]]"
+               {"fun_formatting" "foo"
+                "click_behavior" {"type"             "link"
+                                  "linkType"         "url"
+                                  "linkTemplate"     "http://example.com/{{id}}"
+                                  "linkTextTemplate" "here is my id: {{id}}"}}
+               "[\"ref\",[\"field-id\",2]]"
+               {"other_fun_formatting" 123}}}
+             (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-thru-test-4
+  (testing "manually updated new behavior"
+    (let [card {"some_setting"        {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting"  {"bar" 123}
+                "click_behavior" {"type"         "link"
+                                  "linkType"     "url"
+                                  "linkTemplate" "http://example.com/{{other_col_name}}"}}]
+      (is (nil? (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-thru-test-5
+  (testing "Manually updated to new behavior on Column"
+    (let [card {"some_setting" {"foo" 123},
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"view_as"                  "link"
+                  "link_template"            "http://example.com/{{id}}"
+                  "other_special_formatting" "currency"}
                  "[\"ref\",[\"field-id\",2]]"
-                 {"other_fun_formatting" 123}}}
-               (migrate card dash)))))
-    (testing "manually updated new behavior"
-      (let [card {"some_setting"        {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting"  {"bar" 123}
-                  "click_behavior" {"type"         "link"
-                                    "linkType"     "url"
-                                    "linkTemplate" "http://example.com/{{other_col_name}}"}}]
-        (is (nil? (migrate card dash)))))
-    (testing "Manually updated to new behavior on Column"
-      (let [card {"some_setting" {"foo" 123},
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as"                  "link"
-                    "link_template"            "http://example.com/{{id}}"
-                    "other_special_formatting" "currency"}
-                   "[\"ref\",[\"field-id\",2]]"
-                   {"view_as"              "link",
-                    "link_template"        "http://example.com/{{something_else}}",
-                    "other_fun_formatting" 0}}}
-            dash {"other_setting" {"bar" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"click_behavior"
-                    {"type"         "link"
-                     "linkType"     "url"
-                     "linkTemplate" "http://example.com/{{id}}"}}
-                   "[\"ref\",[\"field-id\",2]]"
-                   {"other_fun_formatting" 123}}}]
-        (is (= {"other_setting" {"bar" 123}
+                 {"view_as"              "link",
+                  "link_template"        "http://example.com/{{something_else}}",
+                  "other_fun_formatting" 0}}}
+          dash {"other_setting" {"bar" 123}
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
                  {"click_behavior"
-                  {"type"         "link",
-                   "linkType"     "url",
+                  {"type"         "link"
+                   "linkType"     "url"
                    "linkTemplate" "http://example.com/{{id}}"}}
                  "[\"ref\",[\"field-id\",2]]"
-                 {"other_fun_formatting" 123,
-                  "click_behavior"
-                  {"type"         "link",
-                   "linkType"     "url",
-                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
-               (migrate card dash)))))
-    (testing "If there is migration eligible on dash but also new style on dash, new style wins"
-      (let [dash {"column_settings"
-                  {"[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http://old" ;; this stuff could be migrated
-                    "link_text"     "old"
-                    "column_title"  "column title"
-                    "click_behavior"
-                    {"type"             "link",
-                     "linkType"         "url", ;; but there is already a new style and it wins
-                     "linkTemplate"     "http://new",
-                     "linkTextTemplate" "new"}}}}]
-        ;; no change
-        (is (nil? (migrate nil dash)))))
-    (testing "flamber case"
-      (let [card {"column_settings"
-                  {"[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text"     "MyQCDT {{CATEGORY}}"
-                    "column_title"  "QCDT Category"}
-                   "[\"ref\",[\"field-id\",6]]"
-                   {"view_as"       "link"
-                    "column_title"  "QCDT Rating"
-                    "link_text"     "Rating {{RATING}}"
-                    "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix"        "prefix-"
-                    "suffix"        "-suffix"}
-                   "[\"ref\",[\"field-id\",5]]"
-                   {"view_as"       nil
-                    "link_text"     "QCDT was disabled"
-                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title"  "(QCDT disabled) Title"}}
-                  "table.pivot_column" "CATEGORY"
-                  "table.cell_column"  "PRICE"}
-            dash {"table.cell_column"  "PRICE"
-                  "table.pivot_column" "CATEGORY"
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",5]]"
-                   {"view_as"       nil
-                    "link_text"     "QCDT was disabled"
-                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title"  "(QCDT disabled) Title"}
-                   "[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text"     "MyQCDT {{CATEGORY}}"
-                    "column_title"  "QCDT Category"
-                    "click_behavior"
-                    {"type"             "link"
-                     "linkType"         "url"
-                     "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
-                     "linkTextTemplate" "MyCB {{CATEGORY}}"}}
-                   "[\"ref\",[\"field-id\",6]]"
-                   {"view_as"       "link"
-                    "column_title"  "QCDT Rating"
-                    "link_text"     "Rating {{RATING}}"
-                    "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix"        "prefix-"
-                    "suffix"        "-suffix"}}
-                  "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
-        (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
-                "column_settings"
+                 {"other_fun_formatting" 123}}}]
+      (is (= {"other_setting" {"bar" 123}
+              "column_settings"
+              {"[\"ref\",[\"field-id\",1]]"
+               {"click_behavior"
+                {"type"         "link",
+                 "linkType"     "url",
+                 "linkTemplate" "http://example.com/{{id}}"}}
+               "[\"ref\",[\"field-id\",2]]"
+               {"other_fun_formatting" 123,
+                "click_behavior"
+                {"type"         "link",
+                 "linkType"     "url",
+                 "linkTemplate" "http://example.com/{{something_else}}"}}}}
+             (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-thru-test-6
+  (testing "If there is migration eligible on dash but also new style on dash, new style wins"
+    (let [dash {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
-                 {"column_title"  "QCDT Category"
-                  "view_as"       "link"
+                 {"view_as"       "link"
+                  "link_template" "http://old" ;; this stuff could be migrated
+                  "link_text"     "old"
+                  "column_title"  "column title"
+                  "click_behavior"
+                  {"type"             "link",
+                   "linkType"         "url", ;; but there is already a new style and it wins
+                   "linkTemplate"     "http://new",
+                   "linkTextTemplate" "new"}}}}]
+      ;; no change
+      (is (nil? (migrate-click-thru nil dash))))))
+
+(deftest ^:parallel fix-click-thru-test-7
+  (testing "flamber case"
+    (let [card {"column_settings"
+                {"[\"ref\",[\"field-id\",4]]"
+                 {"view_as"       "link"
                   "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
                   "link_text"     "MyQCDT {{CATEGORY}}"
+                  "column_title"  "QCDT Category"}
+                 "[\"ref\",[\"field-id\",6]]"
+                 {"view_as"       "link"
+                  "column_title"  "QCDT Rating"
+                  "link_text"     "Rating {{RATING}}"
+                  "link_template" "http//localhost/?QCDT&{{RATING}}"
+                  "prefix"        "prefix-"
+                  "suffix"        "-suffix"}
+                 "[\"ref\",[\"field-id\",5]]"
+                 {"view_as"       nil
+                  "link_text"     "QCDT was disabled"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                  "column_title"  "(QCDT disabled) Title"}}
+                "table.pivot_column" "CATEGORY"
+                "table.cell_column"  "PRICE"}
+          dash {"table.cell_column"  "PRICE"
+                "table.pivot_column" "CATEGORY"
+                "column_settings"
+                {"[\"ref\",[\"field-id\",5]]"
+                 {"view_as"       nil
+                  "link_text"     "QCDT was disabled"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                  "column_title"  "(QCDT disabled) Title"}
+                 "[\"ref\",[\"field-id\",4]]"
+                 {"view_as"       "link"
+                  "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                  "link_text"     "MyQCDT {{CATEGORY}}"
+                  "column_title"  "QCDT Category"
                   "click_behavior"
                   {"type"             "link"
                    "linkType"         "url"
                    "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
                    "linkTextTemplate" "MyCB {{CATEGORY}}"}}
-                 "[\"ref\",[\"field-id\",5]]"
-                 {"link_text"     "QCDT was disabled"
-                  "column_title"  "(QCDT disabled) Title"
-                  "link_template" "http//localhost/?QCDT&{{TITLE}}"}
                  "[\"ref\",[\"field-id\",6]]"
-                 {"prefix"        "prefix-"
-                  "suffix"        "-suffix"
+                 {"view_as"       "link"
                   "column_title"  "QCDT Rating"
-                  "view_as"       "link"
                   "link_text"     "Rating {{RATING}}"
                   "link_template" "http//localhost/?QCDT&{{RATING}}"
-                  "click_behavior"
-                  {"type"             "link"
-                   "linkType"         "url"
-                   "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
-                   "linkTextTemplate" "Rating {{RATING}}"}}}
-                "table.cell_column"  "PRICE"
-                "table.pivot_column" "CATEGORY"}
-               (migrate card dash))))))
+                  "prefix"        "prefix-"
+                  "suffix"        "-suffix"}}
+                "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
+      (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
+              "column_settings"
+              {"[\"ref\",[\"field-id\",4]]"
+               {"column_title"  "QCDT Category"
+                "view_as"       "link"
+                "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                "link_text"     "MyQCDT {{CATEGORY}}"
+                "click_behavior"
+                {"type"             "link"
+                 "linkType"         "url"
+                 "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
+                 "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+               "[\"ref\",[\"field-id\",5]]"
+               {"link_text"     "QCDT was disabled"
+                "column_title"  "(QCDT disabled) Title"
+                "link_template" "http//localhost/?QCDT&{{TITLE}}"}
+               "[\"ref\",[\"field-id\",6]]"
+               {"prefix"        "prefix-"
+                "suffix"        "-suffix"
+                "column_title"  "QCDT Rating"
+                "view_as"       "link"
+                "link_text"     "Rating {{RATING}}"
+                "link_template" "http//localhost/?QCDT&{{RATING}}"
+                "click_behavior"
+                {"type"             "link"
+                 "linkType"         "url"
+                 "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
+                 "linkTextTemplate" "Rating {{RATING}}"}}}
+              "table.cell_column"  "PRICE"
+              "table.pivot_column" "CATEGORY"}
+             (migrate-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-thru-test-8
   (testing "general case"
     (let [card-vis              {"column_settings"
                                  {"[\"ref\",[\"field-id\",2]]"
@@ -254,7 +269,9 @@
         (is (= nil (#'migrations/fix-click-through
                     {:id                     1
                      :card_visualization     card-vis
-                     :dashcard_visualization (:visualization_settings fixed)}))))))
+                     :dashcard_visualization (:visualization_settings fixed)})))))))
+
+(deftest ^:parallel fix-click-thru-test-9
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"
@@ -299,11 +316,11 @@
                          "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                          "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                          "graph.metrics"    ["count"]})]
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                      Card          [{card-id :id} {:visualization_settings card-vis}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id           dashboard-id
-                                                        :card_id                card-id
-                                                        :visualization_settings dashcard-vis}]]
+      (mt/with-temp [Dashboard     {dashboard-id :id} {}
+                     Card          {card-id :id} {:visualization_settings card-vis}
+                     DashboardCard {dashcard-id :id} {:dashboard_id           dashboard-id
+                                                      :card_id                card-id
+                                                      :visualization_settings dashcard-vis}]
         (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                  :graph.metrics    ["count"],
                                  :click            "link",

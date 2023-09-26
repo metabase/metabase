@@ -1,30 +1,26 @@
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { SchemaId, TableId } from "metabase-types/api";
+import type { InitialSyncStatus, Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import DataSelectorTablePicker from "./DataSelectorTablePicker";
 
-const TEST_TABLE = createMockTable();
-const TEST_DATABASE = createMockDatabase({ tables: [TEST_TABLE] });
+const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 interface SetupOpts {
-  schemaIds?: SchemaId[];
-  tableIds?: TableId[];
+  database: Database;
 }
 
-const setup = ({ schemaIds = [], tableIds = [] }: SetupOpts = {}) => {
+const setup = (opts: SetupOpts) => {
   const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [TEST_DATABASE],
-    }),
+    entities: createMockEntitiesState({ databases: [opts.database] }),
   });
   const metadata = getMetadata(state);
-  const database = checkNotNull(metadata.database(TEST_DATABASE.id));
-  const schemas = schemaIds.map(id => checkNotNull(metadata.schema(id)));
-  const tables = tableIds.map(id => checkNotNull(metadata.table(id)));
+  const database = checkNotNull(metadata.database(opts.database.id));
+  const schemas = database.getSchemas();
+  const tables = database.getTables();
 
   renderWithProviders(
     <DataSelectorTablePicker
@@ -38,22 +34,39 @@ const setup = ({ schemaIds = [], tableIds = [] }: SetupOpts = {}) => {
 };
 
 describe("DataSelectorTablePicker", () => {
-  it("when no table is in database", () => {
-    setup();
+  it.each(NOT_SYNCED_DB_STATUSES)(
+    "render a loading spinner when a table has initial_sync_status='%s'",
+    initial_sync_status => {
+      const database = createMockDatabase({
+        tables: [createMockTable({ initial_sync_status })],
+      });
+      setup({ database });
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    },
+  );
 
+  it("don't render a loading spinner when a table has initial_sync_status='complete'", () => {
+    const database = createMockDatabase({
+      tables: [createMockTable({ initial_sync_status: "complete" })],
+    });
+    setup({ database });
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
+
+  it("when no table is in database", () => {
+    const database = createMockDatabase({ tables: [] });
+    setup({ database });
     expect(
       screen.getByText("No tables found in this database."),
     ).toBeInTheDocument();
-
-    expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
+    expect(screen.getByText(database.name)).toBeInTheDocument();
   });
 
-  it("when tables are passed", () => {
-    setup({
-      tableIds: [TEST_TABLE.id],
-    });
-
-    expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE.display_name)).toBeInTheDocument();
+  it("show tables in the database", () => {
+    const table = createMockTable();
+    const database = createMockDatabase({ tables: [table] });
+    setup({ database });
+    expect(screen.getByText(database.name)).toBeInTheDocument();
+    expect(screen.getByText(table.display_name)).toBeInTheDocument();
   });
 });

@@ -68,6 +68,7 @@ function _PulsesListSidebar({
 
           return (
             <PulseCard
+              aria-label="Pulse Card"
               key={pulse.id}
               flat
               canEdit={canEdit}

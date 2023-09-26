@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
    [metabase.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -33,7 +32,8 @@
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
@@ -71,7 +71,7 @@
 
 (defn- seed-entity-id-for-instance! [model instance]
   (try
-    (let [primary-key (mdb.u/primary-key model)
+    (let [primary-key (first (t2/primary-keys model))
           pk-value    (get instance primary-key)]
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))

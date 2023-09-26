@@ -56,18 +56,21 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 
 function mapStateToProps(state, props) {
   const uploadDbId = getSetting(state, "uploads-database-id");
-  const canAccessUploadsDb =
-    getSetting(state, "uploads-enabled") &&
+  const uploadsEnabled = getSetting(state, "uploads-enabled");
+  const canUploadToDb =
     uploadDbId &&
-    !!Databases.selectors.getObject(state, {
-      entityId: uploadDbId,
-    });
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadDbId,
+      })
+      ?.canUpload();
 
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
-    uploadsEnabled: canAccessUploadsDb,
+    uploadsEnabled,
+    canUploadToDb,
   };
 }
 
@@ -91,6 +94,7 @@ function CollectionContent({
   openNavbar,
   uploadFile,
   uploadsEnabled,
+  canUploadToDb,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -101,7 +105,7 @@ function CollectionContent({
   });
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
-  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
@@ -200,7 +204,7 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
-  const canUpload = uploadsEnabled && collection.can_write;
+  const canUpload = uploadsEnabled && canUploadToDb && collection.can_write;
 
   const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
@@ -251,6 +255,7 @@ function CollectionContent({
                   onCreateBookmark={handleCreateBookmark}
                   onDeleteBookmark={handleDeleteBookmark}
                   canUpload={canUpload}
+                  uploadsEnabled={uploadsEnabled}
                 />
               </ErrorBoundary>
               <ErrorBoundary>
@@ -286,7 +291,7 @@ function CollectionContent({
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {
-                      toggleAll(unselected);
+                      selectOnlyTheseItems(unpinnedItems);
                     };
 
                     const loading = loadingPinnedItems || loadingUnpinnedItems;
@@ -296,7 +301,7 @@ function CollectionContent({
                     if (isEmpty && !loadingUnpinnedItems) {
                       return (
                         <CollectionEmptyContent>
-                          <CollectionEmptyState collectionId={collectionId} />
+                          <CollectionEmptyState collection={collection} />
                         </CollectionEmptyContent>
                       );
                     }

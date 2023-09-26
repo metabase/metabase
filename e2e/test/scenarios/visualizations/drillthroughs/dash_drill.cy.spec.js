@@ -1,4 +1,3 @@
-// Imported from drillthroughs.e2e.spec.js
 import {
   addOrUpdateDashboardCard,
   restore,
@@ -103,7 +102,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             name: DASHBOARD_NAME,
           },
           cardDetails: {
-            size_x: 16,
+            size_x: 21,
             size_y: 12,
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
@@ -182,7 +181,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           visitDashboard(dashboard_id);
           cy.findByText(QUESTION_NAME).click();
           cy.findByText("Category is Doohickey");
-          cy.findByText("177"); // Doohickeys for 2016
+          cy.findByText("177"); // Doohickeys for 2022
         });
       });
     });

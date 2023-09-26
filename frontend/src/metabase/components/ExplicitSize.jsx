@@ -3,6 +3,7 @@ import { Component } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 import _ from "underscore";
+import debounce from "lodash.debounce";
 
 import resizeObserver from "metabase/lib/resize-observer";
 import { isCypressActive } from "metabase/env";
@@ -11,8 +12,10 @@ const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
   throttle: fn => _.throttle(fn, WAIT_TIME),
-  debounce: fn => _.debounce(fn, WAIT_TIME),
-  debounceLeading: fn => _.debounce(fn, WAIT_TIME, true),
+  debounce: fn => debounce(fn, WAIT_TIME),
+  // Using lodash.debounce with leading=true to execute the function immediately and also at the end of the debounce period.
+  // Underscore debounce with immediate=true will not execute the function after the wait period unless it is called again.
+  debounceLeading: fn => debounce(fn, WAIT_TIME, { leading: true }),
   none: fn => fn,
 };
 

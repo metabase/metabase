@@ -3,8 +3,10 @@ import type {
   DatasetColumn,
   FieldFilter,
   RowValue,
+  FieldLiteral,
+  FieldReference,
 } from "metabase-types/api";
-import { FieldLiteral, FieldReference } from "metabase-types/api";
+
 import {
   isa,
   isBoolean,
@@ -22,7 +24,7 @@ import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Dimension from "metabase-lib/Dimension";
+import type Dimension from "metabase-lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];
 const isConcreteField = (
@@ -119,9 +121,7 @@ function getOperatorsForColumn(
     return null;
   }
 
-  const fieldRef = dimension
-    ? dimension.mbql()
-    : getColumnFieldRef(column, baseType);
+  const fieldRef = getColumnFieldRef(column, baseType);
 
   if (!fieldRef || !isConcreteField(fieldRef)) {
     return null;

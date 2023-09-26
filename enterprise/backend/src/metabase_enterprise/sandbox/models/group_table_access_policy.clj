@@ -17,42 +17,35 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.models :as models]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(models/defmodel GroupTableAccessPolicy :sandboxes)
+(def GroupTableAccessPolicy
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model
+  name. We'll keep this till we replace all the symbols in our codebase."
+  :model/GroupTableAccessPolicy)
 
-;;; only admins can work with GTAPs
-(derive GroupTableAccessPolicy ::mi/read-policy.superuser)
-(derive GroupTableAccessPolicy ::mi/write-policy.superuser)
+(methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
 
-;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
-;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
-(when *compile-files*
-  (defonce previous-compilation-trace (atom nil))
-  (when @previous-compilation-trace
-    (log/info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
-    (log/info "This compilation trace:")
-    ((requiring-resolve 'clojure.pprint/pprint) (vec (.getStackTrace (Thread/currentThread))))
-    (log/info "Previous compilation trace:")
-    ((requiring-resolve 'clojure.pprint/pprint) @previous-compilation-trace)
-    (throw (ex-info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!" {})))
-  (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))
+(doto :model/GroupTableAccessPolicy
+  (derive :metabase/model)
+  ;;; only admins can work with GTAPs
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
 
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
   (m/map-vals
    mbql.normalize/normalize
    attribute-remappings))
 
-;; for GTAPs
-(models/add-type! ::attribute-remappings
-  :in  (comp mi/json-in normalize-attribute-remapping-targets)
-  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
+(t2/deftransforms :model/GroupTableAccessPolicy
+  {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
+                          :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
+
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -84,7 +77,7 @@
                          :expected    table-col-base-type
                          :actual      (:base_type col)}))))))
 
-(s/defn check-columns-match-table
+(mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
   that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
   columns can derive from the respective base types of the columns in the Table itself, but you cannot return an
@@ -96,7 +89,7 @@
      (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- su/IntGreaterThanZero result-metadata-columns]
+  ([table-id :- ms/PositiveInt result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
    (let [table-cols (table-field-names->cols table-id)]
@@ -139,15 +132,17 @@
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
         (t2/select-one GroupTableAccessPolicy :id id))
-      (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
+      (let [expected-permission-path (perms/table-sandboxed-query-path (:table_id sandbox))]
         (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
           (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
 
-(defn- pre-insert [gtap]
+(t2/define-before-insert :model/GroupTableAccessPolicy
+  [gtap]
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
-(defn- pre-update [{:keys [id], :as updates}]
+(t2/define-before-update :model/GroupTableAccessPolicy
+  [{:keys [id], :as updates}]
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
@@ -157,9 +152,3 @@
                          :status-code 400})))
       (when (:card_id updates)
         (check-columns-match-table updated)))))
-
-(mi/define-methods
- GroupTableAccessPolicy
- {:types      (constantly {:attribute_remappings ::attribute-remappings})
-  :pre-insert pre-insert
-  :pre-update pre-update})

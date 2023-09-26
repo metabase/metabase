@@ -1,10 +1,11 @@
-import { RefObject } from "react";
+import type { RefObject } from "react";
 import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import AceEditor, { ICommand, IMarker } from "react-ace";
+import type { ICommand, IMarker } from "react-ace";
+import AceEditor from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { Ace } from "ace-builds";
+import type { Ace } from "ace-builds";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { format } from "metabase-lib/expressions/format";
@@ -12,13 +13,14 @@ import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
 import { tokenize } from "metabase-lib/expressions/tokenizer";
 import { isExpression } from "metabase-lib/expressions";
+import type { Suggestion } from "metabase-lib/expressions/suggest";
+import { suggest } from "metabase-lib/expressions/suggest";
 import type { HelpText } from "metabase-lib/expressions/types";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
-import { suggest, Suggestion } from "./suggest";
 import {
   EditorContainer,
   EditorEqualsSign,
@@ -26,6 +28,7 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 ace.config.set("basePath", "/assets/ui/");
+ace.config.set("useStrictCSP", true);
 
 type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
@@ -47,6 +50,7 @@ interface ExpressionEditorTextfieldProps {
   startRule?: string;
   width?: number;
   reportTimezone?: string;
+  textAreaId?: string;
 
   onChange: (expression: Expression | null) => void;
   onError: (error: ErrorWithMessage | null) => void;
@@ -154,6 +158,14 @@ class ExpressionEditorTextfield extends React.Component<
       }
 
       this.triggerAutosuggest();
+    }
+  }
+
+  componentDidUpdate() {
+    const { textAreaId } = this.props;
+    if (this.input.current && textAreaId) {
+      const textArea = this.input.current.editor.textInput.getElement?.();
+      textArea?.setAttribute?.("id", textAreaId);
     }
   }
 
@@ -398,7 +410,9 @@ class ExpressionEditorTextfield extends React.Component<
     });
 
     this.setState({ helpText: helpText || null });
-    this.updateSuggestions(suggestions);
+    if (this.state.isFocused) {
+      this.updateSuggestions(suggestions);
+    }
   }
 
   errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {

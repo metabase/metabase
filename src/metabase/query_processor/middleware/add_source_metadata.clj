@@ -2,13 +2,14 @@
   (:require
    [clojure.walk :as walk]
    [metabase.api.common :as api]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -26,7 +27,7 @@
                   (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
+(mu/defn ^:private native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -44,13 +45,13 @@
          {:source-query source-query}))
       nil)))
 
-(s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (binding [api/*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                  {:database (:id (qp.store/database))
+                  {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level
@@ -62,8 +63,11 @@
       (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
       nil)))
 
-(s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
-  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
+(mu/defn ^:private add-source-metadata :- [:map
+                                           [:source-metadata
+                                            {:optional true}
+                                            [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                      native-source-query->metadata
                      mbql-source-query->metadata) source-query)]

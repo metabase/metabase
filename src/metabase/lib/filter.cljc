@@ -4,19 +4,26 @@
    [filter and or not = < <= > >= not-empty case])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.filter])))
+   [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -154,9 +161,12 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]
     boolean-expression]
-   (let [stage-number (clojure.core/or stage-number -1)
-         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
-     (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
+   ;; if this is a Segment metadata, convert it to `:segment` MBQL clause before adding
+   (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
+     (recur query stage-number (lib.ref/ref boolean-expression))
+     (let [stage-number (clojure.core/or stage-number -1)
+           new-filter (lib.common/->op-arg boolean-expression)]
+       (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.
@@ -170,118 +180,23 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(defmethod lib.metadata.calculation/display-name-method :mbql.filter/operator
-  [_query _stage-number {:keys [display-name]} _display-name-style]
-  display-name)
-
-(defmethod lib.metadata.calculation/display-info-method :mbql.filter/operator
-  [_query _stage-number {:keys [display-name] short-name :short}]
-  {:short-name (u/qualified-name short-name)
-   :display-name display-name})
-
-(defn- filter-operators
-  "The list of available filter operators.
-   The order of operators is relevant for the front end.
-   There are slight differences between names and ordering for the different base types."
-  [column]
-  (let [key-operators [{:short := :display-name (i18n/tru "Is")}
-                       {:short :!= :display-name (i18n/tru "Is not")}
-                       {:short :> :display-name (i18n/tru "Greater than")}
-                       {:short :< :display-name (i18n/tru "Less than")}
-                       {:short :between :display-name (i18n/tru "Between")}
-                       {:short :>= :display-name (i18n/tru "Greater than or equal to")}
-                       {:short :<= :display-name (i18n/tru "Less than or equal to")}
-                       {:short :is-null :display-name (i18n/tru "Is empty")}
-                       {:short :not-null :display-name (i18n/tru "Not empty")}]]
-    ;; The order of these clauses is important since we want to match the most relevant type
-    (condp #(lib.types.isa/isa? %2 %1) column
-      :type/PK
-      key-operators
-
-      :type/FK
-      key-operators
-
-      :type/Location
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :!= :display-name (i18n/tru "Is not")}
-       {:short :is-empty :display-name (i18n/tru "Is empty")}
-       {:short :not-empty :display-name (i18n/tru "Not empty")}
-       {:short :contains :display-name (i18n/tru "Contains")}
-       {:short :does-not-contain :display-name (i18n/tru "Does not contain")}
-       {:short :starts-with :display-name (i18n/tru "Starts with")}
-       {:short :ends-with :display-name (i18n/tru "Ends with")}]
-
-      :type/Temporal
-      [{:short :!= :display-name (i18n/tru "Excludes")}
-       {:short := :display-name (i18n/tru "Is")}
-       {:short :< :display-name (i18n/tru "Before")}
-       {:short :> :display-name (i18n/tru "After")}
-       {:short :between :display-name (i18n/tru "Between")}
-       {:short :is-null :display-name (i18n/tru "Is empty")}
-       {:short :not-null :display-name (i18n/tru "Not empty")}]
-
-      :type/Coordinate
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :!= :display-name (i18n/tru "Is not")}
-       {:short :inside :display-name (i18n/tru "Inside")}
-       {:short :> :display-name (i18n/tru "Greater than")}
-       {:short :< :display-name (i18n/tru "Less than")}
-       {:short :between :display-name (i18n/tru "Between")}
-       {:short :>= :display-name (i18n/tru "Greater than or equal to")}
-       {:short :<= :display-name (i18n/tru "Less than or equal to")}]
-
-      :type/Number
-      [{:short := :display-name (i18n/tru "Equal to")}
-       {:short :!= :display-name (i18n/tru "Not equal to")}
-       {:short :> :display-name (i18n/tru "Greater than")}
-       {:short :< :display-name (i18n/tru "Less than")}
-       {:short :between :display-name (i18n/tru "Between")}
-       {:short :>= :display-name (i18n/tru "Greater than or equal to")}
-       {:short :<= :display-name (i18n/tru "Less than or equal to")}
-       {:short :is-null :display-name (i18n/tru "Is empty")}
-       {:short :not-null :display-name (i18n/tru "Not empty")}]
-
-      :type/Text
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :!= :display-name (i18n/tru "Is not")}
-       {:short :contains :display-name (i18n/tru "Contains")}
-       {:short :does-not-contain :display-name (i18n/tru "Does not contain")}
-       {:short :is-null :display-name (i18n/tru "Is null")}
-       {:short :not-null :display-name (i18n/tru "Not null")}
-       {:short :is-empty :display-name (i18n/tru "Is empty")}
-       {:short :not-empty :display-name (i18n/tru "Not empty")}
-       {:short :starts-with :display-name (i18n/tru "Starts with")}
-       {:short :ends-with :display-name (i18n/tru "Ends with")}]
-
-      :type/TextLike
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :!= :display-name (i18n/tru "Is not")}
-       {:short :is-null :display-name (i18n/tru "Is null")}
-       {:short :not-null :display-name (i18n/tru "Not null")}
-       {:short :is-empty :display-name (i18n/tru "Is empty")}
-       {:short :not-empty :display-name (i18n/tru "Not empty")}]
-
-      :type/Boolean
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :is-null :display-name (i18n/tru "Is empty")}
-       {:short :not-null :display-name (i18n/tru "Not empty")}]
-
-      ;; default
-      [{:short := :display-name (i18n/tru "Is")}
-       {:short :!= :display-name (i18n/tru "Is not")}
-       {:short :is-null :display-name (i18n/tru "Is null")}
-       {:short :not-null :display-name (i18n/tru "Not null")}])))
-
-(def ^:private ColumnWithOperators
+(def ColumnWithOperators
+  "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
-    [:operators {:optional true} [:sequential ::lib.schema.filter/operator]]]])
+    [:operators {:optional true} [:sequential [:ref ::lib.schema.filter/operator]]]]])
 
 (mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
   "Returns the operators for which `filterable-column` is applicable."
   [filterable-column :- ColumnWithOperators]
   (:operators filterable-column))
+
+(mu/defn add-column-operators :- ColumnWithOperators
+  "Extend the column metadata with the available operators if any."
+  [column :- ::lib.schema.metadata/column]
+  (let [operators (lib.filter.operator/filter-operators column)]
+    (m/assoc-some column :operators (clojure.core/not-empty operators))))
 
 (mu/defn filterable-columns :- [:sequential ColumnWithOperators]
   "Get column metadata for all the columns that can be filtered in
@@ -303,24 +218,106 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         with-operators (fn [column]
-                          (when-let [operators (->> (filter-operators column)
-                                                    (mapv #(assoc % :lib/type :mbql.filter/operator))
-                                                    clojure.core/not-empty)]
-                            (assoc column :operators operators)))]
+   (let [stage (lib.util/query-stage query stage-number)]
      (clojure.core/not-empty
-       (into []
-             (keep with-operators)
-             columns)))))
+      (into []
+            (comp (map add-column-operators)
+                  (clojure.core/filter :operators))
+            (lib.metadata.calculation/visible-columns query stage-number stage))))))
 
-(mu/defn filter-clause
+(mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
-  [filter-operator :- ::lib.schema.filter/operator
-   column :- lib.metadata/ColumnMetadata
+  [filter-operator :- [:or ::lib.schema.filter/operator :keyword :string]
+   column          :- ::lib.schema.metadata/column
    & args]
-  {:lib/type :lib/external-op
-   :operator (:short filter-operator)
-   :args (into [column] args)})
+  (let [tag (if (map? filter-operator)
+              (:short filter-operator)
+              (keyword filter-operator))]
+    (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
+                                   (map lib.common/->op-arg args)))))
+
+(mu/defn filter-operator :- ::lib.schema.filter/operator
+  "Return the filter operator of the boolean expression `filter-clause`
+  at `stage-number` in `query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([query a-filter-clause]
+   (filter-operator query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op _ first-arg] a-filter-clause
+         stage   (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
+     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                    (lib.filter.operator/filter-operators col))
+                      (lib.filter.operator/operator-def op)))))
+
+
+(mu/defn find-filter-for-legacy-filter :- [:maybe ::lib.schema.expression/boolean]
+  "Return the filter clause in `query` at stage `stage-number` matching the legacy
+  filter clause `legacy-filter`, if any."
+  ([query :- ::lib.schema/query
+    legacy-filter]
+   (find-filter-for-legacy-filter query -1 legacy-filter))
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    legacy-filter :- some?]
+   (let [legacy-filter    (mbql.normalize/normalize-fragment [:query :filter] legacy-filter)
+         query-filters    (vec (filters query stage-number))
+         matching-filters (clojure.core/filter #(clojure.core/= (mbql.normalize/normalize-fragment
+                                                                 [:query :filter]
+                                                                 (lib.convert/->legacy-MBQL %))
+                                                                legacy-filter)
+                                               query-filters)]
+     (when (seq matching-filters)
+       (if (next matching-filters)
+         (throw (ex-info "Multiple matching filters found" {:legacy-filter    legacy-filter
+                                                            :query-filters    query-filters
+                                                            :matching-filters matching-filters}))
+         (first matching-filters))))))
+
+;; TODO: Refactor this away - handle legacy refs in `lib.js` and call `lib.equality` from there.
+(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
+  "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
+  ([query legacy-ref]
+   (find-filterable-column-for-legacy-ref query -1 legacy-ref))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?]
+   (let [a-ref   (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref)
+         columns (filterable-columns query stage-number)]
+     (lib.equality/find-matching-column a-ref columns))))
+
+(def ^:private FilterParts
+  [:map
+   [:lib/type [:= :mbql/filter-parts]]
+   [:operator ::lib.schema.filter/operator]
+   [:options ::lib.schema.common/options]
+   [:column [:maybe ColumnWithOperators]]
+   [:args [:sequential :any]]])
+
+(mu/defn filter-parts :- FilterParts
+  "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
+  Might obsolate [[filter-operator]]."
+  ([query a-filter-clause]
+   (filter-parts query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op options first-arg & rest-args] a-filter-clause
+         stage   (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
+     {:lib/type :mbql/filter-parts
+      :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                               (lib.filter.operator/filter-operators col))
+                                 (lib.filter.operator/operator-def op))
+      :options  options
+      :column   (some-> col add-column-operators)
+      :args     (vec rest-args)})))

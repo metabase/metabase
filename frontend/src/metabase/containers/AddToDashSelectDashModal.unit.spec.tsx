@@ -18,7 +18,7 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { Collection, Dashboard } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
@@ -95,7 +95,7 @@ const setup = async ({
   waitForContent = true,
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);

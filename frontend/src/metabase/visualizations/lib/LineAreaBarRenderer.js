@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
@@ -31,7 +30,10 @@ import {
 } from "./apply_axis";
 
 import { setupTooltips } from "./apply_tooltips";
-import { getTrendDataPointsFromInsight } from "./trends";
+import {
+  getNormalizedStackedTrendDatas,
+  getTrendDataPointsFromInsight,
+} from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
 import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
@@ -166,6 +168,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       }
     }
 
+    const { _raw } = props.series;
     props.series = addPercentSignsToDisplayNames(props.series);
 
     const normalizedValues = datas.flatMap(data =>
@@ -176,6 +179,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       maximumSignificantDigits: 2,
     });
     props.series = addDecimalsToPercentColumn(props.series, decimals);
+    props.series._raw = _raw;
   }
 
   datas.map((data, i) =>
@@ -671,6 +675,16 @@ function findSeriesIndexForColumnName(series, colName) {
 
 const TREND_LINE_POINT_SPACING = 25;
 
+function getTrendDatasFromInsights(insights, { xDomain, settings, parent }) {
+  const xCount = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
+  const trendDatas = insights.map(insight =>
+    getTrendDataPointsFromInsight(insight, xDomain, xCount),
+  );
+  return !isNormalized(settings)
+    ? trendDatas
+    : getNormalizedStackedTrendDatas(trendDatas);
+}
+
 function addTrendlineChart(
   { series, settings, onHoverChange },
   { xDomain },
@@ -683,23 +697,24 @@ function addTrendlineChart(
   }
 
   const rawSeries = series._raw || series;
-  const insights = rawSeries[0].data.insights || [];
-
-  for (const insight of insights) {
+  const insights = (rawSeries[0].data.insights || []).filter(insight => {
     const index = findSeriesIndexForColumnName(series, insight.col);
-
     const shouldShowSeries = index !== -1;
     const hasTrendLineData = insight.slope != null && insight.offset != null;
+    return shouldShowSeries && hasTrendLineData;
+  });
 
-    if (!shouldShowSeries || !hasTrendLineData) {
-      continue;
-    }
+  const trendDatas = getTrendDatasFromInsights(insights, {
+    xDomain,
+    settings,
+    parent,
+  });
 
+  for (const [insight, trendData] of _.zip(insights, trendDatas)) {
+    const index = findSeriesIndexForColumnName(series, insight.col);
     const seriesSettings = settings.series(series[index]);
     const color = lighten(seriesSettings.color, 0.25);
 
-    const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
-    const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
     const trendDimension = crossfilter(trendData).dimension(d => d[0]);
 
     // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart

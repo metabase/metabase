@@ -38,7 +38,7 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
-    cy.get("#detail-shortcut").click();
+    cy.findByTestId("detail-shortcut").click();
     cy.findByRole("dialog").within(() => {
       cy.findByText(/Discount/i);
       cy.findByText("Empty");
@@ -82,7 +82,7 @@ describe("scenarios > question > null", () => {
         ],
       },
       cardDetails: {
-        size_x: 8,
+        size_x: 11,
         size_y: 6,
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -134,8 +134,8 @@ describe("scenarios > question > null", () => {
           updateDashboardCards({
             dashboard_id: DASHBOARD_ID,
             cards: [
-              { card_id: Q1_ID, row: 0, col: 0, size_x: 6, size_y: 4 },
-              { card_id: Q2_ID, row: 0, col: 6, size_x: 6, size_y: 4 },
+              { card_id: Q1_ID, row: 0, col: 0, size_x: 8, size_y: 4 },
+              { card_id: Q2_ID, row: 0, col: 6, size_x: 8, size_y: 4 },
             ],
           });
 

@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
-import { IconName } from "../Icon";
+import type { ReactNode } from "react";
+import type { IconName } from "../Icon";
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 
-export type AlertVariant = "info" | "error";
+export type AlertVariant = "info" | "warning" | "error";
 
 interface AlertProps {
   children: ReactNode;

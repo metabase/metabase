@@ -2,6 +2,8 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
@@ -13,25 +15,45 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as schema]
-   [toucan.models :as models]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel User :core_user)
+(def User
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/User)
+
+(methodical/defmethod t2/table-name :model/User [_model] :core_user)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+
+(doto :model/User
+  (derive :metabase/model)
+  (derive :hook/updated-at-timestamped?))
+
+(t2/deftransforms :model/User
+  {:login_attributes mi/transform-json-no-keywordization
+   :settings         mi/transform-encrypted-json
+   :sso_source       mi/transform-keyword})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -50,7 +72,18 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
-(defn- pre-insert [{:keys [email password reset_token locale], :as user}]
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
+(t2/define-before-insert :model/User
+  [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
@@ -69,26 +102,40 @@
    (when locale
      {:locale (i18n/normalized-locale-string locale)})))
 
-(defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
+(t2/define-after-insert :model/User
+  [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
-    ;; add the newly created user to the magic perms groups
-    (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/all-users))))
+    (let [current-version (:tag config/mb-version-info)]
+      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      ;; Can't use mw.session/with-current-user due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
+        (setting/set! :last-acknowledged-version current-version)))
+    ;; add the newly created user to the magic perms groups.
+    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
-      (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/admin))))))
+      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+    (let [groups (filter some? [(perms-group/all-users)
+                                (when superuser? (perms-group/admin))])]
+      (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
+        ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
+        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; the user
+        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
+                    (for [group groups]
+                      {:user_id  user-id
+                       :group_id (u/the-id group)}))))))
 
-(defn- pre-update
-  [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
+(t2/define-before-update :model/User
+  [{:keys [id] :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
-                           :group_id (:id (perms-group/admin))
-                           :user_id  id)]
+  (let [{reset-token :reset_token
+         superuser? :is_superuser
+         active? :is_active
+         :keys [email locale]}    (t2/changes user)
+        in-admin-group?           (t2/exists? PermissionsGroupMembership
+                                              :group_id (:id (perms-group/admin))
+                                              :user_id  id)]
     ;; Do not let the last admin archive themselves
     (when (and in-admin-group?
                (false? active?))
@@ -97,7 +144,7 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (t2/insert! PermissionsGroupMembership
+        (t2/insert! (t2/table-name PermissionsGroupMembership)
                     :group_id (u/the-id (perms-group/admin))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
@@ -105,22 +152,22 @@
         (and (not superuser?)
              in-admin-group?)
         (t2/delete! (t2/table-name PermissionsGroupMembership)
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id))))
-  ;; make sure email and locale are valid if set
-  (when email
-    (assert (u/email? email)))
-  (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
-  ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
-  (when (false? active?)
-    (t2/delete! 'PulseChannelRecipient :user_id id))
-  ;; If we're setting the reset_token then encrypt it before it goes into the DB
-  (cond-> user
-    true        (merge (hashed-password-values user))
-    reset-token (update :reset_token u.password/hash-bcrypt)
-    locale      (update :locale i18n/normalized-locale-string)
-    email       (update :email u/lower-case-en)))
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)))
+    ;; make sure email and locale are valid if set
+    (when email
+      (assert (u/email? email)))
+    (when locale
+      (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
+    ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
+    (when (false? active?)
+      (t2/delete! 'PulseChannelRecipient :user_id id))
+    ;; If we're setting the reset_token then encrypt it before it goes into the DB
+    (cond-> user
+      true        (merge (hashed-password-values (t2/changes user)))
+      reset-token (update :reset_token u.password/hash-bcrypt)
+      locale      (update :locale i18n/normalized-locale-string)
+      email       (update :email u/lower-case-en))))
 
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
@@ -131,7 +178,8 @@
     (cond-> user
       common-name (assoc :common_name common-name))))
 
-(defn- post-select [user]
+(t2/define-after-select :model/User
+  [user]
   (add-common-name user))
 
 (def ^:private default-user-columns
@@ -153,18 +201,7 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(mi/define-methods
- User
- {:default-fields (constantly default-user-columns)
-  :hydration-keys (constantly [:author :creator :user])
-  :properties     (constantly {::mi/updated-at-timestamped? true})
-  :pre-insert     pre-insert
-  :post-insert    post-insert
-  :pre-update     pre-update
-  :post-select    post-select
-  :types          (constantly {:login_attributes :json-no-keywordization
-                               :settings         :encrypted-json
-                               :sso_source       :keyword})})
+(t2.default-fields/define-default-fields :model/User default-user-columns)
 
 (defmethod serdes/hash-fields User
   [_user]
@@ -179,9 +216,10 @@
 (def UserGroupMembership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  {:id                                su/IntGreaterThanZero
+  [:map
+   [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (schema/optional-key :is_group_manager) schema/Bool})
+   [:is_group_manager {:optional true} :boolean]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -266,18 +304,19 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (su/with-api-error-message
-    {su/KeywordOrString schema/Any}
+  (mu/with-api-error-message
+    [:map-of ms/KeywordOrString :any]
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
-   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
-   :email                                  su/Email
-   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
-   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
+  [:map
+   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
+   [:email                             ms/Email]
+   [:password         {:optional true} [:maybe ms/NonBlankString]]
+   [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
 
 (def DefaultUser
   "Standard form of a user (for consumption by the frontend and such)"
@@ -293,14 +332,14 @@
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  {:email      su/Email
-   :first_name (schema/maybe su/NonBlankString)
-   schema/Any  schema/Any})
+  [:map
+   [:email      ms/Email]
+   [:first_name [:maybe ms/NonBlankString]]])
 
-(schema/defn ^:private insert-new-user!
+(mu/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -308,14 +347,14 @@
   [new-user]
   (insert-new-user! new-user))
 
-(schema/defn create-and-invite-user!
+(mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
+  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(schema/defn create-new-google-auth-user!
+(mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -325,7 +364,7 @@
       (classloader/require 'metabase.email.messages)
       ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
-(schema/defn create-new-ldap-auth-user!
+(mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]
@@ -355,7 +394,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (UUID/randomUUID))
+  (u/prog1 (str user-id \_ (random-uuid))
     (t2/update! User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))
@@ -385,3 +424,12 @@
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
+
+;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
+
+;; NB: Settings are also defined where they're used, such as in metabase.events.view-log
+
+(defsetting last-acknowledged-version
+  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  :user-local :only
+  :type :string)

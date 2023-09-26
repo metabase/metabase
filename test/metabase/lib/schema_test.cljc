@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]))
 
 (deftest ^:parallel disallow-duplicate-uuids-test
@@ -25,7 +26,7 @@
     2]])
 
 (deftest ^:parallel check-aggregation-references-test
-  (let [bad-ref (str (random-uuid))
+  (let [bad-ref  (str (random-uuid))
         good-ref (:lib/uuid (second valid-ag-1))]
     (are [stage errors] (= errors
                            (me/humanize (mc/explain ::lib.schema/stage stage)))
@@ -45,6 +46,11 @@
        :aggregation  [valid-ag-1]
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
+
+      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
+      {:lib/type                           :mbql.stage/mbql
+       :metabase.lib.stage/cached-metadata {:field-ref [:aggregation 0]}}
+      ["Invalid :aggregation reference: [:aggregation 0]"]
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql
@@ -147,24 +153,24 @@
     ["Invalid :field reference in stage 0: no join named \"X\""]
 
     ;; join referencing another join: should be OK
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "A" [:=
-                                      {:lib/uuid (str (random-uuid))}
-                                      [:field {:lib/uuid (str (random-uuid))} 1]
-                                      [:field {:lib/uuid (str (random-uuid))} 2]])
-                     (valid-join "B" [:=
-                                      {:lib/uuid (str (random-uuid))}
-                                      [:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
-                                      [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 2]])]
-      :fields       [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
-                     [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 1]]}]
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "A" [:=
+                                     {:lib/uuid (str (random-uuid))}
+                                     [:field {:lib/uuid (str (random-uuid))} 1]
+                                     [:field {:lib/uuid (str (random-uuid))} 2]])
+                    (valid-join "B" [:=
+                                     {:lib/uuid (str (random-uuid))}
+                                     [:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
+                                     [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 2]])]
+      :fields      [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
+                    [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 1]]}]
     nil
 
     ;; reference for a join from a previous stage: should be ok
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "Y")]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "Y")]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     nil
@@ -178,17 +184,33 @@
 
     ;; we have no way of knowing what sort of joins are inside a Card, so if we have a Card source query unfortunately
     ;; we're just going to have to skip validation for now.
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "X")]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "X")]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     nil
 
     ;; apparently, this is also allowed for join aliases introduced inside the joins themselves =(
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(assoc-in (valid-join "X") [:stages 0 :joins] [(valid-join "A")])]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(assoc-in (valid-join "X") [:stages 0 :joins] [(valid-join "A")])]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]]}]
     nil))
+
+(deftest ^:parallel enforce-distinct-breakouts-and-fields-test
+  (let [duplicate-refs [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]]
+    (testing #'lib.schema.util/distinct-refs?
+      (is (not (#'lib.schema.util/distinct-refs? duplicate-refs))))
+    (testing "breakouts/fields schemas"
+      (are [schema error] (= error
+                             (me/humanize (mc/explain schema duplicate-refs)))
+        ::lib.schema/breakouts ["Breakouts must be distinct"]
+        ::lib.schema/fields    [":fields must be distinct"]))
+    (testing "stage schema"
+      (are [k error] (= error
+                        (me/humanize (mc/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
+        :breakout {:breakout ["Breakouts must be distinct"]}
+        :fields   {:fields [":fields must be distinct"]}))))

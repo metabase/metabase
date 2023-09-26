@@ -1,4 +1,6 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
@@ -27,17 +29,17 @@ export const HomeLayout = ({
   const hasIllustration = useSelector(getHasIllustration);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot data-testid="home-page">
       {hasIllustration && <LayoutIllustration />}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (
-        <Tooltip tooltip="Pick a dashboard to serve as the homepage">
+        <Tooltip tooltip={t`Pick a dashboard to serve as the homepage`}>
           <LayoutEditButton
             icon="pencil"
             borderless
             onClick={() => setShowModal(true)}
           >
-            Customize
+            {t`Customize`}
           </LayoutEditButton>
         </Tooltip>
       )}

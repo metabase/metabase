@@ -52,7 +52,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: color-mod(var(--color-brand) alpha(-96%));
+  background-color: var(--color-brand-alpha-04);
 }
 
 .ContentTable tr:hover .Table-actions {
@@ -114,11 +114,6 @@
   padding-left: 1.5em;
   padding-right: 1.5em;
   box-shadow: 0 1px 2px var(--color-shadow);
-}
-
-.AdminList-item.disabled {
-  color: var(--color-text-medium);
-  pointer-events: none;
 }
 
 .AdminList-section {

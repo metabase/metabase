@@ -19,6 +19,15 @@ h6,
   margin-bottom: var(--default-header-margin);
 }
 
+/**
+ * Correct the font size on `h1` elements within `section` and
+ * `article` contexts in Chrome, Firefox, and Safari.
+ * https://github.com/necolas/normalize.css/blob/fc091cc/normalize.css#L40
+ */
+h1 {
+  font-size: 2em;
+}
+
 .h1 {
   font-size: 2em;
 }

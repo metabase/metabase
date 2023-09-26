@@ -1,4 +1,5 @@
-import { ChangeEvent, MouseEvent, useCallback, useMemo, useState } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
@@ -9,17 +10,24 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/core/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import {
+import type {
   DatabaseId,
   SchemaId,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
-import Table from "metabase-lib/metadata/Table";
+import type { Dispatch, State } from "metabase-types/store";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
+import type Table from "metabase-lib/metadata/Table";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import {
+  AdminListItem,
+  BackIconContainer,
+  HideIconButton,
+} from "./MetadataTableList.styled";
+
+const RELOAD_INTERVAL = 2000;
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -179,10 +187,10 @@ interface TableBreadcrumbsProps {
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
     <h4 className="p2 border-bottom break-anywhere">
-      <span className="text-brand cursor-pointer" onClick={onBack}>
+      <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
-      </span>
+      </BackIconContainer>
       <span className="mx1">-</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
@@ -257,22 +265,25 @@ const TableRow = ({
 
   return (
     <li className="hover-parent hover--visibility">
-      <a
+      <AdminListItem
+        disabled={!isSyncCompleted(table)}
+        onClick={handleSelect}
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
           { selected: isSelected },
         )}
-        onClick={handleSelect}
       >
         {table.displayName()}
-        <div className="hover-child float-right">
-          <ToggleVisibilityButton
-            tables={tables}
-            isHidden={table.visibility_type != null}
-            onUpdateTableVisibility={onUpdateTableVisibility}
-          />
-        </div>
-      </a>
+        {isSyncCompleted(table) && (
+          <div className="hover-child float-right">
+            <ToggleVisibilityButton
+              tables={tables}
+              isHidden={table.visibility_type != null}
+              onUpdateTableVisibility={onUpdateTableVisibility}
+            />
+          </div>
+        )}
+      </AdminListItem>
     </li>
   );
 };
@@ -305,17 +316,13 @@ const ToggleVisibilityButton = ({
 
   return (
     <Tooltip tooltip={tooltip}>
-      <IconButtonWrapper
-        className={cx(
-          "float-right",
-          loading ? "cursor-not-allowed" : "text-brand-hover",
-        )}
+      <HideIconButton
         disabled={loading}
         aria-label={tooltip}
         onClick={handleClick}
       >
         <Icon name={isHidden ? "eye" : "eye_crossed_out"} size={18} />
-      </IconButtonWrapper>
+      </HideIconButton>
     </Tooltip>
   );
 };
@@ -328,6 +335,14 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
+const getReloadInterval = (
+  _state: State,
+  _props: TableLoaderProps,
+  tables = [],
+) => {
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+};
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
@@ -338,6 +353,7 @@ export default _.compose(
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
     selectorName: "getListUnfiltered",
+    reloadInterval: getReloadInterval,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableList);

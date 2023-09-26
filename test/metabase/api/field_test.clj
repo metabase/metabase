@@ -15,7 +15,6 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -206,17 +205,17 @@
 (deftest update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
     (testing "target should be hydrated"
-      (mt/with-temp* [Field [fk-field-1]
-                      Field [fk-field-2]
-                      Field [field {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+      (mt/with-temp [Field fk-field-1 {}
+                     Field fk-field-2 {}
+                     Field field {:semantic_type :type/FK :fk_target_field_id (:id fk-field-1)}]
         (is (= (:id fk-field-2)
                (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
     (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
-      (mt/with-temp* [Field [{fk-field-id :id}]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id fk-field-id}]]
+      (mt/with-temp [Field {fk-field-id :id} {}
+                     Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
         (let [original-val (boolean (t2/select-one-fn :fk_target_field_id Field, :id field-id))]
           (testing "before API call"
             (is (= true
@@ -278,8 +277,8 @@
 (deftest update-field-values-no-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Human readable values are optional"
-      (mt/with-temp* [Field       [{field-id :id} list-field]
-                      FieldValues [_              {:values (range 5 10), :field_id field-id}]]
+      (mt/with-temp [Field       {field-id :id} list-field
+                     FieldValues _              {:values (range 5 10) :field_id field-id}]
         (testing "fetch initial values"
           (is (= {:values [[5] [6] [7] [8] [9]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
@@ -297,8 +296,8 @@
 (deftest update-field-values-with-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
-      (mt/with-temp* [Field [{field-id :id} list-field]
-                      FieldValues [_ {:values (conj (range 1 5) nil), :field_id field-id}]]
+      (mt/with-temp [Field {field-id :id} list-field
+                     FieldValues _ {:values (conj (range 1 5) nil) :field_id field-id}]
         (testing "fetch initial values"
           (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
@@ -351,8 +350,8 @@
 
       (testing "should be able to unset just the human-readable values"
         (t2.with-temp/with-temp [FieldValues _ {:values                (range 1 5)
-                                      :field_id              field-id
-                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+                                                :field_id              field-id
+                                                :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -371,7 +370,7 @@
 
 (defn- dimension-for-field [field-id]
   (-> (t2/select-one Field :id field-id)
-      (hydrate :dimensions)
+      (t2/hydrate :dimensions)
       :dimensions
       first))
 
@@ -382,18 +381,19 @@
 
 (deftest update-display-name-dimension-test
   (testing "Updating a field's display_name should update the dimension's name"
-    (mt/with-temp* [Database  [db    {:name "field-db" :engine :h2}]
-                    Table     [table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Table     [table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}]
-                    Field     [field {:name          "WIDGET_ID"
-                                      :display_name  "Widget ID"
-                                      :table_id      (:id table2)
-                                      :semantic_type :type/FK}]
-                    Field     [human-readable-field {:name "Name" :table_id (:id table1)}]
-                    Dimension [_dim  {:field_id                (:id field)
-                                      :name                    (:display_name field)
-                                      :type                    :external
-                                      :human_readable_field_id (:id human-readable-field)}]]
+    (mt/with-temp
+      [Database  db    {:name "field-db" :engine :h2}
+       Table     table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+       Table     table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}
+       Field     field {:name          "WIDGET_ID"
+                        :display_name  "Widget ID"
+                        :table_id      (:id table2)
+                        :semantic_type :type/FK}
+       Field     human-readable-field {:name "Name" :table_id (:id table1)}
+       Dimension _dim  {:field_id                (:id field)
+                        :name                    (:display_name field)
+                        :type                    :external
+                        :human_readable_field_id (:id human-readable-field)}]
       (testing "before update"
         (is (= "Widget ID"
                (:name (dimension-for-field (:id field))))))
@@ -403,7 +403,7 @@
                (:name (dimension-for-field (:id field)))))))))
 
 (deftest create-update-dimension-test
-  (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
+  (mt/with-temp [Field {field-id :id} {:name "Field Test"}]
     (testing "no dimension should exist for a new Field"
       (is (= nil
              (dimension-for-field field-id))))
@@ -442,8 +442,8 @@
 
 (deftest create-dimension-with-human-readable-field-id-test
   (testing "POST /api/field/:id/dimension"
-    (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
-                    Field [{field-id-2 :id} {:name "Field Test 2"}]]
+    (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
+                   Field {field-id-2 :id} {:name "Field Test 2"}]
       (testing "before creation"
         (is (= nil
                (dimension-for-field field-id-1))))
@@ -505,9 +505,9 @@
 (deftest clear-external-dimension-when-fk-semantic-type-is-removed-test
   (testing "PUT /api/field/:id"
     (testing "When an FK field gets it's semantic_type removed, we should clear the external dimension"
-      (mt/with-temp* [Field [{field-id-1 :id} {:name          "Field Test 1"
-                                               :semantic_type :type/FK}]
-                      Field [{field-id-2 :id} {:name "Field Test 2"}]]
+      (mt/with-temp [Field {field-id-1 :id} {:name          "Field Test 1"
+                                             :semantic_type :type/FK}
+                     Field {field-id-2 :id} {:name "Field Test 2"}]
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (testing "before update"
@@ -528,9 +528,9 @@
 (deftest update-field-should-not-affect-dimensions-test
   (testing "PUT /api/field/:id"
     (testing "Updating unrelated properties should not affect a Field's `:dimensions`"
-      (mt/with-temp* [Field [{field-id-1 :id} {:name          "Field Test 1"
-                                               :semantic_type :type/FK}]
-                      Field [{field-id-2 :id} {:name "Field Test 2"}]]
+      (mt/with-temp [Field {field-id-1 :id} {:name          "Field Test 1"
+                                             :semantic_type :type/FK}
+                     Field {field-id-2 :id} {:name "Field Test 2"}]
         ;; create the Dimension
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
@@ -554,10 +554,10 @@
 
 (deftest remove-fk-semantic-type-test-2
   (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
-    (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
-                    Field [{field-id-2 :id} {:name               "Field Test 2"
-                                             :semantic_type      :type/FK
-                                             :fk_target_field_id field-id-1}]]
+    (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
+                   Field {field-id-2 :id} {:name               "Field Test 2"
+                                           :semantic_type      :type/FK
+                                           :fk_target_field_id field-id-1}]
       (testing "before change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -582,11 +582,11 @@
 
 (deftest update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
-    (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
-                    Field [{field-id-2 :id} {:name "Field Test 2"}]
-                    Field [{field-id-3 :id} {:name               "Field Test 3"
-                                             :semantic_type      :type/FK
-                                             :fk_target_field_id field-id-1}]]
+    (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
+                   Field {field-id-2 :id} {:name "Field Test 2"}
+                   Field {field-id-3 :id} {:name               "Field Test 3"
+                                           :semantic_type      :type/FK
+                                           :fk_target_field_id field-id-1}]
       (let [before-change (simple-field-details (t2/select-one Field :id field-id-3))]
         (testing "before change"
           (is (= {:name               "Field Test 3"
@@ -615,8 +615,8 @@
 
 (deftest update-fk-target-field-id-with-fk-test
   (testing "Checking update of the fk_target_field_id along with an FK change"
-    (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
-                    Field [{field-id-2 :id} {:name "Field Test 2"}]]
+    (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
+                   Field {field-id-2 :id} {:name "Field Test 2"}]
 
       (testing "before change"
         (is (= {:name               "Field Test 2"
@@ -644,10 +644,10 @@
 (deftest fk-target-field-id-shouldnt-change-test
   (testing "PUT /api/field/:id"
     (testing "fk_target_field_id and FK should remain unchanged on updates of other fields"
-      (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
-                      Field [{field-id-2 :id} {:name               "Field Test 2"
-                                               :semantic_type      :type/FK
-                                               :fk_target_field_id field-id-1}]]
+      (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
+                     Field {field-id-2 :id} {:name               "Field Test 2"
+                                             :semantic_type      :type/FK
+                                             :fk_target_field_id field-id-1}]
         (testing "before change"
           (is (= {:name               "Field Test 2"
                   :display_name       "Field Test 2"
@@ -674,7 +674,7 @@
   (testing "PUT /api/field/:id"
     (testing "Changing a remapped field's type to something that can't be remapped will clear the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
@@ -693,7 +693,7 @@
 
     (testing "Change from supported type to supported type will leave the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
                         :entity_id               true
@@ -755,16 +755,38 @@
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :venues :name))
                                       (t2/select-one Field :id (mt/id :venues :name))
                                       "Red"
                                       nil))))
     (tqpt/test-timeseries-drivers
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"
+                                      nil))))))
+
+(deftest search-values-with-field-and-search-field-is-fk-test
+  (testing "searching on a PK field should work (#32985)"
+    ;; normally PKs are ids so it's not possible to do search, because search are for text fields only
+    ;; but with a special setup you can have a PK that is text. In this case we should be able to search for it
+    (mt/with-discard-model-updates [:model/Field]
+      ;; Ngoc: users.name is a FK to categories.name ?
+      ;; I know this is weird but this test doesn't need to make sense
+      ;; A real use case is : you have a user.email as text => set email as PK
+      ;; Another field review.email => you set it up so that it's a FK to user.email
+      ;; And the desired behavior is you can search for review.email, where the query
+      ;; should query for email from user.email
+      (t2/update! :model/Field (mt/id :categories :name) {:semantic_type :type/PK})
+      (t2/update! :model/Field (mt/id :users :name) {:semantic_type      :type/FK
+                                                     :has_field_values   "search"
+                                                     :fk_target_field_id (mt/id :categories :name)})
+
+      (is (= [["African"]]
+             (api.field/search-values (t2/select-one :model/Field (mt/id :users :name))
+                                      (t2/select-one :model/Field (mt/id :users :name))
+                                      "African"
                                       nil))))))
 
 (deftest field-values-remapped-fields-test
@@ -794,11 +816,11 @@
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
         (let [database (t2/select-one Database :id (mt/id))]
-          (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding true)}]]
+          (mt/with-temp [Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding true)}]
             (mt/with-db database
               ;; Sync the new database
               (sync/sync-database! database)
@@ -835,12 +857,12 @@
 
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]
           (testing "When json_unfolding is disabled at the DB level on the first sync"
             ;; Create a new database with the same details as the json dataset, with json unfolding disabled
-            (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding false)}]]
+            (mt/with-temp [Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding false)}]
               (mt/with-db database
                 ;; Sync the new database
                 (sync/sync-database! database)

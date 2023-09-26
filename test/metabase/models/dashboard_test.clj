@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
-   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.test :as mt]
@@ -20,11 +19,9 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.util UUID)
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -61,10 +58,8 @@
               :archived            false
               :collection_position nil
               :enable_embedding    false
-              :made_public_by_id   nil
               :embedding_params    nil
-              :parameters          []
-              :public_uuid         nil}
+              :parameters          []}
              (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
                      :cards
                      (fn [[{:keys [id card_id series], :as card}]]
@@ -94,10 +89,10 @@
                                      :position 0}]}
               (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
 
-(deftest diff-dashboards-str-test
+(deftest ^:parallel diff-dashboards-str-test
   (testing "update general info ---"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:name        "Diff Test"
        :description nil
        :cards       []}
@@ -159,7 +154,7 @@
 (deftest ^:parallel diff-dashboards-str-update-cards-test
   (testing "update cards ---"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:cards [{:id 1} {:id 2}]}
       {:cards [{:id 1} {:id 2} {:id 3}]}
       "added a card."
@@ -179,7 +174,7 @@
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
-           (build-sentence
+           (u/build-sentence
              (revision/diff-strings
                Dashboard
                {:name "Apple"}
@@ -189,7 +184,7 @@
     (t2.with-temp/with-temp
       [Collection {coll-id :id} {:name "New collection"}]
       (is (= "moved this Dashboard to New collection."
-             (build-sentence
+             (u/build-sentence
               (revision/diff-strings
                Dashboard
                {:name "Apple"}
@@ -199,7 +194,7 @@
       [Collection {coll-id-1 :id} {:name "Old collection"}
        Collection {coll-id-2 :id} {:name "New collection"}]
       (is (= "moved this Dashboard from Old collection to New collection."
-             (build-sentence
+             (u/build-sentence
               (revision/diff-strings
                Dashboard
                {:name          "Apple"
@@ -210,7 +205,7 @@
 (deftest ^:parallel diff-dashboards-str-update-tabs-test
   (testing "update tabs"
     (are [x y expected] (= expected
-                           (build-sentence (revision/diff-strings Dashboard x y)))
+                           (u/build-sentence (revision/diff-strings Dashboard x y)))
       {:tabs [{:id 0 :name "First tab" :position 0}]}
       {:tabs [{:id 0 :name "First tab" :position 0}
               {:id 1 :name "Second tab" :position 1}]}
@@ -269,7 +264,7 @@
                                                                 value)
                                (= col :made_public_by_id) (mt/user->id :crowberto)
                                (= col :embedding_params)  {:category_name "locked"}
-                               (= col :public_uuid)       (str (UUID/randomUUID))
+                               (= col :public_uuid)       (str (random-uuid))
                                (int? value)               (inc value)
                                (boolean? value)           (not value)
                                (string? value)            (str value "_changed")))]
@@ -288,7 +283,7 @@
                 ;; public_uuid will changes and we had a description for it.
                 (when-not (#{:made_public_by_id} col)
                   (testing (format "we should have a revision description for %s" col)
-                    (is (some? (build-sentence
+                    (is (some? (u/build-sentence
                                  (revision/diff-strings
                                    Dashboard
                                    before
@@ -367,10 +362,8 @@
                                 :archived            false
                                 :collection_position nil
                                 :enable_embedding    false
-                                :made_public_by_id   nil
                                 :embedding_params    nil
-                                :parameters          []
-                                :public_uuid         nil}
+                                :parameters          []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
@@ -394,10 +387,8 @@
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
-                :made_public_by_id   nil
                 :embedding_params    nil
-                :parameters          []
-                :public_uuid         nil}
+                :parameters          []}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
@@ -432,10 +423,8 @@
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
-                :made_public_by_id   nil
                 :embedding_params    nil
-                :parameters          []
-                :public_uuid         nil}
+                :parameters          []}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
@@ -649,13 +638,13 @@
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
         (is (schema= u/uuid-regex
                      (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 
@@ -783,7 +772,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\" namespace"
-               (t2/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
+               (t2/insert! Dashboard (assoc (t2.with-temp/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! Dashboard :name dashboard-name)))))
 
@@ -813,16 +802,16 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp* [Card      [{card-id :id}]
-                        Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                     :slug   "category_name"
-                                                                     :id     "_CATEGORY_NAME_"
-                                                                     :type   "category"
-                                                                     :values_query_type    "list"
-                                                                     :values_source_type   "card"
-                                                                     :values_source_config {:card_id card-id
-                                                                                            :value_field [:field 2 nil]}
-                                                                     :target target}]}]]
+        (mt/with-temp [Card      {card-id :id} {}
+                       Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                   :slug   "category_name"
+                                                                   :id     "_CATEGORY_NAME_"
+                                                                   :type   "category"
+                                                                   :values_query_type    "list"
+                                                                   :values_source_type   "card"
+                                                                   :values_source_config {:card_id card-id
+                                                                                          :value_field [:field 2 nil]}
+                                                                   :target target}]}]
           (is (= [{:name   "Category Name"
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
@@ -846,15 +835,15 @@
               (t2/select-one-fn :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
-    (mt/with-temp* [Card      [{card-id :id}]
-                    Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                 :slug   "category_name"
-                                                                 :id     "_CATEGORY_NAME_"
-                                                                 :type   "category"
-                                                                 :values_query_type    "list"
-                                                                 :values_source_type   "card"
-                                                                 :values_source_config {:card_id card-id
-                                                                                        :value_field [:field 2 nil]}}]}]]
+    (mt/with-temp [Card      {card-id :id} {}
+                   Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                               :slug   "category_name"
+                                                               :id     "_CATEGORY_NAME_"
+                                                               :type   "category"
+                                                               :values_query_type    "list"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id card-id
+                                                                                      :value_field [:field 2 nil]}}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -867,46 +856,46 @@
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection [c1   {:name "top level" :location "/" :created_at now}]
-                      Dashboard  [dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]]
+      (t2.with-temp/with-temp [Collection c1   {:name "top level" :location "/" :created_at now}
+                               Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
         (is (= "8cbf93b7"
                (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) now])
                (serdes/identity-hash dash)))))))
 
 (deftest descendants-test
   (testing "dashboard which have parameter's source is another card"
-    (mt/with-temp* [Field     [field     {:name "A field"}]
-                    Card      [card      {:name "A card"}]
-                    Dashboard [dashboard {:name       "A dashboard"
-                                          :parameters [{:id "abc"
-                                                        :type "category"
-                                                        :values_source_type "card"
-                                                        :values_source_config {:card_id     (:id card)
-                                                                               :value_field [:field (:id field) nil]}}]}]]
+    (t2.with-temp/with-temp [Field     field     {:name "A field"}
+                             Card      card      {:name "A card"}
+                             Dashboard dashboard {:name       "A dashboard"
+                                                  :parameters [{:id "abc"
+                                                                :type "category"
+                                                                :values_source_type "card"
+                                                                :values_source_config {:card_id     (:id card)
+                                                                                       :value_field [:field (:id field) nil]}}]}]
       (is (= #{["Card" (:id card)]}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
-      (mt/with-temp* [Dashboard [dashboard {:name "A dashboard"}]
-                      DashboardCard [_ {:action_id          action-id
-                                        :dashboard_id       (:id dashboard)
-                                        :parameter_mappings []}]]
+      (mt/with-temp [Dashboard dashboard {:name "A dashboard"}
+                     DashboardCard _ {:action_id          action-id
+                                      :dashboard_id       (:id dashboard)
+                                      :parameter_mappings []}]
         (is (= #{["Action" action-id]}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
-    (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
-                    Card          [card2     {:name "Card attached to parameters"}]
-                    Dashboard     [dashboard {:parameters [{:name "Category Name"
-                                                            :slug "category_name"
-                                                            :id   "_CATEGORY_NAME_"
-                                                            :type "category"}]}]
-                    DashboardCard [_         {:card_id            (:id card1)
-                                              :dashboard_id       (:id dashboard)
-                                              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                                    :card_id      (:id card2)
-                                                                    :target       [:dimension (mt/$ids $categories.name)]}]}]]
+    (t2.with-temp/with-temp [Card          card1     {:name "Card attached to dashcard"}
+                             Card          card2     {:name "Card attached to parameters"}
+                             Dashboard     dashboard {:parameters [{:name "Category Name"
+                                                                    :slug "category_name"
+                                                                    :id   "_CATEGORY_NAME_"
+                                                                    :type "category"}]}
+                             DashboardCard _         {:card_id            (:id card1)
+                                                      :dashboard_id       (:id dashboard)
+                                                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                            :card_id      (:id card2)
+                                                                            :target       [:dimension (mt/$ids $categories.name)]}]}]
       (is (= #{["Card" (:id card1)]
                ["Card" (:id card2)]}
              (serdes/descendants "Dashboard" (:id dashboard)))))))

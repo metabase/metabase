@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
+import type { Location } from "history";
 import { TabRow } from "metabase/core/components/TabRow";
 import { TabButton } from "metabase/core/components/TabButton";
-import { SelectedTabId } from "metabase-types/store";
+import type { SelectedTabId } from "metabase-types/store";
 import { Sortable } from "metabase/core/components/Sortable";
 
 import {
@@ -10,13 +11,17 @@ import {
   CreateTabButton,
   PlaceholderTab,
 } from "./DashboardTabs.styled";
-import { useDashboardTabs } from "./useDashboardTabs";
+import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
+  location: Location;
   isEditing?: boolean;
 }
 
-export function DashboardTabs({ isEditing = false }: DashboardTabsProps) {
+export function DashboardTabs({
+  location,
+  isEditing = false,
+}: DashboardTabsProps) {
   const {
     tabs,
     createNewTab,
@@ -25,7 +30,7 @@ export function DashboardTabs({ isEditing = false }: DashboardTabsProps) {
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs();
+  } = useDashboardTabs({ location });
   const showTabs = tabs.length > 1 || isEditing;
   const showPlaceholder = tabs.length <= 1 && isEditing;
 
@@ -42,9 +47,7 @@ export function DashboardTabs({ isEditing = false }: DashboardTabsProps) {
         handleDragEnd={moveTab}
       >
         {showPlaceholder ? (
-          <PlaceholderTab
-            label={tabs.length === 1 ? tabs[0].name : t`Page 1`}
-          />
+          <PlaceholderTab label={tabs.length === 1 ? tabs[0].name : t`Tab 1`} />
         ) : (
           tabs.map(tab => (
             <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>

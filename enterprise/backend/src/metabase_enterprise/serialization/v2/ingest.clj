@@ -5,6 +5,7 @@
   See the detailed description of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
@@ -61,6 +62,7 @@
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
   (into {} (for [^File file (file-seq root-dir)
                  :when      (and (.isFile file)
+                                 (str/ends-with? (.getName file) ".yaml")
                                  (let [rel (.relativize (.toPath root-dir) (.toPath file))]
                                    (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
                  ;; TODO: only load YAML once.

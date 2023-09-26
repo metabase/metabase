@@ -1,4 +1,5 @@
 import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
@@ -7,14 +8,14 @@ describe("scenarios > models > revision history", () => {
   });
 
   beforeEach(() => {
-    cy.request("PUT", "/api/card/3", {
+    cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
       dataset: true,
     });
   });
 
   it("should allow reverting to a saved question state and back into a model again", () => {
-    visitModel(3);
+    visitModel(ORDERS_BY_YEAR_QUESTION_ID);
 
     openRevisionHistory();
     revertTo("You created this");

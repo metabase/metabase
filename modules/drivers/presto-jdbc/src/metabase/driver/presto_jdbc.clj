@@ -24,30 +24,21 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
-   (java.sql
-     Connection
-     PreparedStatement
-     ResultSet
-     ResultSetMetaData
-     Time
-     Types)
-   (java.time
-     LocalDateTime
-     LocalTime
-     OffsetDateTime
-     OffsetTime
-     ZonedDateTime)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
@@ -310,7 +301,7 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (hx/type-info expr)
         db-type     (hx/type-info->db-type type-info)]
@@ -392,13 +383,13 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))]
     (hx/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
   [_ _ expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         millis      (hx/call (u/qualified-name ::mod) expr 1000)]
     (hx/call :date_add
              (hx/literal "millisecond")
@@ -587,28 +578,34 @@
 
 (defmethod driver/describe-database :presto-jdbc
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                       jdbc/get-connection)]
-    (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                             (all-schemas driver conn catalog))]
-      {:tables (reduce set/union schemas)})))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
+                       (all-schemas driver conn catalog))]
+       {:tables (reduce set/union #{} schemas)}))))
 
 (defmethod driver/describe-table :presto-jdbc
   [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                     jdbc/get-connection)]
-    (let [sql (describe-table-sql driver catalog schema table-name)]
-      (log/trace (trs "Running statement in describe-table: {0}" sql))
-      {:schema schema
-       :name   table-name
-       :fields (into
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [sql (describe-table-sql driver catalog schema table-name)]
+       (log/trace (trs "Running statement in describe-table: {0}" sql))
+       {:schema schema
+        :name   table-name
+        :fields (into
                  #{}
                  (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                {:name column
-                                 :database-type type
+                                {:name              column
+                                 :database-type     type
                                  :base-type         (presto-type->base-type type)
                                  :database-position idx}))
-                 (jdbc/reducible-query {:connection conn} sql))})))
+                 (jdbc/reducible-query {:connection conn} sql))}))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
@@ -657,26 +654,47 @@
   ^PrestoConnection [^C3P0ProxyConnection pooled-conn]
   (.unwrap pooled-conn PrestoConnection))
 
-(defmethod sql-jdbc.execute/connection-with-timezone :presto-jdbc
-  [driver database ^String timezone-id]
+;;; for some insane reason Presto's JDBC driver does not seem to work properly when reusing a Connection to execute
+;;; multiple PreparedStatements... this breaks the test-data loading code. To work around that, we'll track the original
+;;; Connection spec from the top-level call, and if the `:presto-jdbc/force-fresh?` is passed in to recursive calls
+;;; we'll create a NEW connection using the original spec every time. See for example the code
+;;; in [[metabase.test.data.presto-jdbc]]
+(def ^:dynamic ^:private *original-connection-spec* nil)
+
+(defn- set-connection-options! [driver ^java.sql.Connection conn {:keys [^String session-timezone write?], :as _options}]
+  (let [underlying-conn (pooled-conn->presto-conn conn)]
+    (sql-jdbc.execute/set-best-transaction-level! driver conn)
+    (when-not (str/blank? session-timezone)
+      ;; set session time zone if defined
+      (.setTimeZoneId underlying-conn session-timezone))
+    ;; as with statement and prepared-statement, cannot set holdability on the connection level
+    (let [read-only? (not write?)]
+      (try
+        (.setReadOnly conn read-only?)
+        (catch Throwable e
+          (log/debug e (trs "Error setting connection read-only to {0}" (pr-str read-only?))))))))
+
+(defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
+  [driver db-or-id-or-spec options f]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
   ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request.
-  (let [conn            (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))
-        underlying-conn (pooled-conn->presto-conn conn)]
-    (try
-      (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      (when-not (str/blank? timezone-id)
-        ;; set session time zone if defined
-        (.setTimeZoneId underlying-conn timezone-id))
-      (try
-        (.setReadOnly conn true)
-        (catch Throwable e
-          (log/debug e (trs "Error setting connection to read-only"))))
-      ;; as with statement and prepared-statement, cannot set holdability on the connection level
-      conn
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+  (cond
+    (nil? *original-connection-spec*)
+    (binding [*original-connection-spec* db-or-id-or-spec]
+      (sql-jdbc.execute/do-with-connection-with-options driver db-or-id-or-spec options f))
+
+    (:presto-jdbc/force-fresh? options)
+    (sql-jdbc.execute/do-with-connection-with-options driver *original-connection-spec* (dissoc options :presto-jdbc/force-fresh?) f)
+
+    :else
+    (sql-jdbc.execute/do-with-resolved-connection
+     driver
+     db-or-id-or-spec
+     (dissoc options :session-timezone)
+     (fn [^java.sql.Connection conn]
+       (when-not (sql-jdbc.execute/recursive-connection?)
+         (set-connection-options! driver conn options))
+       (f conn)))))
 
 (defn- date-time->substitution [ts-str]
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))
@@ -687,7 +705,7 @@
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   #_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))

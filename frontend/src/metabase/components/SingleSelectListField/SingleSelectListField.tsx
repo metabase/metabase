@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
-import Input, { InputProps } from "metabase/core/components/Input";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
 import {
   OptionContainer,
   OptionsList,
@@ -14,7 +15,7 @@ import {
   OptionItem,
   FilterInputContainer,
 } from "./SingleSelectListField.styled";
-import { SingleSelectListFieldProps, Option } from "./types";
+import type { SingleSelectListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(

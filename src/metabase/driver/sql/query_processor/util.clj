@@ -1,5 +1,7 @@
 (ns metabase.driver.sql.query-processor.util
-  (:require [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -12,10 +14,9 @@
   Ultimately, this is just a way to get the parent identifier
 
   (metabase.util.honeysql-extensions/identifier :field \"blah\")"
-  [field-identifier field]
+  [field-identifier {:keys [nfc-path], :as _field}]
   {:pre [(hx/identifier? field-identifier)]}
-  (let [nfc-path          (:nfc_path field)
-        parent-components (-> (case hx/*honey-sql-version*
+  (let [parent-components (-> (case hx/*honey-sql-version*
                                 1 (:components field-identifier)
                                 2 (last field-identifier))
                               (vec)

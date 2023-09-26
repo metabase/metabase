@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql.util :as sql.u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest ^:parallel quote-name-test
@@ -11,7 +12,7 @@
     :h2       "\"wow\""
     :postgres "\"wow\""))
 
-(deftest select-clause-deduplicate-aliases
+(deftest ^:parallel select-clause-deduplicate-aliases
   (testing 'select-clause-deduplicate-aliases
     (testing "should use the last component of an identifier as the alias if it does not already have one"
       (is (= [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
@@ -38,7 +39,7 @@
                (hx/identifier :field "E" "D")
                [(hx/identifier :field "F")            (hx/identifier :field-alias "D_2")]]))))))
 
-(deftest escape-sql-test
+(deftest ^:parallel escape-sql-test
   (doseq [[escape-strategy s->expected]
           {:ansi
            {"Tito's Tacos"          "Tito''s Tacos"

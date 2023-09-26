@@ -36,7 +36,7 @@ export function selectPermissionRow(item, permissionIndex) {
   getPermissionRowPermissions(item).eq(permissionIndex).click();
 }
 
-function getPermissionRowPermissions(item) {
+export function getPermissionRowPermissions(item) {
   return cy
     .findByTestId("permission-table")
     .find("tbody > tr")

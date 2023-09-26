@@ -9,20 +9,18 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type { Group, GroupsPermissions } from "metabase-types/api";
+import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
 } from "../confirmations";
-import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { TableEntityId, PermissionSectionConfig } from "../../types";
+import type { TableEntityId, PermissionSectionConfig } from "../../types";
 
 const buildAccessPermission = (
   entityId: TableEntityId,
@@ -69,7 +67,9 @@ const buildAccessPermission = (
   return {
     permission: "data",
     type: "access",
-    isDisabled: isAdmin || PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value),
+    isDisabled:
+      isAdmin ||
+      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields"),
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value,
@@ -93,14 +93,16 @@ const buildNativePermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  accessPermissionValue: string,
 ) => {
   return {
     permission: "data",
     type: "native",
     isDisabled: true,
-    disabledTooltip: isAdmin
-      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
+    disabledTooltip: getNativePermissionDisabledTooltip(
+      isAdmin,
+      accessPermissionValue,
+    ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
     options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
@@ -129,6 +131,7 @@ export const buildFieldsPermissions = (
     groupId,
     isAdmin,
     permissions,
+    accessPermission.value,
   );
 
   return [

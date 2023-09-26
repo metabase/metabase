@@ -40,15 +40,39 @@ import { Setup } from "metabase/setup/components/Setup";
 
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
+import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
+
+// Reference Metrics
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
+import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
+import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
+import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
+
+// Reference Segments
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
+// Reference Databases
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
+import TableListContainer from "metabase/reference/databases/TableListContainer";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
-import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
@@ -58,7 +82,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
-import ArchiveApp from "metabase/archive/containers/ArchiveApp";
+import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import {
@@ -89,7 +113,7 @@ export const getRoutes = store => (
     {/* PUBLICLY SHARED LINKS */}
     <Route path="public">
       <Route path="question/:uuid" component={PublicQuestion} />
-      <Route path="dashboard/:uuid" component={PublicDashboard} />
+      <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
     </Route>
 
     {/* APP */}
@@ -100,7 +124,9 @@ export const getRoutes = store => (
         done();
       }}
       onChange={(prevState, nextState) => {
-        trackPageView(nextState.location.pathname);
+        if (nextState.location.pathname !== prevState.location.pathname) {
+          trackPageView(nextState.location.pathname);
+        }
       }}
     >
       {/* AUTH */}
@@ -124,7 +150,7 @@ export const getRoutes = store => (
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
-              replace(page);
+              replace(page[0] === "/" ? page : `/${page}`);
             }
           }}
         />
@@ -194,6 +220,71 @@ export const getRoutes = store => (
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
+        {/* REFERENCE */}
+        <Route path="/reference" title={t`Data Reference`}>
+          <IndexRedirect to="/reference/databases" />
+          <Route path="metrics" component={MetricListContainer} />
+          <Route path="metrics/:metricId" component={MetricDetailContainer} />
+          <Route
+            path="metrics/:metricId/edit"
+            component={MetricDetailContainer}
+          />
+          <Route
+            path="metrics/:metricId/questions"
+            component={MetricQuestionsContainer}
+          />
+          <Route
+            path="metrics/:metricId/revisions"
+            component={MetricRevisionsContainer}
+          />
+          <Route path="segments" component={SegmentListContainer} />
+          <Route
+            path="segments/:segmentId"
+            component={SegmentDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields"
+            component={SegmentFieldListContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/questions"
+            component={SegmentQuestionsContainer}
+          />
+          <Route
+            path="segments/:segmentId/revisions"
+            component={SegmentRevisionsContainer}
+          />
+          <Route path="databases" component={DatabaseListContainer} />
+          <Route
+            path="databases/:databaseId"
+            component={DatabaseDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables"
+            component={TableListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId"
+            component={TableDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields"
+            component={FieldListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+            component={FieldDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/questions"
+            component={TableQuestionsContainer}
+          />
+        </Route>
+
         {/* PULSE */}
         <Route path="/pulse" title={t`Pulses`}>
           {/* NOTE: legacy route, not linked to in app */}
@@ -236,6 +327,7 @@ export const getRoutes = store => (
     />
 
     {/* MISC */}
+    <Route path="/unsubscribe" component={UnsubscribePage} />
     <Route path="/unauthorized" component={Unauthorized} />
     <Route path="/*" component={NotFoundFallbackPage} />
   </Route>

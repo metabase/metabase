@@ -9,9 +9,8 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [stencil.core :as stencil]))
 
@@ -21,16 +20,9 @@
 (comment metabase-enterprise.sso.integrations.jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
-(defn- throw-if-no-premium-features-token []
-  (when-not (premium-features/enable-sso?)
-    (throw (ex-info (str (tru "SSO requires a valid token"))
-             {:status-code 403}))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
-  (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-get req)
     (catch Throwable e
@@ -47,11 +39,9 @@
                  :exceptionClass (.getName Exception)
                  :additionalData data}))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
-  (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-post req)
     (catch Throwable e

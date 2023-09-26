@@ -32,8 +32,8 @@ describe("issue 21452", () => {
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
-    openSeriesSettings("Sum of Quantity");
-    cy.findByDisplayValue("Sum of Quantity").clear().type("Foo");
+    openSeriesSettings("Cumulative sum of Quantity");
+    cy.findByDisplayValue("Cumulative sum of Quantity").clear().type("Foo");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Display type").click();
     // Blur will result in another POST request which is expected
@@ -45,7 +45,7 @@ describe("issue 21452", () => {
     cy.get("circle").first().realHover();
 
     popover().within(() => {
-      testPairedTooltipValues("Created At", "2016");
+      testPairedTooltipValues("Created At", "2022");
       testPairedTooltipValues("Foo", "3,236");
     });
 

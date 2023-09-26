@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
@@ -27,8 +28,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -40,7 +41,7 @@
   well."
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
-    (log/info (trs "Source query for this query is Card {0}" source-card-id))
+    (log/info (trs "Source query for this query is Card {0}" (pr-str source-card-id)))
     (api/read-check Card source-card-id)
     source-card-id))
 
@@ -51,7 +52,7 @@
              export-format :api
              qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
   (when (and (not= (:type query) "internal")
-             (not= database mbql.s/saved-questions-virtual-database-id))
+             (not= database lib.schema.id/saved-questions-virtual-database-id))
     (when-not database
       (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                       {:status-code 400, :query query})))
@@ -59,7 +60,7 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :event/table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
@@ -73,11 +74,10 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
-  {database (s/maybe s/Int)}
+  {database [:maybe :int]}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
@@ -89,9 +89,9 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum export-formats))
+  (into [:enum] export-formats))
 
-(s/defn export-format->context :- mbql.s/Context
+(mu/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
 
@@ -124,7 +124,7 @@
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
-                         (update-in [:table.columns] mbql.normalize/normalize)
+                         (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true
@@ -184,14 +184,13 @@
     (qp.streaming/streaming-response [context :api]
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
-
 (defn- parameter-field-values
   [field-ids query]
   (when-not (seq field-ids)
     (throw (ex-info (tru "Missing field-ids for parameter")
                     {:status-code 400})))
   (-> (reduce (fn [resp id]
-                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                (let [{values :values more? :has_more_values} (api.field/search-values-from-field-id id query)]
                   (-> resp
                       (update :values concat values)
                       (update :has_more_values #(or % more?)))))
@@ -199,7 +198,7 @@
                :values          []}
               field-ids)
       ;; deduplicate the values returned from multiple fields
-      (update :values set)))
+      (update :values (comp vec set))))
 
 (defn parameter-values
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
@@ -221,7 +220,7 @@
   [query :as {{:keys [parameter field_ids]} :body}]
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
-   query     :string}
+   query     ms/NonBlankString}
   (parameter-values parameter field_ids query))
 
 (api/define-routes)

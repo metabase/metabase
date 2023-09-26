@@ -1,5 +1,5 @@
+import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { useState } from "react";
-import * as React from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -8,14 +8,13 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import { IconName } from "metabase/core/components/Icon";
-import Database from "metabase-lib/metadata/Database";
-
+import type { IconName } from "metabase/core/components/Icon";
+import type Database from "metabase-lib/metadata/Database";
 import {
+  ActionsContainer,
   Body,
   Description,
   Header,
-  ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
@@ -36,13 +35,11 @@ type Props = {
 
 const TOOLTIP_MAX_WIDTH = 450;
 
-function getDefaultDescription(model: string) {
-  return {
-    card: t`A question`,
-    dashboard: t`A dashboard`,
-    dataset: t`A model`,
-  }[model];
-}
+const DEFAULT_DESCRIPTION: Record<string, string> = {
+  card: t`A question`,
+  dashboard: t`A dashboard`,
+  dataset: t`A model`,
+};
 
 function PinnedItemCard({
   databases,
@@ -56,15 +53,13 @@ function PinnedItemCard({
   onMove,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
-
-  const defaultedDescription = description || getDefaultDescription(model);
+  const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
 
   const maybeEnableTooltip = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    setterFn: React.Dispatch<React.SetStateAction<boolean>>,
+    event: MouseEvent<HTMLDivElement>,
+    setterFn: Dispatch<SetStateAction<boolean>>,
   ) => {
     const target = event.target as HTMLDivElement;
     const isTargetElWiderThanCard = target?.scrollWidth > target?.clientWidth;
@@ -105,22 +100,10 @@ function PinnedItemCard({
               {name}
             </Title>
           </Tooltip>
-          <Tooltip
-            tooltip={description}
-            placement="bottom"
-            maxWidth={TOOLTIP_MAX_WIDTH}
-            isEnabled={showDescriptionTooltip}
-          >
-            {defaultedDescription && (
-              <Description
-                onMouseEnter={e =>
-                  maybeEnableTooltip(e, setShowDescriptionTooltip)
-                }
-              >
-                {defaultedDescription}
-              </Description>
-            )}
-          </Tooltip>
+
+          <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+            {defaultedDescription}
+          </Description>
         </Body>
       </ItemCard>
     </ItemLink>

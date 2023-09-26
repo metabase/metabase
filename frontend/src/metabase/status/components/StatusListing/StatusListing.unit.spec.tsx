@@ -4,7 +4,7 @@ import { callMockEvent } from "__support__/events";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import { createMockState, createMockUpload } from "metabase-types/store/mocks";
-import { FileUploadState } from "metabase-types/store/upload";
+import type { FileUploadState } from "metabase-types/store/upload";
 import StatusListing from "./StatusListing";
 
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
@@ -17,7 +17,7 @@ interface setupProps {
 }
 
 const setup = ({ isAdmin = false, upload = {} }: setupProps = {}) => {
-  setupCollectionsEndpoints([createMockCollection({})]);
+  setupCollectionsEndpoints({ collections: [createMockCollection({})] });
 
   return renderWithProviders(<StatusListing />, {
     storeInitialState: createMockState({
@@ -45,7 +45,7 @@ describe("StatusListing", () => {
   });
 
   it("should not render if no one is logged in", () => {
-    setupCollectionsEndpoints([createMockCollection({})]);
+    setupCollectionsEndpoints({ collections: [createMockCollection({})] });
     renderWithProviders(<StatusListing />);
     expect(screen.queryByText("DatabaseStatus")).not.toBeInTheDocument();
   });

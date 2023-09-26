@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import AuditContent from "../components/AuditContent";
@@ -9,7 +8,7 @@ import AuditTableWithSearch from "../containers/AuditTableWithSearch";
 import * as UsersCards from "../lib/cards/users";
 
 const AuditUsers = props => (
-  <AuditContent {...props} title="Team members" tabs={AuditUsers.tabs} />
+  <AuditContent {...props} title={t`Team members`} tabs={AuditUsers.tabs} />
 );
 
 const AuditUsersOverviewTab = () => (

@@ -1,10 +1,14 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -24,15 +28,51 @@
     #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
     (descendants driver/hierarchy :sql-jdbc))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true :json-unfolding false}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false :json-unfolding false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false :json-unfolding false}}}
+          #{{:name                       "ID"
+             :database-type              "BIGINT"
+             :base-type                  :type/BigInteger
+             :database-position          0
+             :pk?                        true
+             :database-required          false
+             :database-is-auto-increment true :json-unfolding false}
+            {:name                       "NAME"
+             :database-type              "CHARACTER VARYING"
+             :base-type                  :type/Text
+             :database-position          1
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "CATEGORY_ID"
+             :database-type              "INTEGER"
+             :base-type                  :type/Integer
+             :database-position          2
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "LATITUDE"
+             :database-type              "DOUBLE PRECISION"
+             :base-type                  :type/Float
+             :database-position          3
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "LONGITUDE"
+             :database-type              "DOUBLE PRECISION"
+             :base-type                  :type/Float
+             :database-position          4
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "PRICE"
+             :database-type              "INTEGER"
+             :base-type                  :type/Integer
+             :database-position          5
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
@@ -73,7 +113,7 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
             :dest-column-name "ID"}}
@@ -114,13 +154,15 @@
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
-(deftest type-by-parsing-string
+(deftest ^:parallel type-by-parsing-string
   (testing "type-by-parsing-string"
-    (is (= java.lang.String (#'sql-jdbc.describe-table/type-by-parsing-string "bleh")))
-    (is (= java.time.LocalDateTime (#'sql-jdbc.describe-table/type-by-parsing-string "2017-01-13T17:09:42.411")))
-    (is (= java.lang.Long (#'sql-jdbc.describe-table/type-by-parsing-string 11111)))))
+    (are [v expected] (= expected
+                         (#'sql-jdbc.describe-table/type-by-parsing-string v))
+      "bleh"                    java.lang.String
+      "2017-01-13T17:09:42.411" java.time.LocalDateTime
+      11111                     java.lang.Long)))
 
-(deftest row->types-test
+(deftest ^:parallel row->types-test
   (testing "array rows ignored properly in JSON row->types (#21752)"
     (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
           obj-row   {:zlob {"blob" 1323}}]
@@ -132,14 +174,14 @@
       (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
       (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
 
-(deftest dont-parse-long-json-xform-test
+(deftest ^:parallel dont-parse-long-json-xform-test
   (testing "obnoxiously long json should not even get parsed (#22636)"
     ;; Generating an actually obnoxiously long json took too long,
     ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
     ;; so this rebinding is what you get
     (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
           json-map              {:somekey obnoxiously-long-json}]
-      (with-redefs [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
+      (binding [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
         (is (= {}
                (transduce
                  #'sql-jdbc.describe-table/describe-json-xform
@@ -149,22 +191,38 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
-(deftest json-details-only-test
+(deftest ^:parallel get-table-pks-test
+  ;; FIXME: this should works for all sql drivers
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver*
+     (mt/db)
+     nil
+     (fn [conn]
+       (is (= ["id"]
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
+
+;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
+
+(deftest ^:parallel json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
         (mt/dataset json
-          (let [spec  (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
-                table (t2/select-one Table :id (mt/id :json))]
-            (with-open [conn (jdbc/get-connection spec)]
-              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
-                    json-field (first (filter #(= (:name %) "json_bit") fields))
-                    text-field (first (filter #(= (:name %) "bloop") fields))]
-                (is (= :details-only
-                       (:visibility-type json-field)))
-                (is (nil? (:visibility-type text-field)))))))))))
+          (let [table (t2/select-one Table :id (mt/id :json))]
+            (sql-jdbc.execute/do-with-connection-with-options
+             driver/*driver*
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                     json-field (first (filter #(= (:name %) "json_bit") fields))
+                     text-field (first (filter #(= (:name %) "bloop") fields))]
+                 (is (= :details-only
+                        (:visibility-type json-field)))
+                 (is (nil? (:visibility-type text-field))))))))))))
 
-(deftest describe-nested-field-columns-test
+(deftest ^:parallel describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
           flattened {[:mob :bob :dobbs] 123
@@ -187,3 +245,222 @@
              (-> int-row
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
+
+(deftest ^:parallel nested-field-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset json
+      (when-not (mysql-test/is-mariadb? driver/*driver*(u/id (mt/db)))
+        (testing "Nested field column listing"
+          (is (= [:type/JSON :type/SerializedJSON]
+                 (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
+                      :fields
+                      (filter #(= (:name %) "json_bit"))
+                      first
+                      ((juxt :base-type :semantic-type)))))
+          (is (= #{{:name "json_bit → 1234123412314",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "1234123412314"]}
+                   {:name "json_bit → boop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "boop"]}
+                   {:name "json_bit → genres",
+                    :database-type "text",
+                    :base-type :type/Array,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "genres"]}
+                   {:name "json_bit → 1234",
+                    :database-type "bigint",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "1234"]}
+                   {:name "json_bit → doop",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "doop"]}
+                   {:name "json_bit → noop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "noop"]}
+                   {:name "json_bit → zoop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "zoop"]}
+                   {:name "json_bit → published",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "published"]}
+                   {:name "json_bit → title",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :json-unfolding false,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "title"]}}
+               (sql-jdbc.sync/describe-nested-field-columns
+                 driver/*driver*
+                 (mt/db)
+                 {:name "json" :id (mt/id "json")}))))))))
+
+(mt/defdataset big-json
+  [["big_json_table"
+    [{:field-name "big_json" :base-type :type/JSON}]
+    [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
+
+(deftest describe-big-nested-field-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset big-json
+      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+        (testing "limit if huge. limit it and yell warning (#23635)"
+          (is (= sql-jdbc.describe-table/max-nested-field-columns
+                 (count
+                   (sql-jdbc.sync/describe-nested-field-columns
+                     driver/*driver*
+                     (mt/db)
+                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
+          (is (str/includes?
+                (get-in (mt/with-log-messages-for-level :warn
+                          (sql-jdbc.sync/describe-nested-field-columns
+                            driver/*driver*
+                            (mt/db)
+                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
+                "More nested field columns detected than maximum.")))))))
+
+(deftest ^:parallel big-nested-field-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset json
+      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+        (testing "Nested field column listing, but big"
+          (is (= sql-jdbc.describe-table/max-nested-field-columns
+                 (count (sql-jdbc.sync/describe-nested-field-columns
+                          driver/*driver*
+                          (mt/db)
+                          {:name "big_json" :id (mt/id "big_json")})))))))))
+
+(mt/defdataset json-unwrap-bigint-and-boolean
+  "Used for testing mysql json value unwrapping"
+  [["bigint-and-bool-table"
+    [{:field-name "jsoncol" :base-type :type/JSON}]
+    [["{\"mybool\":true, \"myint\":1234567890123456789}"]
+     ["{\"mybool\":false,\"myint\":12345678901234567890}"]
+     ["{\"mybool\":true, \"myint\":123}"]]]])
+
+(deftest json-unwrapping-bigint-and-boolean
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+      (mt/dataset json-unwrap-bigint-and-boolean
+        (sync/sync-database! (mt/db))
+        (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
+          (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
+                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
+                 (mysql-test/db->fields (mt/db)))))
+        (testing "Nested field columns are correct"
+          (is (= #{{:name              "jsoncol → mybool"
+                    :database-type     "boolean"
+                    :base-type         :type/Boolean
+                    :database-position 0
+                    :json-unfolding    false
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "mybool"]}
+                   {:name              "jsoncol → myint"
+                    :database-type     "double precision"
+                    :base-type         :type/Number
+                    :database-position 0
+                    :json-unfolding    false
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "myint"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  driver/*driver*
+                  (mt/db)
+                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+
+(mt/defdataset json-int-turn-string
+  "Used for testing mysql json value unwrapping"
+  [["json_without_pk"
+    [{:field-name "json_col" :base-type :type/JSON}]
+    [["{\"int_turn_string\":1}"]
+     ["{\"int_turn_string\":2}"]
+     ["{\"int_turn_string\":3}"]
+     ["{\"int_turn_string\":4}"]
+     ["{\"int_turn_string\":5}"]
+     ;; last row turn to a string
+     ["{\"int_turn_string\":\"6\"}"]]]
+   ["json_with_pk"
+    [{:field-name "json_col" :base-type :type/JSON}]
+    [["{\"int_turn_string\":1}"]
+     ["{\"int_turn_string\":2}"]
+     ["{\"int_turn_string\":3}"]
+     ["{\"int_turn_string\":4}"]
+     ["{\"int_turn_string\":5}"]
+     ;; last row turn to a string
+     ["{\"int_turn_string\":\"6\"}"]]]])
+
+;; Tests for composite pks are in driver specific ns
+;; metabase.driver.postgres-test/sync-json-with-composite-pks-test
+;; metabase.driver.mysql-test/sync-json-with-composite-pks-test
+
+(deftest json-fetch-last-on-table-with-ids-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (let [original-get-table-pks sql-jdbc.describe-table/get-table-pks]
+      ;; all table defined by `mt/defdataset` will have an pk column my default
+      ;; so we need a little trick to test case that a table doesn't have a pk
+      (with-redefs [sql-jdbc.describe-table/get-table-pks      (fn [driver conn db-name-or-nil table]
+                                                                 (condp = (:name table)
+                                                                   "json_without_pk"
+                                                                   []
+
+                                                                   (original-get-table-pks driver conn db-name-or-nil table)))
+                    metadata-queries/nested-field-sample-limit 4]
+        (mt/dataset json-int-turn-string
+          (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+            (sync/sync-database! (mt/db))
+            (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
+              (is (= #{{:name              "json_col → int_turn_string"
+                        :database-type     "text"
+                        :base-type         :type/Text
+                        :database-position 0
+                        :json-unfolding    false
+                        :visibility-type   :normal
+                        :nfc-path          [:json_col "int_turn_string"]}}
+                     (sql-jdbc.sync/describe-nested-field-columns
+                      driver/*driver*
+                      (mt/db)
+                      (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
+
+              (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
+                (is (= #{{:name              "json_col → int_turn_string"
+                          :database-type     "bigint"
+                          :base-type         :type/Integer
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          [:json_col "int_turn_string"]}}
+                       (sql-jdbc.sync/describe-nested-field-columns
+                        driver/*driver*
+                        (mt/db)
+                        (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))

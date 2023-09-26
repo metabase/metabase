@@ -27,7 +27,7 @@ import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
+import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import PremiumEmbeddingLicensePage from "metabase/admin/settings/containers/PremiumEmbeddingLicensePage";
 
 //  DB Add / list
@@ -36,15 +36,13 @@ import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp
 
 // Metadata / Data model
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
-import MetadataEditor from "metabase/admin/datamodel/metadata/components/MetadataEditor";
-import MetadataTableSettings from "metabase/admin/datamodel/metadata/components/MetadataTableSettings";
-import MetadataFieldSettings from "metabase/admin/datamodel/metadata/components/MetadataFieldSettings";
+import { getMetadataRoutes } from "metabase/admin/datamodel/metadata/routes";
 import MetricListApp from "metabase/admin/datamodel/containers/MetricListApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
+import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import {
@@ -55,8 +53,8 @@ import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
-import Logs from "metabase/admin/tasks/containers/Logs";
-import Help from "metabase/admin/tasks/containers/Help";
+import { Logs } from "metabase/admin/tasks/components/Logs";
+import { Help } from "metabase/admin/tasks/components/Help";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
@@ -108,26 +106,8 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Data Model`} component={DataModelApp}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={MetadataEditor} />
-          <Route path="database/:databaseId" component={MetadataEditor} />
-          <Route
-            path="database/:databaseId/schema/:schemaId"
-            component={MetadataEditor}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={MetadataEditor}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-            component={MetadataTableSettings}
-          />
-          <Route path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId">
-            <IndexRedirect to="general" />
-            <Route path=":section" component={MetadataFieldSettings} />
-          </Route>
+        <Route title={t`Table Metadata`} component={DataModelApp}>
+          {getMetadataRoutes()}
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />
           <Route path="metric/:id" component={MetricApp} />
@@ -154,6 +134,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
+            <IndexRedirect to="/admin/people" />
             <ModalRoute path="edit" modal={EditUserModal} />
             <ModalRoute path="success" modal={UserSuccessModal} />
             <ModalRoute path="reset" modal={UserPasswordResetModal} />
@@ -194,7 +175,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="premium-embedding-license"
             component={PremiumEmbeddingLicensePage}
           />
-          <Route path="*" component={SettingsEditorApp} />
+          <Route path="*" component={SettingsEditor} />
         </Route>
       </Route>
 

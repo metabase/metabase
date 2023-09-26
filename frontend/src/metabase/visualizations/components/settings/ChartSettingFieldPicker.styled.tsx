@@ -4,7 +4,7 @@ import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
-import ChartSettingColorPicker from "./ChartSettingColorPicker";
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {
   disabled: boolean;
@@ -43,7 +43,8 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     margin-right: 0.25rem;
     text-overflow: ellipsis;
     max-width: 100%;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    text-align: left;
     overflow: hidden;
     color: ${color("text-dark")};
   }

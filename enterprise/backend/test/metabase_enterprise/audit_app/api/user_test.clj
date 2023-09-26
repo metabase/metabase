@@ -12,38 +12,38 @@
     (testing "Should require a token with `:audit-app`"
       (premium-features-test/with-premium-features #{}
         (t2.with-temp/with-temp [User {user-id :id}]
-          (is (= "This API endpoint is only enabled if you have a premium token with the :audit-app feature."
+          (is (= "Audit app is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request user-id
                                        :delete 402
                                        (format "ee/audit-app/user/%d/subscriptions" user-id)))))))
 
     (premium-features-test/with-premium-features #{:audit-app}
       (doseq [run-type [:admin :non-admin]]
-        (mt/with-temp* [User                  [{user-id :id}]
-                        Card                  [{card-id :id}]
-                        ;; Alert, created by a different User
-                        Pulse                 [{alert-id :id}         {:alert_condition  "rows"
-                                                                       :alert_first_only false
-                                                                       :name             nil}]
-                        PulseCard             [_                      {:pulse_id alert-id
-                                                                       :card_id  card-id}]
-                        PulseChannel          [{alert-chan-id :id}    {:pulse_id alert-id}]
-                        PulseChannelRecipient [_                      {:user_id          user-id
-                                                                       :pulse_channel_id alert-chan-id}]
-                        ;; DashboardSubscription, created by this User; multiple recipients
-                        Dashboard             [{dashboard-id :id}]
-                        DashboardCard         [{dashcard-id :id}      {:dashboard_id dashboard-id
-                                                                       :card_id      card-id}]
-                        Pulse                 [{dash-sub-id :id}      {:dashboard_id dashboard-id
-                                                                       :creator_id   user-id}]
-                        PulseCard             [_                      {:pulse_id          dash-sub-id
-                                                                       :card_id           card-id
-                                                                       :dashboard_card_id dashcard-id}]
-                        PulseChannel          [{dash-sub-chan-id :id} {:pulse_id dash-sub-id}]
-                        PulseChannelRecipient [_                      {:user_id          user-id
-                                                                       :pulse_channel_id dash-sub-chan-id}]
-                        PulseChannelRecipient [_                      {:user_id          (mt/user->id :rasta)
-                                                                       :pulse_channel_id dash-sub-chan-id}]]
+        (mt/with-temp [User                  {user-id :id} {}
+                       Card                  {card-id :id} {}
+                       ;; Alert, created by a different User
+                       Pulse                 {alert-id :id}         {:alert_condition  "rows"
+                                                                     :alert_first_only false
+                                                                     :name             nil}
+                       PulseCard             _                      {:pulse_id alert-id
+                                                                     :card_id  card-id}
+                       PulseChannel          {alert-chan-id :id}    {:pulse_id alert-id}
+                       PulseChannelRecipient _                      {:user_id          user-id
+                                                                     :pulse_channel_id alert-chan-id}
+                       ;; DashboardSubscription, created by this User; multiple recipients
+                       Dashboard             {dashboard-id :id}      {}
+                       DashboardCard         {dashcard-id :id}      {:dashboard_id dashboard-id
+                                                                     :card_id      card-id}
+                       Pulse                 {dash-sub-id :id}      {:dashboard_id dashboard-id
+                                                                     :creator_id   user-id}
+                       PulseCard             _                      {:pulse_id          dash-sub-id
+                                                                     :card_id           card-id
+                                                                     :dashboard_card_id dashcard-id}
+                       PulseChannel          {dash-sub-chan-id :id} {:pulse_id dash-sub-id}
+                       PulseChannelRecipient _                      {:user_id          user-id
+                                                                     :pulse_channel_id dash-sub-chan-id}
+                       PulseChannelRecipient _                      {:user_id          (mt/user->id :rasta)
+                                                                     :pulse_channel_id dash-sub-chan-id}]
           (letfn [(describe-objects []
                     {:num-subscriptions                (t2/count PulseChannelRecipient :user_id user-id)
                      :alert-archived?                  (t2/select-one-fn :archived Pulse :id alert-id)

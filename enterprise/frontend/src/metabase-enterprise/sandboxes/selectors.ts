@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { GroupTableAccessPolicyParams, SandboxesState } from "./types";
+import type { GroupTableAccessPolicyParams, SandboxesState } from "./types";
 import { getPolicyKeyFromParams } from "./utils";
 
 export const getPolicyRequestState = (
@@ -21,10 +21,6 @@ export const getGroupTableAccessPolicy = (
     state.plugins.sandboxingPlugin.groupTableAccessPolicies[key] ??
     state.plugins.sandboxingPlugin.originalGroupTableAccessPolicies[key]
   );
-};
-
-export const getAttributes = (state: SandboxesState) => {
-  return state.plugins.sandboxingPlugin.attributes;
 };
 
 export const getDraftPolicies = (state: SandboxesState) => {

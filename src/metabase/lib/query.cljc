@@ -1,18 +1,18 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
+   [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.normalize/normalize :mbql/query
@@ -24,12 +24,33 @@
     :stages (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [query stage-number x]
-  (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
+  [_query _stage-number _query]
+  ;; not i18n'ed because this shouldn't be developer-facing.
+  (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
+                  {})))
+
+(defmethod lib.metadata.calculation/returned-columns-method :mbql/query
+  [query stage-number a-query options]
+  (lib.metadata.calculation/returned-columns query stage-number (lib.util/query-stage a-query stage-number) options))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
+
+(defmulti can-run-method
+  "Returns whether the query is runnable based on first stage :lib/type"
+  (fn [query]
+    (:lib/type (lib.util/query-stage query 0))))
+
+(defmethod can-run-method :default
+  [_query]
+  true)
+
+(mu/defn can-run :- :boolean
+  "Returns whether the query is runnable. Manually validate schema for cljs."
+  [query :- ::lib.schema/query]
+  (and (mc/validate ::lib.schema/query query)
+       (boolean (can-run-method query))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -57,31 +78,51 @@
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.util/pipeline query)]
+  (let [query (lib.convert/->pMBQL query)]
     (query-with-stages metadata-providerable (:stages query))))
 
-(defmulti ^:private ->query
+(defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->query :dispatch-type/map
+(defmethod query-method :dispatch-type/map
   [metadata-providerable query]
   (query-from-existing metadata-providerable query))
 
-;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
-;;; passed in
-(defmethod ->query :mbql/query
-  [metadata-providerable query]
-  (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
+;;; this should already be a query in the shape we want but:
+;; - let's make sure it has the database metadata that was passed in
+;; - fill in field refs with metadata (#33680)
+(defmethod query-method :mbql/query
+  [metadata-providerable {converted? :lib.convert/converted? :as query}]
+  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+        query (-> query
+                  (assoc :lib/metadata metadata-provider)
+                  (dissoc :lib.convert/converted?))]
+    (cond-> query
+      converted?
+      (mbql.u/replace
+        [:field
+         (opts :guard (complement (some-fn :base-type :effective-type)))
+         (field-id :guard (every-pred number? pos?))]
+        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                            (select-keys [:base-type :effective-type]))]
+          ;; Fallback if metadata is missing
+          [:field (merge found-ref opts) field-id])))))
 
-(defmethod ->query :metadata/table
+(defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
-                       :source-table (:id table-metadata)}]))
+                       :source-table (u/the-id table-metadata)}]))
+
+(defmethod query-method :metadata/card
+  [metadata-providerable card-metadata]
+  (query-with-stages metadata-providerable
+                     [{:lib/type     :mbql.stage/mbql
+                       :source-card (u/the-id card-metadata)}]))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
@@ -89,42 +130,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (->query metadata-providerable x))
-
-;;; TODO -- the stuff below will probably change in the near future, please don't read too much in to it.
-(mu/defn native-query :- ::lib.schema/query
-  "Create a new native query.
-
-  Native in this sense means a pMBQL query with a first stage that is a native query."
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    inner-query]
-   (native-query metadata-providerable nil inner-query))
-
-  ;; TODO not sure if `results-metadata` should be StageMetadata (i.e., a map roughly matching the shape you get from
-  ;; the QP) or a sequence of ColumnMetadatas, like what would be saved in Card `result_metadata`.
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    results-metadata      :- lib.metadata/StageMetadata
-    inner-query]
-   (query-with-stages metadata-providerable
-                      [(-> {:lib/type           :mbql.stage/native
-                            :lib/stage-metadata results-metadata
-                            :native             inner-query}
-                           lib.options/ensure-uuid)])))
-
-(mu/defn saved-question-query :- ::lib.schema/query
-  "Convenience for creating a query from a Saved Question (i.e., a Card)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   {mbql-query :dataset-query, metadata :result-metadata, :as saved-question}]
-  (assert mbql-query (i18n/tru "Saved Question is missing query"))
-  (when-not metadata
-    (log/warn (i18n/trs "Saved Question {0} {1} is missing result metadata"
-                        (:id saved-question)
-                        (pr-str (:name saved-question-query)))))
-  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
-                                  :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
-                     metadata
-                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
-    (query metadata-providerable mbql-query)))
+  (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -134,3 +140,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(mu/defn with-different-table :- ::lib.schema/query
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [original-query :- ::lib.schema/query
+   table-id :- [:or ::lib.schema.id/table :string]]
+  (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
+   (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))

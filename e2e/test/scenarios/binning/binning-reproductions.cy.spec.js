@@ -8,6 +8,7 @@ import {
   startNewQuestion,
   summarize,
   openOrdersTable,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -85,7 +86,7 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018");
+    cy.findByText("2024");
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
@@ -100,35 +101,31 @@ describe("binning related reproductions", () => {
     );
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("17975").click();
+    popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("17975").click();
+    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("CREATED_AT").click();
+    getNotebookStep("summarize")
+      .findByText("Pick the metric you want to see")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover().findByText("CREATED_AT").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sort").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At: Month").click();
+    cy.findByRole("button", { name: "Sort" }).click();
+    popover().findByText("CREATED_AT: Month").click();
 
-    // Change the binning of the breakout field
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("CREATED_AT: Month").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("by month").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quarter").click();
+    getNotebookStep("summarize").findByText("CREATED_AT: Month").click();
+    popover()
+      .findByRole("option", { name: "CREATED_AT" })
+      .findByLabelText("Temporal bucket")
+      .click();
+    cy.findByRole("menuitem", { name: "Quarter" }).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At: Quarter");
+    getNotebookStep("sort").findByText("CREATED_AT: Quarter");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {
@@ -146,6 +143,7 @@ describe("binning related reproductions", () => {
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Raw Data").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18646").click();
     });
@@ -158,22 +156,23 @@ describe("binning related reproductions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
+    popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Question \d/).click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover()
+      .findByText(/Question \d/)
+      .click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT").closest(".List-item").findByText("by month");
-
-      cy.findByText("CREATED_AT").click();
+      cy.findByRole("option", { name: "CREATED_AT" })
+        .findByText("by month")
+        .should("exist");
+      cy.findByRole("option", { name: "CREATED_AT" }).click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 4 → Created At: Month");
+    getNotebookStep("summarize").findByText("Question 5 → Created At: Month");
 
     visualize();
     cy.get("circle");
@@ -264,7 +263,7 @@ describe("binning related reproductions", () => {
       // ALl of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
-      cy.findByText("June, 2016");
+      cy.findByText("June 2022");
     });
   });
 

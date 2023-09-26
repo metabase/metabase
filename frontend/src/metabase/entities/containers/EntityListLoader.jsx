@@ -180,7 +180,7 @@ class EntityListLoaderInner extends Component {
       list: currentList,
       listName = entityDef.nameMany,
       loading,
-      reload, // eslint-disable-line no-unused-vars
+      reload,
       keepListWhileLoading,
       ...props
     } = this.props;

@@ -1,5 +1,5 @@
-export const GRID_WIDTH = 18;
-export const GRID_ASPECT_RATIO = 4 / 3;
+export const GRID_WIDTH = 24;
+export const GRID_ASPECT_RATIO = 10 / 9;
 
 const MOBILE_BREAKPOINT = 752;
 
@@ -15,7 +15,7 @@ export const GRID_COLUMNS = {
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
-export const MIN_ROW_HEIGHT = 54;
+export const MIN_ROW_HEIGHT = 40;
 
 // returns the first available position from left to right, top to bottom,
 // based on the existing cards,  item size, and grid width
@@ -77,4 +77,5 @@ function printGrid(cards, width) {
   }
   console.log("\n" + grid.map(row => row.join(".")).join("\n") + "\n");
 }
+
 /*eslint-enable */

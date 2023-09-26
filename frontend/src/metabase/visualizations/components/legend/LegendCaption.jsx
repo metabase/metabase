@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import Markdown from "metabase/core/components/Markdown";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import LegendActions from "./LegendActions";
 import {
   LegendCaptionRoot,
@@ -42,7 +42,7 @@ const LegendCaption = ({
         {description && (
           <Tooltip
             tooltip={
-              <Markdown disallowHeading unstyleLinks>
+              <Markdown dark disallowHeading unstyleLinks>
                 {description}
               </Markdown>
             }

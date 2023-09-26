@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import { usePrevious } from "react-use";
@@ -12,19 +12,23 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
-import { FieldDimension } from "metabase-lib/Dimension";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { FieldDimension } from "metabase-lib/Dimension";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 import { isExpression } from "metabase-lib/expressions";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
-import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
+import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
-import { Button } from "./FilterPopover.styled";
-import FilterPopoverFooter from "./FilterPopoverFooter";
-import FilterPopoverPicker from "./FilterPopoverPicker";
-import FilterPopoverHeader from "./FilterPopoverHeader";
+import {
+  Button,
+  EmptyFilterPickerPlaceholder,
+  FilterPopoverSeparator,
+} from "./FilterPopover.styled";
+import { FilterPopoverFooter } from "./FilterPopoverFooter";
+import { FilterPopoverPicker } from "./FilterPopoverPicker";
+import { FilterPopoverHeader } from "./FilterPopoverHeader";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -52,8 +56,7 @@ type Props = {
   checkedColor?: string;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterPopover({
+export function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,
   style = {},
@@ -238,6 +241,9 @@ export default function FilterPopover({
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
   const supportsExpressions = query.database()?.supportsExpressions();
 
+  const filterOperator = filter.operator();
+  const hasPicker = filterOperator && filterOperator.fields.length > 0;
+
   return (
     <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
       {shouldShowDatePicker ? (
@@ -286,15 +292,22 @@ export default function FilterPopover({
                 showFieldPicker={showFieldPicker}
                 forceShowOperatorSelector={showOperatorSelector}
               />
-              <FilterPopoverPicker
-                className="px1 pt1 pb1"
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                onCommit={handleCommit}
-                maxWidth={MAX_WIDTH}
-                primaryColor={primaryColor}
-                checkedColor={checkedColor}
-              />
+              {hasPicker ? (
+                <>
+                  <FilterPopoverSeparator data-testid="filter-popover-separator" />
+                  <FilterPopoverPicker
+                    className="px1 pt1 pb1"
+                    filter={filter}
+                    onFilterChange={handleFilterChange}
+                    onCommit={handleCommit}
+                    maxWidth={MAX_WIDTH}
+                    primaryColor={primaryColor}
+                    checkedColor={checkedColor}
+                  />
+                </>
+              ) : (
+                <EmptyFilterPickerPlaceholder data-testid="empty-picker-placeholder" />
+              )}
             </>
           )}
           <FilterPopoverFooter

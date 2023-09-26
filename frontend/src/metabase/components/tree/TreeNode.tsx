@@ -11,9 +11,8 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { TreeNodeProps } from "./types";
+import type { TreeNodeProps } from "./types";
 
-// eslint-disable-next-line react/display-name
 const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
     {

@@ -1,6 +1,7 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
   (:require
+   [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
@@ -16,10 +17,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +57,7 @@
   {model-id [:maybe ms/PositiveInt]}
   (letfn [(actions-for [models]
             (if (seq models)
-              (hydrate (action/select-actions models
+              (t2/hydrate (action/select-actions models
                                               :model_id [:in (map :id models)]
                                               :archived false)
                        :creator)
@@ -89,7 +87,7 @@
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
-      (hydrate :creator)
+      (t2/hydrate :creator)
       api/read-check))
 
 (api/defendpoint DELETE "/:action-id"
@@ -181,7 +179,7 @@
   (let [action (api/read-check Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Action id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
@@ -197,6 +195,16 @@
   (actions/check-actions-enabled! id)
   (t2/update! Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
+
+(api/defendpoint GET "/:action-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [action-id parameters]
+  {action-id  ms/PositiveInt
+   parameters ms/JSONString}
+  (actions/check-actions-enabled! action-id)
+  (-> (action/select-action :id action-id :archived false)
+      api/read-check
+      (actions.execution/fetch-values (json/parse-string parameters))))
 
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.

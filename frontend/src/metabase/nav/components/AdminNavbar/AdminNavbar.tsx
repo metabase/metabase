@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+import { useSelector } from "metabase/lib/redux";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 import LogoIcon from "metabase/components/LogoIcon";
 import { Icon } from "metabase/core/components/Icon";
-import { User } from "metabase-types/api";
-import { AdminPath } from "metabase-types/store";
+import type { User } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
 import {
   AdminExitLink,
@@ -29,6 +30,8 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  const isPaidPlain = useSelector(getIsPaidPlan);
+
   return (
     <AdminNavbarRoot className="Nav" aria-label={t`Navigation bar`}>
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
@@ -52,7 +55,7 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        {!isPaidPlain && <StoreLink />}
         <AdminExitLink
           to="/"
           data-metabase-event="Navbar;Exit Admin"

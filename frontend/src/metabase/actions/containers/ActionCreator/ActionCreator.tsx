@@ -5,10 +5,11 @@ import { connect } from "react-redux";
 
 import Modal from "metabase/components/Modal";
 
-import Actions, {
+import type {
   CreateActionParams,
   UpdateActionParams,
 } from "metabase/entities/actions";
+import Actions from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,21 +24,23 @@ import type {
 import type { State } from "metabase-types/store";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
 import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
-import CreateActionForm, {
-  FormValues as CreateActionFormValues,
-} from "./CreateActionForm";
+import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
+import CreateActionForm from "./CreateActionForm";
 
 interface OwnProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;
+
+  action?: WritebackAction;
+
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
@@ -192,11 +195,15 @@ function ActionCreatorWithContext({
   initialAction,
   metadata,
   databaseId,
+  action,
   ...props
 }: Props) {
+  // This is needed in case we already have an action and pass it from the outside
+  const contextAction = action || initialAction;
+
   return (
     <ActionContext
-      initialAction={initialAction}
+      initialAction={contextAction}
       databaseId={databaseId}
       metadata={metadata}
     >

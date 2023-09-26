@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard-tab
   (:require
    [medley.core :as m]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -28,14 +29,6 @@
   [_original-model _dest-key _hydrating-model]
   [:dashboard_tab_id])
 
-(defn- dashcard-comparator
-  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
-  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
-  [dashcard-1 dashcard-2]
-  (if-not (= (:row dashcard-1) (:row dashcard-2))
-    (compare (:row dashcard-1) (:row dashcard-2))
-    (compare (:col dashcard-1) (:col dashcard-2))))
-
 (methodical/defmethod t2.hydrate/batched-hydrate [:default :ordered-tab-cards]
   "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of orderd cards."
   [_model _k tabs]
@@ -44,7 +37,7 @@
         tab-ids           (map :id tabs)
         dashcards         (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids])
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
-                              (update-vals #(sort dashcard-comparator %)))
+                              (update-vals #(sort dashboard-card/dashcard-comparator %)))
         ordered-tabs      (sort-by :position tabs)]
     (for [{:keys [id] :as tab} ordered-tabs]
       (assoc tab :cards (get tab-id->dashcards id)))))

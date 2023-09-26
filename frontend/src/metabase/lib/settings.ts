@@ -3,11 +3,16 @@ import { t, ngettext, msgid } from "ttag";
 import moment from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
-import MetabaseUtils from "metabase/lib/utils";
+import { numberToWord, compareVersions } from "metabase/lib/utils";
+import { getDocsUrlForVersion } from "metabase/selectors/settings";
 
-import { PasswordComplexity, SettingKey, Settings } from "metabase-types/api";
+import type {
+  PasswordComplexity,
+  SettingKey,
+  Settings,
+} from "metabase-types/api";
 
-const n2w = (n: number) => MetabaseUtils.numberToWord(n);
+const n2w = (n: number) => numberToWord(n);
 
 const PASSWORD_COMPLEXITY_CLAUSES = {
   total: {
@@ -285,42 +290,23 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated use getDocsUrl
+   */
   docsUrl(page = "", anchor = "") {
-    let { tag } = this.get("version") || {};
-    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
-
-    if (matches) {
-      if (
-        matches.length > 2 &&
-        matches[2] &&
-        "-snapshot" === matches[2].toLowerCase()
-      ) {
-        // always point -SNAPSHOT suffixes to "latest", since this is likely a development build off of master
-        tag = "latest";
-      } else {
-        // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
-        tag = "v0." + matches[1];
-      }
-    } else {
-      // otherwise, just link to the latest tag
-      tag = "latest";
-    }
-
-    if (page) {
-      page = `${page}.html`;
-    }
-
-    if (anchor) {
-      anchor = `#${anchor}`;
-    }
-
-    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+    return getDocsUrlForVersion(this.get("version"), page, anchor);
   }
 
+  /**
+   * @deprecated use getLearnUrl
+   */
   learnUrl(path = "") {
     return `https://www.metabase.com/learn/${path}`;
   }
 
+  /**
+   * @deprecated use getStoreUrl
+   */
   storeUrl(path = "") {
     return `https://store.metabase.com/${path}`;
   }
@@ -330,18 +316,12 @@ class MetabaseSettings {
   }
 
   newVersionAvailable() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result < 0;
   }
 
   versionIsLatest() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result >= 0;
   }
 
@@ -370,13 +350,6 @@ class MetabaseSettings {
 
   isEnterprise() {
     return false;
-  }
-
-  /**
-   * @deprecated
-   */
-  isPaidPlan() {
-    return this.isHosted() || this.isEnterprise();
   }
 
   /**
@@ -439,5 +412,13 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+const settings = new MetabaseSettings(initValues);
+
+if (typeof window !== "undefined") {
+  (
+    window as Window & { __metabaseSettings?: MetabaseSettings }
+  ).__metabaseSettings = settings;
+}
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default new MetabaseSettings(initValues);
+export default settings;

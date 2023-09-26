@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import _ from "underscore";
 
 import { t } from "ttag";

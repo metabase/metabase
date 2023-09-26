@@ -13,14 +13,16 @@
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep]
-   #?@(:clj  [[clojure.math.numeric-tower :as math]
+   #?@(:clj  ([clojure.math.numeric-tower :as math]
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
+              [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec]]))
+              [ring.util.codec :as codec])))
   #?(:clj (:import
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
@@ -31,7 +33,7 @@
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
-#?(:clj (p/import-vars [metabase.util.jvm
+#?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
                         decode-base64
@@ -48,7 +50,9 @@
                         sorted-take
                         varargs
                         with-timeout
-                        with-us-locale]))
+                        with-us-locale]
+                       [u.str
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -199,22 +203,26 @@
 (def ^{:arglists '([x])} ->kebab-case-en
   "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->kebab-case-en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->snake_case_en
   "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->snake_case_en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->camelCaseEn
   "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
   with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->camelCaseEn* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
   keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->SCREAMING_SNAKE_CASE_EN* :lru/threshold 256)))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -829,3 +837,9 @@
     {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
      :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
      :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))
+
+(defn empty-or-distinct?
+  "True if collection `xs` is either [[empty?]] or all values are [[distinct?]]."
+  [xs]
+  (or (empty? xs)
+      (apply distinct? xs)))

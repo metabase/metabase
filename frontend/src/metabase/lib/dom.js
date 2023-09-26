@@ -194,33 +194,6 @@ function getTextNodeAtPosition(root, index) {
   };
 }
 
-// https://davidwalsh.name/add-rules-stylesheets
-const STYLE_SHEET = (function () {
-  // Create the <style> tag
-  const style = document.createElement("style");
-
-  // WebKit hack :(
-  style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
-
-  // Add the <style> element to the page
-  document.head.appendChild(style);
-
-  return style.sheet;
-})();
-
-export function addCSSRule(selector, rules, index = 0) {
-  if ("insertRule" in STYLE_SHEET) {
-    const ruleIndex = STYLE_SHEET.insertRule(
-      selector + "{" + rules + "}",
-      index,
-    );
-    return STYLE_SHEET.cssRules[ruleIndex];
-  } else if ("addRule" in STYLE_SHEET) {
-    const ruleIndex = STYLE_SHEET.addRule(selector, rules, index);
-    return STYLE_SHEET.rules[ruleIndex];
-  }
-}
-
 export function constrainToScreen(element, direction, padding) {
   if (!element) {
     return false;
@@ -304,7 +277,7 @@ export function open(
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
+  const isOriginalUrlAbsolute = isAbsoluteUrl(url); // this does not check real "absolute" url, but if a url should be resolved from the root URL
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
@@ -513,3 +486,19 @@ export const getEventTarget = event => {
 
   return target;
 };
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function reload() {
+  window.location.reload();
+}
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function redirect(url) {
+  window.location.href = url;
+}

@@ -1,8 +1,6 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
@@ -11,7 +9,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";
 import PulseCardPreview from "./PulseCardPreview";
-import { CardNotice } from "./PulseEditCards.styled";
+import { AttachmentType, CardNotice } from "./PulseEditCards.styled";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
@@ -207,11 +205,9 @@ const ATTACHMENT_TYPES = ["csv", "xls"];
 const AttachmentWidget = ({ card, onChange, trackPulseEvent }) => (
   <div>
     {ATTACHMENT_TYPES.map(type => (
-      <span
+      <AttachmentType
         key={type}
-        className={cx("text-brand-hover cursor-pointer mr1", {
-          "text-brand": card["include_" + type],
-        })}
+        isSelected={card["include_" + type]}
         onClick={() => {
           const newCard = { ...card };
           for (const attachmentType of ATTACHMENT_TYPES) {
@@ -223,7 +219,7 @@ const AttachmentWidget = ({ card, onChange, trackPulseEvent }) => (
         }}
       >
         {"." + type}
-      </span>
+      </AttachmentType>
     ))}
   </div>
 );

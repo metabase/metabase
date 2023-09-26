@@ -13,10 +13,15 @@ import {
   visitQuestion,
   visitDashboard,
   selectPermissionRow,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -99,9 +104,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Changes were not saved");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Navigating away from here will cause you to lose any changes you have made.",
         );
 
         cy.button("Cancel").click();
@@ -113,7 +118,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.button("Discard changes").click();
+        cy.button("Leave anyway").click();
       });
 
       cy.url().should("include", "/admin/permissions/data/group");
@@ -301,9 +306,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Changes were not saved");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Navigating away from here will cause you to lose any changes you have made.",
         );
 
         cy.button("Cancel").click();
@@ -315,7 +320,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.button("Discard changes").click();
+        cy.button("Leave anyway").click();
       });
 
       cy.url().should("include", "/admin/permissions/collections");
@@ -604,6 +609,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
@@ -709,7 +715,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     cy.signIn("nodata");
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question");
@@ -728,9 +734,55 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     cy.signIn("nodata");
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+  });
+});
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions");
+
+    // Data permissions
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference")
+      .as("permissionsHelpContent")
+      .within(() => {
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
+        cy.findByLabelText("Close").click();
+      });
+
+    cy.get("main").within(() => {
+      cy.findByText("Collections").click();
+      cy.get("@permissionHelpButton").click();
+    });
+
+    // Collection permissions
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Collection permissions");
+      cy.findByText("Collections Permission Levels");
+    });
+
+    // The help reference keeps being open when switching tabs
+    cy.get("main").within(() => {
+      cy.findByText("Data").click();
+    });
+
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Data permissions");
+    });
   });
 });

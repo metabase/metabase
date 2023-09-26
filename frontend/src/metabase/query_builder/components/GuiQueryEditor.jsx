@@ -13,7 +13,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import FilterWidgetList from "./filters/FilterWidgetList";
-import FilterPopover from "./filters/FilterPopover";
+import { FilterPopover } from "./filters/FilterPopover";
 
 export default class GuiQueryEditor extends Component {
   constructor(props) {
@@ -151,7 +151,7 @@ export default class GuiQueryEditor extends Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      const aggregations = query.aggregations();
+      const aggregations = [...query.aggregations()];
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -211,7 +211,7 @@ export default class GuiQueryEditor extends Component {
 
     const breakoutList = [];
 
-    const breakouts = query.breakouts();
+    const breakouts = [...query.breakouts()];
 
     // Placeholder breakout for showing the add button
     if (query.canAddBreakout()) {
