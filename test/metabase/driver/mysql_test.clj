@@ -639,27 +639,27 @@
 
 (deftest parse-grant-test
   (testing "`parse-grant` should work correctly"
-    (is (= {:type       ::mysql/privileges
+    (is (= {:type       :privileges
             :privileges #{:select :insert :update :delete}
             :object-type :database
             :object-name "`test-data`.*"}
            (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-    (is (= {:type       ::mysql/privileges
+    (is (= {:type       :privileges
             :privileges #{:select :insert :update :delete}
             :object-type :database
             :object-name "`test-data`.*"}
            (#'mysql/parse-grant "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, SELECT (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-    (is (= {:type       ::mysql/privileges
+    (is (= {:type       :privileges
             :privileges #{:select}
             :object-type :database
             :object-name "`test-data`.*"}
            (#'mysql/parse-grant "GRANT SELECT, DELETE (id) ON `test-data`.* TO 'metabase'@'localhost' WITH GRANT OPTION")))
-    (is (= {:type       ::mysql/privileges
+    (is (= {:type       :privileges
             :privileges #{:select :insert :update :delete}
             :object-type :table
             :object-name "`test-data`.`foo`"}
            (#'mysql/parse-grant "GRANT ALL PRIVILEGES ON `test-data`.`foo` TO 'metabase'@'localhost'")))
-    (is (= {:type  ::mysql/roles
+    (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
@@ -667,23 +667,24 @@
 (deftest table-name->privileges-test
   (testing "table-names->privileges should work correctly"
     (is (= {"foo" #{:select}, "bar" #{:select}}
-           (#'mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
-                                              :privileges #{:select}
-                                              :object-type :database
-                                              :object-name "`test-data`.*"}]
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select}
+                                              :level           :database
+                                              :object          "`test-data`.*"}]
                                             "test-data"
                                             ["foo" "bar"])))
     (is (= {"foo" #{:select}, "bar" #{:select}}
-           (#'mysql/table-names->privileges [{:type :metabase.driver.mysql/privileges
-                                              :privileges #{:select}
-                                              :object-type :global
-                                              :object-name "*.*"}]
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select}
+                                              :level           :global
+                                              :object          "*.*"}]
                                             "test-data"
                                             ["foo" "bar"])))
     (is (= {"foo" #{:select :insert :update :delete}}
-           (#'mysql/table-names->privileges [{:privileges #{:select :insert :update :delete}
-                                              :object-type :table
-                                              :object-name "`test-data`.`foo`"}]
+           (#'mysql/table-names->privileges [{:type            :privileges
+                                              :privilege-types #{:select :insert :update :delete}
+                                              :level           :table
+                                              :object          "`test-data`.`foo`"}]
                                             "test-data"
                                             ["foo" "bar"])))))
 
