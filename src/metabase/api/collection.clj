@@ -154,10 +154,8 @@
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
         colls-with-details (map collection/personal-collection-with-ui-details colls)
-        tmp (println colls-with-details)
-        colls-with-details (filter-audit-collection colls-with-details)
-        tmp (println colls-with-details)]
-    (collection/collections->tree coll-type-ids colls-with-details)))
+        filtered-colls     (filter-audit-collection colls-with-details)]
+    (collection/collections->tree coll-type-ids filtered-colls)))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
