@@ -1,5 +1,7 @@
 const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const { IgnorePlugin } = require("webpack");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
@@ -38,6 +40,8 @@ module.exports = env => {
     output: {
       path: BUILD_PATH + "/app/dist",
       filename: "[name].bundle.js",
+      publicPath: "/app/dist",
+      globalObject: "{}",
     },
 
     module: {
@@ -46,6 +50,24 @@ module.exports = env => {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        },
+        {
+          test: /\.svg/,
+          type: "asset/source",
+          resourceQuery: /source/, // *.svg?source
+        },
+        {
+          test: /\.svg$/i,
+          issuer: /\.[jt]sx?$/,
+          resourceQuery: /component/, // *.svg?component
+          use: [
+            {
+              loader: "@svgr/webpack",
+              options: {
+                ref: true,
+              },
+            },
+          ],
         },
       ],
     },
@@ -62,6 +84,10 @@ module.exports = env => {
       minimize: !shouldDisableMinimization,
     },
     plugins: [
+      new IgnorePlugin({
+        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
+        contextRegExp: /./,
+      }),
       new StatsWriterPlugin({
         stats: {
           modules: true,

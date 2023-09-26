@@ -273,6 +273,7 @@
     "terser-webpack-plugin": "^5.3.9",
     "typescript": "^4.7.2",
     "webpack": "^5.85.0",
+    "webpack-bundle-analyzer": "^4.9.1",
     "webpack-cli": "^5.1.1",
     "webpack-dev-server": "^4.15.0",
     "webpack-notifier": "1.15.0",
