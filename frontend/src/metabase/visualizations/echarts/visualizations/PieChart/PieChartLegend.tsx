@@ -7,11 +7,13 @@ import {
   computeLegendDecimals,
   formatPercent,
 } from "metabase/visualizations/visualizations/PieChart/utils";
+import type { PieLegendItem } from "metabase/visualizations/shared/echarts/pie/types";
 import { formatDimension, getSlices } from "./utils";
 import type { OnChartDimensionChange } from "./utils";
 
 export function PieChartLegend(
   props: VisualizationProps & {
+    legend: PieLegendItem[];
     onChartDimensionChange: OnChartDimensionChange;
     children: ReactNode;
   },
@@ -37,8 +39,8 @@ export function PieChartLegend(
   return (
     <ChartWithLegend
       className={props.className}
-      legendTitles={legendTitles}
-      legendColors={legendColors}
+      legendTitles={props.legend.map(item => item.title)}
+      legendColors={props.legend.map(item => item.color)}
       gridSize={props.gridSize}
       hovered={props.hovered}
       showLegend={props.settings["pie.show_legend"]}

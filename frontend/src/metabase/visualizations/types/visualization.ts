@@ -8,8 +8,10 @@ import type {
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type Query from "metabase-lib/queries/Query";
 
+import type { OptionsType } from "../../lib/formatting/types";
 import type { HoveredObject } from "./hover";
 import type { RemappingHydratedDatasetColumn } from "./columns";
 
@@ -26,6 +28,14 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
     col: RemappingHydratedDatasetColumn,
   ) => RemappingHydratedDatasetColumn;
 };
+
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingEnvironment {
+  getColor: ColorGetter;
+  formatValue: (value: unknown, options: OptionsType) => string;
+  measureText: TextWidthMeasurer;
+}
 
 export interface VisualizationProps {
   series: Series;
@@ -65,9 +75,6 @@ export interface VisualizationProps {
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-
-  "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
 
   onAddSeries?: any;
   onEditSeries?: any;

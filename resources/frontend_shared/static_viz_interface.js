@@ -22,6 +22,14 @@ function row_chart(settings, data, colors) {
   });
 }
 
+function pie_chart(card, data, colors) {
+  return StaticViz.RenderChart("pie", {
+    card: JSON.parse(card),
+    data: JSON.parse(data),
+    colors: JSON.parse(colors),
+  });
+}
+
 function combo_chart(series, settings, instanceColors) {
   // Thinking of combo as similar to multiple, although they're different in BE
   return StaticViz.RenderChart("combo-chart", {

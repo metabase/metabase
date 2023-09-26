@@ -21,6 +21,7 @@ import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   isCoordinate,
   isDate,
@@ -42,25 +43,11 @@ const getRemappedValue = (
   return value;
 };
 
-type StaticFormattingOptions = {
-  column: DatasetColumn;
-  number_separators?: string;
-  jsx?: boolean;
-  number_style?: string;
-  decimals?: number;
-  prefix?: string;
-  suffix?: string;
-  noRange?: boolean;
-};
-
 // Literally simplified copy of frontend/src/metabase/lib/formatting/value.tsx that excludes
 // click behavior, any html formatting, any code uses globals or that imports packages which use globals.
 // The reason for that is inability to use highly-coupled formatting code from the main app for static viz
 // because it crashes while using it in the GraalVM SSR
-export const formatStaticValue = (
-  value: unknown,
-  options: StaticFormattingOptions,
-) => {
+export const formatStaticValue = (value: unknown, options: OptionsType) => {
   const { prefix, suffix, column } = options;
 
   let formattedValue = null;

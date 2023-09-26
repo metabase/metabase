@@ -65,7 +65,7 @@ export const PIE_CHART_SETTINGS = {
     getDefault: (series, settings) =>
       settings["pie._dimensionValues"]
         ? getColorsForValues(settings["pie._dimensionValues"])
-        : [],
+        : {},
     getProps: (series, settings) => ({
       seriesValues: settings["pie._dimensionValues"] || [],
       seriesTitles: settings["pie._dimensionTitles"] || [],

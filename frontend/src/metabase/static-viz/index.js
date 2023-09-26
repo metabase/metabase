@@ -1,3 +1,6 @@
+// stub setTimeout because GraalVM does not provide it
+global.setTimeout = () => {};
+
 import ReactDOMServer from "react-dom/server";
 import StaticChart from "./containers/StaticChart";
 
