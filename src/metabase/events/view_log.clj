@@ -11,7 +11,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.models.recent-views :as recent-views]))
 
 (derive ::event :metabase/event)
 
@@ -64,21 +65,6 @@
               :model_id model-id
               :metadata metadata))
 
-(mu/defn ^:private update-users-recent-views!
-  [user-id  :- [:maybe ms/PositiveInt]
-   model    :- [:enum "card" "dashboard" "table"]
-   model-id :- ms/PositiveInt]
-  (when user-id
-    (mw.session/with-current-user user-id
-      (let [view        {:model    (name model)
-                         :model_id model-id}
-            prior-views (remove #{view} (user-recent-views))]
-        (when (= model "dashboard")
-          (most-recently-viewed-dashboard! model-id))
-        (when-not ((set prior-views) view)
-          (let [new-views (vec (take 10 (conj prior-views view)))]
-            (user-recent-views! new-views)))))))
-
 (methodical/defmethod events/publish-event! ::event
   "Handle processing for a single event notification received on the view-log-channel"
   [topic object]
@@ -95,7 +81,7 @@
         (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
                    ;; we don't want to count pinned card views
                    ((complement #{:collection :dashboard}) context))
-          (update-users-recent-views! user-id model model-id))
+          (recent-views/update-users-recent-views! user-id model model-id))
         (record-view! model model-id user-id metadata)))
     (catch Throwable e
       (log/warnf e "Failed to process activity event. %s" topic))))
