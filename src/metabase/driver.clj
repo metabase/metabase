@@ -506,7 +506,7 @@
 
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
-    
+
     ;; Does the driver support storing table privileges in the application database for the current user?
     :table-privileges
 
