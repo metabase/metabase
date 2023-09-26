@@ -567,15 +567,15 @@
   values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
   API endpoint.
 
-  ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
-  (chain-filter %venues.price {%categories.name \"BBQ\"})
-  ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
-  :has_more_values false}
+    ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
+    (chain-filter %venues.price {%categories.name \"BBQ\"})
+    ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
+           :has_more_values false}
 
   `options` are key-value options. Currently only one option is supported, `:limit`:
 
-  ;; fetch first 10 values of venues.price
-  (chain-filter %venues.price {} :limit 10)
+    ;; fetch first 10 values of venues.price
+    (chain-filter %venues.price {} :limit 10)
 
   For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- su/IntGreaterThanZero
