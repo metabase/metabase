@@ -24,7 +24,7 @@
   - The collections that they want to serialize (using selective serialization)"
   [:as {{:keys [collection_ids path]} :body}]
   {collection_ids (mu/with-api-error-message
-                    [:fn (fn [x] (and (sequential? x)
+                    [:fn (fn [x] (and (seq x)
                                       (= (count x) (count (set x)))
                                       (every? pos? x)))]
                     (deferred-tru "Non-empty, distinct array of Collection IDs"))
