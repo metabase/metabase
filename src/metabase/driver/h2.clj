@@ -315,19 +315,16 @@
 
     message))
 
-(def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
-
-(defmethod driver.common/current-db-time-date-formatters :h2
-  [_]
-  (driver.common/create-db-time-formatters date-format-str))
-
-(defmethod driver.common/current-db-time-native-query :h2
-  [_]
-  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
-
-(defmethod driver/current-db-time :h2
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :h2
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "select current_timestamp();")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (when-let [zoned-date-time (.getObject rset 1 java.time.ZonedDateTime)]
+           (t/zone-id zoned-date-time)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
