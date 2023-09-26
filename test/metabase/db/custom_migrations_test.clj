@@ -255,6 +255,8 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
+    ;; it's "v47.00-030" but not "v47.00-029" because for some reasons,
+    ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
