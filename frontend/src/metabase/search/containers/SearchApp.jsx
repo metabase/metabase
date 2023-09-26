@@ -5,11 +5,10 @@ import { jt, t } from "ttag";
 
 import _ from "underscore";
 import { push } from "react-router-redux";
-import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Group, Paper } from "metabase/ui";
+import {Box, Text, Group, Paper, Loader, Center} from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -29,6 +28,7 @@ import {
   SearchMain,
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
+import {useSearchListQuery} from "metabase/common/hooks";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -52,6 +52,10 @@ function SearchApp({ location }) {
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
   };
+
+  const {data: list = [], isLoading, metadata} = useSearchListQuery({
+    query,
+  })
 
   const onChangeLocation = useCallback(
     nextLocation => dispatch(push(nextLocation)),
@@ -79,12 +83,16 @@ function SearchApp({ location }) {
       <Text size="xl" weight={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) => (
-          <SearchBody direction="column" justify="center">
-            <SearchControls>
-              <SearchSidebar value={searchFilters} onChange={onFilterChange} />
-            </SearchControls>
+      <SearchBody direction="column" justify="center">
+        <SearchControls>
+          <SearchSidebar value={searchFilters} onChange={onFilterChange} />
+        </SearchControls>
+        {
+          isLoading ? (
+            <Center>
+              <Loader />
+            </Center>
+          ) : (
             <SearchResultContainer>
               {list.length === 0 ? (
                 <Paper shadow="lg" p="2rem">
@@ -115,9 +123,9 @@ function SearchApp({ location }) {
                 </Box>
               )}
             </SearchResultContainer>
-          </SearchBody>
-        )}
-      </Search.ListLoader>
+          )
+        }
+      </SearchBody>
     </SearchMain>
   );
 }
