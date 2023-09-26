@@ -113,9 +113,7 @@ FilledMd.args = {
 };
 
 <Canvas>
-  <Story name="Filled, md" args={FilledMd.args}>
-    {FilledMd}
-  </Story>
+  <Story name="Filled, md">{FilledMd}</Story>
 </Canvas>
 
 #### Asterisk
@@ -128,9 +126,7 @@ AsteriskMd.args = {
 };
 
 <Canvas>
-  <Story name="Asterisk, md" args={AsteriskMd.args}>
-    {AsteriskMd}
-  </Story>
+  <Story name="Asterisk, md">{AsteriskMd}</Story>
 </Canvas>
 
 #### Description
@@ -143,9 +139,7 @@ DescriptionMd.args = {
 };
 
 <Canvas>
-  <Story name="Description, md" args={DescriptionMd.args}>
-    {DescriptionMd}
-  </Story>
+  <Story name="Description, md">{DescriptionMd}</Story>
 </Canvas>
 
 #### Disabled
@@ -160,9 +154,7 @@ DisabledMd.args = {
 };
 
 <Canvas>
-  <Story name="Disabled, md" args={DisabledMd.args}>
-    {DisabledMd}
-  </Story>
+  <Story name="Disabled, md">{DisabledMd}</Story>
 </Canvas>
 
 #### Error
@@ -177,9 +169,7 @@ ErrorMd.args = {
 };
 
 <Canvas>
-  <Story name="Error, md" args={ErrorMd.args}>
-    {ErrorMd}
-  </Story>
+  <Story name="Error, md">{ErrorMd}</Story>
 </Canvas>
 
 #### Icon
@@ -193,9 +183,7 @@ IconMd.args = {
 };
 
 <Canvas>
-  <Story name="Icon, md" args={IconMd.args}>
-    {IconMd}
-  </Story>
+  <Story name="Icon, md">{IconMd}</Story>
 </Canvas>
 
 #### Right section
@@ -209,9 +197,7 @@ RightSectionMd.args = {
 };
 
 <Canvas>
-  <Story name="Right section, md" args={RightSectionMd.args}>
-    {RightSectionMd}
-  </Story>
+  <Story name="Right section, md">{RightSectionMd}</Story>
 </Canvas>
 
 #### Read only
@@ -226,14 +212,16 @@ RightSectionMd.args = {
 };
 
 <Canvas>
-  <Story name="Read only, md" args={ReadOnlyMd.args}>
-    {ReadOnlyMd}
-  </Story>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
 
 <Canvas>
   <Story name="Empty, xs">{EmptyXs}</Story>
@@ -244,12 +232,11 @@ export const EmptyXs = VariantTemplate.bind({});
 export const FilledXs = VariantTemplate.bind({});
 FilledXs.args = {
   ...FilledMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Filled, xs" args={FilledXs.args}>
-    {FilledXs}
-  </Story>
+  <Story name="Filled, xs">{FilledXs}</Story>
 </Canvas>
 
 #### Asterisk
@@ -257,12 +244,11 @@ FilledXs.args = {
 export const AsteriskXs = VariantTemplate.bind({});
 AsteriskXs.args = {
   ...AsteriskMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Asterisk, xs" args={AsteriskXs.args}>
-    {AsteriskXs}
-  </Story>
+  <Story name="Asterisk, xs">{AsteriskXs}</Story>
 </Canvas>
 
 #### Description
@@ -270,12 +256,11 @@ AsteriskXs.args = {
 export const DescriptionXs = VariantTemplate.bind({});
 DescriptionXs.args = {
   ...DescriptionMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Description, xs" args={DescriptionXs.args}>
-    {DescriptionXs}
-  </Story>
+  <Story name="Description, xs">{DescriptionXs}</Story>
 </Canvas>
 
 #### Disabled
@@ -283,12 +268,11 @@ DescriptionXs.args = {
 export const DisabledXs = VariantTemplate.bind({});
 DisabledXs.args = {
   ...DisabledMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Disabled, xs" args={DisabledXs.args}>
-    {DisabledXs}
-  </Story>
+  <Story name="Disabled, xs">{DisabledXs}</Story>
 </Canvas>
 
 #### Error
@@ -296,12 +280,11 @@ DisabledXs.args = {
 export const ErrorXs = VariantTemplate.bind({});
 ErrorXs.args = {
   ...ErrorMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Error, xs" args={ErrorXs.args}>
-    {ErrorXs}
-  </Story>
+  <Story name="Error, xs">{ErrorXs}</Story>
 </Canvas>
 
 #### Icon
@@ -309,12 +292,11 @@ ErrorXs.args = {
 export const IconXs = IconTemplate.bind({});
 IconXs.args = {
   ...IconMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Icon, xs" args={IconXs.args}>
-    {IconXs}
-  </Story>
+  <Story name="Icon, xs">{IconXs}</Story>
 </Canvas>
 
 #### Right section
@@ -322,12 +304,11 @@ IconXs.args = {
 export const RightSectionXs = RightSectionTemplate.bind({});
 RightSectionXs.args = {
   ...RightSectionMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Right section, xs" args={RightSectionXs.args}>
-    {RightSectionXs}
-  </Story>
+  <Story name="Right section, xs">{RightSectionXs}</Story>
 </Canvas>
 
 #### Read only
@@ -335,10 +316,9 @@ RightSectionXs.args = {
 export const ReadOnlyXs = RightSectionTemplate.bind({});
 RightSectionXs.args = {
   ...ReadOnlyMd.args,
+  size: "xs",
 };
 
 <Canvas>
-  <Story name="Read only, xs" args={ReadOnlyXs.args}>
-    {ReadOnlyXs}
-  </Story>
+  <Story name="Read only, xs">{ReadOnlyXs}</Story>
 </Canvas>
