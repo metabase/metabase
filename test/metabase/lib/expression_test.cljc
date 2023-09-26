@@ -298,3 +298,32 @@
       (is (= ["ID" "Subtotal" "Total" "Tax" "Discount" "Quantity" "Created At" "Product ID" "User ID" "Unit price"]
              (map (partial lib/display-name query)
                   (lib/returned-columns query)))))))
+
+(deftest ^:parallel mixed-type-concat-expression-test
+  (testing "#34150"
+    (testing "various pemutations on venues"
+      (let [query (reduce (fn [query [label expr]]
+                            (lib/expression query -1 label expr))
+                          lib.tu/venues-query
+                          [["name+price" (lib/concat (meta/field-metadata :venues :name)
+                                                     (meta/field-metadata :venues :price))]
+                           ["$price"     (lib/concat "$" (meta/field-metadata :venues :price))]
+                           ["latXlong"   (lib/concat (meta/field-metadata :venues :latitude)
+                                                     " X "
+                                                     (meta/field-metadata :venues :longitude))]])]
+        (is (=? [{:name "name+price"}
+                 {:name "$price"}
+                 {:name "latXlong"}]
+                (->> (lib/visible-columns query)
+                     (filter (comp #{:source/expressions} :lib/source)))))))
+    (testing "dates"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/expression "description"
+                                      (lib/concat (meta/field-metadata :orders :total)
+                                                  " on "
+                                                  (meta/field-metadata :orders :quantity)
+                                                  " as of "
+                                                  (meta/field-metadata :orders :created-at))))]
+        (is (=? [{:name "description"}]
+                (->> (lib/visible-columns query)
+                     (filter (comp #{:source/expressions} :lib/source)))))))))
