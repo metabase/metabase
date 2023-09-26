@@ -291,19 +291,19 @@ describe("scenarios > question > joined questions", () => {
     joinTable("Products");
     selectJoinType("Inner join");
 
-    cy.findByTestId("step-join-0-0").within(() => {
-      cy.icon("add").click();
-    });
-
-    selectFromDropdown("Created At");
-    selectFromDropdown("Created At");
+    getNotebookStep("join").icon("add").click();
+    popover().findByText("Created At").click();
+    popover().findByText("Created At").click();
 
     visualize();
 
-    // 415 rows mean the join is done correctly,
-    // (join on product's FK + join on the same "created_at" field)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 415 rows");
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Products",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Products → ID",
+    });
+    cy.findByTestId("question-row-count").contains("Showing 415 rows");
   });
 
   it("should allow joins on date-time fields", () => {
