@@ -1,6 +1,7 @@
 import {
   restore,
   openOrdersTable,
+  openNotebook,
   popover,
   visualize,
   summarize,
@@ -8,6 +9,7 @@ import {
   filter,
   enterCustomColumnDetails,
   selectSavedQuestionsToJoin,
+  queryBuilderMain,
   getNotebookStep,
 } from "e2e/support/helpers";
 
@@ -33,70 +35,59 @@ describe("scenarios > question > joined questions", () => {
   it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    // join to Reviews on orders.product_id = reviews.product_id
-    cy.icon("join_left_outer").click();
-    getNotebookStep("join").findByText("Pick data…").should("exist");
-
+    cy.button("Join data").click();
     popover().contains("Reviews").click();
     popover().contains("Product ID").click();
     popover().contains("Product ID").click();
 
     visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("Orders");
-      cy.findByText("Reviews");
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Reviews",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Reviews - Product → ID",
     });
 
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
     filter();
-
     cy.get(".Modal").within(() => {
       // Temporal compat between MLv1 and MLv2
       // MLv2 does a better job naming joined tables,
-      // but simple mode's summarization sidebar still uses MLv1
+      // but simple mode filters UI still uses MLv1
       // Once it's ported, we should just look for "Review"
       const joinedTable = new RegExp(/Reviews? - Products?/);
       cy.findByText(joinedTable).click();
-
       cy.findByTestId("filter-field-Rating").contains("2").click();
       cy.button("Apply Filters").click();
       cy.wait("@dataset");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
+    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
 
     // Post-join aggregation (metabase#11452):
-    cy.icon("notebook").click();
+    openNotebook();
     summarize({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Average of ...").click();
+    popover().findByText("Average of ...").click();
     popover().contains("Review").click();
     popover().contains("Rating").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
     popover().contains("Review").click();
     popover().contains("Reviewer").click();
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 89 rows");
+    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
+    cy.findByTestId("question-row-count").contains("Showing 89 rows");
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
     saveQuestion();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 89 rows");
+    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
+    cy.findByTestId("question-row-count").contains("Showing 89 rows");
 
     function saveQuestion() {
       cy.intercept("POST", "/api/card").as("saveQuestion");
@@ -388,5 +379,24 @@ function selectFromDropdown(option, clickOpts) {
 function assertDimensionName(type, name) {
   cy.findByTestId(`${type}-dimension`).within(() => {
     cy.findByText(name);
+  });
+}
+
+function assertJoinValid({
+  lhsTable,
+  rhsTable,
+  lhsSampleColumn,
+  rhsSampleColumn,
+}) {
+  // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
+  cy.findByTestId("question-table-badges").within(() => {
+    cy.findByText(lhsTable).should("be.visible");
+    cy.findByText(rhsTable).should("be.visible");
+  });
+
+  // Ensure the results have columns from both tables
+  queryBuilderMain().within(() => {
+    cy.findByText(lhsSampleColumn).should("be.visible");
+    cy.findByText(rhsSampleColumn).should("be.visible");
   });
 }
