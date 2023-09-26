@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { IconContainer } from "./LegendItem.styled";
 

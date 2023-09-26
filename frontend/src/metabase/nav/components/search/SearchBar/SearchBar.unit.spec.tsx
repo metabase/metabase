@@ -15,7 +15,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
-import SearchBar from "metabase/nav/components/SearchBar";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { checkNotNull } from "metabase/core/utils/types";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [

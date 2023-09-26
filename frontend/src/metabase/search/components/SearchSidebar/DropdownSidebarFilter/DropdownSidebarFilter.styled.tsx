@@ -1,37 +1,58 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import { ParameterFieldSet } from "metabase/parameters/components/ParameterWidget/ParameterWidget.styled";
+import type { HTMLAttributes } from "react";
+import type { ButtonProps } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 
-export const DropdownFilterElement = styled(ParameterFieldSet)`
-  height: 40px;
+import FieldSet from "metabase/components/FieldSet";
+import EventSandbox from "metabase/components/EventSandbox";
 
-  ${({ theme, fieldHasValueOrFocus }) => {
-    return (
-      fieldHasValueOrFocus &&
-      css`
-        border-color: ${theme.colors.brand[1]};
-        color: ${theme.colors.brand[1]};
-      `
-    );
-  }}
-  &:hover {
-    ${({ theme }) => {
-      return css`
-        background-color: ${theme.colors?.bg[1]};
-        transition: background-color 0.3s;
-        cursor: pointer;
-      `;
-    }}
+export const DropdownFieldSet = styled(FieldSet)<{
+  fieldHasValueOrFocus?: boolean;
+}>`
+  min-width: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+
+  border: 2px solid
+    ${({ theme, fieldHasValueOrFocus }) =>
+      fieldHasValueOrFocus ? theme.colors.brand[1] : theme.colors.border[0]};
+
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+
+  cursor: pointer;
+
+  legend {
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    text-transform: none;
+    position: relative;
+    height: 2px;
+    line-height: 0;
+    margin-left: -0.45em;
+    padding: 0 0.5em;
   }
 
-  @media screen and (min-width: 440px) {
-    margin-right: 0;
+  &,
+  legend {
+    color: ${({ theme, fieldHasValueOrFocus }) =>
+      fieldHasValueOrFocus && theme.colors.brand[1]};
   }
 `;
-export const DropdownApplyButtonDivider = styled.hr`
-  ${({ theme }) => {
-    return css`
-      border-top: 1px solid ${theme.colors?.border[0]};
-    `;
-  }}
+
+export const DropdownDisplayContent = styled(Group)`
+  overflow: hidden;
+`;
+
+export const DropdownClearButton = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  pointer-events: all;
+`;
+
+export const SearchEventSandbox = styled(EventSandbox)`
+  display: contents;
 `;

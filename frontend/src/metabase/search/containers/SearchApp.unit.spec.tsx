@@ -6,11 +6,13 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
+  createMockUserListResult,
 } from "metabase-types/api/mocks";
 import type { EnabledSearchModelType, SearchResult } from "metabase-types/api";
 
@@ -48,6 +50,7 @@ const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
 
 const TEST_DATABASE = createMockDatabase();
 const TEST_TABLE = createMockTable();
+const TEST_USER_LIST = [createMockUserListResult()];
 
 const setup = async ({
   searchText,
@@ -61,6 +64,7 @@ const setup = async ({
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
+  setupUsersEndpoints(TEST_USER_LIST);
 
   // for testing the hydration of search text and filters on page load
   const params = {
@@ -159,7 +163,12 @@ describe("SearchApp", () => {
           searchText: "Test",
         });
 
-        userEvent.click(screen.getByTestId("sidebar-filter-dropdown-button"));
+        userEvent.click(
+          within(screen.getByTestId("type-search-filter")).getByTestId(
+            "sidebar-filter-dropdown-button",
+          ),
+        );
+
         await waitFor(() => {
           expect(
             screen.queryByTestId("loading-spinner"),
@@ -199,17 +208,12 @@ describe("SearchApp", () => {
           name,
         );
 
-        const fieldSetContent = within(screen.getByTestId("field-set-content"));
+        const typeFilter = within(screen.getByTestId("type-search-filter"));
+        const fieldSetContent = typeFilter.getByTestId("field-set-content");
 
-        expect(
-          fieldSetContent.getByText(
-            TYPE_FILTER_LABELS[model as EnabledSearchModelType],
-          ),
-        ).toBeInTheDocument();
-
-        expect(
-          fieldSetContent.getByLabelText("close icon"),
-        ).toBeInTheDocument();
+        expect(fieldSetContent).toHaveTextContent(
+          TYPE_FILTER_LABELS[model as EnabledSearchModelType],
+        );
       },
     );
   });
