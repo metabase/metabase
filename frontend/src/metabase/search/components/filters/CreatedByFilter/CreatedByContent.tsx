@@ -16,9 +16,9 @@ import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSid
 export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
+    const [userFilter, setUserFilter] = useState("");
 
     const [selectedUserId, setSelectedUserId] = useState(value);
-    const [userFilter, setUserFilter] = useState("");
 
     const filteredUsers = users.filter(user => {
       return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
