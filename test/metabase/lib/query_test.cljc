@@ -40,3 +40,15 @@
           (lib/query meta/metadata-provider {:database (meta/id)
                                              :type     :query
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))
+
+(deftest ^:parallel with-different-table-test
+  (let [query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (meta/table-metadata :venues))
+                  (lib/filter (lib/= (meta/field-metadata :venues :name) "Toucannery"))
+                  (lib/breakout (meta/field-metadata :venues :category-id))
+                  (lib/limit 100)
+                  (lib/append-stage))
+        card-id (:id (lib.tu/mock-cards :orders))]
+    (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
+           (:stages (lib/with-different-table query (meta/id :orders)))))
+    (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
+           (:stages (lib/with-different-table query (str "card__" card-id)))))))

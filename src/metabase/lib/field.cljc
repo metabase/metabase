@@ -442,18 +442,17 @@
                            (column-metadata->field-ref metadata))
     (column-metadata->field-ref metadata)))
 
-(defn- expression-refs
-  "Create refs for all the expressions in a stage of a query."
+(defn- expression-columns
+  "Return the [[lib.metadata/ColumnMetadata]] for all the expressions in a stage of a query."
   [query stage-number]
-  (for [col   (lib.metadata.calculation/visible-columns
-               query
-               stage-number
-               (lib.util/query-stage query stage-number)
-               {:include-joined?              false
-                :include-expressions?         true
-                :include-implicitly-joinable? false})
-        :when (= (:lib/source col) :source/expressions)]
-    (lib.ref/ref col)))
+  (filter #(= (:lib/source %) :source/expressions)
+          (lib.metadata.calculation/visible-columns
+           query
+           stage-number
+           (lib.util/query-stage query stage-number)
+           {:include-joined?              false
+            :include-expressions?         true
+            :include-implicitly-joinable? false})))
 
 (mu/defn with-fields :- ::lib.schema/query
   "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
@@ -469,13 +468,14 @@
     xs]
    (let [xs        (not-empty (mapv lib.ref/ref xs))
          ;; If any fields are specified, include all expressions not yet included.
-         expr-refs (expression-refs query stage-number)
-         ;; Set of indexes of expr-refs which are *already* included.
-         included  (set (when xs
-                          (vals (lib.equality/find-closest-matches-for-refs expr-refs xs {:keep-join? true}))))
+         expr-cols (expression-columns query stage-number)
+         ;; Set of expr-cols which are *already* included.
+         included  (into #{}
+                         (keep #(lib.equality/find-matching-column query stage-number % expr-cols))
+                         (or xs []))
          ;; Those expr-refs which must still be included.
-         to-add    (keep-indexed #(when-not (included %1) %2) expr-refs)
-         xs        (when xs (into xs to-add))]
+         to-add    (remove included expr-cols)
+         xs        (when xs (into xs (map lib.ref/ref) to-add))]
      (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs))))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
@@ -526,7 +526,7 @@
   (lib.util/update-query-stage query stage-number
                                (fn [stage]
                                  (assoc stage :fields
-                                        (into [] (comp (remove (comp #{:source/joins}
+                                        (into [] (comp (remove (comp #{:source/joins :source/implicitly-joinable}
                                                                      :lib/source))
                                                        (map lib.ref/ref))
                                               (lib.metadata.calculation/returned-columns query stage-number stage))))))
@@ -540,13 +540,9 @@
 
 (defn- include-field [query stage-number column]
   (let [populated  (query-with-fields query stage-number)
-        column-ref (lib.ref/ref column)
         field-refs (fields populated stage-number)
-        match-opts {:keep-join? true}
-        match-ref  (if (and (integer? (last column-ref))
-                            (every? (comp integer? last) field-refs))
-                     (lib.equality/find-closest-matching-ref column-ref field-refs match-opts)
-                     (lib.equality/find-closest-matching-ref populated stage-number column-ref field-refs match-opts))]
+        match-ref  (lib.equality/find-matching-ref column field-refs)
+        column-ref (lib.ref/ref column)]
     (if (and match-ref
              (or (string? (last column-ref))
                  (integer? (last match-ref))))
@@ -558,18 +554,18 @@
   (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   :let [joinables (lib.join/joinable-columns query stage-number join)
-                                        field     (lib.equality/closest-matching-metadata
-                                                    query stage-number column-ref
-                                                    joinables
-                                                    {:keep-join? true})]
+                                        field     (lib.equality/find-matching-column
+                                                   query stage-number column-ref joinables)]
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
 
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
-    (if (or (and field (:selected? field))
-            (= join-fields :all))
+    (if (or (= join-fields :all)
+            (and field
+                 (not= join-fields :none)
+                 (lib.equality/find-matching-ref field join-fields)))
       query
       (lib.remove-replace/replace-join query stage-number join
                                        (lib.join/with-join-fields join
@@ -611,8 +607,8 @@
         (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
         query))))
 
-(defn- remove-matching-ref [query stage-number a-ref refs]
-  (let [match (lib.equality/find-closest-matching-ref query stage-number a-ref refs {:keep-join? true})]
+(defn- remove-matching-ref [column refs]
+  (let [match (lib.equality/find-matching-ref column refs)]
      (remove #(= % match) refs)))
 
 (defn- exclude-field
@@ -623,31 +619,22 @@
   (let [old-fields (-> (query-with-fields query stage-number)
                        (lib.util/query-stage stage-number)
                        :fields)
-        new-fields (remove-matching-ref query stage-number (lib.ref/ref column) old-fields)]
+        new-fields (remove-matching-ref column old-fields)]
     (cond-> query
       ;; If we couldn't find the field, return the original query unchanged.
       (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
-  (let [field-ref   (lib.ref/ref column)
-        join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
+  (let [join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
         join-fields (lib.join/join-fields join)]
     (if (or (nil? join-fields)
             (= join-fields :none))
       ;; Nothing to do if there's already no join fields.
       query
       (let [resolved-join-fields (if (= join-fields :all)
-                                   (lib.metadata.calculation/returned-columns query stage-number join)
+                                   (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
                                    join-fields)
-            removed              (if (= join-fields :all)
-                                   ;; for `:fields :all` use [[lib.equality/closest-matching-metadata]] since we have
-                                   ;; actual ColumnMetdatas, since it's more sophisticated
-                                   ;; than [[lib.equality/find-closest-matching-ref]]. We will have to use the latter
-                                   ;; if we only have refs to work with
-                                   (remove #(lib.equality/closest-matching-metadata query stage-number field-ref [%])
-                                           resolved-join-fields)
-                                   (remove #(lib.equality/find-closest-matching-ref query stage-number field-ref [%])
-                                           resolved-join-fields))]
+            removed              (remove-matching-ref column resolved-join-fields)]
         (cond-> query
           ;; If we actually removed a field, replace the join. Otherwise return the query unchanged.
           (< (count removed) (count resolved-join-fields))
@@ -700,7 +687,7 @@
                     lib.metadata.calculation/returned-columns
                     lib.metadata.calculation/visible-columns)
                   query stage-number stage)]
-     (lib.equality/closest-matching-metadata query stage-number field-ref columns))))
+     (lib.equality/find-matching-column query stage-number field-ref columns))))
 
 ;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
 (mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]

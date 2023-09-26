@@ -25,7 +25,6 @@ function _AddEditEmailSidebar({
   channelSpec,
   users,
   parameters,
-  defaultParametersById,
   dashboard,
 
   // form callbacks
@@ -104,13 +103,11 @@ function _AddEditEmailSidebar({
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
-            defaultParametersById={defaultParametersById}
           />
         ) : (
           <DefaultParametersSection
             className="py3 mt2 border-top"
             parameters={parameters}
-            defaultParametersById={defaultParametersById}
           />
         )}
         <div className="text-bold py3 flex justify-between align-center border-top">
@@ -157,7 +154,6 @@ _AddEditEmailSidebar.propTypes = {
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

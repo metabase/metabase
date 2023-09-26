@@ -7,6 +7,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -102,7 +103,17 @@
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
                     (lib/visible-columns nil)))))
-
+  (testing "Include multiple implicitly joinable columns pointing to the same table and field (##33451)"
+    (is (= ["id"
+            "created_by"
+            "updated_by"
+            "ic_accounts__via__created_by__id"
+            "ic_accounts__via__created_by__name"
+            "ic_accounts__via__updated_by__id"
+            "ic_accounts__via__updated_by__name"]
+           (->> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                lib/visible-columns
+                (map :lib/desired-column-alias)))))
   (testing "multiple aggregations"
     (lib.metadata.calculation/visible-columns
      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -132,3 +143,44 @@
         (testing "are not included by returned-columns"
           (is (=? (sort-by (juxt :name :id) own-fields)
                   (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query)))))))))
+
+(deftest ^:parallel self-join-visible-columns-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/with-fields (for [field [:id :tax]]
+                                     (lib/ref (meta/field-metadata :orders field))))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                 [(lib/= (meta/field-metadata :orders :id)
+                                                         (meta/field-metadata :orders :id))])
+                                (lib/with-join-fields (for [field [:id :tax]]
+                                                        (lib/ref (meta/field-metadata :orders field)))))))
+        orders-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
+                                      "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
+                      {:name field-name
+                       :lib/desired-column-alias field-name
+                       :lib/source :source/table-defaults})
+        joined-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
+                                      "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
+                      {:name field-name
+                       :lib/desired-column-alias (str "Orders__" field-name)
+                       :lib/source :source/joins})]
+    (testing "just own columns"
+      (is (=? (concat orders-cols joined-cols)
+              (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false}))))
+    (testing "with implicit joins"
+      (is (=? (concat orders-cols
+                      joined-cols
+                      ;; First set of implicit joins
+                      (sort-by :position
+                               (for [field (meta/fields :people)]
+                                 (meta/field-metadata :people field)))
+                      (sort-by :position
+                               (for [field (meta/fields :products)]
+                                 (meta/field-metadata :products field)))
+                      ;; Second set of implicit joins
+                      (sort-by :position
+                               (for [field (meta/fields :people)]
+                                 (meta/field-metadata :people field)))
+                      (sort-by :position
+                               (for [field (meta/fields :products)]
+                                 (meta/field-metadata :products field))))
+              (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))

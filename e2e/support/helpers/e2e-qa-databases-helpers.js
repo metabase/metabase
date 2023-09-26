@@ -103,12 +103,12 @@ function assertOnDatabaseMetadata(engine) {
 }
 
 function recursiveCheck(id, i = 0) {
-  // Let's not wait more than 5s for the sync to finish
-  if (i === 20) {
+  // Let's not wait more than 20s for the sync to finish
+  if (i === 40) {
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.wait(250);
+  cy.wait(500);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
     if (database.initial_sync_status !== "complete") {
@@ -228,12 +228,12 @@ export function waitForSyncToFinish({
   tableName = "",
   tableAlias,
 }) {
-  // 100 x 100ms should be plenty of time for the sync to finish.
-  if (iteration === 100) {
+  // 40 x 500ms (20s) should be plenty of time for the sync to finish.
+  if (iteration === 40) {
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.wait(100);
+  cy.wait(500);
 
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {
