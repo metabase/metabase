@@ -110,10 +110,7 @@
                             (template-tag->field-form dimension card)
                             dimension)]
         (if (some? field-form)
-          (try
-           (unwrap-field-clause field-form)
-           (catch Exception e
-             (log/error e "Failed to unwrap field" field-form)))
+          (unwrap-field-clause field-form)
           (log/warn (format "Could not find matching Field ID for target: %s from card %d" target (:id card))))))))
 
 (defn- pk-fields
