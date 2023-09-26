@@ -278,7 +278,7 @@
           satisfiable-dimensions (magic/semantically-satisfiable-dimensions dimensions entity_type fields)]
       {:satisfiable-affinities
        (->> (magic/dash-template->affinities template)
-            (filter (fn [{:keys [base-dims] :as affinity}]
+            (filter (fn [{:keys [base-dims]}]
                       (set/subset? base-dims satisfiable-dimensions)))
             (mapv (fn [affinity]
                     (-> affinity
