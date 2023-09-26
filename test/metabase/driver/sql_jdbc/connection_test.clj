@@ -206,3 +206,9 @@
   (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
     (is (=? {"unreturnedConnectionTimeout" integer?}
             (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest unreturned-connection-timeout-test
+  (testing "We should be able to set jdbc-data-warehouse-unreturned-connection-timeout-seconds via env var (#33646)"
+    (mt/with-temp-env-var-value [mb-jdbc-data-warehouse-unreturned-connection-timeout-seconds "20"]
+      (is (= 20
+             (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))

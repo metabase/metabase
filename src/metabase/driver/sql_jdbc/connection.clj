@@ -96,7 +96,8 @@
   :visibility :internal
   :type       :integer
   :getter     (fn []
-                (long (/ context.default/query-timeout-ms 1000)))
+                (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+                    (long (/ context.default/query-timeout-ms 1000))))
   :setter     :none)
 
 (defmethod data-warehouse-connection-pool-properties :default
