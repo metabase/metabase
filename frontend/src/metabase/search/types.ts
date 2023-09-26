@@ -59,6 +59,6 @@ export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
   // (e.g. for converting a string to a date)
   fromUrl?: (
     value: string | string[] | null | undefined,
-  ) => SearchFilterPropTypes[T];
+  ) => SearchFilterPropTypes[T] | undefined;
   toUrl?: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
 };

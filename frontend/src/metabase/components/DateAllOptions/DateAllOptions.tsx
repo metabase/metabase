@@ -52,6 +52,7 @@ export const DateAllOptions = ({
 
   return (
     <DatePicker
+      data-testid="date-all-options"
       className={className}
       filter={filter as any}
       onFilterChange={setFilter}
