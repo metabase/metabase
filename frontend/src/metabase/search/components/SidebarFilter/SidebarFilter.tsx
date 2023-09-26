@@ -132,16 +132,19 @@ export const SidebarFilter = ({
         ignoreTrigger
         autoWidth
         sizeToFit
+        pinInitialAttachment
         horizontalAttachments={["right"]}
       >
-        <SearchEventSandbox>
-          <Box miw={popoverWidth ?? "100%"}>
-            <ContentComponent
-              value={selectedValues}
-              onChange={selected => onApplyFilter(selected)}
-            />
-          </Box>
-        </SearchEventSandbox>
+        {popoverWidth && (
+          <SearchEventSandbox>
+            <Box miw={popoverWidth}>
+              <ContentComponent
+                value={selectedValues}
+                onChange={selected => onApplyFilter(selected)}
+              />
+            </Box>
+          </SearchEventSandbox>
+        )}
       </Popover>
     </Box>
   );

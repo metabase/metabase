@@ -17,7 +17,7 @@ import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
 
-interface DateAllOptionsProps {
+export interface DateAllOptionsProps {
   setValue: (value: string | null) => void;
   value?: string;
   onClose?: () => void;
