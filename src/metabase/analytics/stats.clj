@@ -27,7 +27,6 @@
             PulseCard
             PulseChannel
             QueryCache
-            QueryExecution
             Segment
             Table
             User]]
@@ -37,7 +36,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -339,7 +337,7 @@
 (defn summarize-executions
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
-   (summarize-executions (db/select-reducible [QueryExecution :executor_id :running_time :error])))
+   (summarize-executions (t2/reducible-select [:model/QueryExecution :executor_id :running_time :error])))
   ([executions]
    (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
   ([summary execution]

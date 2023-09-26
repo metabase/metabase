@@ -9,11 +9,11 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -69,9 +69,6 @@
     "10000+"     10001
     "10000+"     100000))
 
-(def DBMSVersionStats
-  {s/Str su/IntGreaterThanOrEqualToZero})
-
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
@@ -89,8 +86,8 @@
                        :sso_configured      false
                        :has_sample_data     false}
                       stats))
-        (is (schema= DBMSVersionStats
-                     (-> stats :stats :database :dbms_versions)))))))
+        (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                    (-> stats :stats :database :dbms_versions)))))))
 
 (deftest ^:parallel conversion-test
   (is (= #{true}
@@ -111,10 +108,22 @@
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (#'stats/bin-large-number (/ latency 1000))))}))
 
-(deftest ^:parallel new-impl-test
-  (is (= (old-execution-metrics)
-         (#'stats/execution-metrics))
-      "the new lazy-seq version of the executions metrics works the same way the old one did"))
+(def ^:private query-execution-defaults
+  {:hash         (qp.util/query-hash {})
+   :running_time 1
+   :result_rows  1
+   :native       false
+   :executor_id  nil
+   :card_id      nil
+   :context      :ad-hoc})
+
+(deftest new-impl-test
+  (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                         {:error "some error"})
+                 QueryExecution _ query-execution-defaults]
+    (is (= (old-execution-metrics)
+           (#'stats/execution-metrics))
+        "the new lazy-seq version of the executions metrics works the same way the old one did")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
