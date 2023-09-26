@@ -56,10 +56,10 @@ export const DefaultTemplate = args => (
   </Box>
 );
 
-export const CardSectionTemplate = args => (
+export const CardSectionTemplate = ({ withSectionBorder, ...args }) => (
   <Box maw="20rem">
     <Card {...args}>
-      <Card.Section>
+      <Card.Section withBorder={withSectionBorder}>
         <Box bg="bg" h="10rem" />
       </Card.Section>
       <Stack mt="md" spacing="sm">
@@ -70,13 +70,17 @@ export const CardSectionTemplate = args => (
   </Box>
 );
 
+export const CardSectionBorderTemplate = args => (
+  <CardSectionTemplate {...args} withSectionBorder />
+);
+
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Border
+### Card border
 
 export const Border = DefaultTemplate.bind({});
 Border.args = {
@@ -93,4 +97,12 @@ export const CardSection = CardSectionTemplate.bind({});
 
 <Canvas>
   <Story name="Card section">{CardSection}</Story>
+</Canvas>
+
+### Card.Section border
+
+export const CardSectionBorder = CardSectionBorderTemplate.bind({});
+
+<Canvas>
+  <Story name="Card section, border">{CardSectionBorder}</Story>
 </Canvas>

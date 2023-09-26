@@ -2,9 +2,9 @@ import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import {
-  getAccordionOverrides,
   getAnchorOverrides,
   getButtonOverrides,
+  getCardOverrides,
   getCheckboxOverrides,
   getInputOverrides,
   getMenuOverrides,
@@ -99,9 +99,9 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     }),
   },
   components: {
-    ...getAccordionOverrides(),
     ...getAnchorOverrides(),
     ...getButtonOverrides(),
+    ...getCardOverrides(),
     ...getCheckboxOverrides(),
     ...getInputOverrides(),
     ...getMenuOverrides(),
