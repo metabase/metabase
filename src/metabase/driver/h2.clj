@@ -578,7 +578,7 @@
   (case upload-type
     ::upload/varchar_255 "VARCHAR"
     ::upload/text        "VARCHAR"
-    ::upload/int         "BIGINT"
+    ::upload/bigint      "BIGINT"
     ::upload/float       "DOUBLE PRECISION"
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"

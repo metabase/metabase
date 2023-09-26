@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private bool-type      :metabase.upload/boolean)
-(def ^:private int-type       :metabase.upload/int)
+(def ^:private bigint-type    :metabase.upload/bigint)
 (def ^:private float-type     :metabase.upload/float)
 (def ^:private vchar-type     :metabase.upload/varchar_255)
 (def ^:private date-type      :metabase.upload/date)
@@ -60,30 +60,30 @@
            ["0,0"        0              float-type ",."]
            ["0,0"        0              float-type ", "]
            ["0.0"        0              float-type ".’"]
-           ["$2"         2              int-type]
-           ["$ 3"        3              int-type]
-           ["-43€"       -43            int-type]
-           ["(86)"       -86            int-type]
-           ["($86)"      -86            int-type]
-           ["£1000"      1000           int-type]
-           ["£1000"      1000           int-type "."]
-           ["£1000"      1000           int-type ".,"]
-           ["£1000"      1000           int-type ",."]
-           ["£1000"      1000           int-type ", "]
-           ["£1000"      1000           int-type ".’"]
-           ["-¥9"        -9             int-type]
-           ["₹ -13"      -13            int-type]
-           ["₪13"        13             int-type]
-           ["₩-13"       -13            int-type]
-           ["₿42"        42             int-type]
-           ["-99¢"       -99            int-type]
-           ["2"          2              int-type]
-           ["-86"        -86            int-type]
-           ["9,986,000"  9986000        int-type]
-           ["9,986,000"  9986000        int-type "."]
-           ["9,986,000"  9986000        int-type ".,"]
-           ["9.986.000"  9986000        int-type ",."]
-           ["9’986’000"  9986000        int-type ".’"]
+           ["$2"         2              bigint-type]
+           ["$ 3"        3              bigint-type]
+           ["-43€"       -43            bigint-type]
+           ["(86)"       -86            bigint-type]
+           ["($86)"      -86            bigint-type]
+           ["£1000"      1000           bigint-type]
+           ["£1000"      1000           bigint-type "."]
+           ["£1000"      1000           bigint-type ".,"]
+           ["£1000"      1000           bigint-type ",."]
+           ["£1000"      1000           bigint-type ", "]
+           ["£1000"      1000           bigint-type ".’"]
+           ["-¥9"        -9             bigint-type]
+           ["₹ -13"      -13            bigint-type]
+           ["₪13"        13             bigint-type]
+           ["₩-13"       -13            bigint-type]
+           ["₿42"        42             bigint-type]
+           ["-99¢"       -99            bigint-type]
+           ["2"          2              bigint-type]
+           ["-86"        -86            bigint-type]
+           ["9,986,000"  9986000        bigint-type]
+           ["9,986,000"  9986000        bigint-type "."]
+           ["9,986,000"  9986000        bigint-type ".,"]
+           ["9.986.000"  9986000        bigint-type ",."]
+           ["9’986’000"  9986000        bigint-type ".’"]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -131,17 +131,17 @@
 
 (deftest ^:parallel type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
-                                    [bool-type     int-type      int-type]
+                                    [bool-type     bigint-type      bigint-type]
                                     [bool-type     date-type     vchar-type]
                                     [bool-type     datetime-type vchar-type]
                                     [bool-type     vchar-type    vchar-type]
                                     [bool-type     text-type     text-type]
-                                    [int-type      bool-type     int-type]
-                                    [int-type      float-type    float-type]
-                                    [int-type      date-type     vchar-type]
-                                    [int-type      datetime-type vchar-type]
-                                    [int-type      vchar-type    vchar-type]
-                                    [int-type      text-type     text-type]
+                                    [bigint-type      bool-type     bigint-type]
+                                    [bigint-type      float-type    float-type]
+                                    [bigint-type      date-type     vchar-type]
+                                    [bigint-type      datetime-type vchar-type]
+                                    [bigint-type      vchar-type    vchar-type]
+                                    [bigint-type      text-type     text-type]
                                     [float-type    vchar-type    vchar-type]
                                     [float-type    text-type     text-type]
                                     [float-type    date-type     vchar-type]
@@ -172,7 +172,7 @@
 (deftest ^:parallel detect-schema-test
   (testing "Well-formed CSV file"
     (is (= {"name"             vchar-type
-            "age"              int-type
+            "age"              bigint-type
             "favorite_pokemon" vchar-type}
            (upload/detect-schema
             (csv-file-with ["Name, Age, Favorite Pokémon"
@@ -180,7 +180,7 @@
                             "Ryan, 97, Paras"])))))
   (testing "CSV missing data"
     (is (= {"name"       vchar-type
-            "height"     int-type
+            "height"     bigint-type
             "birth_year" float-type}
            (upload/detect-schema
             (csv-file-with ["Name, Height, Birth Year"
@@ -199,7 +199,7 @@
   (testing "Boolean coalescing"
     (is (= {"name"          vchar-type
             "is_jedi_"      bool-type
-            "is_jedi__int_" int-type
+            "is_jedi__int_" bigint-type
             "is_jedi__vc_"  vchar-type}
            (upload/detect-schema
             (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
@@ -225,7 +225,7 @@
               (csv-file-with [""])))))
   (testing "CSV missing data in the top row"
     (is (= {"name"       vchar-type
-            "height"     int-type
+            "height"     bigint-type
             "birth_year" float-type}
            (upload/detect-schema
             (csv-file-with ["Name, Height, Birth Year"

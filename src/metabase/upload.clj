@@ -35,7 +35,7 @@
 ;;         float   datetime
 ;;           |       |
 ;;           |       |
-;;          int    date
+;;        bigint    date
 ;;           |
 ;;           |
 ;;        boolean
@@ -44,8 +44,8 @@
   ;; listed in depth-first order
   {::varchar_255 ::text
    ::float       ::varchar_255
-   ::int         ::float
-   ::boolean     ::int
+   ::bigint      ::float
+   ::boolean     ::bigint
    ::datetime    ::varchar_255
    ::date        ::datetime})
 
@@ -113,7 +113,7 @@
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
     - ::boolean
-    - ::int
+    - ::bigint
     - ::float
     - ::varchar_255
     - ::text
@@ -130,7 +130,7 @@
       (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
       (datetime-string? value)                                ::datetime
       (date-string? value)                                    ::date
-      (re-matches (int-regex number-separators) value)        ::int
+      (re-matches (int-regex number-separators) value)        ::bigint
       (re-matches (float-regex number-separators) value)      ::float
       (re-matches #".{1,255}" value)                          ::varchar_255
       :else                                                   ::text)))
@@ -245,7 +245,7 @@
   (case upload-type
     ::varchar_255 identity
     ::text        identity
-    ::int         (partial parse-number (get-number-separators))
+    ::bigint      (partial parse-number (get-number-separators))
     ::float       (partial parse-number (get-number-separators))
     ::boolean     #(parse-bool (str/trim %))
     ::date        #(parse-date (str/trim %))
@@ -293,7 +293,7 @@
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
 
-    - ::int
+    - ::bigint
     - ::float
     - ::boolean
     - ::varchar_255
