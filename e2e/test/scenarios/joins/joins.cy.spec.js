@@ -289,7 +289,7 @@ describe("scenarios > question > joined questions", () => {
     openOrdersTable({ mode: "notebook" });
 
     joinTable("Products");
-    selectJoinType("Inner join");
+    selectJoinStrategy("Inner join");
 
     getNotebookStep("join").icon("add").click();
     popover().findByText("Created At").click();
@@ -310,58 +310,51 @@ describe("scenarios > question > joined questions", () => {
     openOrdersTable({ mode: "notebook" });
 
     joinTable("Products");
-    selectJoinType("Inner join");
+    selectJoinStrategy("Inner join");
 
     // Test join dimension infers parent dimension's temporal unit
 
     cy.findByTestId("parent-dimension").click();
-    selectFromDropdown("by month", { force: true });
-    selectFromDropdown("Week");
+    popover().findByText("by month").click({ force: true });
+    popover().last().findByText("Week").click();
 
     cy.findByTestId("join-dimension").click();
-    selectFromDropdown("Created At");
+    popover().findByText("Created At").click();
 
-    assertDimensionName("parent", "Created At: Week");
-    assertDimensionName("join", "Created At: Week");
+    assertJoinColumnName("left", "Created At: Week");
+    assertJoinColumnName("right", "Created At: Week");
 
     // Test changing a temporal unit on one dimension would update a second one
 
     cy.findByTestId("join-dimension").click();
-    selectFromDropdown("by week", { force: true });
-    selectFromDropdown("Day");
+    popover().findByText("by week").click({ force: true });
+    popover().last().findByText("Day").click();
 
-    assertDimensionName("parent", "Created At: Day");
-    assertDimensionName("join", "Created At: Day");
+    assertJoinColumnName("left", "Created At: Day");
+    assertJoinColumnName("right", "Created At: Day");
 
     summarize({ mode: "notebook" });
-    selectFromDropdown("Count of rows");
+    popover().findByText("Count of rows").click();
 
     visualize();
 
-    // 2087 rows mean the join is done correctly,
-    // (orders joined with products on the same day-month-year)
     cy.get(".ScalarValue").contains("2,087");
   });
 });
 
 function joinTable(table) {
-  cy.findByText("Join data").click();
+  cy.button("Join data").click();
   popover().findByText(table).click();
 }
 
-function selectJoinType(strategy) {
+function selectJoinStrategy(strategy) {
   cy.icon("join_left_outer").first().click();
   popover().findByText(strategy).click();
 }
 
-function selectFromDropdown(option, clickOpts) {
-  popover().last().findByText(option).click(clickOpts);
-}
-
-function assertDimensionName(type, name) {
-  cy.findByTestId(`${type}-dimension`).within(() => {
-    cy.findByText(name);
-  });
+function assertJoinColumnName(type, name) {
+  const testId = type === "left" ? "parent-dimension" : "join-dimension";
+  cy.findByTestId(testId).findByText(name).should("be.visible");
 }
 
 function assertJoinValid({
