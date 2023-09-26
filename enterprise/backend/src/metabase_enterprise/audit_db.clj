@@ -145,7 +145,7 @@
 
     dir-resource
     (do
-      (log/info "Copying resources/instance_analytics to plugins...")
+      (log/info (str "Copying resources/instance_analytics to " plugin-dir "..."))
       (fs/copy-dir-into analytics-dir-resource (analytics-dir-plugins-path))
       (log/info "Copying done."))))
 
