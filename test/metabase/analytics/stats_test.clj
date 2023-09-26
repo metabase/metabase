@@ -1,6 +1,7 @@
 (ns metabase.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
@@ -115,7 +116,8 @@
    :native       false
    :executor_id  nil
    :card_id      nil
-   :context      :ad-hoc})
+   :context      :ad-hoc
+   :started_at   (t/offset-date-time)})
 
 (deftest new-impl-test
   (mt/with-temp [QueryExecution _ (merge query-execution-defaults
