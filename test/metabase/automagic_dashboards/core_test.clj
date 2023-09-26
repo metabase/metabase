@@ -2264,6 +2264,54 @@
               :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
               :filters []})))))
 
+(deftest semantically-satisfiable-dimensions-test
+  (testing "Examples of semantic type matching for semantically-satisfiable-dimensions"
+    (let [dimensions [{"Country" {:field_type [:entity/GenericTable :type/Country]}}
+                      {"State" {:field_type [:entity/GenericTable :type/State]}}
+                      {"GenericNumber" {:field_type [:entity/GenericTable :type/Number]}}
+                      {"Source" {:field_type [:entity/GenericTable :type/Source]}}
+                      {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category]}}
+                      {"Singleton" {:field_type [:entity/GenericTable :type/Category]}}
+                      {"Date" {:field_type [:entity/GenericTable :type/Date]}}
+                      {"Time" {:field_type [:entity/GenericTable :type/Time]}}
+                      {"Timestamp" {:field_type [:type/DateTime]}}
+                      {"JoinDate" {:field_type [:entity/GenericTable :type/JoinDate]}}
+                      {"CreateDate" {:field_type [:type/CreationDate]}}
+                      {"JoinTime" {:field_type [:entity/GenericTable :type/JoinTime]}}
+                      {"CreateTime" {:field_type [:type/CreationTime]}}
+                      {"JoinTimestamp" {:field_type [:entity/GenericTable :type/JoinTimestamp]}}
+                      {"CreateTimestamp" {:field_type [:type/CreationTimestamp]}}
+                      {"FK" {:field_type [:type/FK]}}
+                      {"Long" {:field_type [:entity/GenericTable :type/Longitude]}}
+                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude]}}
+                      {"Birthdate" {:field_type [:type/Birthdate]}}
+                      {"ZIP" {:field_type [:type/ZipCode]}}]]
+      (is (= #{"Singleton" "GenericCategoryMedium" "State"}
+             (magic/semantically-satisfiable-dimensions
+               dimensions
+               :entity/GenericTable
+               [{:semantic_type :type/State}])))
+      (is (= #{"GenericNumber" "Lat" "Long"}
+             (magic/semantically-satisfiable-dimensions
+               dimensions
+               :entity/GenericTable
+               [{:semantic_type :type/Latitude}
+                {:semantic_type :type/Longitude}])))
+      (is (= #{"Date" "JoinDate"}
+             (magic/semantically-satisfiable-dimensions
+               dimensions
+               :entity/GenericTable
+               [{:semantic_type :type/JoinDate}])))
+      (testing "The union of the above semantic types should produce the union of the above dimensions."
+        (is (= #{"Date" "JoinDate" "GenericNumber" "Lat" "Long" "Singleton" "GenericCategoryMedium" "State"}
+               (magic/semantically-satisfiable-dimensions
+                 dimensions
+                 :entity/GenericTable
+                 [{:semantic_type :type/State}
+                  {:semantic_type :type/Latitude}
+                  {:semantic_type :type/Longitude}
+                  {:semantic_type :type/JoinDate}])))))))
+
 (deftest all-satisfied-bindings-test
   (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
     (is (= {}
