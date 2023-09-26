@@ -767,7 +767,7 @@
                        (get-privileges)))))
             (finally
               (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
-              (when supports-roles?
+              (when mysql8-or-above?
                 (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
                               "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
                               "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
