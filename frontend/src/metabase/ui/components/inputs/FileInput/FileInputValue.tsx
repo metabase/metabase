@@ -1,4 +1,4 @@
-import { Text } from "@mantine/core";
+import { FileInputText } from "./FileInputValue.styled";
 
 interface FileInputValueProps {
   value: File | File[] | null;
@@ -9,16 +9,5 @@ export const FileInputValue = ({ value }: FileInputValueProps) => {
     ? value.map(file => file.name).join(", ")
     : value?.name;
 
-  return (
-    <Text
-      color="inherit"
-      style={{
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </Text>
-  );
+  return <FileInputText color="inherit">{text}</FileInputText>;
 };
