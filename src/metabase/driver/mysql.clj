@@ -710,26 +710,26 @@
     ;; GRANT
     ;;     priv_type [(column_list)]
     ;;       [, priv_type [(column_list)]] ...
-    ;;     ON priv_level
+    ;;     ON object
     ;;     TO user etc.
     ;; }
     ;; For now we ignore column-level privileges. But this is how we could get them in the future.
     #"^GRANT (.+) ON (.+) TO "
     :>>
-    (fn [[_ priv_types object_type]]
-      (when-let [privileges (not-empty
-                             (if (= priv_types "ALL PRIVILEGES")
-                               #{:select :update :delete :insert}
-                               (let [split-priv-types (->> (str/split priv_types #", ")
-                                                           (map (comp keyword u/lower-case-en)))]
-                                 (set/intersection #{:select :update :delete :insert} (set split-priv-types)))))]
-        {:type       ::privileges
-         :privileges privileges
-         :object-type (cond
-                        (= object_type "*.*")             :global
-                        (str/ends-with? object_type ".*") :database
-                        :else                             :table)
-         :object-name object_type}))
+    (fn [[_ priv-types object]]
+      (when-let [priv-types' (not-empty
+                              (if (= priv-types "ALL PRIVILEGES")
+                                #{:select :update :delete :insert}
+                                (let [split-priv-types (->> (str/split priv-types #", ")
+                                                            (map (comp keyword u/lower-case-en)))]
+                                  (set/intersection #{:select :update :delete :insert} (set split-priv-types)))))]
+        {:type             ::privileges
+         :privilege-types  priv-types'
+         :level            (cond
+                             (= object "*.*")             :global
+                             (str/ends-with? object ".*") :database
+                             :else                        :table)
+         :object           object}))
     ;; GRANT role [, role] ... TO user etc.
     #"^GRANT (.+) TO "
     :>>
@@ -770,16 +770,16 @@
   [privilege-grants database-name table-names]
   (let [{global-grants   :global
          database-grants :database
-         table-grants    :table} (group-by :object-type privilege-grants)
+         table-grants    :table} (group-by :level privilege-grants)
         lower-database-name (u/lower-case-en database-name)
-        all-table-privileges (set/union (:privileges (first global-grants))
-                                        (:privileges (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
+        all-table-privileges (set/union (:privilege-types (first global-grants))
+                                        (:privilege-types (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
                                                                    database-grants)))
         table-privileges (into {}
                                (keep (fn [grant]
                                        (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object-name grant))]
                                          (let [[_ table-name] match]
-                                           [table-name (:privileges grant)]))))
+                                           [table-name (:privilege-types grant)]))))
                                table-grants)]
     (into {}
           (keep (fn [table-name]
