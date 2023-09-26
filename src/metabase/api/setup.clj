@@ -165,8 +165,11 @@
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
-      (events/publish-event! :database-create database)
-      (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (when database
+        (events/publish-event! :event/database-create database))
+      (->> {:user-id user-id}
+           (events/publish-event! :event/user-login)
+           (events/publish-event! :event/user-joined))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
       (when database (snowplow/track-event! ::snowplow/database-connection-successful
                                             user-id
@@ -194,7 +197,7 @@
 
 ;;; Admin Checklist
 
-(def ChecklistState
+(def ^:private ChecklistState
   "Malli schema for the state to annotate the checklist."
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
@@ -322,8 +325,7 @@
   ([checklist-info]
    (annotate (checklist-items checklist-info))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/admin_checklist"
+(api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
   (validation/check-has-application-permission :setting)
@@ -331,8 +333,7 @@
 
 ;; User defaults endpoint
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/user_defaults"
+(api/defendpoint GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."
   [token]

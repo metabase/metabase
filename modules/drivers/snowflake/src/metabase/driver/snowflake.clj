@@ -492,22 +492,19 @@
   [driver database table]
   (describe-table-fks driver database table (db-name database)))
 
-(defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
-
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
-;; See https://docs.snowflake.net/manuals/sql-reference/data-types-datetime.html#timestamp.
-(defmethod driver.common/current-db-time-date-formatters :snowflake
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSSSSS Z"))
+(defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
 
-(defmethod driver.common/current-db-time-native-query :snowflake
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF TZHTZM')")
-
-(defmethod driver/current-db-time :snowflake
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :snowflake
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE';")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset "default"))))))
 
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake
   [_]

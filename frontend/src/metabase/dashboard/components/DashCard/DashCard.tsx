@@ -5,7 +5,7 @@ import type { LocationDescriptor } from "history";
 import { useMount } from "react-use";
 import type { IconProps } from "metabase/core/components/Icon";
 
-import Utils from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
 
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 
@@ -164,7 +164,7 @@ function DashCard({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = Utils.isJWT(dashcard.dashboard_id);
+  const isEmbed = isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(

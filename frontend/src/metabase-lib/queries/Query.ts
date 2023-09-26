@@ -1,17 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import _ from "underscore";
 import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
 import type Variable from "metabase-lib/variables/Variable";
-import { memoizeClass } from "metabase-lib/utils";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
-class QueryInner {
+class Query {
   _metadata: Metadata;
 
   /**
@@ -31,9 +31,9 @@ class QueryInner {
    * Returns a question updated with the current dataset query.
    * Can only be applied to query that is a direct child of the question.
    */
-  question(): Question {
+  question = _.once((): Question => {
     return this._originalQuestion.setQuery(this);
-  }
+  });
 
   /**
    * Returns a "clean" version of this query with invalid parts removed
@@ -63,7 +63,7 @@ class QueryInner {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): QueryInner {
+  setDatasetQuery(datasetQuery: DatasetQuery): Query {
     return this;
   }
 
@@ -113,7 +113,7 @@ class QueryInner {
     return [];
   }
 
-  setDefaultQuery(): QueryInner {
+  setDefaultQuery(): Query {
     return this;
   }
 
@@ -123,6 +123,4 @@ class QueryInner {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Query extends memoizeClass<QueryInner>("question")(
-  QueryInner,
-) {}
+export default Query;

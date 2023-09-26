@@ -37,6 +37,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -186,11 +187,13 @@
      :message-type :html
      :message      message-body)))
 
-(defn send-login-from-new-device-email!
+(mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
-  [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+                         (throw (ex-info (tru "User {0} does not exist" user-id)
+                                         {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)

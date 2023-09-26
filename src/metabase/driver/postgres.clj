@@ -106,17 +106,15 @@
 
     message))
 
-(defmethod driver.common/current-db-time-date-formatters :postgres
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :postgres
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(defmethod driver/current-db-time :postgres
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :postgres
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "show timezone;")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 (defmethod driver/connection-properties :postgres
   [_]
@@ -753,7 +751,7 @@
   (case upload-type
     ::upload/varchar_255 "VARCHAR(255)"
     ::upload/text        "TEXT"
-    ::upload/int         "INTEGER"
+    ::upload/int         "BIGINT"
     ::upload/float       "FLOAT"
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"

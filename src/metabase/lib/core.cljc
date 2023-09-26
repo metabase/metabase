@@ -231,17 +231,17 @@
  [lib.metric
   available-metrics]
  [lib.native
-  #?@(:cljs [->TemplateTags
-             TemplateTags->])
   native-query
   raw-native-query
   with-native-query
   template-tags
+  engine
   with-template-tags
   required-native-extras
   native-extras
   with-native-extras
   with-different-database
+  has-write-permission
   extract-template-tags]
  [lib.order-by
   change-direction
@@ -252,6 +252,7 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-run
   query
   with-different-table]
  [lib.ref

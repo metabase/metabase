@@ -65,12 +65,6 @@
     metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase\\.db\\.data-migrations"]}
     metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase\\.db\\.data-migrations"]}
     metabase.db.data-migrations/run-migration-if-needed!                         {:namespaces ["metabase\\.db\\.data-migrations"]}
-    metabase.driver.common/ThreadSafeSimpleDateFormat                            {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/create-db-time-formatters                             {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time                                       {:namespaces ["metabase.*"]}
-    metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
@@ -284,6 +278,7 @@
     metabase.api.util                                               api.util
     metabase.async.streaming-response.thread-pool                   thread-pool
     metabase.automagic-dashboards.core                              magic
+    metabase.automagic-dashboards.dashboard-templates               dashboard-templates
     metabase.automagic-dashboards.populate                          populate
     metabase.cmd.copy.h2                                            copy.h2
     metabase.config                                                 config
@@ -568,7 +563,6 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -590,6 +584,7 @@
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
+   metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
    metabase.mbql.schema.macros/defclause                                                                                     hooks.metabase.mbql.schemas.macros/defclause
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
