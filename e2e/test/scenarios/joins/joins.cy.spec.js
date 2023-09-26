@@ -99,7 +99,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join on field literals", () => {
-    // create two native questions
     cy.createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
@@ -112,36 +111,27 @@ describe("scenarios > question > joined questions", () => {
       },
       {
         wrapId: true,
+        idAlias: "joinedQuestionId",
       },
     );
 
-    // start a custom question with question a
     startNewQuestion();
     selectSavedQuestionsToJoin("question a", "question b");
-
-    // select the join columns
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("A_COLUMN").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("B_COLUMN").click());
+    popover().findByText("A_COLUMN").click();
+    popover().findByText("B_COLUMN").click();
 
     visualize();
 
-    // check that query worked
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("question a");
-      cy.findByText("question b");
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A_COLUMN");
-
-    cy.get("@questionId").then(questionId => {
-      cy.findByText(`Question ${questionId} → B Column`);
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      assertJoinValid({
+        lhsTable: "question a",
+        rhsTable: "question b",
+        lhsSampleColumn: "A_COLUMN",
+        rhsSampleColumn: `Question ${joinedQuestionId} → B Column`,
+      });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row");
+    cy.findByTestId("question-row-count").contains("Showing 1 row");
   });
 
   it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
