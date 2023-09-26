@@ -10,6 +10,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.recent-views :as recent-views]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -18,24 +19,24 @@
 (defn- models-query
   [model ids]
   (t2/select
-      (case model
-        "card"      [Card
-                     :id :name :collection_id :description :display
-                     :dataset_query :dataset :archived
-                     :collection.authority_level]
-        "dashboard" [Dashboard
-                     :id :name :collection_id :description
-                     :archived
-                     :collection.authority_level]
-        "table"     [Table
-                     :id :name :db_id
-                     :display_name :initial_sync_status
-                     :visibility_type])
-      (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(mdb.u/qualify model-symb %)]
-        (cond-> {:where [:in (self-qualify :id) ids]}
-          (not= model "table")
-          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+   (case model
+     "card"      [Card
+                  :id :name :collection_id :description :display
+                  :dataset_query :dataset :archived
+                  :collection.authority_level]
+     "dashboard" [Dashboard
+                  :id :name :collection_id :description
+                  :archived
+                  :collection.authority_level]
+     "table"     [Table
+                  :id :name :db_id
+                  :display_name :initial_sync_status
+                  :visibility_type])
+   (let [model-symb (symbol (str/capitalize model))
+         self-qualify #(mdb.u/qualify model-symb %)]
+     (cond-> {:where [:in (self-qualify :id) ids]}
+       (not= model "table")
+       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -115,7 +116,7 @@
 (api/defendpoint GET "/recent_views"
   "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views            (view-log/user-recent-views)
+  (let [views            (recent-views/user-recent-views api/*current-user-id* 10)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let
@@ -127,8 +128,8 @@
                     ;; hidden tables, archived cards/dashboards
                     (not (or (:archived model-object)
                              (= (:visibility_type model-object) :hidden))))]
-           (cond-> (assoc view-log :model_object model-object)
-             (:dataset model-object) (assoc :model "dataset")))
+            (cond-> (assoc view-log :model_object model-object)
+              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"

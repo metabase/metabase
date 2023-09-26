@@ -1,9 +1,11 @@
 (ns metabase.events.audit-log
+  "This namespace is responsible for publishing events to the audit log. "
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.recent-views :as recent-views]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,6 +19,24 @@
 (methodical/defmethod events/publish-event! ::card-event
   [topic object]
   (audit-log/record-event! topic object))
+
+(derive ::card-read-event :metabase/event)
+(derive :event/card-read ::card-read-event)
+
+(methodical/defmethod events/publish-event! ::card-read-event
+  [topic {id :id}]
+  (audit-log/record-event! topic {} api/*current-user-id* :model/Card id))
+
+(derive ::card-query-event ::event)
+(derive :event/card-query ::card-query-event)
+
+(methodical/defmethod events/publish-event! ::card-query-event
+  [topic {:keys [card_id context] :as object}]
+  (when-not (#{:collection :dashboard} context)
+    ;; We don't want to count pinned card queries
+    (recent-views/update-users-recent-views! api/*current-user-id* :model/Card card_id))
+  (let [details (select-keys object [:cached :ignore_cache :context])]
+    (audit-log/record-event! topic details api/*current-user-id* :model/Card card_id)))
 
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
@@ -40,6 +60,22 @@
                                                (assoc :id id)
                                                (assoc :card_id card_id)))))]
    (audit-log/record-event! topic details api/*current-user-id* :model/Dashboard id)))
+
+(derive ::dashboard-read-event ::event)
+(derive :event/dashboard-read ::dashboard-read-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-read-event
+  [topic {id :id :as dashboard}]
+  (recent-views/update-users-recent-views! api/*current-user-id* :model/Dashboard id)
+  (audit-log/record-event! topic dashboard))
+
+(derive ::table-read-event ::event)
+(derive :event/table-read ::table-read-event)
+
+(methodical/defmethod events/publish-event! ::table-read-event
+  [topic {id :id :as table}]
+  (recent-views/update-users-recent-views! api/*current-user-id* :model/Table id)
+  (audit-log/record-event! topic table))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)

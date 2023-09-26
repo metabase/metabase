@@ -628,7 +628,7 @@
 (defmethod audit-log/model-details Dashboard
   [dashboard event-type]
   (case event-type
-    (:dashboard-create :dashboard-delete)
+    (:dashboard-create :dashboard-delete :dashboard-read)
     (select-keys dashboard [:description :name])
 
     (:dashboard-add-cards :dashboard-remove-cards)

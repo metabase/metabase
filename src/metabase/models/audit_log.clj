@@ -4,6 +4,7 @@
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [metabase.api.common :as api]
+   [metabase.events.view-log :as view-log]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity]
    [metabase.models.card :refer [Card]]
@@ -51,6 +52,11 @@
             ;; Use `model` instead of `dataset` to mirror product terminology
             :model?      dataset?})))
 
+(defn model-name
+  "Given a keyword identifier for a model, returns the name to store in the database"
+  [model]
+  (some-> model name))
+
 (defn record-event!
   "Record an event in the Audit Log.
 
@@ -74,7 +80,7 @@
 
   ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))
-         model-name        (some-> model name)
+         model-name        (model-name model)
          details           (if (t2/model object)
                              (model-details object unqualified-topic)
                              (or object {}))]
@@ -84,12 +90,14 @@
                  :model    model-name
                  :model_id model-id
                  :user_id  user-id)
-     ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-     (activity/record-activity!
-      :topic      topic
-      :object     object
-      :details-fn (fn [_] details)
-      :user-id    user-id))))
+     ;; TODO: temporarily double-writing to the `activity` and `view_log` tables, delete this in Metabase v48
+     (if (#{:card-read :dashboard-read :table-read :card-query} unqualified-topic)
+      (view-log/record-view! model-name model-id user-id details)
+      (activity/record-activity!
+       :topic      topic
+       :object     object
+       :details-fn (fn [_] details)
+       :user-id    user-id)))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]
