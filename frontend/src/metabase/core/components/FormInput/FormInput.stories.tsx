@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
-import Form from "../Form";
-import FormProvider from "../FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import CheckBox from "../CheckBox";
 import FormInput from "./FormInput";
 

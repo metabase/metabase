@@ -131,6 +131,7 @@ export function SearchResult({
 
   return (
     <ResultContainer
+      data-is-selected={isSelected}
       isSelected={isSelected}
       active={active}
       compact={compact}

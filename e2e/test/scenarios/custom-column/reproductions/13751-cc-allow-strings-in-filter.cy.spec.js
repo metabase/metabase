@@ -15,9 +15,9 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(PG_DB_NAME).should("be.visible").click();
-    cy.findByTextEnsureVisible("People").click();
+    popover().findByText("Raw Data").click();
+    popover().findByText(PG_DB_NAME).should("be.visible").click();
+    popover().findByTextEnsureVisible("People").click();
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
