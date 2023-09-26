@@ -494,8 +494,8 @@ const getMonthFormat = (options: OptionsType) =>
 
 export function getDateFormatFromStyle(
   style: string,
-  unit: DatetimeUnit,
-  separator: string,
+  unit?: DatetimeUnit,
+  separator?: string,
   includeWeekday?: boolean,
 ) {
   const replaceSeparators = (format: string) =>
