@@ -689,15 +689,15 @@
    Privilege example:
    (parse-grant \"GRANT SELECT, INSERT, UPDATE, DELETE ON `test-data`.* TO 'metabase'@'localhost'\")
    =>
-   {:type       ::privileges
-    :privileges #{:select :insert :update :delete}
-    :object-type :table
-    :object-name \"test-data\"}
+   {:type            :privileges
+    :privilege-types #{:select :insert :update :delete}
+    :level           :table
+    :object          \"test-data\"}
 
    Role example:
    (parse-grant \"GRANT 'example_role_1'@'%','example_role_2'@'%' TO 'metabase'@'localhost'\")
    =>
-   {:type  ::roles
+   {:type  :roles
     :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
   [grant]
   (condp re-find grant
@@ -743,25 +743,22 @@
    we query `SHOW GRANTS FOR <user> USING <role1> [,<role2>] ...`. The results from this query will contain
    all privileges granted for the user, either directly or indirectly through the role hierarchy."
   [conn-spec user]
-  (let [grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user) {:as-arrays? true})
-                           (drop 1)
-                           (map first))
-        parsed-grants (map parse-grant grant-strings)
+  (let [query  (fn [q] (->> (jdbc/query conn-spec q {:as-arrays? true})
+                            (drop 1)
+                            (map first)))
+        grants (map parse-grant (query (str "SHOW GRANTS FOR " user)))
         {role-grants      :roles
-         privilege-grants :privileges} (group-by :type parsed-grants)]
+         privilege-grants :privileges} (group-by :type grants)]
     (if (seq role-grants)
-      (let [roles         (:roles (first role-grants))
-            grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user "USING " (str/join "," roles)) {:as-arrays? true})
-                               (drop 1)
-                               (map first))
-            parsed-grants (map parse-grant grant-strings)
-            {privilege-grants :privileges} (group-by :type parsed-grants)]
+      (let [roles  (:roles (first role-grants))
+            grants (map parse-grant (query (str "SHOW GRANTS FOR " user "USING " (str/join "," roles))))
+            {privilege-grants :privileges} (group-by :type grants)]
         privilege-grants)
       privilege-grants)))
 
 (defn- table-names->privileges
   "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
-   return a map with table names as keys, and the set of privileges that the user has on the table as values.
+   return a map with table names as keys, and the set of privilege types that the user has on the table as values.
 
    The rules are:
    - global grants apply to all tables
@@ -774,7 +771,7 @@
         lower-database-name (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
                                         (:privilege-types (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
-                                                                   database-grants)))
+                                                                        database-grants)))
         table-privileges (into {}
                                (keep (fn [grant]
                                        (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object-name grant))]
