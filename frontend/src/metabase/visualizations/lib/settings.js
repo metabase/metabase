@@ -92,12 +92,6 @@ function getComputedSetting(
     }
 
     if (storedSettings[settingId] !== undefined) {
-      if (settingId === "table.columns") {
-        console.log(
-          "is Valid table.columns",
-          settingDef.isValid(object, settings, extra),
-        );
-      }
       if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
         return (computedSettings[settingId] = storedSettings[settingId]);
       }

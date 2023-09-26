@@ -13,7 +13,6 @@ import type {
   DragColumnProps,
   EditWidgetConfig,
 } from "./types";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 const STAGE_INDEX = -1;
 
@@ -175,7 +174,7 @@ export const addColumnInQuery = (
 
 export const enableColumnInQuery = (
   query: Lib.Query,
-  { metadataColumn }: ColumnSettingItem,
+  { metadataColumn }: Partial<ColumnSettingItem>,
 ) => {
   if (!metadataColumn) {
     return query;
@@ -189,7 +188,7 @@ export const enableColumnInQuery = (
 
 export const disableColumnInQuery = (
   query: Lib.Query,
-  { metadataColumn }: ColumnSettingItem,
+  { metadataColumn }: Partial<ColumnSettingItem>,
 ) => {
   if (!metadataColumn) {
     return query;
@@ -259,11 +258,12 @@ export const disableColumnInSettings = (
 
 export const removeColumnFromSettings = (
   columnSettings: ColumnSetting[],
-  {columnSettingIndex}: {columnSettingIndex: number}
+  { columnSettingIndex }: { columnSettingIndex: number },
 ) => {
   const newSettings = [...columnSettings];
-  return newSettings.toSpliced(columnSettingIndex, 1);
-}
+  newSettings.splice(columnSettingIndex, 1);
+  return newSettings;
+};
 
 export const moveColumnInSettings = (
   columnSettings: ColumnSetting[],

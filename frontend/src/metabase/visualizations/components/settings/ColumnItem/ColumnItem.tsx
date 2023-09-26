@@ -1,3 +1,4 @@
+import type React from "react";
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -10,7 +11,7 @@ import {
 
 interface ColumnItemProps {
   className?: string;
-  title: string;
+  title: string | React.ReactChild;
   color?: string;
   role?: string;
   draggable?: boolean;
@@ -22,7 +23,7 @@ interface ColumnItemProps {
   onColorChange?: (newColor: string) => void;
 }
 
-const ColumnIteme = ({
+const BaseColumnItem = ({
   className,
   title,
   color,
@@ -113,7 +114,7 @@ const ActionIcon = ({
   />
 );
 
-export const ColumnItem = Object.assign(ColumnIteme, {
+export const ColumnItem = Object.assign(BaseColumnItem, {
   Root: ColumnItemRoot,
   Container: ColumnItemContainer,
   Icon: ColumnItemIcon,

@@ -1,12 +1,19 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
-import type Question from "metabase-lib/Question";
-import { Button, Checkbox, TextInput } from "metabase/ui";
-import { Box, Flex, Text } from "metabase/ui";
+import { Button, Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
+
 import { Icon } from "metabase/core/components/Icon";
 import type { DatasetColumn } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox/StackedCheckBox";
+
+import * as Lib from "metabase-lib";
+import { isNotFalsy } from "metabase/core/utils/types";
+import type Question from "metabase-lib/Question";
+import type {
+  ColumnSetting,
+  ColumnMetadataItem,
+} from "../ChartSettingTableColumns/types";
 import {
   getColumnGroups,
   getMetadataColumns,
@@ -16,14 +23,6 @@ import {
   removeColumnFromSettings,
   addColumnInSettings,
 } from "../ChartSettingTableColumns/utils";
-
-import type {
-  ColumnSetting,
-  ColumnMetadataItem,
-} from "../ChartSettingTableColumns/types";
-
-import * as Lib from "metabase-lib";
-import { isNotFalsy } from "metabase/core/utils/types";
 
 interface ChartSettingAddRemoveColumnsProps {
   question: Question;
@@ -37,7 +36,6 @@ export const ChartSettingAddRemoveColumns = ({
   value: columnSettings,
   onChange,
   question,
-  columns,
   onWidgetOverride,
 }: ChartSettingAddRemoveColumnsProps) => {
   const [search, setSearch] = useState("");
@@ -48,7 +46,6 @@ export const ChartSettingAddRemoveColumns = ({
     getMetadataColumns(query),
   );
 
-  //const datasetRefs = columns.map(({ field_ref }) => field_ref);
   const datasetRefs = columnSettings
     .map(({ fieldRef }) => fieldRef)
     .filter(isNotFalsy);
@@ -103,13 +100,12 @@ export const ChartSettingAddRemoveColumns = ({
       );
 
       if (columnSettingIndex !== -1) {
-        console.log("removing column", columnItem.displayName);
         newSettings = removeColumnFromSettings(newSettings, {
           columnSettingIndex,
         });
 
         newQuery = disableColumnInQuery(newQuery, {
-          metadataColumn: columnItem,
+          metadataColumn: columnItem.column,
         });
       }
     });
@@ -120,7 +116,7 @@ export const ChartSettingAddRemoveColumns = ({
   const toggleColumn = (columnItem: ColumnMetadataItem) => {
     const { column } = columnItem;
     if (isColumnInQuery(column)) {
-      handleDisableColumn(column);
+      handleDisableColumn(columnItem);
     } else {
       handleEnableColumn(columnItem);
     }
@@ -138,14 +134,14 @@ export const ChartSettingAddRemoveColumns = ({
       });
       onChange(newSettings, question?._setMLv2Query(newQuery));
     },
-    [query, columnSettings, onChange],
+    [question, query, columnSettings, onChange],
   );
 
   const handleDisableColumn = useCallback(
-    (columnItem: Lib.ColumnMetadata) => {
+    (columnItem: ColumnMetadataItem) => {
       const columnSettingIndex = findColumnSettingIndex(
         query,
-        columnItem,
+        columnItem.column,
         columnSettings,
       );
       const newSettings = removeColumnFromSettings(columnSettings, {
@@ -153,12 +149,12 @@ export const ChartSettingAddRemoveColumns = ({
       });
 
       const newQuery = disableColumnInQuery(query, {
-        metadataColumn: columnItem,
+        metadataColumn: columnItem.column,
       });
 
       onChange(newSettings, question?._setMLv2Query(newQuery));
     },
-    [query, columnSettings, onChange],
+    [question, query, columnSettings, onChange],
   );
 
   return (
@@ -203,7 +199,7 @@ export const ChartSettingAddRemoveColumns = ({
                   />
                 ) : (
                   <StackedCheckBox
-                    label={<Text fw={700} ml="0.75rem">{t`Select all`}</Text>}
+                    label={<Text fw={700} ml="0.75rem">{t`Add all`}</Text>}
                     checked={false}
                     onClick={() => addAllColumnsFromTable(columnGroup.columns)}
                   />
@@ -211,7 +207,7 @@ export const ChartSettingAddRemoveColumns = ({
               </Box>
             )}
             {filteredColumns.map(columnItem => (
-              <Box mb="1rem">
+              <Box mb="1rem" key={`column-${columnItem.displayName}`}>
                 <Checkbox
                   label={
                     <Flex ml="0.75rem" align="center">

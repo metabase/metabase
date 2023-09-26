@@ -1,28 +1,23 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { Button } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
-  addColumnInQuery,
-  addColumnInSettings,
-  disableColumnInQuery,
   disableColumnInSettings,
-  enableColumnInQuery,
   enableColumnInSettings,
-  getAdditionalMetadataColumns,
-  getColumnGroups,
   getColumnSettingsWithRefs,
   getMetadataColumns,
   getQueryColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
 import type {
-  ColumnMetadataItem,
   ColumnSettingItem,
   DragColumnProps,
   EditWidgetConfig,
@@ -64,50 +59,20 @@ export const QueryColumnSelector = ({
     );
   }, [query, metadataColumns, datasetColumns, columnSettings]);
 
-  const additionalColumnGroups = useMemo(() => {
-    return getColumnGroups(
-      query,
-      getAdditionalMetadataColumns(metadataColumns, columnItems),
-    );
-  }, [query, metadataColumns, columnItems]);
-
-  const enabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => enabled);
-  }, [columnItems]);
-
-  const disabledColumnItems = useMemo(() => {
-    return columnItems.filter(({ enabled }) => !enabled);
-  }, [columnItems]);
-
-  const handleAddColumn = useCallback(
-    (columnItem: ColumnMetadataItem) => {
-      const newSettings = addColumnInSettings(
-        query,
-        columnSettings,
-        columnItem,
-      );
-      const newQuery = addColumnInQuery(query, columnItem);
-      onChange(newSettings, newQuery);
-    },
-    [query, columnSettings, onChange],
-  );
-
   const handleEnableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       const newSettings = enableColumnInSettings(columnSettings, columnItem);
-      // const newQuery = enableColumnInQuery(query, columnItem);
       onChange(newSettings);
     },
-    [query, columnSettings, onChange],
+    [columnSettings, onChange],
   );
 
   const handleDisableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
       const newSettings = disableColumnInSettings(columnSettings, columnItem);
-      // const newQuery = disableColumnInQuery(query, columnItem);
       onChange(newSettings);
     },
-    [query, columnSettings, onChange],
+    [columnSettings, onChange],
   );
 
   const handleDragColumn = useCallback(
@@ -125,11 +90,13 @@ export const QueryColumnSelector = ({
         pl="0"
       >{t`Add or remove columns`}</Button>
       <TableColumnSelector
-        enabledColumnItems={columnItems}
-        disabledColumnItems={[]}
-        // additionalColumnGroups={additionalColumnGroups}
-        getColumnName={getColumnName}
-        onAddColumn={handleAddColumn}
+        columnItems={columnItems}
+        getColumnName={({ datasetColumn, metadataColumn }) => (
+          <>
+            <Icon name={getColumnIcon(metadataColumn)} />{" "}
+            {getColumnName(datasetColumn)}
+          </>
+        )}
         onEnableColumn={handleEnableColumn}
         onDisableColumn={handleDisableColumn}
         onDragColumn={handleDragColumn}

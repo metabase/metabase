@@ -46,6 +46,7 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import { ChartSettingAddRemoveColumns } from "metabase/visualizations/components/settings/ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
 import {
   isDate,
   isNumber,
@@ -56,7 +57,6 @@ import {
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
-import { ChartSettingAddRemoveColumns } from "metabase/visualizations/components/settings/ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -516,17 +516,10 @@ export const buildTableColumnSettings = ({
     isValid: ([{ card, data }]) => {
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
-      // If "table.columns" happened to be an empty array,
-      // it will be treated as "all columns are hidden",
-      // This check ensures it's not empty,
-      // otherwise it will be overwritten by `getDefault` below
-      return (
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          enabledColumns,
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        )
+      return _.all(
+        enabledColumns,
+        columnSetting =>
+          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
       );
     },
     getDefault: ([
