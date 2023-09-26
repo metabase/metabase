@@ -49,6 +49,6 @@ describe("issue 28599", () => {
 
     cy.wait("@updateCard");
 
-    cy.findByTestId("timeseries-mode-bar").should("not.exist");
+    cy.findByTestId("time-series-mode-bar").should("not.exist");
   });
 });
