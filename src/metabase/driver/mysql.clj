@@ -770,11 +770,11 @@
          table-grants    :table} (group-by :level privilege-grants)
         lower-database-name (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
-                                        (:privilege-types (m/find-first #(= (:object-name %) (str "`" lower-database-name "`.*"))
+                                        (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
                                                                         database-grants)))
         table-privileges (into {}
                                (keep (fn [grant]
-                                       (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object-name grant))]
+                                       (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object grant))]
                                          (let [[_ table-name] match]
                                            [table-name (:privilege-types grant)]))))
                                table-grants)]
