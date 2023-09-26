@@ -13,8 +13,8 @@
 
 (mu/defn sync-timezone! :- [:maybe [:map [:timezone-id [:maybe [:or
                                                                 ::lib.schema.expression.temporal/timezone-id
-                                                                ;; MySQL allows offset strings (metabase#34050)
-                                                                [:re #"^[+-](\d+):(\d+)$"]]]]]]
+                                                                ;; This can be an offset string with MySQL (metabase#34050)
+                                                                [:re #"^[+-]\d{2,}:\d{2,}$"]]]]]]
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
   [database :- i/DatabaseInstance]
