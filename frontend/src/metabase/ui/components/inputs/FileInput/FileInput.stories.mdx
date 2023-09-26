@@ -177,6 +177,10 @@ IconMd.args = {
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
 
 <Canvas>
   <Story name="Empty, xs">{EmptyXs}</Story>
@@ -187,6 +191,7 @@ export const EmptyXs = VariantTemplate.bind({});
 export const AsteriskXs = VariantTemplate.bind({});
 AsteriskXs.args = {
   ...AsteriskMd.args,
+  size: "xs",
 };
 
 <Canvas>
@@ -200,6 +205,7 @@ AsteriskXs.args = {
 export const DescriptionXs = VariantTemplate.bind({});
 DescriptionXs.args = {
   ...DescriptionMd.args,
+  size: "xs",
 };
 
 <Canvas>
@@ -213,6 +219,7 @@ DescriptionXs.args = {
 export const DisabledXs = VariantTemplate.bind({});
 DisabledXs.args = {
   ...DisabledMd.args,
+  size: "xs",
 };
 
 <Canvas>
@@ -226,6 +233,7 @@ DisabledXs.args = {
 export const ErrorXs = VariantTemplate.bind({});
 ErrorXs.args = {
   ...ErrorMd.args,
+  size: "xs",
 };
 
 <Canvas>
@@ -239,6 +247,7 @@ ErrorXs.args = {
 export const IconXs = IconTemplate.bind({});
 IconXs.args = {
   ...IconMd.args,
+  size: "xs",
 };
 
 <Canvas>
