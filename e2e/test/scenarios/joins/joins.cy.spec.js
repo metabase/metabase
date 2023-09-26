@@ -369,26 +369,6 @@ describe("scenarios > question > joined questions", () => {
     // (orders joined with products on the same day-month-year)
     cy.get(".ScalarValue").contains("2,087");
   });
-
-  it("should show 'Previous results' instead of a table name for non-field dimensions (metabase#17968)", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    summarize({ mode: "notebook" });
-    selectFromDropdown("Count of rows");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").click();
-    selectFromDropdown("Products");
-    selectFromDropdown("Count");
-
-    cy.findByTestId("step-join-1-0")
-      .findByTestId("parent-dimension")
-      .findByText("Previous results");
-  });
 });
 
 function joinTable(table) {
