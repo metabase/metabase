@@ -1,17 +1,17 @@
 import {
   addCustomColumn,
-  restore,
-  openOrdersTable,
-  openNotebook,
-  popover,
-  visualize,
-  summarize,
-  startNewQuestion,
-  filter,
   enterCustomColumnDetails,
-  selectSavedQuestionsToJoin,
-  queryBuilderMain,
+  filter,
   getNotebookStep,
+  openNotebook,
+  openOrdersTable,
+  popover,
+  queryBuilderMain,
+  restore,
+  selectSavedQuestionsToJoin,
+  startNewQuestion,
+  summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
