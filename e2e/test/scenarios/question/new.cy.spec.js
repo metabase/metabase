@@ -37,11 +37,10 @@ describe("scenarios > question > new", () => {
       }
 
       startNewQuestion();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Pick your starting data");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sample3").isVisibleInPopover();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Sample3").isVisibleInPopover();
+      });
     });
 
     it("new question data picker search should work for both saved questions and database tables", () => {
@@ -51,14 +50,16 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      cy.get(".List-section")
-        .should("have.length", 2)
-        .and("contain", "Sample Database")
+      popover()
+        .findAllByRole("menuitem")
+        .should("have.length", 3)
+        .and("contain", "Models")
+        .and("contain", "Raw Data")
         .and("contain", "Saved Questions");
 
       // should not trigger search for an empty string
-      cy.findByPlaceholderText("Search for a table…").type("  ").blur();
-      cy.findByPlaceholderText("Search for a table…").type("ord");
+      cy.findByPlaceholderText("Search for some data…").type("  ").blur();
+      cy.findByPlaceholderText("Search for some data…").type("ord");
       cy.wait("@search");
       cy.get("@searchQuery").should("have.been.calledOnce");
 
@@ -82,7 +83,7 @@ describe("scenarios > question > new", () => {
 
       // Discarding the search query should take us back to the original selector
       // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for a table…");
+      cy.findByPlaceholderText("Search for some data…");
       cy.findByTestId("input-reset-button").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -118,9 +119,11 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
-      popover().contains("Sample Database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products").click();
+      popover().within(() => {
+        cy.contains("Raw Data").click();
+        cy.contains("Sample Database").click();
+        cy.findByText("Products").click();
+      });
       cy.findByTestId("data-step-cell").contains("Products");
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -270,7 +273,7 @@ describe("scenarios > question > new", () => {
     popover().findByText("Question").click();
 
     popover().within(() => {
-      cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
@@ -288,7 +291,7 @@ describe("scenarios > question > new", () => {
     cy.findByLabelText("Navigation bar").findByText("New").click();
     popover().findByText("Question").click();
     popover().within(() => {
-      cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
@@ -304,5 +307,66 @@ describe("scenarios > question > new", () => {
       cy.findByText("Save").click();
     });
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+});
+
+// the data picker has different behavior if there are no models in the instance
+// the default instance image has a model in it, so we need to separately test the
+// model-less behavior
+describe("scenarios > question > new > data picker > without models", () => {
+  beforeEach(() => {
+    restore("without-models");
+    cy.signInAsAdmin();
+  });
+
+  it("can create a question from the sample database", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+    });
+  });
+
+  it("can create a question from a saved question", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Orders").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText(39.72).should("be.visible");
+    });
+  });
+
+  it("shows models and raw data options after creating a model", () => {
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
+    });
+
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Raw Data").should("be.visible");
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("be.visible");
+    });
   });
 });

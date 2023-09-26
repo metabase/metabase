@@ -20,6 +20,9 @@ export interface FormInputProps
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormTextInput from "metabase/forms"
+ */
 const FormInput = forwardRef(function FormInput(
   {
     name,
