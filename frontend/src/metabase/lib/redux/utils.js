@@ -10,8 +10,9 @@ import {
   setRequestLoaded,
   setRequestError,
   setRequestUnloaded,
+  setRequestPromise,
 } from "metabase/redux/requests";
-import { waitFor } from "metabase/lib/utils";
+import { delay } from "metabase/lib/promise";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
@@ -80,7 +81,11 @@ export const fetchData = async ({
     const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
       dispatch(setRequestLoading(statePath, queryKey));
-      const data = await getData();
+
+      const queryPromise = getData();
+      dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+      const data = await queryPromise;
 
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
@@ -115,7 +120,11 @@ export const updateData = async ({
   const statePath = requestStatePath.concat(["update"]);
   try {
     dispatch(setRequestLoading(statePath, queryKey));
-    const data = await putData();
+
+    const queryPromise = putData();
+    dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+    const data = await queryPromise;
     dispatch(setRequestLoaded(statePath, queryKey));
 
     (dependentRequestStatePaths || []).forEach(statePath =>
@@ -231,7 +240,10 @@ export function withRequestState(getRequestStatePath, getQueryKey) {
       try {
         dispatch(setRequestLoading(statePath, queryKey));
 
-        const result = await thunkCreator(...args)(dispatch, getState);
+        const queryPromise = thunkCreator(...args)(dispatch, getState);
+        dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+        const result = await queryPromise;
 
         // Dispatch `setRequestLoaded` after clearing the call stack because
         // we want to the actual data to be updated before we notify
@@ -283,7 +295,7 @@ function withCachedData(
         const { loading, loaded, queryKey, error } =
           getIn(getState(), requestStatePath) || {};
 
-        // Avoid requesting data with permanently forbidded access
+        // Avoid requesting data with permanently forbidden access
         if (useCachedForbiddenError && error?.status === 403) {
           throw error;
         }
@@ -305,14 +317,23 @@ function withCachedData(
           if (loaded || hasRequestedProperties) {
             return existingData;
           } else if (loading) {
-            // wait for current loading request to be resolved
-            const result = await waitFor(
-              () => getIn(getState(), requestStatePath)?.loaded,
-            );
-            if (result) {
-              // retry this function after waited request is resolved
+            const queryPromise = getIn(
+              getState(),
+              requestStatePath,
+            )?.queryPromise;
+
+            if (queryPromise) {
+              // wait for current loading request to be resolved
+              await queryPromise;
+
+              // need to wait for next tick to allow loaded request data to be processed and avoid loops
+              await delay(10);
+
+              // retry this function after waited request gets resolved
               return thunk(dispatch, getState);
             }
+
+            return existingData;
           }
         }
 
