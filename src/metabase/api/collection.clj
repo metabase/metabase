@@ -143,14 +143,14 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-               (t2/select Collection
-                {:where [:and
-                         (when exclude-archived?
-                           [:= :archived false])
-                         [:= :namespace namespace]
-                         (collection/visible-collection-ids->honeysql-filter-clause
-                          :id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                (t2/select Collection
+                  {:where [:and
+                           (when exclude-archived?
+                             [:= :archived false])
+                           [:= :namespace namespace]
+                           (collection/visible-collection-ids->honeysql-filter-clause
+                            :id
+                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
         colls-with-details (map collection/personal-collection-with-ui-details colls)
