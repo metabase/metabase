@@ -62,7 +62,6 @@
                               :full-join               false
                               :uploads                 true
                               :schemas                 false
-                              :table-privileges        true
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
@@ -85,6 +84,10 @@
   "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
+
+(defmethod driver/database-supports? [:mysql :table-privileges]
+  [driver _feat db]
+  (and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
