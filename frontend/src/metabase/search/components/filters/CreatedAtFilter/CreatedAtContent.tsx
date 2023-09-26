@@ -22,5 +22,6 @@ export const CreatedAtContent: SearchSidebarFilterComponent<"created_at">["Conte
       setValue={(value: string | null) => onChange(value ?? undefined)}
       operators={CREATED_AT_FILTERS}
       dateShortcutOptions={CREATED_AT_SHORTCUTS}
+      withPadding={false}
     />
   );

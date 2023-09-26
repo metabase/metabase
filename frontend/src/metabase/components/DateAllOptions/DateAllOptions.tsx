@@ -23,6 +23,7 @@ export interface DateAllOptionsProps {
   onClose?: () => void;
   disableOperatorSelection?: boolean;
   className?: string;
+  withPadding?: boolean;
   operators?: DateOperator[];
   dateShortcutOptions?: DateShortcutOptions;
 }
@@ -33,6 +34,7 @@ export const DateAllOptions = ({
   disableOperatorSelection,
   value,
   className,
+  withPadding = true,
   dateShortcutOptions = DATE_SHORTCUT_OPTIONS,
   operators = DATE_OPERATORS,
 }: DateAllOptionsProps) => {
@@ -61,6 +63,7 @@ export const DateAllOptions = ({
       disableOperatorSelection={disableOperatorSelection}
       supportsExpressions
       operators={operators}
+      withPadding={withPadding}
       dateShortcutOptions={dateShortcutOptions}
     >
       <UpdateButton
