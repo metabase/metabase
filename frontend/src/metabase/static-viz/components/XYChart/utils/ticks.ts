@@ -181,7 +181,7 @@ export function fixTimeseriesTicksExceedXTickCount(
         }
       });
 
-    if (minLengthTicks.length <= numTicks) {
+    if (numTicks == null || minLengthTicks.length <= numTicks) {
       return minLengthTicks;
     }
 
