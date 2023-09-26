@@ -299,7 +299,7 @@
                     table))
             (is (=? {:name          #"(?i)id"
                      :semantic_type :type/PK
-                     :base_type     :type/Integer}
+                     :base_type     :type/BigInteger}
                     (t2/select-one Field :database_position 0 :table_id (:id table))))
             (is (=? {:name      #"(?i)nulls"
                      :base_type :type/Text}
@@ -387,11 +387,11 @@
                 (is (= alternating bool-column))))))))))
 
 (deftest load-from-csv-length-test
-  (testing "Upload a CSV file with a long name"
+  (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [length-limit (driver/table-name-length-limit driver/*driver*)
-            long-name  (apply str (repeat 33 "abcdefgh")) ; 33×8 = 264. Max is H2 at 256
-            short-name (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))]
+            long-name    (apply str (repeat 33 "abcdefgh")) ; 33×8 = 264. Max is H2 at 256
+            short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))]
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (mt/with-empty-db
           (with-mysql-local-infile-activated
@@ -401,14 +401,18 @@
              (upload/unique-table-name driver/*driver* long-name)
              (csv-file-with ["id,bool"
                              "1,true"
-                             "2,false"])))
+                             "2,false"
+                             (format "%d,true" Long/MAX_VALUE)])))
           (testing "It truncates it to the right number of characters, allowing for the timestamp"
             (sync/sync-database! (mt/db))
             (let [table    (t2/select-one Table :db_id (mt/id) :%lower.name [:like (str short-name "%")])
                   table-re (re-pattern (str "(?i)" short-name "_\\d{14}"))]
               (is (re-matches table-re (:name table)))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [[1 true] [2 false]] (rows-for-table table)))))))))))
+                (is (= [[1 true]
+                        [2 false]
+                        [Long/MAX_VALUE true]]
+                       (rows-for-table table)))))))))))
 
 (deftest load-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
