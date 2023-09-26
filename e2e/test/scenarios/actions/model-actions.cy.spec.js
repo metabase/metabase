@@ -7,8 +7,6 @@ import {
   restore,
   fillActionQuery,
   createAction,
-  navigationSidebar,
-  openNavigationSidebar,
   resetTestTable,
   resyncDatabase,
   createModelFromTableName,
@@ -109,6 +107,7 @@ describe(
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+      cy.intercept("GET", "/api/search?archived=true").as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
     });
 
@@ -182,32 +181,38 @@ describe(
           cy.findByText("Delete").should("not.exist");
         });
 
-      openNavigationSidebar();
-      navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      popover().findByText("View archive").click();
+      cy.log("Go to the archive");
+      cy.visit("/archive");
 
-      getArchiveListItem("Delete Order").within(() => {
-        cy.icon("unarchive").click({ force: true });
-      });
+      getArchiveListItem("Delete Order")
+        .icon("unarchive")
+        .click({ force: true });
 
-      cy.get("main").within(() => {
-        cy.findByText("Delete Order");
-      });
-
-      cy.findByRole("button", { name: "Undo" }).click();
+      cy.wait("@updateAction");
+      cy.wait("@getSearchResults");
+      cy.wait("@getArchived");
 
       cy.get("main").within(() => {
+        cy.findByText("Items you archive will appear here.");
+        cy.findByText("Delete Order").should("not.exist");
+      });
+
+      cy.findByTestId("toast-undo").button("Undo").click();
+
+      cy.get("main").within(() => {
+        cy.findByText("Items you archive will appear here.").should(
+          "not.exist",
+        );
         cy.findByText("Delete Order").should("be.visible");
       });
 
-      getArchiveListItem("Delete Order").within(() => {
-        cy.icon("trash").click({ force: true });
-      });
+      cy.log("Delete the action");
+      getArchiveListItem("Delete Order").icon("trash").click({ force: true });
 
-      cy.findByTestId("Delete Order").should("not.exist");
-      cy.findByRole("button", { name: "Undo" }).should("not.exist");
+      cy.get("main").within(() => {
+        cy.findByText("Items you archive will appear here.");
+        cy.findByText("Delete Order").should("not.exist");
+      });
     });
 
     it("should allow to create an action with the New button", () => {

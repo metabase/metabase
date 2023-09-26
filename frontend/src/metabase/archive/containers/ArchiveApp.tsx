@@ -86,7 +86,7 @@ export function ArchiveApp() {
               rowHeight={ROW_HEIGHT}
               renderItem={({ item }: { item: CollectionItem }) => (
                 <ArchivedItem
-                  type={item.type ?? ""}
+                  model={item.model ?? ""}
                   name={Search.objectSelectors.getName(item)}
                   icon={Search.objectSelectors.getIcon(item).name}
                   color={Search.objectSelectors.getColor(item)}

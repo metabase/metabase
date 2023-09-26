@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.core :as mbc]
@@ -112,8 +113,10 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :h2
-    (is (= "UTC"
-           (driver/db-default-timezone :h2 (mt/db))))))
+    (is (= (t/zone-id "Z")
+           (-> (driver/db-default-timezone :h2 (mt/db))
+               t/zone-id
+               .normalized)))))
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"

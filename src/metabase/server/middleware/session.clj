@@ -296,11 +296,6 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
-
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
   calls to [[with-current-user]] if it is already bound, as this can mess things up since things
@@ -326,7 +321,7 @@
             *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
                                              *user-local-values*
                                              (delay (atom (or settings
-                                                              (user-local-settings metabase-user-id)))))
+                                                              (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
