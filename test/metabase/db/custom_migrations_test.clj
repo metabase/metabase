@@ -255,7 +255,7 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
-    (impl/test-migrations "v47.00-029" [migrate!]
+    (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             migrate-down! (partial db.setup/migrate! db-type data-source :down)
