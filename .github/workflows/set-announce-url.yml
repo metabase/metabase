@@ -43,7 +43,7 @@ jobs:
             OSSversionInfo.latest.announcement_url = announcementUrl;
             EEversionInfo.latest.announcement_url = announcementUrl;
 
-            if (!OSSVersion.older.length || !EEVersion.older.length) {
+            if (!OSSversionInfo.older.length || !EEversionInfo.older.length) {
               throw new Error('No older versions found in version-info.json');
             }
 
@@ -57,5 +57,5 @@ jobs:
       - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
         run: |
           aws cloudfront create-invalidation \
-          --distribution-id ${{ vars.AWS_CLOUDFRONT_PUBLIC_ID }} \
+          --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
           --paths "/version-info.json" "/version-info-ee.json"
