@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { useState } from "react";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { enabledSearchTypes } from "metabase/search/constants";
@@ -14,18 +15,27 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
       query: EMPTY_SEARCH_QUERY,
     });
 
+    const [selectedTypes, setSelectedTypes] = useState<
+      EnabledSearchModelType[]
+    >(value ?? []);
+
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
       model => availableModels.includes(model),
     );
 
     return (
-      <SearchFilterPopoverWrapper isLoading={isLoading} onApply={onChange}>
+      <SearchFilterPopoverWrapper
+        isLoading={isLoading}
+        onApply={() => onChange(selectedTypes)}
+      >
         <Checkbox.Group
           data-testid="type-filter-checkbox-group"
           w="100%"
-          value={value}
-          onChange={onChange}
+          value={selectedTypes}
+          onChange={value =>
+            setSelectedTypes(value as EnabledSearchModelType[])
+          }
         >
           <Stack spacing="md" p="md" justify="center" align="flex-start">
             {typeFilters.map(model => (

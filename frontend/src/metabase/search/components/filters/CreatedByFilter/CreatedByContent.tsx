@@ -18,15 +18,17 @@ export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentCompon
     const { data: users = [], isLoading } = useUserListQuery();
     const [userFilter, setUserFilter] = useState("");
 
+    const [selectedUserId, setSelectedUserId] = useState(value);
+
     const filteredUsers = users.filter(user => {
       return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
     });
 
     const onUserSelect = (user: UserListResult) => {
-      if (value && isEqual(value, user.id)) {
-        onChange(undefined);
+      if (selectedUserId && isEqual(selectedUserId, user.id)) {
+        setSelectedUserId(undefined);
       } else {
-        onChange(user.id);
+        setSelectedUserId(user.id);
       }
     };
 
@@ -34,7 +36,7 @@ export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentCompon
       return userList.map(user => (
         <UserListElement
           key={user.id}
-          isSelected={value ? isEqual(value, user.id) : false}
+          isSelected={selectedUserId ? isEqual(selectedUserId, user.id) : false}
           onClick={onUserSelect}
           value={user}
         />
@@ -42,7 +44,10 @@ export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentCompon
     };
 
     return (
-      <SearchFilterPopoverWrapper isLoading={isLoading} onApply={onChange}>
+      <SearchFilterPopoverWrapper
+        isLoading={isLoading}
+        onApply={() => onChange(selectedUserId)}
+      >
         <CreatedByContainer p="sm" h="100%" spacing="xs">
           <TextInput
             size="md"
