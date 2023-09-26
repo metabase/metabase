@@ -1,27 +1,28 @@
 (ns metabase.api.automagic-dashboards-test
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
-                            ModelIndexValue Segment]]
-   [metabase.models.model-index :as model-index]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-   [metabase.test.domain-entities :as test.de]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.test.transforms :as transforms.test]
-   [metabase.transforms.core :as tf]
-   [metabase.transforms.materialize :as tf.materialize]
-   [metabase.transforms.specs :as tf.specs]
-   [metabase.util :as u]
-   [schema.core :as s]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [metabase.api.automagic-dashboards :as api.magic]
+    [metabase.automagic-dashboards.core :as magic]
+    [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
+                             ModelIndexValue Segment]]
+    [metabase.models.model-index :as model-index]
+    [metabase.models.permissions :as perms]
+    [metabase.models.permissions-group :as perms-group]
+    [metabase.query-processor :as qp]
+    [metabase.test :as mt]
+    [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+    [metabase.test.domain-entities :as test.de]
+    [metabase.test.fixtures :as fixtures]
+    [metabase.test.transforms :as transforms.test]
+    [metabase.transforms.core :as tf]
+    [metabase.transforms.materialize :as tf.materialize]
+    [metabase.transforms.specs :as tf.specs]
+    [metabase.util :as u]
+    [ring.util.codec :as codec]
+    [schema.core :as s]
+    [toucan2.core :as t2]
+    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
@@ -481,3 +482,126 @@
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
               (cards-have-filters? (:ordered_cards dash) pk-filters))))))))
+
+(deftest affinity_groups-test
+  (testing "Examples of successful affinity generation"
+    (is (= {:satisfiable-affinities
+            '({:metrics ("Count"), :dimensions (), :affinity-name "Rowcount", :base-dims (), :filters ()}
+              {:dimensions    ("GenericNumber"),
+               :metrics       ("Count"),
+               :affinity-name "NumberDistribution",
+               :base-dims     ("GenericNumber"),
+               :filters       ()}
+              {:dimensions    ("Long" "Lat"),
+               :metrics       ("Count"),
+               :affinity-name "CountByCoords",
+               :base-dims     ("Lat" "Long"),
+               :filters       ()})}
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 200
+               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
+               :field-ids (codec/url-encode [(mt/id :people :latitude)
+                                             (mt/id :people :longitude)])))))
+    (is (= {:satisfiable-affinities
+            '({:metrics       ("TotalOrders"),
+               :dimensions    (),
+               :affinity-name "Rowcount",
+               :base-dims     (),
+               :filters       ()}
+              {:dimensions    ("State"),
+               :metrics       ("TotalOrders"),
+               :affinity-name "CountByState",
+               :base-dims     ("State"),
+               :filters       ()}
+              {:dimensions    ("Long" "Lat"),
+               :metrics       ("TotalOrders"),
+               :affinity-name "CountByCoords",
+               :base-dims     ("Lat" "Long"),
+               :filters       ()})}
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 200
+               (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
+               :field-ids (codec/url-encode [(mt/id :people :latitude)
+                                             (mt/id :people :longitude)
+                                             (mt/id :people :state)])))))
+    (testing "Fields need not be sourced from the same table and multiple affinities of the same name may be satisfied
+              with different combinations of dimensions."
+      (is (= {:satisfiable-affinities
+              '({:metrics       ("TotalOrders"),
+                 :dimensions    (),
+                 :affinity-name "Rowcount",
+                 :base-dims     (),
+                 :filters       ()}
+                {:filters       ("Last30Days"),
+                 :metrics       ("TotalOrders"),
+                 :dimensions    (),
+                 :affinity-name "RowcountLast30Days",
+                 :base-dims     ("Timestamp")}
+                {:dimensions    ("Timestamp" "SourceSmall"),
+                 :metrics       ("TotalOrders"),
+                 :affinity-name "OrdersBySource",
+                 :base-dims     ("SourceSmall" "Timestamp"),
+                 :filters       ()}
+                {:dimensions    ("SourceMedium"),
+                 :metrics       ("TotalOrders"),
+                 :affinity-name "OrdersBySource",
+                 :base-dims     ("SourceMedium"),
+                 :filters       ()})}
+             (mt/dataset sample-dataset
+               (mt/user-http-request
+                 :rasta :get 200
+                 (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
+                 :field-ids (codec/url-encode [(mt/id :orders :created_at)
+                                               (mt/id :people :source)]))))))))
+
+(deftest affinity-groups-empty-fields-test
+  (testing "Undiscovered field ids won't map to any fields and are are ignored. Only dimensionless cards are returned."
+    (is (= {:satisfiable-affinities
+            '({:metrics ("Count"), :dimensions (), :affinity-name "Rowcount", :base-dims (), :filters ()})}
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 200
+               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
+               :field-ids (codec/url-encode [Long/MIN_VALUE
+                                             Long/MAX_VALUE])))))))
+
+(deftest affinity-groups-bad-fields-test
+  (testing "Anything besides a sequence of integers for the field-ids is a bad request."
+    (is (= "Invalid Request."
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 400
+               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
+               :field-ids (codec/url-encode ["1"])))))
+    (is (= "Invalid Request."
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 400
+               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
+               :field-ids (codec/url-encode ["FOO"])))))))
+
+(deftest affinity-groups-entity-type-not-found-test
+  (testing "If entity type is not understood, a 404 is returned."
+    (is (= "Not found."
+           (mt/dataset sample-dataset
+             (mt/user-http-request
+               :rasta :get 404
+               (format "automagic-dashboards/affinity_groups/%s" "Froob")
+               :field-ids (codec/url-encode [(mt/id :people :latitude)
+                                             (mt/id :people :longitude)])))))))
+
+(deftest affinity-groups-permissions-test
+  (testing "Verify permissions check fails if the user doesn't have permissions."
+    (is (= "You don't have permissions to do that."
+           (mt/dataset sample-dataset
+             (try
+               (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+               (mt/user-http-request
+                 :rasta :get 403
+                 (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
+                 :field-ids (codec/url-encode [(mt/id :orders :created_at)
+                                               (mt/id :people :source)]))
+               (finally
+                 (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))))))

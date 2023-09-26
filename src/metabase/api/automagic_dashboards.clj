@@ -1,31 +1,33 @@
 (ns metabase.api.automagic-dashboards
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [compojure.core :refer [GET]]
-   [metabase.api.common :as api]
-   [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic
-    :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.transforms.dashboard :as transform.dashboard]
-   [metabase.transforms.materialize :as tf.materialize]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+    [buddy.core.codecs :as codecs]
+    [cheshire.core :as json]
+    [clojure.edn :as edn]
+    [clojure.set :as set]
+    [compojure.core :refer [GET]]
+    [metabase.api.common :as api]
+    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
+    [metabase.automagic-dashboards.core :as magic
+     :refer [automagic-analysis candidate-tables]]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.models.card :refer [Card]]
+    [metabase.models.collection :refer [Collection]]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :refer [Field]]
+    [metabase.models.metric :refer [Metric]]
+    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
+    [metabase.models.permissions :as perms]
+    [metabase.models.query :as query]
+    [metabase.models.query.permissions :as query-perms]
+    [metabase.models.segment :refer [Segment]]
+    [metabase.models.table :refer [Table]]
+    [metabase.transforms.dashboard :as transform.dashboard]
+    [metabase.transforms.materialize :as tf.materialize]
+    [metabase.util.i18n :refer [deferred-tru]]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.schema :as ms]
+    [ring.util.codec :as codec]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -261,6 +263,30 @@
                                 :linked-tables     linked
                                 :model-index       model-index
                                 :model-index-value model-index-value}))))
+
+(api/defendpoint GET "/affinity_groups/:entity-type"
+  "Return affinity groups for the provided entity type and field ids"
+  [entity-type field-ids]
+  {entity-type :string
+   field-ids   :string}
+  (api/let-404 [{:keys [dimensions] :as template} (dashboard-templates/get-dashboard-template ["table" entity-type])]
+    (let [entity_type            (keyword "entity" entity-type)
+          field-ids              (edn/read-string (codec/url-decode field-ids))
+          _                      (api/check-400 (every? int? field-ids))
+          fields                 (t2/select :model/Field :id [:in field-ids])
+          _                      (doseq [field fields :when field] (api/read-check field))
+          satisfiable-dimensions (magic/semantically-satisfiable-dimensions dimensions entity_type fields)]
+      {:satisfiable-affinities
+       (->> (magic/dash-template->affinities template)
+            (filter (fn [{:keys [base-dims] :as affinity}]
+                      (set/subset? base-dims satisfiable-dimensions)))
+            (mapv (fn [affinity]
+                    (-> affinity
+                        (dissoc :score)
+                        (update :dimensions vec)
+                        (update :metrics vec)
+                        (update :filters vec)
+                        (update :base-dims vec)))))})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."

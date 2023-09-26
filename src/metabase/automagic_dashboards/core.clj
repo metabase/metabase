@@ -1008,9 +1008,53 @@
             (ordered-map)
             met-affinities)))
 
+(defn semantically-satisfiable-dimensions
+  "Given dimensions, an entity type (e.g. :entity/GenericTable) and some Fields,
+  return a set of dimensions that can be satisfied with the fields.
+
+  Note that dimensions are specified as defined in the templates -- a seq of maps,
+  each map being a single string key (the dimension name) to the dimension spec."
+  [dimensions entity_type fields]
+  (set
+    (for [dimension dimensions
+          :let [[dimension-name {:keys [field_type]}] (first dimension)
+                [required-entity-type required-semantic-type] (cond->> field_type
+                                                                       (nil? (second field_type))
+                                                                       (into [:entity/*]))]
+          {:keys [semantic_type effective_type]} fields
+          :when (and
+                  (isa? entity_type required-entity-type)
+                  (isa? (or semantic_type effective_type)
+                        required-semantic-type))]
+      dimension-name)))
+
 (comment
-  (dash-template->affinities
-    (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+  (->> (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
+       dash-template->affinities)
+
+  (let [fields           (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
+        entity-type :entity/GenericTable
+        {:keys [dimensions]} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])]
+    (semantically-satisfiable-dimensions dimensions :entity/GenericTable fields))
+
+  (let [fields           (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
+        entity-type :entity/TransactionTable
+        {:keys [dimensions]} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])]
+    (semantically-satisfiable-dimensions dimensions :entity/GenericTable fields))
+
+  (let [table-id               (t2/select-one-fn :id :model/Table :name "PEOPLE")
+        fields                 (t2/select :model/Field
+                                 :table_id table-id
+                                 :name [:in ["SOURCE" "CREATED_AT"]])
+        entity-type            :entity/TransactionTable
+        {:keys [dimensions] :as template} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])
+        satisfiable-dimensions (semantically-satisfiable-dimensions dimensions entity-type fields)]
+    (->> (dash-template->affinities template)
+         (filter (fn [{:keys [base-dims]}]
+                   (set/subset? base-dims satisfiable-dimensions)))))
+
+
+  (dashboard-templates/get-dashboard-templates ["metric"])
 
   ;; example call
   (let [affinities (-> ["table" "GenericTable"]
