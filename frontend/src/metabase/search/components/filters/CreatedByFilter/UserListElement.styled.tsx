@@ -6,7 +6,8 @@ import { Button } from "metabase/ui";
 export const UserElement = styled(Button)<
   HTMLAttributes<HTMLButtonElement> & ButtonProps
 >`
-  &:hover {
+  &:hover,
+  &:focus {
     background-color: ${({ theme }) => theme.colors.brand[0]};
   }
 
