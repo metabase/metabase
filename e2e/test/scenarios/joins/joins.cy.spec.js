@@ -1,4 +1,5 @@
 import {
+  addCustomColumn,
   restore,
   openOrdersTable,
   openNotebook,
@@ -161,53 +162,43 @@ describe("scenarios > question > joined questions", () => {
       },
       {
         wrapId: true,
+        idAlias: "joinedQuestionId",
       },
     );
 
     startNewQuestion();
-    popover().within(() => {
-      // cy.findByText("Raw Data").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Q1").click();
-    });
 
-    cy.wait("@metadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.icon("chevronleft").click();
-      cy.findByText("Raw Data").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Q2").click();
-    });
-
+    selectSavedQuestionsToJoin("Q1", "Q2");
     popover().findByText("Product ID").click();
     popover().findByText("ID").click();
 
     visualize();
 
-    cy.icon("notebook").click();
-    cy.url().should("contain", "/notebook");
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      assertJoinValid({
+        lhsTable: "Q1",
+        rhsTable: "Q2",
+        lhsSampleColumn: "Product ID",
+        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
+      });
+    });
+
+    openNotebook();
 
     // cy.log("joined questions should create custom column (metabase#13649)");
     // add a custom column on top of the steps from the #13000 repro which was simply asserting
     // that a question could be made by joining two previously saved questions
-    cy.icon("add_data").click();
-
-    cy.get("@questionId").then(questionId => {
+    addCustomColumn();
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
       enterCustomColumnDetails({
-        formula: `[Question ${questionId} → Sum of Rating] / [Sum of Total]`,
+        formula: `[Question ${joinedQuestionId} → Sum of Rating] / [Sum of Total]`,
         name: "Sum Divide",
       });
     });
-
     cy.button("Done").click();
 
     visualize();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum Divide");
+    queryBuilderMain().findByText("Sum Divide");
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
