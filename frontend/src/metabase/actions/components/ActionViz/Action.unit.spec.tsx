@@ -401,6 +401,10 @@ describe("Actions > ActionViz > Action", () => {
 
       expect(fetchMock.called(`path:/api/action/${ACTION.id}`)).toBe(true);
 
+      await waitFor(() => {
+        expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+      });
+
       expect(
         screen.getByTestId("action-parameters-input-modal"),
       ).toBeInTheDocument();
