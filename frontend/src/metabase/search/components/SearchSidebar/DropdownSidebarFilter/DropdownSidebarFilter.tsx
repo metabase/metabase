@@ -2,9 +2,10 @@ import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type {
+  FilterTypeKeys,
   SearchFilterComponentProps,
+  SearchFilterDropdown,
   SearchFilterPropTypes,
-  SearchSidebarFilterComponent,
 } from "metabase/search/types";
 import { Group, Text, Box } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
@@ -19,18 +20,18 @@ import {
   DropdownDisplayContent,
   DropdownFieldSet,
   SearchEventSandbox,
-} from "./SidebarFilter.styled";
+} from "./DropdownSidebarFilter.styled";
 
-export type SearchSidebarFilterProps = {
-  filter: SearchSidebarFilterComponent;
-} & SearchFilterComponentProps;
+export type DropdownSidebarFilterProps<T extends FilterTypeKeys = any> = {
+  filter: SearchFilterDropdown<T>;
+} & SearchFilterComponentProps<T>;
 
-export const SidebarFilter = ({
+export const DropdownSidebarFilter = ({
   filter: { title, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,
   onChange,
-}: SearchSidebarFilterProps) => {
+}: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -65,8 +66,9 @@ export const SidebarFilter = ({
     }
   }, [isNavbarOpen, isSmallScreen]);
 
-  const onApplyFilter = (selected: SearchFilterPropTypes | undefined) => {
-    onChange(selected);
+  const onApplyFilter = (value?: SearchFilterPropTypes) => {
+    setSelectedValues(value);
+    onChange(value);
     setIsPopoverOpen(false);
   };
 
@@ -110,7 +112,7 @@ export const SidebarFilter = ({
             <DisplayComponent value={value} />
           ) : (
             <Group noWrap>
-              <Icon name={iconName} />
+              {iconName && <Icon name={iconName} />}
               <Text weight={700}>{title}</Text>
             </Group>
           )}

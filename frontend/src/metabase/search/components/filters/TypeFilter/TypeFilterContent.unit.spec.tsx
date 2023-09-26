@@ -47,9 +47,11 @@ const TestTypeFilterComponent = ({
   onChangeFilters: jest.Mock;
   onApplyFilters: jest.Mock;
 }) => {
-  const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
+  const [value, setValue] = useState<EnabledSearchModelType[] | undefined>(
+    initialValue,
+  );
 
-  const onChange = (selectedValues: EnabledSearchModelType[]) => {
+  const onChange = (selectedValues?: EnabledSearchModelType[]) => {
     onChangeFilters(selectedValues);
     setValue(selectedValues);
   };

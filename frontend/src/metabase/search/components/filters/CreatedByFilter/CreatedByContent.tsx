@@ -9,11 +9,11 @@ import {
   CreatedByContainer,
   CreatedByContentContainer,
 } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper";
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
 
-export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
+export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
 

@@ -1,6 +1,10 @@
+import { checkNotNull } from "metabase/core/utils/types";
 import { CreatedByFilter } from "./CreatedByFilter";
 
-const { fromUrl, toUrl } = CreatedByFilter;
+const { fromUrl: createdByFromUrl, toUrl: createdByToUrl } = CreatedByFilter;
+
+const fromUrl = checkNotNull(createdByFromUrl);
+const toUrl = checkNotNull(createdByToUrl);
 
 describe("fromUrl", () => {
   it("should convert a valid string to a number", () => {

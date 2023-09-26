@@ -20,12 +20,12 @@ const TestCreatedByContent = ({
   onApply: jest.Func;
 }) => {
   const [value, setValue] = useState<CreatedByFilterProps>();
-  const onUserChange = (value: CreatedByFilterProps) => {
+  const onUserChange = (value?: CreatedByFilterProps) => {
     setValue(value);
     onChange(value);
   };
   return (
-    <CreatedByContent value={value} onChange={onUserChange} onApply={onApply} />
+    <CreatedByContent value={value} onChange={onUserChange}  />
   );
 };
 

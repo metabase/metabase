@@ -24,9 +24,11 @@ export interface WrappedResult extends SearchResult {
 export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId;
 export type CreatedAtFilterProps = string;
+export type VerifiedFilterProps = true | undefined;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
   [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
 };
@@ -46,19 +48,35 @@ export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
   value?: SearchFilterPropTypes[T];
-  onChange: (value: SearchFilterPropTypes[T] | undefined) => void;
+  onChange: (value?: SearchFilterPropTypes[T]) => void;
   "data-testid"?: string;
 } & Record<string, unknown>;
 
-export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
+type SidebarFilterType = "dropdown" | "toggle";
+
+interface SearchFilter<T extends FilterTypeKeys = any> {
+  type: SidebarFilterType;
   title: string;
-  iconName: IconName;
-  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+  iconName?: IconName;
   // two functions for converting strings to the desired prop type and back
   // (e.g. for converting a string to a date)
   fromUrl?: (
     value: string | string[] | null | undefined,
-  ) => SearchFilterPropTypes[T] | undefined;
+  ) => SearchFilterPropTypes[T];
   toUrl?: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
-};
+}
+
+export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
+  extends SearchFilter {
+  type: "dropdown";
+  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
+  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+}
+
+export interface SearchFilterToggle extends SearchFilter {
+  type: "toggle";
+}
+
+export type SearchFilterComponent<T extends FilterTypeKeys = any> =
+  | SearchFilterDropdown<T>
+  | SearchFilterToggle;

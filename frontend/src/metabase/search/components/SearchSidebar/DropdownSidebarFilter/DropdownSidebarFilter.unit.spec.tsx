@@ -2,23 +2,23 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
-import type { SearchSidebarFilterProps } from "./SidebarFilter";
-import { SidebarFilter } from "./SidebarFilter";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { DropdownSidebarFilterProps } from "./DropdownSidebarFilter";
+import { DropdownSidebarFilter } from "./DropdownSidebarFilter";
 
-const mockFilter: SearchSidebarFilterComponent = {
+const mockFilter: SearchFilterComponent = {
   title: "Mock Filter",
   iconName: "filter",
+  type: "dropdown",
   DisplayComponent: ({ value }) => (
     <div data-testid="mock-display-component">
       {!value || value.length === 0 ? "Display" : value}
     </div>
   ),
-  ContentComponent: ({ value, onChange, onCommit }) => (
+  ContentComponent: ({ value, onChange }) => (
     <div data-testid="mock-content-component">
       <button onClick={() => onChange(["new value"])}>Update</button>
       <div>{value}</div>
-      <button onClick={() => onCommit()}>Apply filters</button>
     </div>
   ),
   fromUrl: value => value,
@@ -29,15 +29,15 @@ const MockSearchSidebarFilter = ({
   filter,
   value,
   onChange,
-}: SearchSidebarFilterProps) => {
+}: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
-  const onFilterChange = (elem: SearchSidebarFilterProps["value"]) => {
+  const onFilterChange = (elem: DropdownSidebarFilterProps["value"]) => {
     setSelectedValues(elem);
     onChange(elem);
   };
 
   return (
-    <SidebarFilter
+    <DropdownSidebarFilter
       filter={filter}
       value={selectedValues}
       onChange={onFilterChange}
@@ -45,14 +45,14 @@ const MockSearchSidebarFilter = ({
   );
 };
 
-const setup = (options: Partial<SearchSidebarFilterProps> = {}) => {
-  const defaultProps: SearchSidebarFilterProps = {
+const setup = (options: Partial<DropdownSidebarFilterProps> = {}) => {
+  const defaultProps: DropdownSidebarFilterProps = {
     filter: mockFilter,
     value: [],
     onChange: jest.fn(),
   };
 
-  const props: SearchSidebarFilterProps = { ...defaultProps, ...options };
+  const props: DropdownSidebarFilterProps = { ...defaultProps, ...options };
 
   renderWithProviders(<MockSearchSidebarFilter {...props} />);
 

@@ -1,0 +1,20 @@
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { screen } from "__support__/ui";
+import type { SearchSidebarSetupOptions } from "metabase/search/components/SearchSidebar/tests/setup";
+import { setup } from "metabase/search/components/SearchSidebar/tests/setup";
+
+const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
+  await setup({
+    ...opts,
+    tokenFeatures: createMockTokenFeatures({ content_verification: true }),
+    hasEnterprisePlugins: true,
+  });
+};
+
+describe("SearchFilterModal", () => {
+  it("renders `Verified` filter", async () => {
+    await setupPremium();
+
+    expect(screen.getByTestId("verified-search-filter")).toBeInTheDocument();
+  });
+});

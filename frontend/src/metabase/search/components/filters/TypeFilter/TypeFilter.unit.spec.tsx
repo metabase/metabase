@@ -1,7 +1,11 @@
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
 import type { EnabledSearchModelType } from "metabase-types/api";
+import { checkNotNull } from "metabase/core/utils/types";
 
-const { fromUrl, toUrl } = TypeFilter;
+const { fromUrl: typeFilterFromUrl, toUrl: typeFilterToUrl } = TypeFilter;
+
+const fromUrl = checkNotNull(typeFilterFromUrl);
+const toUrl = checkNotNull(typeFilterToUrl);
 
 describe("fromUrl", () => {
   it("should return an array with a single valid type when the input exactly matches a type", () => {
