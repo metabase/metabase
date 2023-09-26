@@ -290,7 +290,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByDisplayValue(action.name)).toBeInTheDocument();
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
       userEvent.type(screen.getByDisplayValue(action.name), "a change");
