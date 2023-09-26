@@ -151,7 +151,7 @@
           (is (= {:first_name       "Jane"
                   :last_name        "Doe"
                   :common_name      "Jane Doe"}
-                 (into {} (t2/select-one [User :first_name :last_name ] :email "jane.miller@metabase.com")))))
+                 (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
         (testing "if givenName or sn attributes are removed, values stored in Metabase are updated to `nil` to respect the IdP response."
           (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
