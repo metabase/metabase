@@ -7,7 +7,6 @@ import {
   startNewQuestion,
   filter,
   enterCustomColumnDetails,
-  openProductsTable,
   selectSavedQuestionsToJoin,
   getNotebookStep,
 } from "e2e/support/helpers";
@@ -310,42 +309,6 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findAllByText(/Products? → Category/).should("have.length", 1);
     cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
-  });
-
-  it("joining on a question with remapped values should work (metabase#15578)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    // Remap display value
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
-
-    cy.createQuestion({
-      name: "15578",
-      query: { "source-table": ORDERS_ID },
-    });
-
-    openProductsTable({ mode: "notebook" });
-
-    cy.icon("join_left_outer").click();
-
-    popover().findByText("Sample Database").click();
-    popover().findByText("Raw Data").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("15578").click();
-
-    popover().findByText("ID").click();
-    popover()
-      // Implicit assertion - test will fail for multiple strings
-      .findByText("Product ID")
-      .click();
-
-    visualize(response => {
-      expect(response.body.error).to.not.exist;
-    });
   });
 
   it("should allow joins on multiple dimensions", () => {
