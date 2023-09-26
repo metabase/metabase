@@ -18,6 +18,16 @@ const memoized = new WeakMap();
 
 const createMap = () => new Map();
 
+/**
+ * This method implements memoization for class methods
+ * It creates a map where class itself, method and all the parameters are used as keys for a nested map
+ * map<class, map<method, map<param1, map<param2, map<param3...>>>>>
+ *
+ * If you use objects as parameters, make sure their references are stable as they will be used as keys
+ *
+ * @param keys - class methods to memoize
+ * @returns the same class with memoized methods
+ */
 export function memoizeClass<T>(
   ...keys: string[]
 ): (Class: Constructor<T>) => Constructor<T> {
