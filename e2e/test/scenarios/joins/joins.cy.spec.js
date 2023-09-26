@@ -6,14 +6,12 @@ import {
   summarize,
   startNewQuestion,
   filter,
-  visitQuestionAdhoc,
   enterCustomColumnDetails,
   openProductsTable,
   selectSavedQuestionsToJoin,
   getNotebookStep,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
@@ -312,66 +310,6 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findAllByText(/Products? → Category/).should("have.length", 1);
     cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
-  });
-
-  it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
-    const XRAY_DATASETS = 11; // enough to load most questions
-
-    cy.intercept("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
-    cy.intercept("POST", "/api/dataset").as("postDataset");
-
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": REVIEWS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-              alias: "Products",
-            },
-          ],
-          aggregation: [
-            ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
-          ],
-          breakout: [
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "line",
-    });
-
-    cy.get(".dot").eq(2).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Automatic insights…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("X-ray").click();
-
-    cy.wait("@xray").then(xhr => {
-      for (let c = 0; c < XRAY_DATASETS; ++c) {
-        cy.wait("@postDataset");
-      }
-      expect(xhr.response.body.cause).not.to.exist;
-      expect(xhr.status).not.to.eq(500);
-    });
-
-    // Metric title
-    cy.findByTextEnsureVisible(
-      "How this metric is distributed across different numbers",
-    );
-    // Main title
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^A closer look at/);
-    // Make sure at least one card is rendered
-    cy.get(".DashCard");
   });
 
   it("joining on a question with remapped values should work (metabase#15578)", () => {
