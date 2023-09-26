@@ -2,10 +2,12 @@
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -76,10 +78,11 @@
       1
       (first matches)
 
-      (or
-        (some (fn [match]
-                (when (= (:name field-metadata) (:name match))
-                  match))
-              matches)
-        ;; Fallback if there's no exact match
-        (first matches)))))
+      (if-let [exact (some (fn [match]
+                             (when (= (:name field-metadata) (:name match))
+                               match))
+                           matches)]
+        exact
+        (do
+          (log/warn (i18n/trs "Found multiple matching field metadata for:") (:name field-metadata) (map :name matches))
+          (first matches))))))
