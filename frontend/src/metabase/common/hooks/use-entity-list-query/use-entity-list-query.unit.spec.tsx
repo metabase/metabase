@@ -151,7 +151,7 @@ describe("useEntityListQuery", () => {
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/database")).toHaveLength(2);
     });
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(await screen.findByText(TEST_DB.name)).toBeInTheDocument();
   });
 
   it("should reload data when the reload flag is on and it is explicitly invalidated", async () => {
