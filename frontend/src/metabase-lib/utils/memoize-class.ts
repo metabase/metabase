@@ -32,7 +32,7 @@ export function memoizeClass<T>(
 
       const descriptor = descriptors[key];
       const method = descriptor.value;
-      // If we don't get a decsriptor.value, it must have a getter (i.e., ES6 class properties)
+      // If we don't get a descriptor.value, it must have a getter (i.e., ES6 class properties)
       if (!method) {
         throw new TypeError(`Class properties cannot be memoized`);
       }
