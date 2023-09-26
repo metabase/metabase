@@ -18,25 +18,25 @@
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
     (mdb/setup-db!))
   (log/infof "%s: %s | %s" (trs "Connected to") mdb.env/db-type (mdb.env/db-file))
-  (let [make-encrypt-fn   (fn [maybe-encrypt-fn]
-                            (if to-key
-                              (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
-                              identity))
-        encrypt-str-fn    (make-encrypt-fn encryption/maybe-encrypt)
-        encrypt-bytes-fn  (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+  (let [make-encrypt-fn  (fn [maybe-encrypt-fn]
+                           (if to-key
+                             (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
+                             identity))
+        encrypt-str-fn   (make-encrypt-fn encryption/maybe-encrypt)
+        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
     (t2/with-transaction [t-conn {:datasource (mdb.connection/data-source)}]
       (doseq [[id details] (t2/select-pk->fn :details Database)]
         (when (encryption/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
-        (t2/update! :conn t-conn :metabase_database {:id id} {:details (encrypt-str-fn (json/encode details))}))
-
+        (t2/update! :conn t-conn :metabase_database
+                    {:id id}
+                    {:details (encrypt-str-fn (json/encode details))}))
       (doseq [[key value] (t2/select-fn->fn :key :value Setting)]
         (if (= key "settings-last-updated")
           (setting.cache/update-settings-last-updated!)
           (t2/update! :conn t-conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-
       ;; update all secret values according to the new encryption key
       ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
@@ -44,4 +44,6 @@
       (doseq [[id value] (t2/select-pk->fn :value Secret)]
         (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
-        (t2/update! :conn t-conn :secret {:id id} {:value (encrypt-bytes-fn value)})))))
+        (t2/update! :conn t-conn :secret
+                    {:id id}
+                    {:value (encrypt-bytes-fn value)})))))

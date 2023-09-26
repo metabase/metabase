@@ -138,12 +138,6 @@
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
 
-(methodical/defmethod t2.conn/do-with-transaction :around java.sql.Connection
-  [connection options f]
-  ;; Do not deadlock if using a Connection in a different thread inside of a transaction -- see
-  ;; https://github.com/seancorfield/next-jdbc/issues/244.
-  (next-method connection (assoc options :nested-transaction-rule :ignore) f))
-
 (def ^:private ^:dynamic *transaction-depth* 0)
 
 (defn- do-transaction [^java.sql.Connection connection f]
