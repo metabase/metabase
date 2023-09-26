@@ -7,6 +7,7 @@ import type { Route } from "react-router";
 import Modal from "metabase/components/Modal";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import type {
   CreateActionParams,
   UpdateActionParams,
@@ -107,6 +108,8 @@ function ActionCreator({
   const isEditable = isNew || (model != null && model.canWriteActions());
   const [actionToSubmit, scheduleSubmitAction] = useState<WritebackAction>();
 
+  useBeforeUnload(!route && isEditable && isDirty);
+
   useEffect(() => {
     /**
      * onSubmit and onClose are called in an effect so that
@@ -195,7 +198,12 @@ function ActionCreator({
         </Modal>
       )}
 
-      <LeaveConfirmationModal isEnabled={isEditable && isDirty} route={route} />
+      {route && (
+        <LeaveConfirmationModal
+          isEnabled={isEditable && isDirty}
+          route={route}
+        />
+      )}
     </>
   );
 }
