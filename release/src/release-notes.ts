@@ -7,12 +7,6 @@ import {
 
 import type { ReleaseProps, Issue } from "./types";
 
-const {
-  AWS_S3_DOWNLOADS_BUCKET,
-  DOCKERHUB_OWNER,
-  DOCKERHUB_REPO,
-} = process.env;
-
 const releaseTemplate = `# NOTE: clean up 'Enhancements' and 'Bug fixes' sections and remove this line before publishing!
 **Enhancements**
 
@@ -45,7 +39,7 @@ const isBugIssue = (issue: Issue) =>
 const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
-  const imagePath = `${DOCKERHUB_OWNER}/${DOCKERHUB_REPO}${
+  const imagePath = `${process.env.DOCKERHUB_OWNER}/${process.env.DOCKERHUB_REPO}${
     isEnterpriseVersion(version) ? "-enterprise" : ""
   }`;
 
@@ -53,7 +47,7 @@ export const getDockerTag = (version: string) => {
 };
 
 export const getDownloadUrl = (version: string) => {
-  return `https://${AWS_S3_DOWNLOADS_BUCKET}/${
+  return `https://${process.env.AWS_S3_DOWNLOADS_BUCKET}/${
     isEnterpriseVersion(version) ? "enterprise/" : ""
   }${version}/metabase.jar`;
 };

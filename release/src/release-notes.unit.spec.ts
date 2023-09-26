@@ -2,6 +2,13 @@ import { generateReleaseNotes, getReleaseTitle } from "./release-notes";
 import type { Issue } from "./types";
 
 describe("Release Notes", () => {
+  beforeEach(() => {
+    jest.resetModules();
+    process.env.DOCKERHUB_OWNER = "metabase";
+    process.env.DOCKERHUB_REPO = "metabase";
+    process.env.AWS_S3_DOWNLOADS_BUCKET = "downloads.metabase.com";
+  });
+
   describe("getReleaseTitle", () => {
     it("should generate open source release title", () => {
       expect(getReleaseTitle("v0.2.3")).toEqual("Metabase v0.2.3");

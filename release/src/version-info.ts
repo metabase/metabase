@@ -13,8 +13,6 @@ import type {
   VersionInfo,
 } from "./types";
 
-const { AWS_S3_STATIC_BUCKET, AWS_REGION } = process.env;
-
 const generateVersionInfo = ({
   version,
   milestoneIssues,
@@ -70,8 +68,8 @@ export const generateVersionInfoJson = ({
 
 export const getVersionInfoUrl = (version: string) => {
   return isEnterpriseVersion(version)
-    ? `http://${ AWS_S3_STATIC_BUCKET }.s3.${ AWS_REGION }.amazonaws.com/version-info-ee.json`
-    : `http://${ AWS_S3_STATIC_BUCKET }.s3.${ AWS_REGION }.amazonaws.com/version-info.json`
+    ? `http://${ process.env.AWS_S3_STATIC_BUCKET }.s3.${ process.env.AWS_REGION }.amazonaws.com/version-info-ee.json`
+    : `http://${ process.env.AWS_S3_STATIC_BUCKET }.s3.${ process.env.AWS_REGION }.amazonaws.com/version-info.json`
 
 };
 

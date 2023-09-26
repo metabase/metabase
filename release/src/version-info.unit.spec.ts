@@ -1,4 +1,4 @@
-import { generateVersionInfoJson } from "./version-info";
+import { generateVersionInfoJson, getVersionInfoUrl } from "./version-info";
 import type { Issue, VersionInfoFile } from "./types";
 
 describe("verion-info", () => {
@@ -102,6 +102,26 @@ describe("verion-info", () => {
       });
 
       expect(generatedJson).toEqual(oldJson);
+    });
+  });
+
+  describe("getVersionInfoUrl", () => {
+    beforeEach(() => {
+      jest.resetModules();
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+    })
+
+    it("should generate oss version info url", () => {
+      expect(getVersionInfoUrl("v0.99.3")).toEqual(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
+    });
+
+    it("should generate ee version info url", () => {
+      expect(getVersionInfoUrl("v1.99.3")).toEqual(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info-ee.json",
+      );
     });
   });
 });
