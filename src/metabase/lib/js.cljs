@@ -487,8 +487,7 @@
   (let [stage          (lib.util/query-stage a-query stage-number)
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns
-                a-query stage-number vis-columns ret-columns {:keep-join? true}))))
+    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
@@ -509,11 +508,13 @@
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
-    (if (.-field_ref legacy-column)
-      ;; Prefer the attached field_ref if provided.
-      (legacy-ref->pMBQL (.-field_ref legacy-column))
-      ;; Fall back to converting like metadata.
-      (js.metadata/parse-column legacy-column))
+    ;; Convert legacy columns like we do for metadata.
+    (let [parsed (js.metadata/parse-column legacy-column)]
+      (if (= (:lib/source parsed) :source/aggregations)
+        ;; Special case: Aggregations need to be converted to a pMBQL :aggregation ref and :lib/source-uuid set.
+        (let [agg-ref (legacy-ref->pMBQL (.-field_ref legacy-column))]
+          (assoc parsed :lib/source-uuid (last agg-ref)))
+        parsed))
     ;; It's already a :metadata/column map
     column))
 
