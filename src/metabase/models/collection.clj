@@ -73,7 +73,18 @@
      false
      (mi/current-user-has-full-permissions? :write instance)))
   ([_ pk]
-   (mi/can-write? (t2/select-one 'Collection :id pk))))
+   (mi/can-write? (t2/select-one :model/Collection :id pk))))
+
+(defmethod mi/can-read? Collection
+  ([instance]
+   ;; Audit collection should only be fetched if audit app is enabled
+   (if (and (not (premium-features/enable-audit-app?))
+            (= (:entity_id instance) (perms/default-audit-collection-entity-id)))
+     false
+     (mi/current-user-has-full-permissions? :read instance)))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Collection :id pk))))
+
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."

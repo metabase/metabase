@@ -62,9 +62,19 @@
 (defmethod mi/can-write? Card
   ([instance]
    ;; Cards in audit collection should be read only
-   (if (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+   (if (perms/is-parent-collection-audit? instance)
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Card :id pk))))
+
+(defmethod mi/can-read? Card
+  ([instance]
+   ;; Cards in audit collection should only be fetched if audit app is enabled
+   (if (and (not (premium-features/enable-audit-app?))
+            (perms/is-parent-collection-audit? instance))
+     false
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 

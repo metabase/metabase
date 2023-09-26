@@ -26,13 +26,13 @@
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -55,9 +55,19 @@
 (defmethod mi/can-write? Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (if (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (perms/default-audit-collection-entity-id))
+   (if (perms/is-parent-collection-audit? instance)
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+  ([_ pk]
+   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
+
+(defmethod mi/can-read? Dashboard
+  ([instance]
+   ;; Dashboards in audit collection should only be fetched if audit app is enabled
+   (if (and (not (premium-features/enable-audit-app?))
+            (perms/is-parent-collection-audit? instance))
+     false
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 

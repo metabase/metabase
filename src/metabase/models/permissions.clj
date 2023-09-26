@@ -1104,6 +1104,11 @@
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
 
+(defn is-parent-collection-audit?
+  "Check if an intance's parent collection is the audit collection."
+  [instance]
+  (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (default-audit-collection-entity-id)))
+
 ; Audit permissions helper fns end
 
 (defn revoke-application-permissions!

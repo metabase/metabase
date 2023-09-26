@@ -101,6 +101,13 @@
           (dissoc ::collection.root/is-root?)
           collection/personal-collection-with-ui-details))))
 
+(defn- filter-audit-collection
+  "We should filter the audit collectoin from showing up if audit app is no longer enabled."
+  [colls]
+  (if (premium-features/enable-audit-app?)
+    colls
+    (filter (fn [coll] (not= (:entity_id coll) (perms/default-audit-collection-entity-id))) colls)))
+
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -136,17 +143,20 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (t2/select Collection
-                  {:where [:and
-                           (when exclude-archived?
-                             [:= :archived false])
-                           [:= :namespace namespace]
-                           (collection/visible-collection-ids->honeysql-filter-clause
-                            :id
-                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+               (t2/select Collection
+                          {:where [:and
+                                   (when exclude-archived?
+                                     [:= :archived false])
+                                   [:= :namespace namespace]
+                                   (collection/visible-collection-ids->honeysql-filter-clause
+                                    :id
+                                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)]
+        colls-with-details (map collection/personal-collection-with-ui-details colls)
+        tmp (println colls-with-details)
+        colls-with-details (filter-audit-collection colls-with-details)
+        tmp (println colls-with-details)]
     (collection/collections->tree coll-type-ids colls-with-details)))
 
 
