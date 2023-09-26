@@ -717,14 +717,14 @@
     #"^GRANT (.+) ON (.+) TO "
     :>>
     (fn [[_ priv-types object]]
-      (when-let [priv-types' (not-empty
-                              (if (= priv-types "ALL PRIVILEGES")
-                                #{:select :update :delete :insert}
-                                (let [split-priv-types (->> (str/split priv-types #", ")
-                                                            (map (comp keyword u/lower-case-en)))]
-                                  (set/intersection #{:select :update :delete :insert} (set split-priv-types)))))]
-        {:type             ::privileges
-         :privilege-types  priv-types'
+      (when-let [priv-types' (if (= priv-types "ALL PRIVILEGES")
+                               #{:select :update :delete :insert}
+                               (let [split-priv-types (->> (str/split priv-types #", ")
+                                                           (map (comp keyword u/lower-case-en))
+                                                           set)]
+                                 (set/intersection #{:select :update :delete :insert} split-priv-types)))]
+        {:type             :privileges
+         :privilege-types  (not-empty priv-types')
          :level            (cond
                              (= object "*.*")             :global
                              (str/ends-with? object ".*") :database
@@ -734,7 +734,7 @@
     #"^GRANT (.+) TO "
     :>>
     (fn [[_ roles]]
-      {:type  ::roles
+      {:type  :roles
        :roles (set (map u/lower-case-en (str/split roles #",")))})))
 
 (defn- privilege-grants-for-user
@@ -747,15 +747,15 @@
                            (drop 1)
                            (map first))
         parsed-grants (map parse-grant grant-strings)
-        {role-grants      ::roles
-         privilege-grants ::privileges} (group-by :type parsed-grants)]
+        {role-grants      :roles
+         privilege-grants :privileges} (group-by :type parsed-grants)]
     (if (seq role-grants)
       (let [roles         (:roles (first role-grants))
             grant-strings (->> (jdbc/query conn-spec (str "SHOW GRANTS FOR " user "USING " (str/join "," roles)) {:as-arrays? true})
                                (drop 1)
                                (map first))
             parsed-grants (map parse-grant grant-strings)
-            {privilege-grants ::privileges} (group-by :type parsed-grants)]
+            {privilege-grants :privileges} (group-by :type parsed-grants)]
         privilege-grants)
       privilege-grants)))
 
