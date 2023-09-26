@@ -57,6 +57,7 @@ export const showPercentagesOnChartMixin: EChartsMixin = ({
 
 export const totalMixin: EChartsMixin = ({ option, props }) => {
   // add this in a new commit
+  // add this in a new branch
   if (!props.settings["pie.show_total"]) {
     return { option };
   }
