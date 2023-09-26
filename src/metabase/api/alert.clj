@@ -28,7 +28,8 @@
   (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 (api/defendpoint GET "/"
-  "Fetch all alerts"
+  "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
+  The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [archived user_id]
   {archived [:maybe ms/BooleanString]
    user_id  [:maybe ms/PositiveInt]}
