@@ -88,9 +88,9 @@ describe("actions > containers > ActionCreatorModal", () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
     await setup({ initialRoute });
 
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+    });
 
     expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
   });
@@ -133,9 +133,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action: null });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
 
       history.goBack();
 
@@ -155,9 +156,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action: null });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
 
       userEvent.type(screen.getByDisplayValue("New Action"), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
@@ -178,9 +180,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action: null });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
 
       const query = "select 1;";
 
@@ -237,9 +240,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
 
       history.goBack();
 
@@ -260,9 +264,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
 
       userEvent.type(screen.getByDisplayValue(action.name), "a change");
       userEvent.tab(); // need to click away from the input to trigger the isDirty flag
@@ -285,9 +290,6 @@ describe("actions > containers > ActionCreatorModal", () => {
       const { history } = await setup({ initialRoute, action });
 
       history.push(actionRoute);
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
