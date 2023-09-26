@@ -397,6 +397,21 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isLocationAllowed = useCallback(
+    location => {
+      if (!question?.isNative()) {
+        return true;
+      }
+
+      const isTryingToRunModifiedSavedQuestion = Boolean(
+        location?.pathname === "/question" && location?.hash,
+      );
+
+      return isTryingToRunModifiedSavedQuestion;
+    },
+    [question],
+  );
+
   return (
     <>
       <View
@@ -417,6 +432,7 @@ function QueryBuilder(props) {
 
       <LeaveConfirmationModal
         isEnabled={shouldShowUnsavedChangesWarning}
+        isLocationAllowed={isLocationAllowed}
         route={route}
       />
     </>
