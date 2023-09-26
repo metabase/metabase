@@ -11,11 +11,13 @@ import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSid
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
   ({ value, onChange }) => {
-    const [selectedTypes, setSelectedTypes] = useState(value);
-
     const { metadata, isLoading } = useSearchListQuery({
       query: EMPTY_SEARCH_QUERY,
     });
+
+    const [selectedTypes, setSelectedTypes] = useState<
+      EnabledSearchModelType[]
+    >(value ?? []);
 
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
