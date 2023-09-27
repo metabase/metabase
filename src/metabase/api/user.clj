@@ -11,6 +11,7 @@
    [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -448,7 +449,9 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! User id changes))
+          (t2/update! User id changes)
+          (events/publish-event! :event/user-update {:updater api/*current-user-id*
+                                                     :changes (assoc changes :id id)}))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -521,6 +524,8 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (api/check-500 (pos? (t2/update! User id {:is_active false})))
+  (events/publish-event! :event/user-deactivated {:updater          api/*current-user-id*
+                                                  :deactivated-user (t2/select-one [:model/User :email :first_name :last_name :id] :id id)})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
