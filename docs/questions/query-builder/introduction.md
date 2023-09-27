@@ -165,6 +165,14 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 
 If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
+## Drill-through menu
+
+You can also click through questions to explored the data in greater detail.
+
+![Drill-through menu](../images/drill-through-menu.png)
+
+The drill-through menu will present different options depending on what you click on. You can then optionally save that exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+
 ## Returning to the notebook editor
 
 To return to the notebook editor for a question, click on the show editor button in the upper right.
