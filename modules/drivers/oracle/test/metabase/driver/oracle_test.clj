@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -195,8 +196,10 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= "UTC"
-           (driver/db-default-timezone :oracle (mt/db))))))
+    (is (= (t/zone-id "Z")
+           (-> (driver/db-default-timezone :oracle (mt/db))
+               t/zone-id
+               .normalized)))))
 
 ;;; see also [[metabase.test.data.oracle/insert-all-test]]
 (deftest ^:parallel insert-rows-ddl-test
