@@ -187,3 +187,25 @@
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))))))
+
+(deftest case-sensitive-conflict-test
+  (testing "Two columns with same lower-case name can be synced (#17387)"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "CREATE TABLE \"birds\" (\"event\" VARCHAR, \"eVent\" VARCHAR);"
+                         "GRANT ALL ON \"birds\" TO GUEST;"
+                         (str "INSERT INTO \"birds\" (\"event\", \"eVent\") VALUES "
+                              "('a', 'b'),  "
+                              "('c', 'd');")]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (let [sync-info (sync/sync-database! (mt/db))
+            field-sync-info (->> sync-info
+                                 (m/find-first (comp #{"metadata"} :name))
+                                 :steps
+                                 (m/find-first (comp #{"sync-fields"} first)))]
+        (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))
