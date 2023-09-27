@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.test :as mt]))
+   [metabase.public-settings.premium-features-test :as premium-features-test]))
 
 (defsetting config-from-file-settings-test-setting
   "Internal test setting."

@@ -21,7 +21,7 @@
     x-forwarded-host-header (ring.mock/header "X-Forwarded-Host" x-forwarded-host-header)
     host-header             (ring.mock/header "Host" host-header)))
 
-(deftest maybe-set-site-url-test
+(deftest ^:parallel maybe-set-site-url-test
   (testing "Make sure `maybe-set-site-url` middleware looks at the correct headers in the correct order (#12528)"
     (doseq [origin-header           ["https://mb1.example.com" nil]
             x-forwarded-host-header ["https://mb2.example.com" nil]
@@ -31,20 +31,27 @@
         (mt/with-temporary-setting-values [site-url nil]
           (maybe-set-site-url request)
           (is (= (or origin-header x-forwarded-host-header host-header)
-                 (public-settings/site-url)))))))
+                 (public-settings/site-url))))))))
+
+(deftest ^:parallel maybe-set-site-url-test-2
   (testing "Site URL should not be inferred from healthcheck requests"
     (mt/with-temporary-setting-values [site-url nil]
       (let [request (mock-request "/api/health" "https://mb1.example.com" nil nil)]
         (maybe-set-site-url request)
-        (is (nil? (public-settings/site-url))))))
+        (is (nil? (public-settings/site-url)))))))
+
+(deftest ^:parallel maybe-set-site-url-test-3
   (testing "Site URL should not be inferred if already set in DB"
     (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
         (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
           (maybe-set-site-url request)
-          (is (= "https://mb1.example.com" (public-settings/site-url))))))
+          (is (= "https://mb1.example.com" (public-settings/site-url)))))))
+
+(deftest maybe-set-site-url-test-4
   (testing "Site URL should not be inferred if already set by env variable"
-    (mt/with-temporary-setting-values [site-url nil]
-      (mt/with-temp-env-var-value [mb-site-url "https://mb1.example.com"]
-        (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
-          (maybe-set-site-url request)
-          (is (= "https://mb1.example.com" (public-settings/site-url))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [site-url nil]
+        (mt/with-temp-env-var-value [mb-site-url "https://mb1.example.com"]
+          (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
+            (maybe-set-site-url request)
+            (is (= "https://mb1.example.com" (public-settings/site-url)))))))))

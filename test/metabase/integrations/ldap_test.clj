@@ -17,7 +17,7 @@
 ;; See test_resources/ldap.ldif for fixtures
 
 ;; The connection test should pass with valid settings
-(deftest connection-test
+(deftest ^:parallel connection-test
   (ldap.test/with-ldap-server
     (testing "anonymous binds"
       (testing "successfully connect to IPv4 host"
@@ -69,7 +69,7 @@
       (is (= true
              (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
-(deftest find-test
+(deftest ^:parallel find-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
   (premium-features-test/with-premium-features #{}
     (ldap.test/with-ldap-server
@@ -161,12 +161,12 @@
                  (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
         (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
 
-(deftest group-matching-test
+(deftest ^:parallel group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"
-    (is (= #{1 2 3}
-           (mt/with-temporary-setting-values
-             [ldap-group-mappings {"cn=accounting,ou=groups,dc=metabase,dc=com" [1 2]
-                                   "cn=shipping,ou=groups,dc=metabase,dc=com" [2 3]}]
+    (mt/with-temporary-setting-values
+      [ldap-group-mappings {"cn=accounting,ou=groups,dc=metabase,dc=com" [1 2]
+                            "cn=shipping,ou=groups,dc=metabase,dc=com" [2 3]}]
+      (is (= #{1 2 3}
              (#'default-impl/ldap-groups->mb-group-ids
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]

@@ -118,7 +118,7 @@
   (also unlike `name`).
 
      (u/qualified-name :type/FK) -> \"type/FK\""
-  [k]
+  ^String [k]
   (when (some? k)
     (if-let [namespac (when #?(:clj  (instance? clojure.lang.Named k)
                                :cljs (satisfies? INamed k))

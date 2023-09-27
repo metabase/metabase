@@ -9,6 +9,8 @@
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -125,10 +127,13 @@
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
-(s/defn ldap-groups->mb-group-ids :- #{su/IntGreaterThanZero}
+(mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
-  [ldap-groups              :- (s/maybe [su/NonBlankString])
-   {:keys [group-mappings]} :- (select-keys LDAPSettings [:group-mappings s/Keyword])]
+  [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
+   {:keys [group-mappings]} :- [:map
+                                [:group-mappings [:map-of
+                                                  (ms/InstanceOfClass DN)
+                                                  [:maybe [:sequential ms/PositiveInt]]]]]]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
       vals

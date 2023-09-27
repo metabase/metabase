@@ -587,11 +587,12 @@
                   (log/warnf e "Error parsing Setting %s, ignoring value: %s" (pr-str setting-name) (ex-message e))
                   nil)))
             (warn-about-invalid-value [v]
-              (log/warnf "Ignoring value ^%s %s for Setting %s: value is not valid for Settings of type %s"
+              (log/warnf "Ignoring value ^%s %s for Setting %s: value is not valid for Settings of type %s (failed predicate fn check: %s)"
                          (some-> v class .getCanonicalName)
                          (pr-str v)
                          (u/qualified-name (:name setting))
-                         (:type setting))
+                         (:type setting)
+                         (pr-str pred))
               nil)]
       (loop [[f & more] raw-value-source-fns]
         (let [v (when-some [v (f setting)]

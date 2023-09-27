@@ -181,19 +181,19 @@
              (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
 
       (testing "malli schema message are localized"
-        (mt/with-mock-i18n-bundles  {"es" {:messages
-                                           {"value must be a non-blank string."
-                                            "el valor debe ser una cadena que no esté en blanco."}}}
-          (mt/with-temporary-setting-values [site-locale "es"]
-            (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
-                                                                                            ;; TODO remove .'s from ms schemas
-                                                                                            ;; TODO translate received (?)
-                    :specific-errors
-                    {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
-                   (:body (post! "/test-localized-error" {:address ""}))))))))
+        (mt/test-helpers-set-global-values!
+          (mt/with-mock-i18n-bundles  {"es" {:messages
+                                             {"value must be a non-blank string."
+                                              "el valor debe ser una cadena que no esté en blanco."}}}
+            (mt/with-temporary-setting-values [site-locale "es"]
+              (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
+                      ;; TODO remove .'s from ms schemas
+                      ;; TODO translate received (?)
+                      :specific-errors
+                      {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
+                     (:body (post! "/test-localized-error" {:address ""})))))))))
 
     (testing "auto-coercion"
-
       (is (= 16 (:body (post! "/auto-coerce-pos-square/4" {}))))
 
       ;; Does not match route, since we expected a regex matching an int:

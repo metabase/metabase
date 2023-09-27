@@ -85,7 +85,9 @@
   :cache?  false
   :default {}
   :getter  (fn []
-             (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
+             (when-let [m (setting/get-value-of-type :json :ldap-group-mappings)]
+               (when (map? m)
+                 (update-keys m #(DN. (u/qualified-name %))))))
   :setter  (fn [new-value]
              (cond
                (string? new-value)
