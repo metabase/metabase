@@ -25,7 +25,8 @@ Cypress.Commands.add(
             auto_apply_filters,
           });
         }
-      });
+      },
+    );
   },
 );
 
