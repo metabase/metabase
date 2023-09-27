@@ -9,14 +9,10 @@
    [metabase.models
     :refer [Card Collection Dashboard NativeQuerySnippet Permissions
             PermissionsGroup Pulse User]]
-    :refer [Card Collection Dashboard NativeQuerySnippet Permissions
-            PermissionsGroup Pulse User]]
    [metabase.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
