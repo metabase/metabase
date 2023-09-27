@@ -83,6 +83,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -485,26 +487,6 @@
                             (get v->human-readable v (get v->human-readable (str v))))
                           values)))
 
-(s/defn ^:private human-readable-values-remapped-chain-filter
-  "Chain filter, but for Fields that have human-readable values defined (e.g. you've went in and specified that enum
-  value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
-  database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- su/IntGreaterThanZero
-   v->human-readable :- HumanReadableRemappingMap
-   constraints       :- (s/maybe ConstraintsMap)
-   options           :- (s/maybe Options)]
-  (let [result (unremapped-chain-filter field-id constraints options)]
-    (update result :values add-human-readable-values v->human-readable)))
-
-(s/defn ^:private field-to-field-remapped-chain-filter
-  "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZero
-   remapped-field-id :- su/IntGreaterThanZero
-   constraints       :- (s/maybe ConstraintsMap)
-   options           :- (s/maybe Options)]
-  (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
-
 (defn- format-union
   "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
   fail on Postgres."
@@ -536,11 +518,11 @@
    :limit  1})
 
 ;; TODO -- add some caching here?
-(s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZero)
+(mu/defn ^:private remapped-field-id :- [:maybe ms/PositiveInt]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
-  [field-id :- su/IntGreaterThanZero]
-  (:id (first (mdb.query/query (remapped-field-id-query field-id)))))
+  [field-id :- [:maybe ms/PositiveInt]]
+  (:id (t2/query-one (remapped-field-id-query field-id))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
@@ -580,14 +562,27 @@
    constraints :- (s/maybe ConstraintsMap)
    & options]
   (assert (even? (count options)))
-  (let [{:as options} options]
-    (if-let [v->human-readable (human-readable-remapping-map field-id)]
-      (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if (use-cached-field-values? field-id)
-        (cached-field-values field-id constraints options)
-        (if-let [remapped-field-id (remapped-field-id field-id)]
-          (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
-          (unremapped-chain-filter field-id constraints options))))))
+  (let [{:as options}         options
+        v->human-readable     (human-readable-remapping-map field-id)
+        the-remapped-field-id (delay (remapped-field-id field-id))]
+    (cond
+     ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
+     ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
+     ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
+     (some? v->human-readable)
+     (-> (unremapped-chain-filter field-id constraints options)
+         (update :values add-human-readable-values v->human-readable))
+
+     (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+     (cached-field-values field-id constraints options)
+
+     ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+     ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
+     (some? @the-remapped-field-id)
+     (unremapped-chain-filter @the-remapped-field-id constraints (assoc options :original-field-id field-id))
+
+     :else
+     (unremapped-chain-filter field-id constraints options))))
 
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
@@ -672,17 +667,6 @@
                limit (take limit))
      :has_more_values has_more_values}))
 
-(s/defn ^:private field-to-field-remapped-chain-filter-search
-  "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZero
-   remapped-field-id :- su/IntGreaterThanZero
-   constraints       :- (s/maybe ConstraintsMap)
-   query             :- su/NonBlankString
-   options           :- (s/maybe Options)]
-  (unremapped-chain-filter-search remapped-field-id constraints query
-                                  (assoc options :original-field-id original-field-id)))
-
 (s/defn chain-filter-search
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
@@ -691,17 +675,24 @@
    query             :- (s/maybe su/NonBlankString)
    & options]
   (assert (even? (count options)))
-  (if (str/blank? query)
-    (apply chain-filter field-id constraints options)
-    (let [{:as options} options]
-      (if-let [v->human-readable (human-readable-remapping-map field-id)]
-        (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
-        (if (search-cached-field-values? field-id constraints)
-          (cached-field-values-search field-id query constraints options)
-          (if-let [remapped-field-id (remapped-field-id field-id)]
-            (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
-            (unremapped-chain-filter-search field-id constraints query options)))))))
+  (let [{:as options}         options
+        v->human-readable     (delay (human-readable-remapping-map field-id))
+        the-remapped-field-id (delay (remapped-field-id field-id))]
+    (cond
+     (str/blank? query)
+     (apply chain-filter field-id constraints options)
 
+     (some? @v->human-readable)
+     (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query options)
+
+     (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
+     (cached-field-values-search field-id query constraints options)
+
+     (some? @the-remapped-field-id)
+     (unremapped-chain-filter-search @the-remapped-field-id constraints query (assoc options :original-field-id field-id))
+
+     :else
+     (unremapped-chain-filter-search field-id constraints query options))))
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
 

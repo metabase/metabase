@@ -484,11 +484,17 @@
                    (chain-filter categories.name {venues.price 4})))
             (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
-        (testing "should do in-memory search with the cached FieldValues when search without constraints"
-          (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
-            (is (= {:values          ["Good"]
+        (testing "should search with the cached FieldValues when search without constraints"
+          (t2.with-temp/with-temp
+            [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
+                                          (dissoc :id)
+                                          (assoc :name "NAME2"))
+             :model/FieldValues  _    {:field_id (:id field)
+                                       :type     :full
+                                       :values   ["Goooood" "Bad"]}]
+            (is (= {:values          ["Goooood"]
                     :has_more_values false}
-                   (chain-filter-search categories.name nil "ood")))))
+                   (chain-filter-search categories.name2 nil "oooood")))))
 
         (testing "search with constraitns"
           ;; make sure we have a clean start
@@ -516,6 +522,19 @@
               (is (= {:values          ["Steakhouse"]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))
+
+(deftest use-cached-field-values-for-remapped-field-test
+  (testing "fetching a remapped field should returns remapped values (#21528)"
+    (mt/with-discard-model-updates [:model/Field]
+      (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter/chain-filter (mt/id :venues :category_id) nil))))
+
+        (is (= {:values          [[4 "Asian"]]
+                :has_more_values false}
+               (chain-filter/chain-filter-search (mt/id :venues :category_id) nil "sian")))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
