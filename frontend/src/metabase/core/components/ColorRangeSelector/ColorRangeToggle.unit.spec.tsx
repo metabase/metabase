@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { getStatusColorRanges } from "metabase/lib/colors/groups";
 
-import ColorRangeToggle from "./ColorRangeToggle";
+import ColorRangeToggle, { getColorRangeLabel } from "./ColorRangeToggle";
 
 const [range] = getStatusColorRanges();
 
@@ -36,6 +36,26 @@ describe("ColorRangeToggle", () => {
     it("should render when turned on explicitly", () => {
       setup({ showToggleButton: true });
       expect(screen.getByRole("button")).toBeInTheDocument();
+    });
+  });
+
+  describe("click handlers", () => {
+    it("should handle click on the toggle button", () => {
+      const { onToggleClick, onColorRangeSelect } = setup({
+        showToggleButton: true,
+      });
+
+      screen.getByRole("button").click();
+      expect(onToggleClick).toHaveBeenCalledTimes(1);
+      expect(onColorRangeSelect).not.toHaveBeenCalled();
+    });
+
+    it("should handle click on the color range element", () => {
+      const { onColorRangeSelect } = setup();
+      const label = getColorRangeLabel(range);
+
+      screen.getByLabelText(label).click();
+      expect(onColorRangeSelect).toHaveBeenCalledTimes(1);
     });
   });
 });
