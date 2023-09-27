@@ -21,6 +21,7 @@ import {
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -227,8 +228,7 @@ describe(
 
                     // before visiting the dashboard, we don't have any history
                     visitDashboard(ORDERS_DASHBOARD_ID);
-
-                    visitQuestion(ORDERS_QUESTION_ID);
+                    visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
@@ -390,7 +390,7 @@ describeWithSnowplow("send snowplow question events", () => {
   });
 
   it("should send event when clicking `Turn into a model`", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     openQuestionActions();
     expectGoodSnowplowEvents(
       NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION,

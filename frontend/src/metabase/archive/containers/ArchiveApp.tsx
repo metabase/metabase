@@ -74,7 +74,7 @@ export function ArchiveApp() {
       <ArchiveHeader>
         <PageHeading>{t`Archive`}</PageHeading>
       </ArchiveHeader>
-      <ArchiveBody>
+      <ArchiveBody data-testid="archived-list">
         <Card
           style={{
             height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
