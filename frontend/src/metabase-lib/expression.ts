@@ -48,3 +48,7 @@ export function expressionClause(
 ): ExpressionClause {
   return ML.expression_clause(operator, options, args);
 }
+
+export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.is_column_metadata(arg);
+}
