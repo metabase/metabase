@@ -76,7 +76,7 @@
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read))))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Card :id pk))))
+   (mi/can-read? (t2/select-one :model/Card :id pk))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 

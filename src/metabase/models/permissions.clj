@@ -1105,7 +1105,7 @@
                       {:status-code 400})))))
 
 (defn is-parent-collection-audit?
-  "Check if an intance's parent collection is the audit collection."
+  "Check if an instance's parent collection is the audit collection."
   [instance]
   (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (default-audit-collection-entity-id)))
 
