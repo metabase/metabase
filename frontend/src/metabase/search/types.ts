@@ -36,8 +36,9 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
 // All URL query parameters are returned as strings so we need to account
 // for that when parsing them to our filter components
+export type SearchQueryParamValue = string | string[] | null | undefined;
 export type URLSearchFilterQueryParams = Partial<
-  Record<FilterTypeKeys, string | string[] | null | undefined>
+  Record<FilterTypeKeys, SearchQueryParamValue>
 >;
 export type SearchAwareLocation = Location<
   { q?: string } & URLSearchFilterQueryParams
@@ -59,10 +60,8 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   iconName?: IconName;
   // two functions for converting strings to the desired prop type and back
   // (e.g. for converting a string to a date)
-  fromUrl?: (
-    value: string | string[] | null | undefined,
-  ) => SearchFilterPropTypes[T];
-  toUrl?: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
+  fromUrl: (value: SearchQueryParamValue) => SearchFilterPropTypes[T];
+  toUrl: (value?: SearchFilterPropTypes[T]) => SearchQueryParamValue;
 }
 
 export interface SearchFilterDropdown<T extends FilterTypeKeys = any>

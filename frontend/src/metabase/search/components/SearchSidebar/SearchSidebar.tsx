@@ -1,9 +1,8 @@
 import _ from "underscore";
-import { useCallback, useMemo } from "react";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
-  SearchFilterPropTypes,
+  SearchQueryParamValue,
   URLSearchFilterQueryParams,
 } from "metabase/search/types";
 import { Stack } from "metabase/ui";
@@ -19,38 +18,28 @@ type SearchSidebarProps = {
   onChange: (value: URLSearchFilterQueryParams) => void;
 };
 
+const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
+  [SearchFilterKeys.Type]: TypeFilter,
+  [SearchFilterKeys.CreatedBy]: CreatedByFilter,
+  [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+};
+
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
-  const filterMap: Record<FilterTypeKeys, SearchFilterComponent | null> =
-    useMemo(
-      () => ({
-        [SearchFilterKeys.Type]: TypeFilter,
-        [SearchFilterKeys.CreatedBy]: CreatedByFilter,
-        [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-      }),
-      [],
-    );
-
-  const isValidFilterValue = useCallback(
-    (
-      key: FilterTypeKeys,
-      val: SearchFilterPropTypes[FilterTypeKeys],
-    ): boolean => {
-      if (!val || !filterMap[key]) {
-        return false;
-      }
-
-      if (Array.isArray(val)) {
-        return val.length > 0;
-      }
-      return true;
-    },
-    [filterMap],
-  );
-
-  const onOutputChange = (
+  const isValidFilterValue = (
     key: FilterTypeKeys,
-    val: SearchFilterPropTypes[FilterTypeKeys],
-  ) => {
+    filterValue: SearchQueryParamValue,
+  ): boolean => {
+    if (!filterValue || !filterMap[key]) {
+      return false;
+    }
+
+    if (Array.isArray(filterValue)) {
+      return filterValue.length > 0;
+    }
+    return true;
+  };
+
+  const onOutputChange = (key: FilterTypeKeys, val: SearchQueryParamValue) => {
     if (!isValidFilterValue(key, val)) {
       onChange(_.omit(value, key));
     } else {
@@ -64,11 +53,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   };
 
   const getFilter = (key: FilterTypeKeys) => {
-    const Filter = filterMap[key];
-
-    if (!Filter) {
-      return null;
-    }
+    const Filter: SearchFilterComponent = filterMap[key];
 
     const filterValue = Filter.fromUrl?.(value[key]) ?? value[key];
 
@@ -77,7 +62,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         <ToggleSidebarFilter
           data-testid={`${key}-search-filter`}
           value={filterValue}
-          onChange={value => onOutputChange(key, value)}
+          onChange={value => onOutputChange(key, Filter.toUrl(value))}
           filter={Filter}
         />
       );
@@ -87,7 +72,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
           filter={Filter}
           data-testid={`${key}-search-filter`}
           value={filterValue}
-          onChange={value => onOutputChange(key, value)}
+          onChange={value => onOutputChange(key, Filter.toUrl(value))}
         />
       );
     }

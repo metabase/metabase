@@ -1,21 +1,50 @@
+/*
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * TODO: Change mantine switch import before merging!!
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * */
+
+// eslint-disable-next-line no-restricted-imports
 import { Switch } from "@mantine/core";
-import type {
-  SearchFilterComponentProps,
-  SearchFilterToggle,
-} from "metabase/search/types";
+import type { SearchFilterToggle } from "metabase/search/types";
 import { Group, Text } from "metabase/ui";
 
 export type ToggleSidebarFilterProps = {
   filter: SearchFilterToggle;
-} & SearchFilterComponentProps;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  "data-testid"?: string;
+};
 export const ToggleSidebarFilter = ({
   filter: { title },
   value,
   onChange,
   "data-testid": dataTestId,
 }: ToggleSidebarFilterProps) => {
-  const booleanValue = Boolean(value);
-
   return (
     <Group noWrap px="0.25rem" py="0.5rem" data-testid={dataTestId}>
       <Text w="100%" c="text.1" fw={700}>
@@ -26,11 +55,9 @@ export const ToggleSidebarFilter = ({
           "data-testid": "toggle-filter-switch",
         }}
         size="sm"
-        data-is-checked={booleanValue}
-        checked={booleanValue}
-        onChange={event =>
-          onChange(event.currentTarget.checked ? true : undefined)
-        }
+        data-is-checked={value}
+        checked={value}
+        onChange={event => onChange(event.currentTarget.checked)}
       />
     </Group>
   );

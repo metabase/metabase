@@ -54,6 +54,7 @@ const typeFilters = [
   {
     label: "Action",
     filterName: "action",
+    resultInfoText: "for",
   },
 ];
 
@@ -64,12 +65,11 @@ describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
     cy.intercept("GET", "/api/search?q=*").as("search");
+    cy.signInAsAdmin();
   });
 
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
-      cy.signInAsAdmin();
-
       cy.visit("/");
       getSearchBar().as("searchBox").type("product").blur();
 
@@ -164,10 +164,6 @@ describe("scenarios > search", () => {
   });
 
   describe("applying search filters", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-    });
-
     describe("no filters", () => {
       it("hydrating search from URL", () => {
         cy.visit("/search?q=orders");
@@ -212,13 +208,13 @@ describe("scenarios > search", () => {
 
       typeFilters.forEach(({ label, filterName, resultInfoText }) => {
         it(`should hydrate search with search text and ${label} filter`, () => {
-          cy.visit(`/search?q=orders&type=${filterName}`);
+          cy.visit(`/search?q=e&type=${filterName}`);
           cy.wait("@search");
 
-          getSearchBar().should("have.value", "orders");
+          getSearchBar().should("have.value", "e");
 
           cy.findByTestId("search-app").within(() => {
-            cy.findByText('Results for "orders"').should("exist");
+            cy.findByText('Results for "e"').should("exist");
           });
 
           cy.findAllByTestId("result-link-info-text").each(result => {
@@ -226,13 +222,11 @@ describe("scenarios > search", () => {
           });
 
           cy.findByTestId("type-search-filter").within(() => {
-            cy.findByText("Question").should("exist");
+            cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
         });
-      });
 
-      typeFilters.forEach(({ label, resultInfoText }) => {
         it(`should filter results by ${label}`, () => {
           cy.visit("/");
 
@@ -254,14 +248,14 @@ describe("scenarios > search", () => {
       });
 
       it("should remove type filter when `X` is clicked on search filter", () => {
-        const { filterName } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
+        const { label, filterName } = typeFilters[0];
+        cy.visit(`/search?q=e&type=${filterName}`);
         cy.wait("@search");
 
         cy.findByTestId("type-search-filter").within(() => {
-          cy.findByText("Question").should("exist");
+          cy.findByText(label).should("exist");
           cy.findByLabelText("close icon").click();
-          cy.findByText("Question").should("not.exist");
+          cy.findByText(label).should("not.exist");
           cy.findByText("Content type").should("exist");
         });
 
@@ -386,8 +380,9 @@ describe("scenarios > search", () => {
         getSearchBar().clear().type("e{enter}");
         cy.wait("@search");
 
-        // const verifiedFilter = cy.findByTestId("verified-search-filter")
-        cy.findByTestId("verified-filter-switch").click();
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
 
         cy.findAllByTestId("search-result-item").each(result => {
           cy.wrap(result).within(() => {
@@ -401,7 +396,9 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        cy.findByTestId("verified-filter-switch").click();
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
         cy.url().should("not.include", "verified=true");
 
         let verifiedElementCount = 0;

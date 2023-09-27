@@ -289,5 +289,5 @@ export const PLUGIN_EMBEDDING = {
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
-  VerifiedFilter: null as SearchFilterComponent<"verified"> | null,
+  VerifiedFilter: {} as SearchFilterComponent<"verified">,
 };

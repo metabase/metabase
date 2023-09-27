@@ -2,7 +2,7 @@
 import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Text } from "metabase/ui";
-import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter/CreatedByFilter";
+import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
 import type { SearchFilterDropdown } from "metabase/search/types";
 
 export const CreatedByDisplay: SearchFilterDropdown<"created_by">["DisplayComponent"] =

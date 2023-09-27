@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUserListResult } from "metabase-types/api/mocks";
-import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
+import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement/UserListElement";
 
 const TEST_USER_LIST_RESULT = createMockUserListResult({
   common_name: "Alice Johnson",

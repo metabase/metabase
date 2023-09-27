@@ -5,13 +5,14 @@ import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserListResult } from "metabase-types/api";
 import { Center, Text, TextInput } from "metabase/ui";
+import type { SearchFilterDropdown } from "metabase/search/types";
+
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
+import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
 import {
   CreatedByContainer,
   CreatedByContentContainer,
-} from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
-import type { SearchFilterDropdown } from "metabase/search/types";
-import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
+} from "./CreatedByContent.styled";
 
 export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentComponent"] =
   ({ value, onChange }) => {
