@@ -157,13 +157,9 @@ export type ExpressionOperator =
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
-export type ExpressionClauseArg = ExpressionArg | ExpressionClause;
-
-export type ExpressionPartsArg = ExpressionArg | ExpressionParts;
-
 export type ExpressionParts = {
   operator: ExpressionOperator;
-  args: ExpressionPartsArg[];
+  args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
 

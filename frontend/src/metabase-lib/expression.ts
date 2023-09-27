@@ -1,8 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
   ColumnMetadata,
+  ExpressionArg,
   ExpressionClause,
-  ExpressionClauseArg,
   ExpressionOperator,
   ExpressionOptions,
   FilterClause,
@@ -44,7 +44,7 @@ export function expressionParts(
 export function expressionClause(
   operator: ExpressionOperator,
   options: ExpressionOptions,
-  args: ExpressionClauseArg[],
+  args: (ExpressionArg | ExpressionClause)[],
 ): ExpressionClause {
   return ML.expression_clause(operator, options, args);
 }
