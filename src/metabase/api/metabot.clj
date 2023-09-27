@@ -1,4 +1,5 @@
 (ns metabase.api.metabot
+  "These Metabot endpoints are an experimental feature."
   (:require
    [clojure.string :as str]
    [compojure.core :refer [POST]]
