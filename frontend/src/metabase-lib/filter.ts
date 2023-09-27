@@ -60,7 +60,26 @@ export function relativeDateFilterClause({
   column,
   value,
   unit,
+  offsetValue,
+  offsetUnit,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  return expressionClause("time-interval", options, [column, value, unit]);
+  if (offsetValue == null || offsetUnit == null) {
+    return expressionClause("time-interval", options, [column, value, unit]);
+  }
+
+  return expressionClause("between", null, [
+    expressionClause("+", null, [
+      column,
+      expressionClause("interval", null, [-offsetValue, offsetUnit]),
+    ]),
+    expressionClause("relative-datetime", null, [
+      value < 0 ? value : 0,
+      offsetUnit,
+    ]),
+    expressionClause("relative-datetime", null, [
+      value > 0 ? value : 0,
+      offsetUnit,
+    ]),
+  ]);
 }

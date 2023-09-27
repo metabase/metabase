@@ -180,6 +180,8 @@ export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   value: number | "current";
   unit: TemporalUnit;
+  offsetValue?: number;
+  offsetUnit?: TemporalUnit;
   options: RelativeDateFilterOptions;
 };
 

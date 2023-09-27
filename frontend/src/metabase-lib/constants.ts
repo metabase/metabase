@@ -1,4 +1,8 @@
 export const EXPRESSION_OPERATORS = [
+  "+",
+  "-",
+  "*",
+  "/",
   "=",
   "!=",
   ">",
