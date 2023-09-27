@@ -278,7 +278,7 @@ describe("scenarios > search", () => {
         cy.url().should("not.contain", "type");
 
         getNumberOfUniqueResultDescriptions().then(
-          uniqueTypeDescriptionsCount => {
+          ({ uniqueTypeDescriptionsCount }) => {
             expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
           },
         );
@@ -345,7 +345,7 @@ describe("scenarios > search", () => {
         });
 
         getNumberOfUniqueResultDescriptions().then(
-          uniqueTypeDescriptionsCount => {
+          ({ uniqueTypeDescriptionsCount }) => {
             expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
           },
         );
@@ -545,7 +545,6 @@ function getNumberOfUniqueResultDescriptions() {
         $resultTypeDescriptions.toArray().map(el => el.textContent),
       );
       cy.wrap({
-        uniqueTypeDescriptions,
         uniqueTypeDescriptionsCount: uniqueTypeDescriptions.size,
       });
     });
