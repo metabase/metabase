@@ -31,9 +31,9 @@
     stage-number :- :int
     filter-clause :- ::lib.schema.expression/boolean]
    (let [[op options first-arg & rest-args] filter-clause
-         stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col (lib.equality/closest-matching-metadata first-arg columns)
+         stage            (lib.util/query-stage query stage-number)
+         columns          (lib.metadata.calculation/visible-columns query stage-number stage)
+         col              (lib.equality/find-matching-column first-arg columns)
          add-ref-metadata #(lib.field/extend-column-metadata-from-ref query stage-number % first-arg)]
      {:lib/type :mbql/filter-parts
       :operator (or (m/find-first #(= (:short %) op)

@@ -16,6 +16,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
@@ -25,8 +26,7 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -78,10 +78,12 @@
 
 (defn- field-ids->param-field-values-ignoring-current-user
   [param-field-ids]
-  (t2/select-fn->fn :field_id (comp identity t2.realize/realize)
-                    ['FieldValues :values :human_readable_values :field_id]
-                    :type :full
-                    :field_id [:in param-field-ids]))
+  (not-empty
+   (into {}
+         (map (comp (juxt :field_id identity)
+                    #(select-keys % [:field_id :human_readable_values :values])
+                    field-values/get-or-create-full-field-values!))
+         (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
