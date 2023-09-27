@@ -105,7 +105,7 @@
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field 100 nil]]`, and return the field
    it references (if any)."
   [target card]
-  (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
+  (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target
             field-form    (if (mbql.u/is-clause? :template-tag dimension)
