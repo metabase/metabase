@@ -18,6 +18,8 @@ describe("buildCollectionTree", () => {
       icon: { name: "folder" },
       children: [],
     });
+
+    expect(1).toBeLessThan(0); // FIXME testing this failure
   });
 
   it("prefers originalName over name for schema names", () => {
