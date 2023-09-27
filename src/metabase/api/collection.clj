@@ -62,7 +62,7 @@
       collections)))
 
 (defn- filter-audit-collection
-  "We should filter the audit collectoin from showing up if audit app is no longer enabled."
+  "We should filter the audit collection from showing up if audit app is no longer enabled."
   [colls]
   (if (premium-features/enable-audit-app?)
     colls

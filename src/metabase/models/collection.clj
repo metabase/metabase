@@ -83,7 +83,7 @@
      false
      (mi/current-user-has-full-permissions? :read instance)))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Collection :id pk))))
+   (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
 
 (def AuthorityLevel
