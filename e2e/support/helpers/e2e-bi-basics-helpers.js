@@ -14,7 +14,7 @@ export function filter({ mode } = {}) {
 }
 
 export function join() {
-  initiateAction("Join", "notebook");
+  cy.button("Join data").click();
 }
 
 export function addCustomColumn() {
@@ -95,7 +95,6 @@ function initiateAction(actionType, mode) {
 const ACTION_TYPE_TO_ICON_MAP = {
   Filter: "filter",
   Summarize: "sum",
-  Join: "join_left_outer",
   CustomColumn: "add_data",
 };
 
