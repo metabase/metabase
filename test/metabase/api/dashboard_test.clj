@@ -547,6 +547,28 @@
              (first (mt/with-log-messages-for-level ['metabase.models.params :warn]
                       (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id)))))))))))
 
+(deftest dashboard-param-link-to-a-field-without-full-field-values-test
+  (testing "GET /api/dashboard/:id"
+    (t2.with-temp/with-temp
+      [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+       :model/Card {card-id :id} {:name "Dashboard Test Card"}
+       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                               :card_id            card-id
+                               :parameter_mappings [{:card_id      card-id
+                                                     :parameter_id "foo"
+                                                     :target       [:dimension
+                                                                    [:field (mt/id :venues :name) nil]]}]}]
+      (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+      (testing "Request triggers computation of field values if missing (#30218)"
+        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                               "25°"
+                                                               "33 Taps"]
+                                       :field_id              (mt/id :venues :name)
+                                       :human_readable_values []}}
+               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                 (into {} (for [[field-id m] response]
+                            [field-id (update m :values (partial take 3))])))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
