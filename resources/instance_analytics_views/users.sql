@@ -1,4 +1,4 @@
-create or replace view v_group_members as
+create or replace view v_users as
 select
     id as user_id,
     email,
