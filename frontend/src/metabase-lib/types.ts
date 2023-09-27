@@ -1,5 +1,6 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type { EXPRESSION_OPERATORS, TEMPORAL_UNITS } from "./constants";
+import type { EXPRESSION_OPERATORS } from "./operator";
+import type { TEMPORAL_UNITS } from "./temporal_unit";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -153,14 +154,14 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type StringFilterParts = {
+export type TextFilterParts = {
   operator: ExpressionOperator;
   column: ColumnMetadata;
   values: string[];
-  options: StringFilterOptions;
+  options: TextFilterOptions;
 };
 
-export type StringFilterOptions = {
+export type TextFilterOptions = {
   "case-sensitive"?: boolean;
 };
 

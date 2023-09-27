@@ -9,7 +9,7 @@ import type {
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
-  StringFilterParts,
+  TextFilterParts,
 } from "./types";
 
 export function filterableColumns(
@@ -31,12 +31,12 @@ export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
 
-export function stringFilterClause({
+export function textFilterClause({
   operator,
   column,
   values,
   options,
-}: StringFilterParts): ExpressionClause {
+}: TextFilterParts): ExpressionClause {
   return expressionClause(operator, options, [column, ...values]);
 }
 
