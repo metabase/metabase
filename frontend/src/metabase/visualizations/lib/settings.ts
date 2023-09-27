@@ -15,6 +15,7 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import type Question from "metabase-lib/Question";
 
 const WIDGETS = {
   input: ChartSettingInput,
@@ -31,10 +32,113 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
+// VisualizationSettings?
+type ComputedSettings = {
+  currency?: string;
+  date_style?: string;
+  date_separator?: string;
+  date_abbreviate?: boolean;
+  currency_in_header?: boolean;
+  currency_style?: string;
+  number_style?: string;
+  time_enabled?: boolean;
+  [key: string]: any;
+};
+
+// VisualizationSettingDefinition?
+export type SettingDef = {
+  persistDefault: boolean;
+  default?: any;
+  widget: keyof typeof WIDGETS;
+  inline?: boolean;
+  useRawSeries?: boolean;
+  readDependencies?: string[];
+  writeDependencies?: string[];
+  eraseDependencies?: string[];
+  getDefault?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => any;
+  getValue?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => any;
+  isValid?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => boolean;
+  onUpdate?: (value: any, extra: any) => void;
+
+  section?: string;
+  getSection?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => string;
+
+  title?: string;
+  getTitle?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => string;
+
+  hidden?: boolean;
+  getHidden?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => boolean;
+
+  marginBottom?: string;
+  getMarginBottom?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => string;
+
+  disabled?: boolean;
+  getDisabled?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    extra: any,
+  ) => boolean;
+
+  props?: object;
+  getProps?: (
+    object: SettingObject,
+    settings: ComputedSettings,
+    onChange: any,
+    extra: any,
+  ) => object;
+};
+
+type SettingObject = {
+  _raw: any;
+  [key: string]: any;
+};
+
+// VisualizationSettingsDefinitions
+type SettingsDefs = {
+  [key: string]: SettingDef;
+};
+
+type SettingWidget = SettingDef & {
+  id: string;
+  value: any;
+  set: boolean;
+  widget: any;
+  onChange: any;
+  onChangeSettings: (newSettings: ComputedSettings, question: Question) => void;
+};
+
 export function getComputedSettings(
-  settingsDefs,
-  object,
-  storedSettings,
+  settingsDefs: SettingsDefs,
+  object: SettingObject,
+  storedSettings: ComputedSettings,
   extra = {},
 ) {
   const computedSettings = {};
@@ -52,23 +156,23 @@ export function getComputedSettings(
 }
 
 function getComputedSetting(
-  computedSettings, // MUTATED!
-  settingDefs,
-  settingId,
-  object,
-  storedSettings,
+  computedSettings: ComputedSettings, // MUTATED!
+  settingsDefs: SettingsDefs,
+  settingId: string,
+  object: SettingObject,
+  storedSettings: ComputedSettings,
   extra = {},
 ) {
   if (settingId in computedSettings) {
     return;
   }
 
-  const settingDef = settingDefs[settingId] || {};
+  const settingDef = settingsDefs[settingId] || {};
 
   for (const dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
       computedSettings,
-      settingDefs,
+      settingsDefs,
       dependentId,
       object,
       storedSettings,
@@ -113,15 +217,15 @@ function getComputedSetting(
 }
 
 function getSettingWidget(
-  settingDefs,
-  settingId,
-  storedSettings,
-  computedSettings,
-  object,
-  onChangeSettings,
+  settingsDefs: SettingsDefs,
+  settingId: string,
+  storedSettings: SettingsDefs,
+  computedSettings: SettingsDefs,
+  object: SettingObject,
+  onChangeSettings: SettingWidget["onChangeSettings"],
   extra = {},
-) {
-  const settingDef = settingDefs[settingId];
+): SettingWidget {
+  const settingDef = settingsDefs[settingId];
   const value = computedSettings[settingId];
   const onChange = (value, question) => {
     const newSettings = { [settingId]: value };
@@ -174,17 +278,17 @@ function getSettingWidget(
 }
 
 export function getSettingsWidgets(
-  settingDefs,
-  storedSettings,
-  computedSettings,
-  object,
+  settingsDefs: SettingsDefs,
+  storedSettings: ComputedSettings,
+  computedSettings: ComputedSettings,
+  object: SettingObject,
   onChangeSettings,
   extra = {},
 ) {
-  return Object.keys(settingDefs)
+  return Object.keys(settingsDefs)
     .map(settingId =>
       getSettingWidget(
-        settingDefs,
+        settingsDefs,
         settingId,
         storedSettings,
         computedSettings,
@@ -196,7 +300,10 @@ export function getSettingsWidgets(
     .filter(widget => widget.widget);
 }
 
-export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
+export function getPersistableDefaultSettings(
+  settingsDefs: SettingsDefs,
+  completeSettings,
+) {
   const persistableDefaultSettings = {};
   for (const settingId in settingsDefs) {
     const settingDef = settingsDefs[settingId];

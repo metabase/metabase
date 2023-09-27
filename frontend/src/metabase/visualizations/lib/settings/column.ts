@@ -74,6 +74,7 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import type { WidgetName } from "metabase/visualizations/lib/settings";
 
 export function getGlobalSettingsForColumn(column: DatasetColumn) {
   const columnSettings = {};
@@ -188,28 +189,7 @@ function getTimeEnabledOptionsForUnit(unit?: TimeUnit) {
 type ColumnSettings = {
   [key: string]: {
     title: string;
-    widget: "toggle" | "select" | "radio" | "number" | "input";
-    default?: any;
-    inline?: boolean;
-    readDependencies?: string[];
-    props?: object;
-    getDefault?: (
-      column: DatasetColumn,
-      settings?: VisualizationSettings,
-    ) => any;
-    getValue?: (column: DatasetColumn, settings: VisualizationSettings) => any;
-    isValid?: (
-      column: DatasetColumn,
-      settings: VisualizationSettings,
-    ) => boolean;
-    getProps?: (
-      column: DatasetColumn,
-      settings: VisualizationSettings,
-    ) => object;
-    getHidden?: (
-      column: DatasetColumn,
-      settings?: VisualizationSettings,
-    ) => boolean;
+    widget: WidgetName;
   };
 };
 
@@ -223,11 +203,11 @@ export const DATE_COLUMN_SETTINGS: ColumnSettings = {
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
-    isValid: ({ unit }, settings) => {
+    isValid: ({ unit }, settings = {}) => {
       const options = getDateStyleOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings["date_style"] });
     },
-    getProps: ({ unit }, settings) => ({
+    getProps: ({ unit }, settings = {}) => ({
       options: getDateStyleOptionsForUnit(
         unit,
         settings["date_abbreviate"],
@@ -240,10 +220,9 @@ export const DATE_COLUMN_SETTINGS: ColumnSettings = {
     title: t`Date separators`,
     widget: "radio",
     default: "/",
-    getProps: (column, settings) => {
-      const style = /\//.test(settings["date_style"])
-        ? settings["date_style"]
-        : "M/D/YYYY";
+    getProps: (column, { date_style } = {}) => {
+      const style =
+        date_style && /\//.test(date_style) ? date_style : "M/D/YYYY";
       return {
         options: [
           { name: style, value: "/" },
@@ -252,16 +231,16 @@ export const DATE_COLUMN_SETTINGS: ColumnSettings = {
         ],
       };
     },
-    getHidden: ({ unit }, settings) =>
-      !/\//.test(settings?.["date_style"] || ""),
+    getHidden: ({ unit }, settings = {}) =>
+      !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
     title: t`Abbreviate days and months`,
     widget: "toggle",
     default: false,
     inline: true,
-    getHidden: ({ unit }, settings) => {
-      const format = getDateFormatFromStyle(settings?.["date_style"], unit);
+    getHidden: ({ unit }, settings = {}) => {
+      const format = getDateFormatFromStyle(settings["date_style"], unit);
       return !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
@@ -269,16 +248,15 @@ export const DATE_COLUMN_SETTINGS: ColumnSettings = {
   time_enabled: {
     title: t`Show the time`,
     widget: "radio",
-    isValid: ({ unit }, settings) => {
+    isValid: ({ unit }, settings = {}) => {
       const options = getTimeEnabledOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings["time_enabled"] });
     },
-    getProps: ({ unit }, settings) => {
+    getProps: ({ unit }) => {
       const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
-    getHidden: (column, settings) =>
-      !hasHour(column.unit) || isDateWithoutTime(column),
+    getHidden: column => !hasHour(column.unit) || isDateWithoutTime(column),
     getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
@@ -294,8 +272,8 @@ export const DATE_COLUMN_SETTINGS: ColumnSettings = {
         timeStyleOption("HH:mm", t`24-hour clock`),
       ],
     }),
-    getHidden: (column, settings) =>
-      !settings?.["time_enabled"] || isDateWithoutTime(column),
+    getHidden: (column, settings = {}) =>
+      !settings["time_enabled"] || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
 };
@@ -323,11 +301,11 @@ export const NUMBER_COLUMN_SETTINGS: ColumnSettings = {
         { name: t`Currency`, value: "currency" },
       ],
     },
-    getDefault: (column, settings) =>
-      isCurrency(column) && settings?.["currency"] ? "currency" : "decimal",
+    getDefault: (column, settings = {}) =>
+      isCurrency(column) && settings["currency"] ? "currency" : "decimal",
     // hide this for currency
-    getHidden: (column, settings) =>
-      isCurrency(column) && settings?.["number_style"] === "currency",
+    getHidden: (column, settings = {}) =>
+      isCurrency(column) && settings["number_style"] === "currency",
     readDependencies: ["currency"],
   },
   currency: {
@@ -335,7 +313,7 @@ export const NUMBER_COLUMN_SETTINGS: ColumnSettings = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: currency.map(([_, currency]) => ({
+      options: currency.map(([_, currency]: any) => ({
         name: currency.name,
         value: currency.code,
       })),
@@ -343,12 +321,13 @@ export const NUMBER_COLUMN_SETTINGS: ColumnSettings = {
       searchCaseSensitive: false,
     },
     default: "USD",
-    getHidden: (column, settings) => settings?.["number_style"] !== "currency",
+    getHidden: (column, settings = {}) =>
+      settings["number_style"] !== "currency",
   },
   currency_style: {
     title: t`Currency label style`,
     widget: "radio",
-    getProps: (column, settings) => {
+    getProps: (column, settings = {}) => {
       const c = settings["currency"] || "USD";
       const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
@@ -374,13 +353,14 @@ export const NUMBER_COLUMN_SETTINGS: ColumnSettings = {
         ],
       };
     },
-    getDefault: (column, settings) => {
-      const c = settings?.["currency"] || "USD";
+    getDefault: (column, settings = {}) => {
+      const c = settings["currency"] || "USD";
       return getCurrencySymbol(c) !== getCurrency(c, "code")
         ? "symbol"
         : "code";
     },
-    getHidden: (column, settings) => settings?.["number_style"] !== "currency",
+    getHidden: (column, settings = {}) =>
+      settings["number_style"] !== "currency",
     readDependencies: ["number_style"],
   },
   currency_in_header: {
@@ -393,9 +373,9 @@ export const NUMBER_COLUMN_SETTINGS: ColumnSettings = {
       ],
     },
     default: true,
-    getHidden: (column, settings, { series }) =>
+    getHidden: (column, settings = {}, { series } = {}) =>
       settings["number_style"] !== "currency" ||
-      series[0].card.display !== "table",
+      series?.[0].card.display !== "table",
     readDependencies: ["number_style"],
   },
   number_separators: {

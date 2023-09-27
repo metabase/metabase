@@ -493,7 +493,7 @@ const getMonthFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
 
 export function getDateFormatFromStyle(
-  style: string,
+  style?: string,
   unit?: DatetimeUnit,
   separator?: string,
   includeWeekday?: boolean,
