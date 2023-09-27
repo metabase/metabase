@@ -58,9 +58,11 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   type: SidebarFilterType;
   title: string;
   iconName?: IconName;
-  // two functions for converting strings to the desired prop type and back
-  // (e.g. for converting a string to a date)
+
+  // parses the string value of a URL query parameter to the filter value
   fromUrl: (value: SearchQueryParamValue) => SearchFilterPropTypes[T];
+
+  // converts filter value to URL query parameter string value
   toUrl: (value?: SearchFilterPropTypes[T]) => SearchQueryParamValue;
 }
 
