@@ -113,6 +113,7 @@ export interface DatePickerShortcutsProps {
   column: Lib.ColumnMetadata;
   onChange: (clause: Lib.ExpressionClause) => void;
   onNavigate: (type: DateFilterType) => void;
+  onBack: () => void;
 }
 
 export const DatePickerShortcuts = ({
