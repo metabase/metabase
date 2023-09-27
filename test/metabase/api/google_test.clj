@@ -10,12 +10,15 @@
 (deftest google-settings-test
   (testing "PUT /api/google/settings"
     (testing "Valid Google Sign-In settings can be saved via an API call"
-      (mt/with-temporary-setting-values [google-auth-client-id nil
-                                         google-auth-auto-create-accounts-domain nil
-                                         google-auth-enabled nil]
-        (mt/user-http-request :crowberto :put 200 "google/settings" {:google-auth-client-id test-client-id
-                                                                     :google-auth-enabled true
-                                                                     :google-auth-auto-create-accounts-domain "foo.com"})
-        (is (= (google/google-auth-enabled) true))
-        (is (= (google/google-auth-client-id) test-client-id))
-        (is (= (google.i/google-auth-auto-create-accounts-domain) "foo.com"))))))
+      (mt/test-helpers-set-global-values!
+        (mt/with-temporary-setting-values [google-auth-client-id nil
+                                           google-auth-auto-create-accounts-domain nil
+                                           google-auth-enabled nil]
+          (mt/user-http-request :crowberto :put 200 "google/settings" {:google-auth-client-id                   test-client-id
+                                                                       :google-auth-enabled                     true
+                                                                       :google-auth-auto-create-accounts-domain "foo.com"})
+          (is (true? (google/google-auth-enabled)))
+          (is (= test-client-id
+                 (google/google-auth-client-id)))
+          (is (=  "foo.com"
+                  (google.i/google-auth-auto-create-accounts-domain))))))))

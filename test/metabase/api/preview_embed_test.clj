@@ -22,9 +22,8 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-card [card]
         (testing "it should be possible to use this endpoint successfully if all the conditions are met"
-          (is (= embed-test/successful-card-info
-                 (embed-test/dissoc-id-and-name
-                   (mt/user-http-request :crowberto :get 200 (card-url card))))))
+          (is (=? embed-test/successful-card-info
+                  (mt/user-http-request :crowberto :get 200 (card-url card)))))
 
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -55,10 +54,10 @@
                      :slug    "d"
                      :default nil}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
-                                                                                                      :b "disabled"
-                                                                                                      :c "enabled"
-                                                                                                      :d "enabled"}
-                                                                                  :params            {:c 100}}))
+                                                                                                     :b "disabled"
+                                                                                                     :c "enabled"
+                                                                                                     :d "enabled"}
+                                                                                 :params            {:c 100}}))
                        :parameters)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------
@@ -224,9 +223,8 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Dashboard dash]
         (testing "it should be possible to call this endpoint successfully..."
-          (is (= embed-test/successful-dashboard-info
-                 (embed-test/dissoc-id-and-name
-                  (mt/user-http-request :crowberto :get 200 (dashboard-url dash))))))
+          (is (=? embed-test/successful-dashboard-info
+                  (mt/user-http-request :crowberto :get 200 (dashboard-url dash)))))
 
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."

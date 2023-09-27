@@ -152,10 +152,16 @@
       ;; also capture entries related to ssh tunneling for later use
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
+(def ^:dynamic *transient-test-database*
+  "Only for facilitating tests: whether this is a transient test database that it is okay to destroy in ^:parallel
+  tests."
+  false)
+
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
-  (when config/tests-available?
-    ((requiring-resolve 'mb.hawk.parallel/assert-test-is-not-parallel) `destroy-pool!))
+  (when-not *transient-test-database*
+    (when config/tests-available?
+      ((requiring-resolve 'mb.hawk.parallel/assert-test-is-not-parallel) `destroy-pool!)))
   (connection-pool/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 

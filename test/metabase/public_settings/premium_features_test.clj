@@ -13,28 +13,35 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn do-with-premium-features [features f]
+(defn do-with-premium-features [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      (binding [premium-features/*token-features* (constantly features)]
-        (f)))))
+      (if tu.thread-local/*thread-local*
+        (binding [premium-features/*token-features* (constantly features)]
+          (thunk))
+        (with-redefs [premium-features/*token-features* (constantly features)]
+          (thunk))))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
 ;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
 (defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
-  feature-flagging.
+  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use
+  testing feature-flagging.
 
     (with-premium-features #{:audit-app}
       ;; audit app will be enabled for body, but no other premium features
-      ...)"
+      ...)
+
+  By default, thread-safe, but this supports [[metabase.test/test-helpers-set-global-values!]]; use this in a `test-helpers-set-global-values!` form to set premium
+  features globally in a thread-unsafe manner."
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features ~features (fn [] ~@body)))
+  `(do-with-premium-features ~features (^:once fn* [] ~@body)))
 
 (defmacro with-additional-premium-features
   "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
@@ -47,7 +54,7 @@
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
-                             (fn [] ~@body)))
+                             (^:once fn* [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]

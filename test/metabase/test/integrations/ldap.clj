@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.test.util :as tu]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u])
   (:import
    (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
@@ -54,27 +55,32 @@
                       (Schema/getSchema (u/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
 
 (defn do-with-ldap-server
-  "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
-  [f options]
-  (binding [*ldap-server* (start-ldap-server! options)]
-    (try
-      (tu/with-temporary-setting-values [ldap-host       "localhost"
-                                         ldap-port       (get-ldap-port)
-                                         ldap-bind-dn    "cn=Directory Manager"
-                                         ldap-password   "password"
-                                         ldap-user-base  "dc=metabase,dc=com"
-                                         ldap-group-sync true
-                                         ldap-group-base "dc=metabase,dc=com"]
-         (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
-          (f)))
-      (finally (.shutDown *ldap-server* true)))))
+  "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `thunk`. Thread-safe."
+  ([thunk]
+   (do-with-ldap-server thunk {:ldif-resource "ldap.ldif"
+                               :schema        (get-default-schema)}))
+
+  ([thunk options]
+   (binding [*ldap-server* (start-ldap-server! options)]
+     (try
+       (tu/with-temporary-setting-values [ldap-host       "localhost"
+                                          ldap-port       (get-ldap-port)
+                                          ldap-bind-dn    "cn=Directory Manager"
+                                          ldap-password   "password"
+                                          ldap-user-base  "dc=metabase,dc=com"
+                                          ldap-group-sync true
+                                          ldap-group-base "dc=metabase,dc=com"]
+         (if tu.thread-local/*thread-local*
+           (tu/with-temporary-setting-values [ldap-enabled true]
+             (thunk))
+           (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
+             (thunk))))
+       (finally (.shutDown *ldap-server* true))))))
 
 (defmacro with-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`."
   [& body]
-  `(do-with-ldap-server (fn [] ~@body)
-                        {:ldif-resource "ldap.ldif"
-                         :schema        (get-default-schema)}))
+  `(do-with-ldap-server (^:once fn* [] ~@body)))
 
 (defmacro with-active-directory-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`.

@@ -175,6 +175,8 @@
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
+;;; TODO -- consider renaming this to `user-mock-request` or something else that makes it more obvious that it doesn't
+;;; do an actual HTTP request
 (def user-http-request
   "A version of our test client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID.

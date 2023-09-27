@@ -215,7 +215,7 @@
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
-        thunk       (fn []
+        thunk       (^:once fn* []
                       (try
                         (request-fn url request-map)
                         (catch clojure.lang.ExceptionInfo e

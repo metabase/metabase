@@ -13,7 +13,7 @@
    [schema.core :as s]
    [toucan2.core :as t2]))
 
-(deftest find-test
+(deftest ^:parallel find-test
   (premium-features-test/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server
       (testing "find by username"

@@ -1022,7 +1022,7 @@
                                           :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest pulse-card-query-results-test
+(deftest ^:parallel pulse-card-query-results-test
   (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
     (is (map? (#'api.pulse/pulse-card-query-results
                {:id            1
@@ -1105,18 +1105,21 @@
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
-    (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
-                   PulseChannel {channel-id :id} {:pulse_id      pulse-id
-                                                  :channel_type  "email"
-                                                  :schedule_type "daily"
-                                                  :details       {:other  "stuff"
-                                                                  :emails ["foo@bar.com"]}}]
-      (testing "Should be able to delete your own subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-          (is (= nil
-                 (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
+    ;; don't fail from the REPL if we have an EE token
+    ;; and [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] is set
+    (mt/with-temporary-setting-values [subscription-allowed-domains nil]
+      (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
+                     PulseChannel {channel-id :id} {:pulse_id      pulse-id
+                                                    :channel_type  "email"
+                                                    :schedule_type "daily"
+                                                    :details       {:other  "stuff"
+                                                                    :emails ["foo@bar.com"]}}]
+        (testing "Should be able to delete your own subscription"
+          (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+            (is (= nil
+                   (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
-      (testing "Users can't delete someone else's pulse subscription"
-        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-          (is (= "Not found."
-                 (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))
+        (testing "Users can't delete someone else's pulse subscription"
+          (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+            (is (= "Not found."
+                   (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription"))))))))))

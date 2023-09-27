@@ -27,7 +27,6 @@
             PermissionsGroupMembership
             PersistedInfo
             Revision
-            Setting
             Table
             TaskHistory
             Timeline
@@ -37,8 +36,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline :as timeline]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
@@ -48,9 +45,9 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -278,22 +275,6 @@
       u/lower-case-en
       keyword))
 
-(defn do-with-temp-env-var-value
-  "Impl for [[with-temp-env-var-value]] macro."
-  [env-var-keyword value thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
-  (let [value (str value)]
-    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
-      (try
-        ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env env-var-keyword value)]
-          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
-          (setting.cache/restore-cache!)
-          (thunk))
-        (finally
-          ;; flush the cache again so the original value of any env var Settings get restored
-          (setting.cache/restore-cache!))))))
-
 (defmacro with-temp-env-var-value
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
   any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
@@ -303,48 +284,14 @@
       ...)"
   [[env-var value & more :as bindings] & body]
   {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
+  `(tu.setting/do-with-temp-env-var-value
     ~(->lisp-case-keyword env-var)
     ~value
     (fn [] ~@(if (seq more)
                [`(with-temp-env-var-value ~(vec more) ~@body)]
                body))))
 
-(defn- upsert-raw-setting!
-  [original-value setting-k value]
-  (if original-value
-    (t2/update! Setting setting-k {:value value})
-    (t2/insert! Setting :key setting-k :value value))
-  (setting.cache/restore-cache!))
 
-(defn- restore-raw-setting!
-  [original-value setting-k]
-  (if original-value
-    (t2/update! Setting setting-k {:value original-value})
-    (t2/delete! Setting :key setting-k))
-  (setting.cache/restore-cache!))
-
-(mu/defn do-with-temporary-setting-values
-  "Impl for [[with-temporary-setting-values]]."
-  [bindings-map :- [:map-of
-                    [:fn
-                     {:error/message "Setting name or definition"}
-                     #(satisfies? setting/Resolvable %)]
-                    any?]
-   thunk        :- [:=> [:cat] any?]]
-  ;; treat empty/blank strings as nil, that's what we do for DB and env var values.
-  (let [bindings-map (update-vals bindings-map
-                                  (fn [v]
-                                    (when-not (and (string? v)
-                                                   (str/blank? v))
-                                      v)))]
-    ;; make sure all of the Settings exist, or throw an Exception. Be nice and catch typos
-    (doseq [[k _v] bindings-map]
-      (setting/resolve-setting k))
-    (testing (format "\nwith temporary setting values\n%s\n" (u/pprint-to-str bindings-map))
-      (binding [setting/*thread-local-values* (merge setting/*thread-local-values*
-                                                     bindings-map)]
-        (thunk)))))
 
 (s/def ::with-temporary-setting-values-bindings
   (s/spec (s/* (s/cat
@@ -358,78 +305,32 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]].
+
+  Supports [[metabase.test/test-helpers-set-global-values!]]; use this in the body of a
+  `test-helpers-set-global-values!` form to set Setting values globally.
+
+  Changes to Settings with values bound here will be captured, and ultimately discarded at the conclusion of this form
+  e.g.
+
+    (my-setting) ; => 1
+    (with-temporary-setting-values [my-setting 2]
+      (my-setting) ; => 2
+      (my-setting! 3)
+      (my-setting) ; => 3
+      ...)
+    (my-setting) ; => 1"
   {:style/indent :defn}
   [bindings & body]
-  `(do-with-temporary-setting-values
+  `(tu.setting/do-with-temporary-setting-values
     ~(into {}
            (map (fn [{:keys [setting value]}]
                   [(cond-> setting
-                     (symbol? setting) keyword)
+                     (symbol? setting) (#(keyword (name %))))
                    value]))
            (s/conform ::with-temporary-setting-values-bindings bindings))
     (^:once fn* []
      ~@body)))
-
-(defn do-with-temporary-setting-value!
-  "Impl for [[with-temporary-setting-values!]]."
-  [setting-k value thunk & {:keys [raw-setting?]}]
-  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value!")
-  (initialize/initialize-if-needed! :db :plugins)
-  (let [setting-k     (name setting-k)
-        setting       (try
-                        (#'setting/resolve-setting setting-k)
-                        (catch Exception e
-                          (when-not raw-setting?
-                            (throw e))))]
-    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
-      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
-      (let [original-value (if raw-setting?
-                             (t2/select-one-fn :value Setting :key setting-k)
-                             (#'setting/get setting-k))]
-        (try
-          (try
-            (if raw-setting?
-              (upsert-raw-setting! original-value setting-k value)
-              ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
-                (setting/set! setting-k value)))
-            (catch Throwable e
-              (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                              {:setting  setting-k
-                               :location (symbol (name (:namespace setting)) (name setting-k))
-                               :value    value}
-                              e))))
-          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-            (thunk))
-          (finally
-            (try
-              (if raw-setting?
-                (restore-raw-setting! original-value setting-k)
-                ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
-                  (setting/set! setting-k original-value)))
-              (catch Throwable e
-                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                                {:setting        setting-k
-                                 :location       (symbol (name (:namespace setting)) setting-k)
-                                 :original-value original-value}
-                                e))))))))))
-
-(defmacro with-temporary-setting-values!
-  "Thread-unsafe version of [[with-temporary-setting-values]].
-
-  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
-  [[setting-k value & more :as bindings] & body]
-  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (if (empty? bindings)
-    `(do ~@body)
-    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-setting-values! ~more
-           ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
@@ -438,20 +339,12 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-raw-setting-values ~more
-           ~@body))
-       :raw-setting? true)))
-
-(defn do-with-discarded-setting-changes [settings thunk]
-  (initialize/initialize-if-needed! :db :plugins)
-  ((reduce
-    (fn [thunk setting-k]
-      (fn []
-        (do-with-temporary-setting-value! setting-k (setting/get setting-k) thunk)))
-    thunk
-    settings)))
+    `(tu.setting/do-with-temporary-global-setting-value
+      ~(keyword setting-k) ~value
+      (^:once fn* []
+       (with-temporary-raw-setting-values ~more
+         ~@body))
+      :raw-setting? true)))
 
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
@@ -461,7 +354,7 @@
       ...)"
   {:style/indent 1}
   [settings & body]
-  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
+  `(tu.setting/do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."

@@ -36,6 +36,10 @@
   ([strategy s]
    (u.humanization/name->human-readable-name strategy s)))
 
+(def ^:private ^:dynamic *table-id-to-rehumanize*
+  "For test mocking purposes: when bound to an integer Table IDs, only rehumanize that Table and its Fields."
+  nil)
+
 (defn- re-humanize-names!
   "Update all non-custom display names of all instances of `model` (e.g. Table or Field)."
   [old-strategy model]
@@ -48,14 +52,20 @@
               (log/info (trs "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
                              (name model) internal-name display-name new-strategy-display-name))
               (t2/update! model id
-                {:display_name new-strategy-display-name}))))
-        (db/select-reducible [model :id :name :display_name])))
+                          {:display_name new-strategy-display-name}))))
+        (db/select-reducible [model :id :name :display_name]
+                             (if *table-id-to-rehumanize*
+                               {:where [:= (case model
+                                             :model/Table :id
+                                             :model/Field :table_id)
+                                        *table-id-to-rehumanize*]}
+                               {}))))
 
 (s/defn ^:private re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
   the (obstensibly swapped implementation of) `name->human-readable-name`."
   [old-strategy :- s/Keyword]
-  (doseq [model ['Table 'Field]]
+  (doseq [model [:model/Table :model/Field]]
     (re-humanize-names! old-strategy model)))
 
 (defn- set-humanization-strategy! [new-value]

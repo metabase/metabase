@@ -82,12 +82,11 @@
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
     (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                        redirect-all-requests-to-https true]
-      (is (= true
-             (public-settings/redirect-all-requests-to-https)))
+      (is (true? (public-settings/redirect-all-requests-to-https)))
       (public-settings/site-url! "http://example.com")
-      (is (= false
-             (public-settings/redirect-all-requests-to-https)))))
+      (is (false? (public-settings/redirect-all-requests-to-https))))))
 
+(deftest site-url-should-update-https-redirect-test-2
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
     (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                        redirect-all-requests-to-https true]
@@ -173,9 +172,9 @@
         (testing "\n`site-url` *is* HTTPS"
           (mt/with-temporary-setting-values [site-url                       "https://example.com"
                                              redirect-all-requests-to-https false]
-            (public-settings/redirect-all-requests-to-https! v)
-            (is (= true
-                   (public-settings/redirect-all-requests-to-https)))))
+            (is (= "true"
+                   (public-settings/redirect-all-requests-to-https! v)))
+            (is (true? (public-settings/redirect-all-requests-to-https)))))
 
         (testing "\n`site-url` is not HTTPS"
           (mt/with-temporary-setting-values [site-url                       "http://example.com"
@@ -183,8 +182,7 @@
             (is (thrown?
                  AssertionError
                  (public-settings/redirect-all-requests-to-https! v)))
-            (is (= false
-                   (public-settings/redirect-all-requests-to-https)))))))))
+            (is (false? (public-settings/redirect-all-requests-to-https)))))))))
 
 (deftest cloud-gateway-ips-test
   (with-redefs [premium-features/is-hosted? (constantly true)]

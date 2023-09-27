@@ -131,9 +131,9 @@
   (delay (atom nil)))
 
 (def ^:dynamic *thread-local-values*
-  "Mostly for tests, e.g. [[metabase.test/with-temporary-setting-values]]. A map of setting-name =>
+  "Mostly for tests, e.g. [[metabase.test/with-temporary-setting-values]]. A atom containing a map of setting-name =>
   already-deserialized value. If this is bound, values from this map are used preferentially over ones in the cache or
-  app DB."
+  app DB. When Settings values are bound here, updates to that Setting are captured by this map as well."
   nil)
 
 (def ^:private retired-setting-names
@@ -493,7 +493,7 @@
   tests (see [[metabase.test/with-temporary-setting-values]]). This value is already deserialized."
   [setting-definition-or-name]
   (when *thread-local-values*
-    (let [value (core/get *thread-local-values* (keyword (setting-name setting-definition-or-name)) ::not-found)]
+    (let [value (core/get @*thread-local-values* (keyword (setting-name setting-definition-or-name)) ::not-found)]
       (cond
         (= value ::not-found) nil
         (nil? value)          ::nil
@@ -719,7 +719,7 @@
   Impls of this method should ultimately call the implementation for `:string`, which handles the low-level logic of
   updating the cache and application database."
   {:arglists '([setting-type setting-definition-or-name new-value])}
-  (fn [setting-type _ _]
+  (fn [setting-type _setting-definition-or-name _new-value]
     (keyword setting-type)))
 
 (mu/defmethod set-value-of-type! :string
@@ -730,7 +730,8 @@
          :as setting}                     (resolve-setting setting-definition-or-name)
         obfuscated?                       (and sensitive? (obfuscated-value? new-value))
         setting-name                      (setting-name setting)]
-    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!` function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
+    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the [[set-many!]]
+    ;; function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
@@ -741,11 +742,18 @@
         (when (and
                (= :only (:user-local setting))
                (not (should-set-user-local-value? setting)))
-          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*." setting-name)))
-        (if (should-set-user-local-value? setting)
+          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*."
+                         setting-name)))
+        (cond
+          (some? (thread-local-value setting))
+          (swap! *thread-local-values* assoc (keyword (metabase.models.setting/setting-name setting)) new-value)
+
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
+          (should-set-user-local-value? setting)
           (set-user-local-value! setting-name new-value)
+
+          :else
           (do
             ;; make sure we're not trying to set the value of a Database-local-only Setting
             (when-not (allows-site-wide-values? setting)

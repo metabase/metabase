@@ -36,6 +36,7 @@
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
@@ -74,6 +75,7 @@
   t2.with-temp/keepme
   test-runner.assert-exprs/keep-me
   test.persistence/keep-me
+  tu.thread-local/keep-me
   test.tz/keep-me
   test.users/keep-me
   tu.async/keep-me
@@ -239,7 +241,6 @@
   with-temp-scheduler
   with-temp-vals-in-db
   with-temporary-setting-values
-  with-temporary-setting-values!
   with-temporary-raw-setting-values
   with-user-in-groups]
 
@@ -263,6 +264,9 @@
   random-name
   random-hash
   random-email]
+
+ [tu.thread-local
+  test-helpers-set-global-values!]
 
  [test.tz
   with-system-timezone-id]

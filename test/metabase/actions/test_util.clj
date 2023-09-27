@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -94,26 +95,32 @@
           (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
           (t2/delete! Database :id db-id))))))
 
+(defn do-with-actions-test-data [thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel `with-actions-test-data)
+  (do-with-dataset-definition actions-test-data thunk))
+
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+  `(do-with-actions-test-data (^:once fn* [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [dataset-definition & body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
+  `(binding [sql-jdbc.conn/*transient-test-database* true]
+     (do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (^:once fn* [] ~@body))))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
+  `(binding [sql-jdbc.conn/*transient-test-database* true]
+     (do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (^:once fn* [] ~@body))))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql

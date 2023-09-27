@@ -12,7 +12,7 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -186,29 +186,31 @@
     (is (= "I win!"
            (db-fetch-setting :test-setting-1)))
     (is (= "For realz"
-           (db-fetch-setting :test-setting-2))))
+           (db-fetch-setting :test-setting-2)))))
 
+(deftest set-many!-test-2
   (testing "if one change fails, the entire set of changes should be reverted"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
-      (let [orig  setting/set!
-            calls (atom 0)]
-        ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
-          (is (thrown-with-msg?
-               Throwable
-               #"Oops"
-               (setting/set-many! {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
-          (testing "changes should be reverted"
-            (is (= "123"
-                   (test-setting-1)))
-            (is (= "123"
-                   (test-setting-2)))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-1 "123"
+                                         test-setting-2 "123"]
+        (let [orig  setting/set!
+              calls (atom 0)]
+          ;; allow the first Setting change to succeed, then throw an Exception after that
+          (with-redefs [setting/set! (fn [& args]
+                                       (if (zero? @calls)
+                                         (do
+                                           (swap! calls inc)
+                                           (apply orig args))
+                                         (throw (ex-info "Oops!" {}))))]
+            (is (thrown-with-msg?
+                 Throwable
+                 #"Oops"
+                 (setting/set-many! {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
+            (testing "changes should be reverted"
+              (is (= "123"
+                     (test-setting-1)))
+              (is (= "123"
+                     (test-setting-2))))))))))
 
 (deftest delete-test
   (testing "delete"
@@ -262,23 +264,25 @@
 
 (deftest user-facing-info-test-3
   (testing "user-facing info w/ no db value, env var value, no default value -- shouldn't leak env var value"
-    (mt/with-temporary-setting-values! [test-setting-1 nil]
-      (mt/with-temp-env-var-value [:mb-test-setting-1 "TOUCANS"]
-        (is (=? {:value          nil
-                 :is_env_setting true
-                 :env_name       "MB_TEST_SETTING_1"
-                 :default        "Using value of env var $MB_TEST_SETTING_1"}
-                (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-1))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-1 nil]
+        (mt/with-temp-env-var-value [:mb-test-setting-1 "TOUCANS"]
+          (is (=? {:value          nil
+                   :is_env_setting true
+                   :env_name       "MB_TEST_SETTING_1"
+                   :default        "Using value of env var $MB_TEST_SETTING_1"}
+                  (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-1)))))))))
 
 (deftest user-facing-info-test-4
   (testing "user-facing info w/ no db value, env var value, default value"
-    (mt/with-temporary-setting-values! [test-setting-2 nil]
-      (mt/with-temp-env-var-value [:mb-test-setting-2 "TOUCANS"]
-        (is (=? {:value          nil
-                 :is_env_setting true
-                 :env_name       "MB_TEST_SETTING_2"
-                 :default        "Using value of env var $MB_TEST_SETTING_2"}
-                (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-2))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-2 nil]
+        (mt/with-temp-env-var-value [:mb-test-setting-2 "TOUCANS"]
+          (is (=? {:value          nil
+                   :is_env_setting true
+                   :env_name       "MB_TEST_SETTING_2"
+                   :default        "Using value of env var $MB_TEST_SETTING_2"}
+                  (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-2)))))))))
 
 (deftest user-facing-info-test-5
   (testing "user-facing info w/ db value, no env var value, no default value"
@@ -297,24 +301,26 @@
 (deftest user-facing-info-test-7
   (testing (str "user-facing info w/ db value, env var value, no default value -- the env var should take precedence "
                 "over the db value, but should be obfuscated")
-    (mt/with-temporary-setting-values! [test-setting-1 "TOUCANS"]
-      (mt/with-temp-env-var-value [mb-test-setting-1 "ENV VAR"]
-        (is (=? {:value          nil
-                 :is_env_setting true
-                 :env_name       "MB_TEST_SETTING_1"
-                 :default        "Using value of env var $MB_TEST_SETTING_1"}
-                (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-1))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-1 "TOUCANS"]
+        (mt/with-temp-env-var-value [mb-test-setting-1 "ENV VAR"]
+          (is (=? {:value          nil
+                   :is_env_setting true
+                   :env_name       "MB_TEST_SETTING_1"
+                   :default        "Using value of env var $MB_TEST_SETTING_1"}
+                  (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-1)))))))))
 
 (deftest user-facing-info-test-8
   (testing (str "user-facing info w/ db value, env var value, default value -- env var should take precedence over "
                 "default, but should be obfuscated")
-    (mt/with-temporary-setting-values! [test-setting-2 "TOUCANS"]
-      (mt/with-temp-env-var-value [mb-test-setting-2 "ENV VAR"]
-        (is (=? {:value          nil
-                 :is_env_setting true
-                 :env_name       "MB_TEST_SETTING_2"
-                 :default        "Using value of env var $MB_TEST_SETTING_2"}
-                (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-2))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-2 "TOUCANS"]
+        (mt/with-temp-env-var-value [mb-test-setting-2 "ENV VAR"]
+          (is (=? {:value          nil
+                   :is_env_setting true
+                   :env_name       "MB_TEST_SETTING_2"
+                   :default        "Using value of env var $MB_TEST_SETTING_2"}
+                  (#'setting/user-facing-info (#'setting/resolve-setting :test-setting-2)))))))))
 
 (deftest writable-settings-test
   (testing `setting/writable-settings
@@ -472,20 +478,20 @@
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
-(defn- fetch-csv-setting-value [v]
+(defn- fetch-csv-setting-value! [v]
   (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
-(deftest ^:parallel get-csv-setting-test
+(deftest get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
-           (fetch-csv-setting-value "A,B,C"))))
+           (fetch-csv-setting-value! "A,B,C"))))
 
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
 
-(defn- set-and-fetch-csv-setting-value! [v]
+(defn- set-and-fetch-csv-setting-value!! [v]
   (test-csv-setting! v)
   {:db-value     (t2/select-one-fn :value setting/Setting :key "test-csv-setting")
    :parsed-value (test-csv-setting)})
@@ -493,23 +499,23 @@
 (deftest csv-setting-test
   (testing "should be able to correctly set a simple CSV setting"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C"]))))
+           (set-and-fetch-csv-setting-value!! ["A" "B" "C"]))))
 
   (testing "should be a able to set a CSV setting with a value that includes commas"
     (is (= {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))))
+           (set-and-fetch-csv-setting-value!! ["A" "B" "C" "D1,D2"]))))
 
   (testing "should be able to set a CSV setting with a value that includes spaces"
     (is (= {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))))
+           (set-and-fetch-csv-setting-value!! ["A" "B" "C" " D "]))))
 
   (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
-           (set-and-fetch-csv-setting-value! "A,B,C"))))
+           (set-and-fetch-csv-setting-value!! "A,B,C"))))
 
   (testing "should be able to set nil CSV setting"
     (is (= {:db-value nil, :parsed-value nil}
-           (set-and-fetch-csv-setting-value! nil))))
+           (set-and-fetch-csv-setting-value!! nil))))
 
   (testing "default values for CSV settings should work"
     (test-csv-setting-with-default! nil)
@@ -764,7 +770,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu.setting/do-with-temp-env-var-value
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
@@ -883,31 +889,35 @@
       (test-user-local-only-setting! "DEF")
       (is (= "DEF" (test-user-local-only-setting))))
     (mt/with-current-user (mt/user->id :rasta)
-      (is (= "ABC" (test-user-local-only-setting)))))
+      (is (= "ABC" (test-user-local-only-setting))))))
 
+(deftest user-local-settings-test-2
   (testing "A user-local-only setting cannot have a site-wide value"
-    (is (thrown-with-msg? Throwable #"Site-wide values are not allowed" (test-user-local-only-setting! "ABC"))))
+    (is (thrown-with-msg? Throwable #"Site-wide values are not allowed" (test-user-local-only-setting! "ABC")))))
 
+(deftest user-local-settings-test-3
   (testing "Reading and writing a user-local-allowed setting in the context of a user uses the user-local value"
     ;; TODO: mt/with-temporary-setting-values only affects site-wide value, we should figure out whether it should also
     ;; affect user-local settings.
-    (mt/with-temporary-setting-values [test-user-local-allowed-setting nil]
-      (mt/with-current-user (mt/user->id :rasta)
-        (test-user-local-allowed-setting! "ABC")
-        (is (= "ABC" (test-user-local-allowed-setting))))
-      (mt/with-current-user (mt/user->id :crowberto)
-        (test-user-local-allowed-setting! "DEF")
-        (is (= "DEF" (test-user-local-allowed-setting))))
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (= "ABC" (test-user-local-allowed-setting))))
-      ;; Calling the setter when not in the context of a user should set the site-wide value
-      (is (nil? (test-user-local-allowed-setting)))
-      (test-user-local-allowed-setting! "GHI")
-      (mt/with-current-user (mt/user->id :crowberto)
-        (is (= "DEF" (test-user-local-allowed-setting))))
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (= "ABC" (test-user-local-allowed-setting))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-user-local-allowed-setting nil]
+        (mt/with-current-user (mt/user->id :rasta)
+          (test-user-local-allowed-setting! "ABC")
+          (is (= "ABC" (test-user-local-allowed-setting))))
+        (mt/with-current-user (mt/user->id :crowberto)
+          (test-user-local-allowed-setting! "DEF")
+          (is (= "DEF" (test-user-local-allowed-setting))))
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= "ABC" (test-user-local-allowed-setting))))
+        ;; Calling the setter when not in the context of a user should set the site-wide value
+        (is (nil? (test-user-local-allowed-setting)))
+        (test-user-local-allowed-setting! "GHI")
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= "DEF" (test-user-local-allowed-setting))))
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= "ABC" (test-user-local-allowed-setting))))))))
 
+(deftest user-local-settings-test-4
   (testing "Reading and writing a user-local-never setting in the context of a user uses the site-wide value"
     (mt/with-current-user (mt/user->id :rasta)
       (test-user-local-never-setting! "ABC")
@@ -917,8 +927,9 @@
       (is (= "DEF" (test-user-local-never-setting))))
     (mt/with-current-user (mt/user->id :rasta)
       (is (= "DEF" (test-user-local-never-setting))))
-    (is (= "DEF" (test-user-local-never-setting))))
+    (is (= "DEF" (test-user-local-never-setting)))))
 
+(deftest user-local-settings-test-5
   (testing "A setting cannot be defined to allow both user-local and database-local values"
     (is (thrown-with-msg?
          Throwable
@@ -930,11 +941,12 @@
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values! [test-setting-1 "123"
-                                        test-setting-2 "123"]
-      (is (= "5f7f150c"
-             (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (t2/select-one Setting :key "test-setting-1")))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [test-setting-1 "123"
+                                          test-setting-2 "123"]
+        (is (= "5f7f150c"
+               (serdes/raw-hash ["test-setting-1"])
+               (serdes/identity-hash (t2/select-one Setting :key "test-setting-1"))))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"
@@ -978,9 +990,10 @@
               (is (= "setting-default"
                      (test-feature-setting)))))
           (testing "a DB value is set"
-            (mt/with-temporary-setting-values! [test-feature-setting "wow"]
-              (is (= "setting-default"
-                     (test-feature-setting)))))
+            (mt/test-helpers-set-global-values!
+              (mt/with-temporary-setting-values [test-feature-setting "wow"]
+                (is (= "setting-default"
+                       (test-feature-setting))))))
           (testing "an env var value is set"
             (mt/with-temp-env-var-value [mb-test-feature-setting "wow"]
               (is (= "setting-default"
@@ -1169,14 +1182,27 @@
 (deftest thread-local-respect-nil-test
   (testing "thread-local-value should respect nil values"
     (test-setting-1! "wow")
-    (binding [setting/*thread-local-values* {:test-setting-1 nil}]
+    (binding [setting/*thread-local-values* (atom {:test-setting-1 nil})]
       (is (= ::setting/nil
              (#'setting/thread-local-value :test-setting-1)))
       (is (= nil
              (test-setting-1)))))
   (testing "Fall back to default values for Settings with them"
-    (binding [setting/*thread-local-values* {:test-double-setting nil}]
+    (binding [setting/*thread-local-values* (atom {:test-double-setting nil})]
       (is (= ::setting/nil
              (#'setting/thread-local-value :test-double-setting)))
       (is (= 60.0
              (test-double-setting))))))
+
+(deftest thread-local-values-intercept-sets-test
+  (test-setting-1! "a")
+  (is (= "a"
+         (test-setting-1)))
+  (binding [setting/*thread-local-values* (atom {:test-setting-1 "b"})]
+    (is (= "b"
+           (test-setting-1)))
+    (test-setting-1! "c")
+    (is (= "c"
+           (test-setting-1))))
+  (is (= "a"
+         (test-setting-1))))

@@ -30,7 +30,6 @@
             Segment
             Table
             User]]
-   [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -120,12 +119,12 @@
   "Figure out what we're running under"
   []
   (cond
-    (config/config-str :rds-hostname)        :elastic-beanstalk
-    (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
-    :else                                    :unknown))
+    (config/config-str :rds-hostname) :elastic-beanstalk
+    (config/config-str :database-url) :heroku ;; Putting this last as 'database-url' seems least specific
+    :else                             :unknown))
 
 (defn- instance-settings
-  "Figure out global info about this instance"
+  "Figure out global info about this instance."
   []
   {:version              (config/mb-version-info :tag)
    :running_on           (environment-type)
@@ -134,8 +133,10 @@
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
    :report_timezone      (driver/report-timezone)
-   ; We deprecated advanced humanization but have this here anyways
-   :friendly_names       (= (humanization/humanization-strategy) "advanced")
+   ;; this used to possibly be true when we had the
+   ;; `:advanced` [[metabase.models.humanization/humanization-strategy]]... now that it's deprecated this is always
+   ;; false.
+   :friendly_names       false
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (google/google-auth-enabled)
