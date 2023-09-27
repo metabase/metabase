@@ -26,8 +26,8 @@
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
 
@@ -227,7 +227,7 @@
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
-      (db/honeysql->sql
+      (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
