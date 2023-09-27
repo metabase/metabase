@@ -1,3 +1,4 @@
+import "metabase/plugins/builtin";
 import { screen } from "__support__/ui";
 import {
   createMockGroup,
