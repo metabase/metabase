@@ -219,13 +219,11 @@ function QueryActionContextProvider({
     [query, handleQueryChange],
   );
 
-  const isDirty = useMemo(() => {
-    if (initialAction) {
-      return !_.isEqual(action, initialAction);
-    }
-
-    return !_.isEqual(action, newEmptyAction);
-  }, [action, initialAction, newEmptyAction]);
+  const originalAction = initialAction || newEmptyAction;
+  const isDirty = useMemo(
+    () => !_.isEqual(action, originalAction),
+    [action, originalAction],
+  );
 
   const value = useMemo(
     (): ActionContextType => ({
