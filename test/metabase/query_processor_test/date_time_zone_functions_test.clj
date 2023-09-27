@@ -942,7 +942,7 @@
    from x a
    join x b on a.dt < b.dt and a.time_zone <> b.time_zone")
 
-(defn run-datetime-diff-time-zone-tests
+(defn- run-datetime-diff-time-zone-tests
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
 
    `diffs` is a function that executes a query with the `datetimeDiff` function applied to its two arguments.

@@ -677,14 +677,24 @@
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects?
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
-  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release related resources as needed when this is called."
+  "Notify the driver that the attributes (`:details`) of a `database` have changed. This is specifically relevant in the
+  event that the driver was doing some caching or connection pooling; the driver should release related resources as
+  needed when this is called.
+
+  Only drivers that manage connection pools or other resources themselves need to implement this method; for
+  JDBC-based drivers, this is handled in the `:jdbc` parent driver. The default implementation for other drivers is a
+  no-op.
+
+  Prior to 0.48.0, this method was called for both Database updates and deletions; in 0.48.0, this is only called for
+  updates, and [[[notify-database-deleted!]] is called instead for deletions. For backwards compatibility, the default
+  implementation of [[notify-database-deleted!]] calls [[notify-database-updated]]; if you want the same behavior in
+  both situations, you only need to implement this method; if you want different behaviors you should implement both
+  separately."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;;; no-op
+;;; default implementation is a no-op
 (defmethod notify-database-updated ::driver
   [driver database]
   (log/debugf "%s: %d Database %d %s updated"
@@ -693,6 +703,31 @@
               (:id database)
               (pr-str (:name database)))
   nil)
+
+(defmulti notify-database-deleted!
+  "Notify the driver that a `database` has been deleted. The driver should release related resources (such as connection
+  pools) when this is called.
+
+  Only drivers that manage connection pools or other resources themselves need to implement this method; for
+  JDBC-based drivers, this is handled in the `:jdbc` parent driver. The default implementation for other drivers is a
+  no-op.
+
+  The default implementation defers to [[notify-database-updated]], which was called for both updates and deletions
+  before 0.48.0. If you want the same behavior in both situations, you only need to
+  implement [[notify-database-updates]]; if you want different behaviors you should implement both separately."
+  {:arglists '([driver database]), :added "0.48."}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;;; default impl hands off to [[notify-database-updated]]
+(defmethod notify-database-deleted! :default
+  [driver database]
+  (log/debugf "%s: %d Database %d %s deleted"
+              `driver/notify-database-updated
+              driver
+              (:id database)
+              (pr-str (:name database)))
+  (notify-database-updated driver database))
 
 (defmulti sync-in-context
   "Drivers may provide this function if they need to do special setup before a sync operation such as

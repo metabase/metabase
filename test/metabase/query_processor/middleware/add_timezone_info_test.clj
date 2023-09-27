@@ -20,10 +20,12 @@
 (deftest ^:parallel post-processing-test
   (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
                                                                            :requested_timezone "US/Pacific"}
-                                                             nil          {:results_timezone "UTC"}}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}
                                        ::no-timezone-driver {"US/Pacific" {:results_timezone   "UTC"
                                                                            :requested_timezone "US/Pacific"}
-                                                             nil          {:results_timezone "UTC"}}}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}}
           [timezone expected]         timezone->expected]
     (testing driver
       (mt/with-temporary-setting-values [report-timezone timezone]

@@ -412,7 +412,7 @@
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-trendline)]
-      (is (= #{:cols :rows :insights :results_timezone}
+      (is (= #{:cols :rows :insights :results_timezone :requested_timezone}
              (-> (client/client :get 202 (str "public/card/" uuid "/query"))
                  :data
                  keys
@@ -427,8 +427,10 @@
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (with-temp-public-dashboard [{uuid :public_uuid}]
           (is (= "An error occurred."
-                 (client/client :get 400 (str "public/dashboard/" uuid)))))))
+                 (client/client :get 400 (str "public/dashboard/" uuid)))))))))
 
+(deftest ^:parallel get-public-dashboard-errors-404-test
+  (testing "GET /api/public/dashboard/:uuid"
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."

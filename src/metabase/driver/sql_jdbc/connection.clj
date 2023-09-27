@@ -16,10 +16,10 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.ssh :as ssh]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [clojure.core.async :as a])
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (javax.sql DataSource)))
@@ -151,23 +151,17 @@
       ;; also capture entries related to ssh tunneling for later use
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
-(defn- destroy-pool! [database-id pool-spec]
-  (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
-  ;; throw an error if we're inside a parallel test and this pool still has open Connections in use. If it has no
-  ;; Connections in use it's probably just a transient test DB and it's fine to nuke it
-  (when config/tests-available?
-    (when-let [^PooledDataSource data-source (:datasource pool-spec)]
-      (when (pos? (.getNumBusyConnectionsAllUsers data-source))
-        ((requiring-resolve 'mb.hawk.parallel/assert-test-is-not-parallel) `destroy-pool!))))
-  (connection-pool/destroy-connection-pool! pool-spec)
-  (ssh/close-tunnel! pool-spec))
+(defonce ^:private ^{:doc "A map of
 
-(defonce ^:private ^{:doc "A map of our currently open connection pools (in `clojure.java.jdbc` spec maps), keyed by
-  Database `:id`."} database-id->connection-pool-spec
-  (atom {}))
+    database-id -> {:spec <connection-pool-spec>, :hash <jdbc-spec-hash>}
 
-(defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
-  database-id->jdbc-spec-hash
+  for our currently open connection pools.
+
+  * `:spec` is a [[clojure.java.jdbc]] spec map with a `:datasource` (a c3p0 [[PooledDataSource]])
+
+  * `:hash` is a hash of the [[clojure.java.jdbc]] spec used to create the connection pool, derived from the Database
+    `:details` by calling [[connection-details->spec]] and [[jdbc-spec-hash]]."}
+  database-id->connection-pool-spec-and-hash
   (atom {}))
 
 (mu/defn ^:private jdbc-spec-hash
@@ -177,28 +171,38 @@
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
-(defn- set-pool!
-  "Atomically update the current connection pool for Database `database` with `database-id`. Use this function instead
-  of modifying [[database-id->connection-pool-spec]] directly because it properly closes down old pools in a
-  thread-safe way, ensuring no more than one pool is ever open for a single database. Also modifies
-  the [[database-id->jdbc-spec-hash]] map with the hash value of the given DB's details map."
-  [database-id pool-spec-or-nil database]
-  {:pre [(integer? database-id)]}
-  (let [[old-id->pool] (if pool-spec-or-nil
-                         (swap-vals! database-id->connection-pool-spec assoc database-id pool-spec-or-nil)
-                         (swap-vals! database-id->connection-pool-spec dissoc database-id))]
-    ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
-    (when-let [old-pool-spec (get old-id->pool database-id)]
-      (when-not (identical? old-pool-spec pool-spec-or-nil)
-        (destroy-pool! database-id old-pool-spec))))
-  ;; update the db details hash cache with the new hash value
-  (swap! database-id->jdbc-spec-hash assoc database-id (jdbc-spec-hash database))
-  nil)
+(defn- pooled-data-source-for-db ^PooledDataSource [database]
+  (when-let [data-source (get-in @database-id->connection-pool-spec-and-hash [(u/the-id database) :spec :datasource])]
+    (when (instance? PooledDataSource data-source)
+      data-source)))
 
-(defn invalidate-pool-for-db!
-  "Invalidates the connection pool for the given database by closing it and removing it from the cache."
+(defn- soft-reset-connection-pool!
+  "'Soft reset' a Connection pool: discard all open Connections and acquire new ones. Connections currently in use will
+  remain valid until they are checked back in, at which point they will be discarded. See
+  https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/PooledDataSource.html#softResetAllUsers--
+
+  Updates the saved `:hash` associated with the Connection pool."
   [database]
-  (set-pool! (u/the-id database) nil nil))
+  (when-let [pooled-data-source (pooled-data-source-for-db database)]
+    (.softResetAllUsers pooled-data-source)
+    (swap! database-id->connection-pool-spec-and-hash assoc-in [(u/the-id database) :hash] (jdbc-spec-hash database))))
+
+(defn- destroy-connection-pool! [database]
+  (when-let [pooled-data-source (pooled-data-source-for-db database)]
+    (DataSources/destroy pooled-data-source))
+  (swap! database-id->connection-pool-spec-and-hash dissoc (u/the-id database)))
+
+(defn notify-database-updated!
+  "Default implementation of [[driver/notify-database-updated]] for JDBC SQL drivers. We are being informed that a
+  `database` has been updated, so lets soft reset the connection pool (if it exists) under the assumption that the
+  connection details have changed."
+  [database]
+  (soft-reset-connection-pool! database))
+
+(defn notify-database-deleted!
+  "Default implementation of [[driver/notify-database-deleted!]] for JDBC-based drivers."
+  [database]
+  (destroy-connection-pool! database))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
@@ -210,6 +214,74 @@
                                           db-id)))
   nil)
 
+(defn- the-db [db-or-id]
+  (or (when (mi/instance-of? Database db-or-id)
+        (lib.metadata.jvm/instance->metadata db-or-id :metadata/database))
+      (when (= (:lib/type db-or-id) :metadata/database)
+        db-or-id)
+      (qp.store/with-metadata-provider (u/the-id db-or-id)
+        (lib.metadata/database (qp.store/metadata-provider)))))
+
+(mu/defn ^:private existing-pool-spec :- [:maybe
+                                          [:map
+                                           [:datasource (ms/InstanceOfClass DataSource)]]]
+  [db {:keys [log-invalidation?]}]
+  (let [database-id                            (u/the-id db)
+        {existing-spec :spec, curr-hash :hash} (get @database-id->connection-pool-spec-and-hash database-id ::not-found)]
+    (cond
+      ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+      ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+      ;; not in [[database-id->connection-pool-spec]].
+      (:is-audit db)
+      {:datasource (mdb.connection/data-source)}
+
+      (= existing-spec ::not-found)
+      nil
+
+      ;; details hash changed from what is cached; invalid
+      (let [new-hash (jdbc-spec-hash db)]
+        (when (and (some? curr-hash) (not= curr-hash new-hash))
+          ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+          ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+          ;; our app DB, and see if it STILL doesn't match
+          (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
+                              jdbc-spec-hash))))
+      (do
+        (when log-invalidation?
+          (log-jdbc-spec-hash-change-msg! database-id))
+        (soft-reset-connection-pool! db)
+        existing-spec)
+
+      ;; no tunnel in use; valid
+      (nil? (:tunnel-session existing-spec))
+      existing-spec
+
+      ;; tunnel in use, and open; valid
+      (ssh/ssh-tunnel-open? existing-spec)
+      existing-spec
+
+      ;; tunnel in use, and not open; invalid
+      :else
+      (when log-invalidation?
+        (log-ssh-tunnel-reconnect-msg! database-id)))))
+
+(defn- get-or-create-connection-pool-for-database! [db-or-id]
+  (let [database-id (u/the-id db-or-id)
+        ;; we need the Database instance no matter what (in order to compare details hash with cached value)
+        db          (the-db db-or-id)]
+    (or
+     ;; we have an existing pool for this database, so use it
+     (existing-pool-spec db {:log-invalidation? true})
+     ;; Do the usual locking here and make sure only one thread will be creating a pool at a given instant.
+     (locking database-id->connection-pool-spec-and-hash
+       (or
+        ;; check if another thread created the pool while we were waiting to acquire the lock
+        (existing-pool-spec db {:log-invalidation? false})
+        ;; create a new pool and add it to our cache, then return it
+        (u/prog1 (create-pool! db)
+          (swap! database-id->connection-pool-spec-and-hash assoc database-id {:spec <>
+                                                                               :hash (jdbc-spec-hash db)})))))))
+
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -217,61 +289,7 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/the-id db-or-id-or-spec)
-          ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
-                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
-                            db-or-id-or-spec)
-                          (qp.store/with-metadata-provider database-id
-                            (lib.metadata/database (qp.store/metadata-provider))))
-          get-fn      (fn [db-id log-invalidation?]
-                        (let [details (get @database-id->connection-pool-spec db-id ::not-found)]
-                          (cond
-                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
-                            ;; not in [[database-id->connection-pool-spec]].
-                            (:is-audit db)
-                            {:datasource (mdb.connection/data-source)}
-
-                            (= ::not-found details)
-                            nil
-
-                            ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
-                                  new-hash  (jdbc-spec-hash db)]
-                              (when (and (some? curr-hash) (not= curr-hash new-hash))
-                                ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
-                                ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
-                                ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
-                                                    jdbc-spec-hash))))
-                            (when log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id))
-
-                            (nil? (:tunnel-session details)) ; no tunnel in use; valid
-                            details
-
-                            (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
-                            details
-
-                            :else       ; tunnel in use, and not open; invalid
-                            (when log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
-      (or
-       ;; we have an existing pool for this database, so use it
-       (get-fn database-id true)
-       ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
-       ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
-       ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
-       ;; sure only one thread will be creating a pool at a given instant.
-       (locking database-id->connection-pool-spec
-         (or
-          ;; check if another thread created the pool while we were waiting to acquire the lock
-          (get-fn database-id false)
-          ;; create a new pool and add it to our cache, then return it
-          (u/prog1 (create-pool! db)
-            (set-pool! database-id <> db))))))
+    (get-or-create-connection-pool-for-database! db-or-id-or-spec)
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)
