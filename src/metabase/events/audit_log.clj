@@ -86,6 +86,24 @@
   (let [user-id (:user-id object)]
    (audit-log/record-event! topic {} user-id :model/User user-id)))
 
+(derive ::user-update-event :metabase/event)
+(derive :event/user-update ::user-update-event)
+
+(methodical/defmethod events/publish-event! ::user-update-event
+  [topic object]
+  {:pre [(pos-int? (:updater object))]}
+  (let [{:keys [updater changes]} object]
+   (audit-log/record-event! topic object updater :model/User (:id changes))))
+
+(derive ::user-deactivated-event :metabase/event)
+(derive :event/user-deactivated ::user-deactivated-event)
+
+(methodical/defmethod events/publish-event! ::user-deactivated-event
+  [topic object]
+  {:pre [(pos-int? (:updater object))]}
+  (let [{:keys [updater deactivated-user]} object]
+   (audit-log/record-event! topic object updater :model/User (:id deactivated-user))))
+
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
 
