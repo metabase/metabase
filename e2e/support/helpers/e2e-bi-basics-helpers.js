@@ -1,4 +1,4 @@
-import { popover } from "e2e/support/helpers";
+import { popover, queryBuilderMain } from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -112,4 +112,32 @@ function getIcon(actionType) {
 export function assertQueryBuilderRowCount(count) {
   const message = count === 1 ? "Showing 1 row" : `Showing ${count} rows`;
   cy.findByTestId("question-row-count").contains(message);
+}
+
+/**
+ * Assert a join is valid by checking query builder UI and query results.
+ * Expects a question to be visualized as a table.
+ *
+ * @param {string} lhsTable join's LHS table name
+ * @param {string} rhsTable join's RHS table name
+ * @param {string} lhsSampleColumn join's LHS sample column name
+ * @param {string} rhsSampleColumn join's RHS sample column name
+ */
+export function assertJoinValid({
+  lhsTable,
+  rhsTable,
+  lhsSampleColumn,
+  rhsSampleColumn,
+}) {
+  // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
+  cy.findByTestId("question-table-badges").within(() => {
+    cy.findByText(lhsTable).should("be.visible");
+    cy.findByText(rhsTable).should("be.visible");
+  });
+
+  // Ensure the results have columns from both tables
+  queryBuilderMain().within(() => {
+    cy.findByText(lhsSampleColumn).should("be.visible");
+    cy.findByText(rhsSampleColumn).should("be.visible");
+  });
 }

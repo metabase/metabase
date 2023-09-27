@@ -2,6 +2,7 @@ import {
   addCustomColumn,
   addSummaryField,
   addSummaryGroupingField,
+  assertJoinValid,
   assertQueryBuilderRowCount,
   enterCustomColumnDetails,
   filter,
@@ -22,16 +23,7 @@ import {
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {
   beforeEach(() => {
@@ -194,89 +186,6 @@ describe("scenarios > question > joined questions", () => {
     queryBuilderMain().findByText("Sum Divide");
   });
 
-  it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.createQuestion({
-      name: "12928_Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-          ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
-        ],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-          {
-            alias: "People - User",
-            condition: [
-              "=",
-              ["field", ORDERS.USER_ID, null],
-              ["field", PEOPLE.ID, { "join-alias": "People - User" }],
-            ],
-            fields: "all",
-            "source-table": PEOPLE_ID,
-          },
-        ],
-      },
-    });
-
-    cy.createQuestion(
-      {
-        name: "12928_Q2",
-        query: {
-          "source-table": REVIEWS_ID,
-          aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
-          breakout: [
-            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-          ],
-          joins: [
-            {
-              alias: "Products",
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-            },
-          ],
-        },
-      },
-      {
-        wrapId: true,
-        idAlias: "joinedQuestionId",
-      },
-    );
-
-    startNewQuestion();
-    selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
-    popover().findByText("Products → Category").click();
-    popover().findByText("Products → Category").click();
-
-    visualize();
-
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      assertJoinValid({
-        lhsTable: "12928_Q1",
-        rhsTable: "12928_Q2",
-        lhsSampleColumn: "Products → Category",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Category`,
-      });
-    });
-
-    assertQueryBuilderRowCount(20);
-  });
-
   it("should allow joins on multiple dimensions", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
@@ -345,23 +254,4 @@ function selectJoinStrategy(strategy) {
 function assertJoinColumnName(type, name) {
   const testId = type === "left" ? "parent-dimension" : "join-dimension";
   cy.findByTestId(testId).findByText(name).should("be.visible");
-}
-
-function assertJoinValid({
-  lhsTable,
-  rhsTable,
-  lhsSampleColumn,
-  rhsSampleColumn,
-}) {
-  // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
-  cy.findByTestId("question-table-badges").within(() => {
-    cy.findByText(lhsTable).should("be.visible");
-    cy.findByText(rhsTable).should("be.visible");
-  });
-
-  // Ensure the results have columns from both tables
-  queryBuilderMain().within(() => {
-    cy.findByText(lhsSampleColumn).should("be.visible");
-    cy.findByText(rhsSampleColumn).should("be.visible");
-  });
 }
