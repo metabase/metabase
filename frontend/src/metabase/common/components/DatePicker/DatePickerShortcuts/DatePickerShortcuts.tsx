@@ -92,7 +92,7 @@ const MONTH_OPTIONS: ShortcutOption[] = [
   },
 ];
 
-const SHORTCUT_OPTIONS = [DAY_OPTIONS, MONTH_OPTIONS];
+const SHORTCUT_GROUPS = [DAY_OPTIONS, MONTH_OPTIONS];
 
 const NAVIGATION_OPTIONS: NavigationOption[] = [
   {
@@ -130,7 +130,7 @@ export const DatePickerShortcuts = ({
 
   return (
     <Stack>
-      {SHORTCUT_OPTIONS.map((group, groupIndex) => (
+      {SHORTCUT_GROUPS.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
           {group.map((option, optionIndex) => (
             <UnstyledButton
