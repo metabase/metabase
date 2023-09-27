@@ -26,7 +26,19 @@ export function startNewCard(type, databaseId, tableId) {
 // TODO: move to redux
 export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
+    await dispatch(
+      Questions.actions.fetch(
+        { id: cardId },
+        {
+          properties: [
+            "id",
+            "dataset_query",
+            "display",
+            "visualization_settings",
+          ], // complies with Card interface
+        },
+      ),
+    );
     const card = Questions.selectors.getObject(getState(), {
       entityId: cardId,
     });

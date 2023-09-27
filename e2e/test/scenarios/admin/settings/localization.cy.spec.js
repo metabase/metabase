@@ -21,6 +21,7 @@ describe("scenarios > admin > localization", () => {
     // filter: created before June 1st, 2016
     // summarize: Count by CreatedAt: Week
 
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.createQuestion({
       name: "Orders created before June 1st 2016",
       query: {
@@ -35,6 +36,8 @@ describe("scenarios > admin > localization", () => {
     // find and open that question
     cy.visit("/collection/root");
     cy.findByText("Orders created before June 1st 2016").click();
+
+    cy.wait("@cardQuery");
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
