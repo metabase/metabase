@@ -99,7 +99,6 @@ function ActionCreator({
     ui: UIProps,
     patchAction,
     patchFormSettings,
-    // setAction,
     renderEditorBody,
   } = useActionContext();
 
@@ -112,6 +111,7 @@ function ActionCreator({
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !skipUnsavedChangesWarning;
+
   useBeforeUnload(!route && showUnsavedChangesWarning);
 
   useEffect(() => {
@@ -136,12 +136,14 @@ function ActionCreator({
       visualization_settings: formSettings,
     } as WritebackQueryAction);
 
-    setSkipUnsavedChangesWarning(true);
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
-    // setAction(createdAction); // sync the editor state
-    scheduleSubmitAction(createdAction);
+
+    // Sync the editor state with data from save modal form
+    patchAction(values);
 
     setShowSaveModal(false);
+    setSkipUnsavedChangesWarning(true);
+    scheduleSubmitAction(createdAction);
   };
 
   const handleUpdate = async () => {
@@ -154,7 +156,8 @@ function ActionCreator({
 
       setSkipUnsavedChangesWarning(true);
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
-      // setAction(updatedAction); // sync the editor state
+
+      setSkipUnsavedChangesWarning(true);
       scheduleSubmitAction(updatedAction);
     }
   };
