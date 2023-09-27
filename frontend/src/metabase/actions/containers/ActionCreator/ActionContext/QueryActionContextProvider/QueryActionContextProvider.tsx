@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import _ from "underscore";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 
 import type {
@@ -25,6 +24,7 @@ import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 import {
+  areActionsEqual,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
@@ -220,7 +220,7 @@ function QueryActionContextProvider({
 
   const originalAction = initialAction || newEmptyAction;
   const isDirty = useMemo(
-    () => !_.isEqual(action, originalAction),
+    () => !areActionsEqual(action, originalAction),
     [action, originalAction],
   );
 
