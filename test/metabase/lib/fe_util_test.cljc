@@ -22,11 +22,11 @@
             op (lib/filterable-column-operators col)
             :let [short-op (:short op)
                   expression-clause (case short-op
-                                      :between (lib/expression-clause short-op {} [col 123 456])
-                                      (:contains :does-not-contain :starts-with :ends-with) (lib/expression-clause short-op {} [col "123"])
-                                      (:is-null :not-null :is-empty :not-empty) (lib/expression-clause short-op {} [col])
-                                      :inside (lib/expression-clause short-op {} [col 12 34 56 78 90])
-                                      (lib/expression-clause short-op {} [col 123]))]]
+                                      :between (lib/expression-clause short-op [col 123 456] {})
+                                      (:contains :does-not-contain :starts-with :ends-with) (lib/expression-clause short-op [col "123"] {})
+                                      (:is-null :not-null :is-empty :not-empty) (lib/expression-clause short-op [col] {})
+                                      :inside (lib/expression-clause short-op [col 12 34 56 78 90] {})
+                                      (lib/expression-clause short-op [col 123] {}))]]
       (testing (str short-op " with " (lib.types.isa/field-type col))
         (is (=? {:lib/type :mbql/expression-parts
                  :operator short-op
@@ -105,8 +105,8 @@
 
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
-          (lib/expression-clause := {} [(meta/field-metadata :products :id) 1])))
+          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
-          (lib/expression-clause "=" {} [(meta/field-metadata :products :id) 1])))
+          (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:+ {} [:field {:lib/uuid string?} (meta/id :products :id)] 2] 1]
-          (lib/expression-clause "=" {} [(lib/expression-clause "+" {} [(meta/field-metadata :products :id) 2]) 1]))))
+          (lib/expression-clause := [(lib/expression-clause :+ [(meta/field-metadata :products :id) 2] {}) 1] {}))))

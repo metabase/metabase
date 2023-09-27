@@ -55,9 +55,7 @@
 
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
-  [operator :- [:or :keyword :string]
-   options  :- :map
-   args     :- [:sequential :any]]
-  (let [tag (keyword operator)]
-    (lib.options/ensure-uuid (into [tag options]
-                                   (map lib.common/->op-arg args)))))
+  [operator :- :keyword
+   args     :- [:sequential :any]
+   options  :- [:maybe :map]]
+  (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))

@@ -390,7 +390,7 @@
 (defn ^:export expression-clause
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [an-operator options args]
-  (lib.core/expression-clause an-operator (js->clj options :keywordize-keys true) args))
+  (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
 
 (defn ^:export expression-parts
   "Returns the parts (operator, args, and optionally, options) of `expression-clause`."
