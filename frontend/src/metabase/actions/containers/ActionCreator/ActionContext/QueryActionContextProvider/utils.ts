@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   ActionFormSettings,
   FieldType,
@@ -6,6 +8,8 @@ import type {
   ParameterType,
   TemplateTag,
   TemplateTagType,
+  WritebackParameter,
+  WritebackQueryAction,
 } from "metabase-types/api";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -83,5 +87,38 @@ export const setParameterTypesFromFieldSettings = (
         ? getParameterTypeFromFieldSettings(field.fieldType, field.inputType)
         : "string/=",
     };
+  });
+};
+
+export const areActionsEqual = (
+  action1: Partial<WritebackQueryAction>,
+  action2: Partial<WritebackQueryAction>,
+): boolean => {
+  const { parameters: action1Parameters, ...action1Rest } = action1;
+  const { parameters: action2Parameters, ...action2Rest } = action2;
+
+  return (
+    _.isEqual(action1Rest, action2Rest) &&
+    /**
+     * TODO: do not use "value" attribute in this context.
+     *
+     * The "value" attribute of a parameter is needed only when running the action.
+     * It should not be present when creating/editing the action.
+     * @see https://github.com/metabase/metabase/pull/31891/files#r1295701954
+     */
+    _.isEqual(
+      parametersWithoutValue(action1Parameters),
+      parametersWithoutValue(action2Parameters),
+    )
+  );
+};
+
+const parametersWithoutValue = (parameters?: WritebackParameter[]) => {
+  if (!parameters) {
+    return parameters;
+  }
+
+  return parameters.map(parameter => {
+    return _.omit(parameter, "value");
   });
 };
