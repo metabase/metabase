@@ -13,7 +13,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.io FileNotFoundException File)
+   (java.io FileNotFoundException)
    (java.net URL)
    (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
@@ -124,7 +124,7 @@
       (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
-  "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
+  "Execute `body` with a Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
   inside the uberjar), cleaning up when finished.
 
   Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
@@ -167,7 +167,6 @@
       (when entry
         (let [out-path (mod-fn (.getName entry))
               out-file (io/file out-path)]
-          (prn {:entry entry :out-file out-file})
           (if (.isDirectory entry)
             (when-not (.exists out-file) (.mkdirs out-file))
             (let [parent-dir (fs/parent out-path)]
