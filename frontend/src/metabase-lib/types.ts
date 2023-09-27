@@ -185,7 +185,7 @@ export type TextFilterParts = {
   operator: ExpressionOperator;
   column: ColumnMetadata;
   values: string[];
-  options: TextFilterOptions;
+  options?: TextFilterOptions;
 };
 
 export type TextFilterOptions = {
@@ -210,7 +210,7 @@ export type RelativeDateFilterParts = {
   unit: TemporalUnit;
   offsetValue?: number;
   offsetUnit?: TemporalUnit;
-  options: RelativeDateFilterOptions;
+  options?: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {

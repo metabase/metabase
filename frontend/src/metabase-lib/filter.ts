@@ -35,7 +35,7 @@ export function textFilterClause({
   operator,
   column,
   values,
-  options,
+  options = {},
 }: TextFilterParts): ExpressionClause {
   return expressionClause(operator, options, [column, ...values]);
 }
@@ -62,7 +62,7 @@ export function relativeDateFilterClause({
   unit,
   offsetValue,
   offsetUnit,
-  options,
+  options = {},
 }: RelativeDateFilterParts): ExpressionClause {
   if (offsetValue == null || offsetUnit == null) {
     return expressionClause("time-interval", options, [column, value, unit]);
