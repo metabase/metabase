@@ -14,8 +14,8 @@ export const TimeseriesModeFooter = (props: Props): JSX.Element | null => {
   };
 
   // We could encounter stale `mode` e.g. when converting a question from GUI to native,
-  // The `mode` would remain `timeseries` when it should have been `native` instead.
-  // So we shouldn't assume we'll always get timeseries question here.
+  // the `mode` would remain `timeseries` when it should have been `native` instead.
+  // So we shouldn't assume we'll always get time series question here.
   if (!(props.query instanceof StructuredQuery)) {
     return null;
   }
@@ -23,15 +23,13 @@ export const TimeseriesModeFooter = (props: Props): JSX.Element | null => {
   if (!breakout) {
     return null;
   }
-  const shouldHideTimeseriesGroupingWidget = breakout
-    .dimension()
-    .isExpression();
+  const hasTimeSeriesGroupingWidget = !breakout.dimension().isExpression();
 
   return (
     <div className="flex layout-centered" data-testid="time-series-mode-footer">
       <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
-      {!shouldHideTimeseriesGroupingWidget && (
+      {hasTimeSeriesGroupingWidget && (
         <>
           <span className="mx1">{t`by`}</span>
           <TimeseriesGroupingWidget
