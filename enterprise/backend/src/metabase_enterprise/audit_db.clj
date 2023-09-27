@@ -121,12 +121,9 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def plugin-dir
-  "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
-  (plugins/plugins-dir))
-
 (def instance-analytics-plugin-dir
-  (fs/path plugin-dir "instance_analytics"))
+  "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
+  (fs/path (plugins/plugins-dir) "instance_analytics"))
 
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
@@ -134,7 +131,7 @@
   [zip-resource dir-resource]
   (cond
     zip-resource
-    (do (log/info "Unzipping instance_analytics to " plugin-dir)
+    (do (log/info "Unzipping instance_analytics to " instance-analytics-plugin-dir)
         ;; works from uberjar
         (u.files/unzip-file analytics-zip-resource
                             (fn [entry-name]
@@ -148,7 +145,7 @@
         (log/info "Unzipping complete."))
     dir-resource
     (do
-      (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " plugin-dir))
+      (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " instance-analytics-plugin-dir))
       (fs/copy-tree (u.files/relative-path (fs/path analytics-dir-resource))
                     (u.files/relative-path instance-analytics-plugin-dir)
                     {:replace-existing true})
