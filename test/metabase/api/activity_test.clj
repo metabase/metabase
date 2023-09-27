@@ -49,16 +49,18 @@
             (is (= dash-3 #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard"))))))
       (mt/with-test-user :rasta
-        (mt/with-temporary-setting-values [user-recent-views []]
+        (mt/with-temporary-setting-values [user-recent-views []
+                                           most-recently-viewed-dashboard nil]
           (testing "If nothing has been viewed, return a 204"
-            (is (nil? (mt/user-http-request :crowberto :get 204
+            (is (nil? (mt/user-http-request :rasta :get 204
                                             "activity/most_recently_viewed_dashboard"))))
           (view-log/handle-view-event! {:topic :dashboard-read :item (assoc dash-1 :actor_id (mt/user->id :rasta))})
           (testing "Only the user's own views are returned."
             (is (= dash-1
                    (mt/user-http-request :rasta :get 200 "activity/most_recently_viewed_dashboard"))))))
       (mt/with-test-user :rasta
-        (mt/with-temporary-setting-values [user-recent-views []]
+        (mt/with-temporary-setting-values [user-recent-views []
+                                           most-recently-viewed-dashboard nil]
           (view-log/handle-view-event! {:topic :dashboard-read
                                         :item  (assoc dash-1 :actor_id (mt/user->id :rasta))})
           (testing "If the user has no permissions for the dashboard, return a 204"
