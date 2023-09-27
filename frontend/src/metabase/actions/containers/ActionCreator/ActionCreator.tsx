@@ -97,20 +97,17 @@ function ActionCreator({
     canSave,
     isDirty,
     ui: UIProps,
-    patchAction,
-    patchFormSettings,
+    handleActionChange,
+    handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
-  const [skipUnsavedChangesWarning, setSkipUnsavedChangesWarning] =
-    useState(false);
 
   const isEditable = isNew || (model != null && model.canWriteActions());
   const [actionToSubmit, scheduleSubmitAction] = useState<WritebackAction>();
 
-  const showUnsavedChangesWarning =
-    isEditable && isDirty && !skipUnsavedChangesWarning;
+  const showUnsavedChangesWarning = isEditable && isDirty && !actionToSubmit;
 
   useBeforeUnload(!route && showUnsavedChangesWarning);
 
@@ -139,10 +136,9 @@ function ActionCreator({
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
-    patchAction(values);
+    handleActionChange(values);
 
     setShowSaveModal(false);
-    setSkipUnsavedChangesWarning(true);
     scheduleSubmitAction(createdAction);
   };
 
@@ -154,10 +150,8 @@ function ActionCreator({
         visualization_settings: formSettings,
       });
 
-      setSkipUnsavedChangesWarning(true);
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
 
-      setSkipUnsavedChangesWarning(true);
       scheduleSubmitAction(updatedAction);
     }
   };
@@ -186,8 +180,8 @@ function ActionCreator({
         canSave={canSave}
         isNew={isNew}
         isEditable={isEditable}
-        onChangeAction={patchAction}
-        onChangeFormSettings={patchFormSettings}
+        onChangeAction={handleActionChange}
+        onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
         onCloseModal={onClose}
       >
