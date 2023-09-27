@@ -70,7 +70,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(doseq [feature [:actions :actions/custom :uploads]]
+(doseq [feature [:actions
+                 :actions/custom
+                 :table-privileges
+                 :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
