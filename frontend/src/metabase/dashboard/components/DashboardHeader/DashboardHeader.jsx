@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
-import { getIsNavbarOpen } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";

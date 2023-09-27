@@ -3,7 +3,6 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -24,8 +23,7 @@
                           (map :id)
                           set)
           this-order (first (for [[dir _opts field] (lib.order-by/order-bys query stage-number)
-                                  :when (lib.equality/find-closest-matching-ref
-                                         query stage-number (lib.ref/ref column) [field])]
+                                  :when (lib.equality/find-matching-column query stage-number field [column])]
                               dir))]
       (when (orderable (:id column))
         {:lib/type        :metabase.lib.drill-thru/drill-thru

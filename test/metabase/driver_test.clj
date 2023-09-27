@@ -66,3 +66,7 @@
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
                        (some :schema))))))))
+
+(deftest supports-table-privileges-matches-implementations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
+    (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))

@@ -25,7 +25,7 @@ describe("scenarios > search", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
-    cy.findByPlaceholderText("Search…").type("generated question{enter}");
+    cy.findByPlaceholderText("Search…").type("generated_question{enter}");
     cy.findByLabelText("Previous page").should("be.disabled");
 
     // First page
@@ -56,7 +56,7 @@ describe("scenarios > search", () => {
 const generateQuestions = count => {
   _.range(count).map(i =>
     cy.createQuestion({
-      name: `generated question ${i}`,
+      name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

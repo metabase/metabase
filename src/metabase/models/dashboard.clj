@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card

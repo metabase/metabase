@@ -314,7 +314,7 @@ describeEE("scenarios > embedding > full app", () => {
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
       addLinkClickBehavior({
-        dashboardId: 1,
+        dashboardId: ORDERS_DASHBOARD_ID,
         linkTemplate: "/question/" + ORDERS_QUESTION_ID,
       });
       visitDashboardUrl({

@@ -26,8 +26,8 @@
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
 
@@ -227,7 +227,7 @@
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
-      (db/honeysql->sql
+      (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
@@ -296,11 +296,6 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
-
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
   calls to [[with-current-user]] if it is already bound, as this can mess things up since things
@@ -326,7 +321,7 @@
             *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
                                              *user-local-values*
                                              (delay (atom (or settings
-                                                              (user-local-settings metabase-user-id)))))
+                                                              (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
