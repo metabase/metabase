@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.core :as c]
    [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
