@@ -10,12 +10,6 @@ import {
 } from "../../lib/code";
 import CodeSample from "./CodeSample";
 
-import "ace/mode-clojure";
-import "ace/mode-javascript";
-import "ace/mode-ruby";
-import "ace/mode-html";
-import "ace/mode-jsx";
-
 export default class EmbedCodePane extends Component {
   render() {
     const {

@@ -4,9 +4,8 @@ import { Component, createRef } from "react";
 import PropTypes from "prop-types";
 
 import "ace/ace";
-import "ace/mode-plain_text";
 import "ace/mode-javascript";
-import "ace/mode-json";
+
 import { TextEditorRoot } from "./TextEditor.styled";
 
 const SCROLL_MARGIN = 8;
