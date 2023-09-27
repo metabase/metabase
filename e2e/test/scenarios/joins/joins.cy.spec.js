@@ -1,13 +1,19 @@
 import {
   addCustomColumn,
+  addSummaryField,
+  addSummaryGroupingField,
+  assertQueryBuilderRowCount,
   enterCustomColumnDetails,
   filter,
   getNotebookStep,
+  join,
+  joinTable,
   openNotebook,
   openOrdersTable,
   popover,
   queryBuilderMain,
   restore,
+  saveQuestion,
   selectSavedQuestionsToJoin,
   startNewQuestion,
   summarize,
@@ -36,10 +42,8 @@ describe("scenarios > question > joined questions", () => {
   it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.button("Join data").click();
-    popover().contains("Reviews").click();
-    popover().contains("Product ID").click();
-    popover().contains("Product ID").click();
+    join();
+    joinTable("Reviews", "Product ID", "Product ID");
 
     visualize();
     assertJoinValid({
@@ -67,36 +71,25 @@ describe("scenarios > question > joined questions", () => {
 
     // Post-join aggregation (metabase#11452):
     openNotebook();
+
     summarize({ mode: "notebook" });
-
-    popover().findByText("Average of ...").click();
-    popover().contains("Review").click();
-    popover().contains("Rating").click();
-
-    getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    popover().contains("Review").click();
-    popover().contains("Reviewer").click();
+    addSummaryField({
+      metric: "Average of ...",
+      table: "Review",
+      field: "Rating",
+    });
+    addSummaryGroupingField({ table: "Review", field: "Reviewer" });
 
     visualize();
 
     cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
-    cy.findByTestId("question-row-count").contains("Showing 89 rows");
+    assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
     saveQuestion();
 
     cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
-    cy.findByTestId("question-row-count").contains("Showing 89 rows");
-
-    function saveQuestion() {
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-      cy.findByText("Save").click();
-      cy.button("Save").click();
-      cy.wait("@saveQuestion");
-      cy.button("Not now").click();
-    }
+    assertQueryBuilderRowCount(89);
   });
 
   it("should join on field literals", () => {
@@ -132,7 +125,7 @@ describe("scenarios > question > joined questions", () => {
       });
     });
 
-    cy.findByTestId("question-row-count").contains("Showing 1 row");
+    assertQueryBuilderRowCount(1);
   });
 
   it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
@@ -195,7 +188,7 @@ describe("scenarios > question > joined questions", () => {
         name: "Sum Divide",
       });
     });
-    cy.button("Done").click();
+    popover().button("Done").click();
 
     visualize();
     queryBuilderMain().findByText("Sum Divide");
@@ -281,13 +274,14 @@ describe("scenarios > question > joined questions", () => {
       });
     });
 
-    cy.findByTestId("question-row-count").contains("Showing 20 rows");
+    assertQueryBuilderRowCount(20);
   });
 
   it("should allow joins on multiple dimensions", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
+    join();
     joinTable("Products");
     selectJoinStrategy("Inner join");
 
@@ -303,12 +297,13 @@ describe("scenarios > question > joined questions", () => {
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Products → ID",
     });
-    cy.findByTestId("question-row-count").contains("Showing 415 rows");
+    assertQueryBuilderRowCount(415);
   });
 
   it("should allow joins on date-time fields", () => {
     openOrdersTable({ mode: "notebook" });
 
+    join();
     joinTable("Products");
     selectJoinStrategy("Inner join");
 
@@ -334,18 +329,13 @@ describe("scenarios > question > joined questions", () => {
     assertJoinColumnName("right", "Created At: Day");
 
     summarize({ mode: "notebook" });
-    popover().findByText("Count of rows").click();
+    addSummaryField({ metric: "Count of rows" });
 
     visualize();
 
     cy.get(".ScalarValue").contains("2,087");
   });
 });
-
-function joinTable(table) {
-  cy.button("Join data").click();
-  popover().findByText(table).click();
-}
 
 function selectJoinStrategy(strategy) {
   cy.icon("join_left_outer").first().click();

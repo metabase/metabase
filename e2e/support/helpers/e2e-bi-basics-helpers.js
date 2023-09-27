@@ -108,3 +108,8 @@ const ACTION_TYPE_TO_ICON_MAP = {
 function getIcon(actionType) {
   return ACTION_TYPE_TO_ICON_MAP[actionType];
 }
+
+export function assertQueryBuilderRowCount(count) {
+  const message = count === 1 ? "Showing 1 row" : `Showing ${count} rows`;
+  cy.findByTestId("question-row-count").contains(message);
+}
