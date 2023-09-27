@@ -31,7 +31,7 @@ describe("scenarios > question > joined questions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
+  it("should join raw tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
     openOrdersTable({ mode: "notebook" });
 
     join();
@@ -84,7 +84,7 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(89);
   });
 
-  it("should join on field literals", () => {
+  it("should join a native question", () => {
     cy.createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
@@ -120,7 +120,7 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(1);
   });
 
-  it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
+  it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
     cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
       "metadata",
     );
@@ -186,7 +186,7 @@ describe("scenarios > question > joined questions", () => {
     queryBuilderMain().findByText("Sum Divide");
   });
 
-  it("should allow joins on multiple dimensions", () => {
+  it("should allow joins with multiple conditions", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
 
@@ -209,14 +209,14 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(415);
   });
 
-  it("should allow joins on date-time fields", () => {
+  it("should sync join condition's date-time column units", () => {
     openOrdersTable({ mode: "notebook" });
 
     join();
     joinTable("Products");
     selectJoinStrategy("Inner join");
 
-    // Test join dimension infers parent dimension's temporal unit
+    // Test LHS column infers RHS column's temporal unit
 
     cy.findByTestId("parent-dimension").click();
     popover().findByText("by month").click({ force: true });
@@ -228,7 +228,7 @@ describe("scenarios > question > joined questions", () => {
     assertJoinColumnName("left", "Created At: Week");
     assertJoinColumnName("right", "Created At: Week");
 
-    // Test changing a temporal unit on one dimension would update a second one
+    // Test changing a temporal unit on one column would update a second one
 
     cy.findByTestId("join-dimension").click();
     popover().findByText("by week").click({ force: true });
