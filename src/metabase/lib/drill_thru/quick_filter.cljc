@@ -50,7 +50,6 @@
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; (editable? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              (not (lib.types.isa/primary-key? column))
