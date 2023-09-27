@@ -1,6 +1,4 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type { EXPRESSION_OPERATORS } from "./operator";
-import type { TEMPORAL_UNITS } from "./temporal_unit";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -137,9 +135,38 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator = typeof EXPRESSION_OPERATORS[number];
+export type ExpressionOperator =
+  | "+"
+  | "-"
+  | "*"
+  | "/"
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-width"
+  | "between"
+  | "interval"
+  | "time-interval"
+  | "relative-datetime";
 
-export type TemporalUnit = typeof TEMPORAL_UNITS[number];
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
