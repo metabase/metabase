@@ -118,8 +118,8 @@ export function assertQueryBuilderRowCount(count) {
  * Assert a join is valid by checking query builder UI and query results.
  * Expects a question to be visualized as a table.
  *
- * @param {string} lhsTable join's LHS table name
- * @param {string} rhsTable join's RHS table name
+ * @param {string} [lhsTable] join's LHS table name
+ * @param {string} [rhsTable] join's RHS table name
  * @param {string} lhsSampleColumn join's LHS sample column name
  * @param {string} rhsSampleColumn join's RHS sample column name
  */
@@ -130,10 +130,13 @@ export function assertJoinValid({
   rhsSampleColumn,
 }) {
   // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
-  cy.findByTestId("question-table-badges").within(() => {
-    cy.findByText(lhsTable).should("be.visible");
-    cy.findByText(rhsTable).should("be.visible");
-  });
+  // The check is optional for cases when a table name isn't clear (e.g. a multi-stage ad-hoc question)
+  if (lhsTable && rhsTable) {
+    cy.findByTestId("question-table-badges").within(() => {
+      cy.findByText(lhsTable).should("be.visible");
+      cy.findByText(rhsTable).should("be.visible");
+    });
+  }
 
   // Ensure the results have columns from both tables
   queryBuilderMain().within(() => {
