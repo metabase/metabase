@@ -31,7 +31,6 @@
    [metabase.util :as u]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -48,8 +47,7 @@
 (defn- native-query-with-template-tag []
   {:database (mt/id)
    :type     :native
-   :native   {:query         (format "SELECT count(*) AS %s FROM venues [[WHERE id = {{venue_id}}]]"
-                                     ((db/quote-fn) "Count"))
+   :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
               :template-tags {"venue_id" {:name         "venue_id"
                                           :display-name "Venue ID"
                                           :type         :number
@@ -288,8 +286,7 @@
                            :dataset_query
                            {:database (mt/id)
                             :type     :native
-                            :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
-                                                              ((db/quote-fn) "Count"))
+                            :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
                                        :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
                                                                    :display-name "Venue ID",
                                                                    :id           "_VENUE_ID_",
@@ -620,8 +617,7 @@
                              :dataset_query
                              {:database (mt/id)
                               :type     :native
-                              :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
-                                                                ((db/quote-fn) "Count"))
+                              :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
                                          :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
                                                                      :display-name "Venue ID"
                                                                      :id           "_VENUE_ID_"

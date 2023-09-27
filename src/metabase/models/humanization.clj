@@ -15,7 +15,6 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (declare humanization-strategy)
@@ -53,7 +52,7 @@
                              (name model) internal-name display-name new-strategy-display-name))
               (t2/update! model id
                           {:display_name new-strategy-display-name}))))
-        (db/select-reducible [model :id :name :display_name]
+        (t2/reducible-select [model :id :name :display_name]
                              (if *table-id-to-rehumanize*
                                {:where [:= (case model
                                              :model/Table :id

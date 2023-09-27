@@ -13,7 +13,7 @@ const { PEOPLE_ID } = SAMPLE_DATABASE;
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
-    cy.intercept("GET", "/api/card/*").as("card");
+    cy.intercept("POST", "/api/card").as("saveCard");
 
     restore();
     cy.signInAsAdmin();
@@ -71,7 +71,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       cy.findByRole("button", { name: "Save" }).click();
     });
 
-    cy.wait("@card");
+    cy.wait("@saveCard");
 
     modal().within(() => {
       cy.findByRole("button", { name: "Set up an alert" }).click();
