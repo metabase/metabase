@@ -406,6 +406,11 @@
           node))
       parts)))
 
+(defn ^:export is-column-metadata
+  "Returns true if arg is a a ColumnMetadata"
+  [arg]
+  (and (map? arg) (= :metadata/column (:lib/type arg))))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
