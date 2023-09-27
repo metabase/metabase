@@ -85,6 +85,10 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defmethod driver/database-supports? [:mysql :table-privileges]
+  [driver _feat db]
+  (and (= driver :mysql) (not (mariadb? db))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -184,6 +188,7 @@
     ;; else
     message))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]
   (let [sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
