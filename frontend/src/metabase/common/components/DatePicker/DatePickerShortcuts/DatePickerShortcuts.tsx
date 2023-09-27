@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { t } from "ttag";
 import { Stack, UnstyledButton, Divider } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -91,7 +92,9 @@ const MONTH_OPTIONS: ShortcutOption[] = [
   },
 ];
 
-const MISC_OPTIONS: NavigationOption[] = [
+const SHORTCUT_OPTIONS = [DAY_OPTIONS, MONTH_OPTIONS];
+
+const NAVIGATION_OPTIONS: NavigationOption[] = [
   {
     name: t`Specific dates...`,
     type: "specific",
@@ -109,32 +112,44 @@ const MISC_OPTIONS: NavigationOption[] = [
 export interface DatePickerShortcutsProps {
   column: Lib.ColumnMetadata;
   onChange: (clause: Lib.ExpressionClause) => void;
+  onNavigate: (type: DateFilterType) => void;
 }
 
 export const DatePickerShortcuts = ({
   column,
   onChange,
+  onNavigate,
 }: DatePickerShortcutsProps) => {
   const handleChange = (option: ShortcutOption) => {
     onChange(option.init(column));
   };
 
+  const handleNavigate = (option: NavigationOption) => {
+    onNavigate(option.type);
+  };
+
   return (
     <Stack>
-      {DAY_OPTIONS.map((option, index) => (
-        <UnstyledButton key={index} onClick={() => handleChange(option)}>
+      {SHORTCUT_OPTIONS.map((group, groupIndex) => (
+        <Fragment key={groupIndex}>
+          {group.map((option, optionIndex) => (
+            <UnstyledButton
+              key={optionIndex}
+              onClick={() => handleChange(option)}
+            >
+              {option.name}
+            </UnstyledButton>
+          ))}
+          <Divider />
+        </Fragment>
+      ))}
+      {NAVIGATION_OPTIONS.map((option, optionIndex) => (
+        <UnstyledButton
+          key={optionIndex}
+          onClick={() => handleNavigate(option)}
+        >
           {option.name}
         </UnstyledButton>
-      ))}
-      <Divider />
-      {MONTH_OPTIONS.map((option, index) => (
-        <UnstyledButton key={index} onClick={() => handleChange(option)}>
-          {option.name}
-        </UnstyledButton>
-      ))}
-      <Divider />
-      {MISC_OPTIONS.map((option, index) => (
-        <UnstyledButton key={index}>{option.name}</UnstyledButton>
       ))}
     </Stack>
   );

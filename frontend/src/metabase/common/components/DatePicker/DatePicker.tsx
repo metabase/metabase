@@ -9,5 +9,11 @@ export interface DatePickerProps {
 }
 
 export const DatePicker = ({ column, onChange }: DatePickerProps) => {
-  return <DatePickerShortcuts column={column} onChange={onChange} />;
+  return (
+    <DatePickerShortcuts
+      column={column}
+      onChange={onChange}
+      onNavigate={() => undefined}
+    />
+  );
 };
