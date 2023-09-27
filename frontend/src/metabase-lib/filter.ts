@@ -1,10 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { expressionClause } from "./expression";
 import type {
+  BooleanFilterParts,
   ColumnWithOperators,
   ExpressionClause,
   FilterClause,
+  NumberFilterParts,
   Query,
+  RelativeDateFilterParts,
+  StringFilterParts,
 } from "./types";
 
 export function filterableColumns(
@@ -24,4 +29,38 @@ export function filter(
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
+}
+
+export function stringFilterClause({
+  operator,
+  column,
+  values,
+  options,
+}: StringFilterParts): ExpressionClause {
+  return expressionClause(operator, options, [column, ...values]);
+}
+
+export function numberFilterClause({
+  operator,
+  column,
+  values,
+}: NumberFilterParts): ExpressionClause {
+  return expressionClause(operator, null, [column, ...values]);
+}
+
+export function booleanFilterClause({
+  operator,
+  column,
+  values,
+}: BooleanFilterParts): ExpressionClause {
+  return expressionClause(operator, null, [column, ...values]);
+}
+
+export function relativeDateFilterClause({
+  column,
+  value,
+  unit,
+  options,
+}: RelativeDateFilterParts): ExpressionClause {
+  return expressionClause("time-interval", options, [column, value, unit]);
 }

@@ -1,4 +1,5 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { EXPRESSION_OPERATORS, TEMPORAL_UNITS } from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -135,25 +136,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-width"
-  | "between"
-  | "interval"
-  | "time-interval"
-  | "relative-datetime";
+export type ExpressionOperator = typeof EXPRESSION_OPERATORS[number];
+
+export type TemporalUnit = typeof TEMPORAL_UNITS[number];
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -163,10 +148,44 @@ export type ExpressionParts = {
   options: ExpressionOptions;
 };
 
-export interface ExpressionOptions {
+export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
-}
+};
+
+export type StringFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: string[];
+  options: StringFilterOptions;
+};
+
+export type StringFilterOptions = {
+  "case-sensitive"?: boolean;
+};
+
+export type NumberFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: number[];
+};
+
+export type BooleanFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: boolean[];
+};
+
+export type RelativeDateFilterParts = {
+  column: ColumnMetadata;
+  value: number | "current";
+  unit: TemporalUnit;
+  options: RelativeDateFilterOptions;
+};
+
+export type RelativeDateFilterOptions = {
+  "include-current"?: boolean;
+};
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };

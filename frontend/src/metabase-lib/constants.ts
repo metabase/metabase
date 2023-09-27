@@ -1,0 +1,30 @@
+export const EXPRESSION_OPERATORS = [
+  "=",
+  "!=",
+  ">",
+  ">=",
+  "<",
+  "<=",
+  "is-null",
+  "not-null",
+  "is-empty",
+  "not-empty",
+  "contains",
+  "does-not-contain",
+  "starts-with",
+  "ends-width",
+  "between",
+  "interval",
+  "time-interval",
+  "relative-datetime",
+] as const;
+
+export const TEMPORAL_UNITS = [
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "quarter",
+  "month",
+  "year",
+] as const;
