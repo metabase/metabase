@@ -1,12 +1,12 @@
 ---
 title: "Metabot"
 summary: |
-  These Metabot endpoints are an experimental feature.
+  These Metabot endpoints are for an experimental feature.
 ---
 
 # Metabot
 
-These Metabot endpoints are an experimental feature.
+These Metabot endpoints are for an experimental feature.
 
 ## `POST /api/metabot/database/:database-id`
 
