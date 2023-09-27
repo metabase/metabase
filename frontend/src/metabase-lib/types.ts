@@ -141,9 +141,26 @@ export type ExpressionArg =
   | number
   | string
   | ColumnMetadata
-  | Clause;
+  | ExpressionParts;
 
-export type ExpressionOperator = "=" | "!=";
+export type ExpressionOperator =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-width"
+  | "between"
+  | "time-interval"
+  | "relative-datetime";
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
@@ -152,7 +169,8 @@ export type ExpressionParts = {
 };
 
 export interface ExpressionOptions {
-  caseSensitive?: boolean;
+  "case-sensitive"?: boolean;
+  "include-current"?: boolean;
 }
 
 declare const Join: unique symbol;
