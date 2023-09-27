@@ -13,5 +13,4 @@ export type EditorBodyProps = {
 export interface ActionContextProviderProps<T = WritebackAction> {
   initialAction?: T;
   children: ReactNode;
-  onActionChange: (action: WritebackAction) => void;
 }
