@@ -1,7 +1,7 @@
 import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
 
 export type NumberFormatOptions = {
-  number_style?: "currency" | "decimal" | "scientific" | "percentage";
+  number_style?: "currency" | "decimal" | "scientific" | "percent";
   currency?: string;
   currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";

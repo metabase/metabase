@@ -1,8 +1,17 @@
+import type { GaugeSegment } from "metabase/static-viz/components/Gauge/types";
+import type { HeaderWidthType } from "metabase/visualizations/visualizations/PivotTable/types";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
-import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type {
+  DatasetQuery,
+  DimensionReference,
+  FieldReference,
+  PublicDatasetQuery,
+} from "./query";
 import type { UserInfo } from "./user";
 
 export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
@@ -93,44 +102,147 @@ export type TableColumnOrderSetting = {
 };
 
 export type VisualizationSettings = {
-  "graph.show_values"?: boolean;
-  "stackable.stack_type"?: "stacked" | "normalized" | null;
-
-  // Table
-  "table.columns"?: TableColumnOrderSetting[];
-
-  // X-axis
-  "graph.x_axis.title_text"?: string;
-  "graph.x_axis.scale"?: "ordinal";
-  "graph.x_axis.axis_enabled"?: "compact";
-
-  // Y-axis
-  "graph.y_axis.title_text"?: string;
-  "graph.y_axis.scale"?: "linear" | "pow" | "log";
-  "graph.y_axis.axis_enabled"?: true;
-
-  // Goal
-  "graph.goal_value"?: number;
-  "graph.show_goal"?: boolean;
-  "graph.goal_label"?: string;
-
-  // Series
-  "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
-
-  // Series settings
-  series_settings?: Record<string, SeriesSettings>;
-
-  "graph.series_order"?: SeriesOrderSetting[];
-
-  // Funnel settings
+  "button.label"?: string;
+  "button.variant"?:
+    | "primary"
+    | "default"
+    | "danger"
+    | "success"
+    | "borderless";
+  "card.description"?: string;
+  "card.hide_empty"?: boolean;
+  "card.title"?: string;
+  "dashcard.background"?: boolean;
+  "detail.showHeader"?: boolean;
+  "funnel.dimension"?: string | null;
+  "funnel.metric"?: string | null;
+  "funnel.order_dimension"?: string;
   "funnel.rows"?: SeriesOrderSetting[];
-
-  "table.column_formatting"?: ColumnFormattingSetting[];
+  "funnel.type"?: "funnel" | "bar";
+  "gauge.range"?: [number, number];
+  "gauge.segments"?: GaugeSegment[];
+  "graph._dimension_filter"?: (col: unknown) => boolean;
+  "graph._metric_filter"?: (col: unknown) => boolean;
+  "graph.colors"?: string[];
+  "graph.dimensions"?: string[];
+  "graph.goal_label"?: string;
+  "graph.goal_value"?: number;
+  "graph.label_value_formatting"?: "auto" | "compact" | "full";
+  "graph.label_value_frequency"?: "fit" | "all";
+  "graph.metrics"?: string[];
+  "graph.series_labels"?: string[];
+  "graph.series_order"?: SeriesOrderSetting[];
+  "graph.series_order_dimension"?: string;
+  "graph.show_goal"?: boolean;
+  "graph.show_trendline"?: boolean;
+  "graph.show_values"?: boolean;
+  "graph.x_axis._is_histogram"?: boolean;
+  "graph.x_axis.axis_enabled"?: boolean | "compact" | "rotate-45" | "rotate-90";
+  "graph.x_axis.gridLine_enabled"?: boolean;
+  "graph.x_axis.labels_enabled"?: boolean;
+  "graph.x_axis.scale"?:
+    | "timeseries"
+    | "linear"
+    | "pow"
+    | "log"
+    | "histogram"
+    | "ordinal";
+  "graph.x_axis._scale_original"?: VisualizationSettings["graph.x_axis.scale"];
+  "graph.x_axis.title_text"?: string;
+  "graph.y_axis.auto_range"?: boolean;
+  "graph.y_axis.auto_split"?: boolean;
+  "graph.y_axis.axis_enabled"?: boolean;
+  "graph.y_axis.labels_enabled"?: boolean;
+  "graph.y_axis.max"?: number;
+  "graph.y_axis.min"?: number;
+  "graph.y_axis.scale"?: "linear" | "pow" | "log";
+  "graph.y_axis.title_text"?: string;
+  "line.interpolate"?: "linear" | "cardinal" | "step-after";
+  "line.marker_enabled"?: null | boolean;
+  "line.missing"?: "zero" | "none" | "interpolate";
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.colors"?: string[];
+  "map.dimension"?: string;
+  "map.heat.blur"?: number;
+  "map.heat.max-zoom"?: number;
+  "map.heat.min-opacity"?: number;
+  "map.heat.radius"?: number;
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric"?: string;
+  "map.metric_column"?: string;
+  "map.pin_type"?: "tiles" | "markers" | "heat" | "grid";
+  "map.region"?: "us_states" | "world_countries" | string;
+  "map.type"?: "region" | "pin" | "heat" | "grid";
+  "map.zoom"?: number;
+  "pie._colors"?: string[];
+  "pie._dimensionIndex"?: number;
+  "pie._dimensionTitles"?: string[] | null;
+  "pie._dimensionValues"?: string[] | null;
+  "pie._metricIndex"?: number;
+  "pie.colors"?: string[];
+  "pie.dimension"?: string;
+  "pie.metric"?: string;
+  "pie.percent_visibility"?: "off" | "legend" | "inside";
+  "pie.show_legend"?: boolean;
+  "pie.show_total"?: boolean;
+  "pie.slice_threshold"?: number;
+  "pivot.show_column_totals"?: boolean;
+  "pivot.show_row_totals"?: boolean;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
+  "pivot_table.column_show_totals": boolean;
+  "pivot_table.column_split"?: {
+    columns: DimensionReference[];
+    rows: DimensionReference[];
+    values: DimensionReference[];
+  };
+  "pivot_table.column_widths"?: HeaderWidthType;
+  "progress.color"?: string;
+  "progress.goal"?: number;
+  "scalar.field"?: string;
+  "scalar.switch_positive_negative"?: boolean;
+  "scalar.decimals"?: number; // legacy
+  "scalar.locale"?: null | string; // legacy
+  "scalar.prefix": string; // legacy
+  "scalar.scale"?: number; // legacy
+  "scalar.suffix"?: string; // legacy
+  "scatter.bubble"?: string;
+  series_settings?: Record<string, SeriesSettings>;
+  "series_settings.colors"?: { [key: string]: string };
+  "stackable.stack_display"?: "area" | "bar";
+  "stackable.stack_type"?: "stacked" | "normalized" | null;
+  "stackable.stacked"?: VisualizationSettings["stackable.stack_type"]; // legacy
+  "table._cell_background_getter"?: (
+    value: unknown,
+    rowIndex: number,
+    colName: string,
+  ) => string;
+  "table.cell_column"?: string;
+  "table.column_formatting"?: ColumnFormattingSetting[];
+  "table.column_widths"?: number[];
+  "table.columns"?: TableColumnOrderSetting[];
+  "table.pivot"?: boolean;
+  "table.pivot_column"?: string;
+  "text.align_horizontal"?: "left" | "center" | "right";
+  "text.align_vertical"?: "top" | "middle" | "bottom";
+  "waterfall.decrease_color"?: string;
+  "waterfall.increase_color"?: string;
+  "waterfall.show_total"?: boolean;
+  "waterfall.total_color"?: string;
 
-  [key: string]: any;
-};
+  // legacy? (non-namespaced)
+  title?: string;
+  display?: "line" | "area" | "bar";
+  axis: null | "left" | "right";
+  _header_unit?: string;
+  column_title?: string;
+  currency_in_header?: boolean;
+  show_mini_bar?: boolean;
+
+  // options are also mixed in
+} & NumberFormatOptions &
+  OptionsType;
 
 export interface ModerationReview {
   moderator_id: number;
