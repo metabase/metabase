@@ -135,15 +135,6 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-declare const FilterOperator: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
-
-export type FilterOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
-};
-
 export type ExpressionArg =
   | null
   | boolean
@@ -152,15 +143,34 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-export type FilterParts = {
-  operator: FilterOperator;
-  options: Record<string, unknown>;
-  column: ColumnWithOperators | null;
+export type ExpressionOperator = "=" | "!=";
+
+export type ExpressionParts = {
+  operator: ExpressionOperator;
   args: ExpressionArg[];
+  options: ExpressionOptions;
 };
+
+export interface ExpressionOptions {
+  caseSensitive?: boolean;
+}
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
+
+declare const JoinCondition: unique symbol;
+export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
+
+declare const JoinConditionOperator: unique symbol;
+export type JoinConditionOperator = unknown & {
+  _opaque: typeof JoinConditionOperator;
+};
+
+export type JoinConditionOperatorDisplayInfo = {
+  displayName: string;
+  shortName: string;
+  default?: boolean;
+};
 
 declare const JoinStrategy: unique symbol;
 export type JoinStrategy = unknown & { _opaque: typeof Join };

@@ -19,8 +19,8 @@ import type {
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
-  FilterOperator,
-  FilterOperatorDisplayInfo,
+  JoinConditionOperator,
+  JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -97,8 +97,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  filterOperator: FilterOperator,
-): FilterOperatorDisplayInfo;
+  filterOperator: JoinConditionOperator,
+): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

@@ -1,5 +1,13 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { ColumnMetadata, ExpressionClause, Query } from "./types";
+import type {
+  ColumnMetadata,
+  ExpressionArg,
+  ExpressionClause,
+  ExpressionOperator,
+  ExpressionOptions,
+  FilterClause,
+  Query,
+} from "./types";
 
 export function expression(
   query: Query,
@@ -23,4 +31,20 @@ export function expressionableColumns(
   expressionPosition: number,
 ): ColumnMetadata[] {
   return ML.expressionable_columns(query, stageIndex, expressionPosition);
+}
+
+export function expressionParts(
+  query: Query,
+  stageIndex: number,
+  clause: ExpressionClause | FilterClause,
+) {
+  return ML.expression_parts(query, stageIndex, clause);
+}
+
+export function expressionClause(
+  operator: ExpressionOperator,
+  options: ExpressionOptions,
+  args: ExpressionArg[],
+): ExpressionClause {
+  return ML.expression_clause(options, options, args);
 }
