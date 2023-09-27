@@ -1,9 +1,12 @@
 import { useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
+import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
+
+import type { Collection, CollectionId, GroupId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import Groups from "metabase/entities/groups";
 import Collections from "metabase/entities/collections";
@@ -12,8 +15,8 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
-  permissionEditorPropTypes,
 } from "../../components/PermissionsEditor";
+
 import PermissionsPageLayout from "../../components/PermissionsPageLayout";
 import {
   initializeCollectionPermissions,
@@ -21,6 +24,12 @@ import {
   saveCollectionPermissions,
   loadCollectionPermissions,
 } from "../../permissions";
+
+import type {
+  CollectionIdProps,
+  CollectionPermissionEditorType,
+  CollectionSidebarType,
+} from "../../selectors/collection-permissions";
 import {
   getCollectionsSidebar,
   getCollectionsPermissionEditor,
@@ -28,43 +37,54 @@ import {
   getIsDirty,
   collectionsQuery,
 } from "../../selectors/collection-permissions";
+
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
   loadPermissions: loadCollectionPermissions,
-  navigateToItem: ({ id }) => push(`/admin/permissions/collections/${id}`),
+  navigateToItem: ({ id }: { id: CollectionId }) =>
+    push(`/admin/permissions/collections/${id}`),
   updateCollectionPermission,
   savePermissions: saveCollectionPermissions,
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: State, props: CollectionIdProps) => {
   return {
     sidebar: getCollectionsSidebar(state, props),
     permissionEditor: getCollectionsPermissionEditor(state, props),
-    isDirty: getIsDirty(state, props),
+    isDirty: getIsDirty(state),
     collection: getCollectionEntity(state, props),
   };
 };
 
-const propTypes = {
-  params: PropTypes.shape({
-    collectionId: PropTypes.string,
-  }),
-  children: PropTypes.node.isRequired,
-  sidebar: PropTypes.object,
-  permissionEditor: PropTypes.shape(permissionEditorPropTypes),
-  collection: PropTypes.object,
-  navigateToItem: PropTypes.func.isRequired,
-  updateCollectionPermission: PropTypes.func.isRequired,
-  isDirty: PropTypes.bool,
-  savePermissions: PropTypes.func.isRequired,
-  loadPermissions: PropTypes.func.isRequired,
-  initialize: PropTypes.func.isRequired,
-  route: PropTypes.object,
+type UpdateCollectionPermissionProps = {
+  groupId: GroupId;
+  collection: Collection;
+  value: unknown;
+  shouldPropagate: boolean;
 };
 
-function CollectionsPermissionsPage({
+type CollectionPermissionsPageProps = {
+  params: CollectionIdProps["params"];
+  sidebar: CollectionSidebarType;
+  permissionEditor: CollectionPermissionEditorType;
+  collection: Collection;
+  navigateToItem: (item: any) => void;
+  updateCollectionPermission: ({
+    groupId,
+    collection,
+    value,
+    shouldPropagate,
+  }: UpdateCollectionPermissionProps) => void;
+  isDirty: boolean;
+  savePermissions: () => void;
+  loadPermissions: () => void;
+  initialize: () => void;
+  route: Route;
+};
+
+function CollectionsPermissionsPageView({
   sidebar,
   permissionEditor,
   collection,
@@ -75,7 +95,7 @@ function CollectionsPermissionsPage({
   navigateToItem,
   initialize,
   route,
-}) {
+}: CollectionPermissionsPageProps) {
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -112,6 +132,8 @@ function CollectionsPermissionsPage({
 
       {permissionEditor && (
         <PermissionsEditor
+          isLoading={undefined}
+          error={undefined}
           {...permissionEditor}
           onChange={handlePermissionChange}
         />
@@ -120,12 +142,10 @@ function CollectionsPermissionsPage({
   );
 }
 
-CollectionsPermissionsPage.propTypes = propTypes;
-
-export default _.compose(
+export const CollectionPermissionsPage = _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(CollectionsPermissionsPage);
+)(CollectionsPermissionsPageView);
