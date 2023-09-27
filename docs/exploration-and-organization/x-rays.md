@@ -22,9 +22,7 @@ To see how the value of a bar, point, or geographic region compares to the rest 
 
 ![Compare menu](./images/x-ray-compare-popover.png)
 
-If you're already looking at an X-ray of a table, Metabase will give you the option to compare the current table segments of the table, if there are any.
-
-![Comparison](./images/x-ray-comparison-1.png)
+If you're already looking at an X-ray of a table, Metabase will give you the option to look at X-rays of certain fields, if there are any.
 
 ## Table X-rays
 
@@ -62,4 +60,4 @@ If for some reason X-rays aren't a good fit for your team or your data, administ
 
 If you pin any dashboards in the "Our Analytics" collection, Metabase will hide the X-ray suggestions that appear on the homepage.
 
-Admins can also manually remove these suggestions by clicking on the **Customize** button in the upper right and selecting a dashboard as your homepage. [Changing the home page](../configuring-metabase/settings#custom-homepage) won't disable the X-ray features in the rest of Metabase.
+Admins can also manually remove these suggestions by clicking on the **Customize** button in the upper right and selecting a dashboard as your homepage. [Changing the home page](../configuring-metabase/settings.md#custom-homepage) won't disable the X-ray features in the rest of Metabase.
