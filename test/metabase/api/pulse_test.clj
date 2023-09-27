@@ -5,6 +5,7 @@
    [java-time :as t]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.pulse :as api.pulse]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -20,6 +21,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
+   [metabase.plugins.classloader :as classloader]
    [metabase.pulse.render.style :as style]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
@@ -1105,21 +1107,27 @@
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
-    ;; don't fail from the REPL if we have an EE token
-    ;; and [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] is set
-    (mt/with-temporary-setting-values [subscription-allowed-domains nil]
-      (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
-                     PulseChannel {channel-id :id} {:pulse_id      pulse-id
-                                                    :channel_type  "email"
-                                                    :schedule_type "daily"
-                                                    :details       {:other  "stuff"
-                                                                    :emails ["foo@bar.com"]}}]
-        (testing "Should be able to delete your own subscription"
-          (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-            (is (= nil
-                   (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
+    (letfn [(thunk []
+              (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
+                             PulseChannel {channel-id :id} {:pulse_id      pulse-id
+                                                            :channel_type  "email"
+                                                            :schedule_type "daily"
+                                                            :details       {:other  "stuff"
+                                                                            :emails ["foo@bar.com"]}}]
+                (testing "Should be able to delete your own subscription"
+                  (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+                    (is (= nil
+                           (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
-        (testing "Users can't delete someone else's pulse subscription"
-          (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
-            (is (= "Not found."
-                   (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription"))))))))))
+                (testing "Users can't delete someone else's pulse subscription"
+                  (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+                    (is (= "Not found."
+                           (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription"))))))))]
+      (if config/ee-available?
+        ;; don't fail from the REPL if we have an EE token
+        ;; and [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] is set
+        (do
+          (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
+          (mt/with-temporary-setting-values [subscription-allowed-domains nil]
+            (thunk)))
+        (thunk)))))
