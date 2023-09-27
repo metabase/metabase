@@ -5,15 +5,36 @@ import ColorRangeToggle from "./ColorRangeToggle";
 
 const [range] = getStatusColorRanges();
 
+function setup({ value = range, ...props }: any = {}) {
+  const onToggleClick = jest.fn();
+  const onColorRangeSelect = jest.fn();
+
+  render(
+    <ColorRangeToggle
+      value={value}
+      onToggleClick={onToggleClick}
+      onColorRangeSelect={onColorRangeSelect}
+      {...props}
+    />,
+  );
+
+  return { onToggleClick, onColorRangeSelect };
+}
+
 describe("ColorRangeToggle", () => {
-  describe("toggle button visibility", () => {
-    it("should not render", () => {
-      render(<ColorRangeToggle value={range} />);
+  describe("toggle button", () => {
+    it("should not render when `showToggleButton` is undefined", () => {
+      setup();
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
-    it("should render", () => {
-      render(<ColorRangeToggle value={range} showToggleButton />);
+    it("should not render when `showToggleButton` is explicitly false", () => {
+      setup({ showToggleButton: false });
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("should render when turned on explicitly", () => {
+      setup({ showToggleButton: true });
       expect(screen.getByRole("button")).toBeInTheDocument();
     });
   });
