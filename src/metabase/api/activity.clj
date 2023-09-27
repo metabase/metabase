@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.util :as mdb.u]
-   [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -128,15 +127,15 @@
                     ;; hidden tables, archived cards/dashboards
                     (not (or (:archived model-object)
                              (= (:visibility_type model-object) :hidden))))]
-            (cond-> (assoc view-log :model_object model-object)
-              (:dataset model-object) (assoc :model "dataset")))
+           (cond-> (assoc view-log :model_object model-object)
+             (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
-  (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
+  (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard api/*current-user-id*)]
     (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
       (if (mi/can-read? dashboard)
         dashboard

@@ -2,7 +2,9 @@
   "The Recent Views table is used to track the most recent views of objects such as Cards, Tables and Dashboards for
   each user."
   (:require
+   [java-time :as t]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
@@ -56,6 +58,18 @@
             ids-to-prune (view-ids-to-prune current-views recent-views-stored-per-user)]
         (when (seq ids-to-prune)
          (t2/delete! :model/RecentViews :id [:in ids-to-prune]))))))
+
+(defn most-recently-viewed-dashboard
+  "Returns the most recently viewed dashboard for a given user, or `nil` if the user has not viewed any dashboards."
+  [user-id]
+  (t2/select-one-fn
+   :model_id
+   :model/RecentViews
+   {:where    [:and
+               [:= :user_id user-id]
+               [:= :model (h2x/literal "dashboard")]
+               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
+    :order-by [[:timestamp :desc]]}))
 
 (defn user-recent-views
   "Returns the most recent `n` unique views for a given user."

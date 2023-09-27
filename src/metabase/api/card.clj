@@ -209,8 +209,8 @@
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
-      (when-not (events/publish-event! :event/card-read <>)
-        ignore_view))))
+      (when-not ignore_view
+        (events/publish-event! :event/card-read <>)))))
 
 (defn- card-columns-from-names
   [card names]
