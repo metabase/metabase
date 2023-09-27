@@ -114,7 +114,7 @@ function ActionCreator({
   useEffect(() => {
     /**
      * onSubmit and onClose are called in an effect so that
-     * isDirty flag can be updated via the setAction call
+     * showUnsavedChangesWarning has a chance to recompute on re-render
      */
     if (actionToSubmit) {
       onSubmit?.(actionToSubmit);
@@ -132,7 +132,6 @@ function ActionCreator({
       ...values,
       visualization_settings: formSettings,
     } as WritebackQueryAction);
-
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
 
     // Sync the editor state with data from save modal form
@@ -151,7 +150,6 @@ function ActionCreator({
       });
 
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
-
       scheduleSubmitAction(updatedAction);
     }
   };
