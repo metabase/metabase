@@ -58,4 +58,23 @@ describe("ColorRangeToggle", () => {
       expect(onColorRangeSelect).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("color range label helper", () => {
+    it("should return empty string", () => {
+      expect(getColorRangeLabel([])).toBe("");
+      expect(getColorRangeLabel([""])).toBe("");
+    });
+
+    it("should return the exact value when array contains only one element", () => {
+      expect(getColorRangeLabel(["foo"])).toBe("foo");
+      expect(getColorRangeLabel(["1"])).toBe("1");
+    });
+
+    it("should join multiple array elements", () => {
+      expect(getColorRangeLabel(["blue", "white"])).toBe("blue-white");
+      expect(getColorRangeLabel(["green", "white", "red"])).toBe(
+        "green-white-red",
+      );
+    });
+  });
 });
