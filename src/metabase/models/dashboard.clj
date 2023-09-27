@@ -70,7 +70,7 @@
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read))))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
+   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
