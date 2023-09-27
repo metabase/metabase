@@ -129,7 +129,7 @@ SearchApp.propTypes = {
 export default SearchApp;
 
 const SearchResultSection = ({ items }) => (
-  <Card className="pt2">
+  <Card className="pt2" data-testid="search-result-section">
     {items.map(item => {
       return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
     })}

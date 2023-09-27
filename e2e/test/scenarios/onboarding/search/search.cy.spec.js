@@ -54,6 +54,7 @@ const typeFilters = [
   {
     label: "Action",
     filterName: "action",
+    resultInfoText: "for",
   },
 ];
 
@@ -62,13 +63,13 @@ const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
 const TEST_CREATED_AT_FILTERS = {
   Today: "thisday",
-  // Yesterday: "past1days",
-  // "Previous Week": "past1weeks",
-  // "Previous 7 Days": "past7days",
-  // "Previous 30 Days": "past30days",
-  // "Previous Month": "past1months",
-  // "Previous 3 Months": "past3months",
-  // "Previous 12 Months": "past12months",
+  Yesterday: "past1days",
+  "Previous Week": "past1weeks",
+  "Previous 7 Days": "past7days",
+  "Previous 30 Days": "past30days",
+  "Previous Month": "past1months",
+  "Previous 3 Months": "past3months",
+  "Previous 12 Months": "past12months",
 };
 
 describe("scenarios > search", () => {
@@ -223,13 +224,14 @@ describe("scenarios > search", () => {
 
       typeFilters.forEach(({ label, filterName, resultInfoText }) => {
         it(`should hydrate search with search text and ${label} filter`, () => {
-          cy.visit(`/search?q=orders&type=${filterName}`);
+          const searchText = "e";
+          cy.visit(`/search?q=${searchText}&type=${filterName}`);
           cy.wait("@search");
 
-          getSearchBar().should("have.value", "orders");
+          getSearchBar().should("have.value", searchText);
 
           cy.findByTestId("search-app").within(() => {
-            cy.findByText('Results for "orders"').should("exist");
+            cy.findByText(`Results for "${searchText}"`).should("exist");
           });
 
           cy.findAllByTestId("result-link-info-text").each(result => {
@@ -237,7 +239,7 @@ describe("scenarios > search", () => {
           });
 
           cy.findByTestId("type-search-filter").within(() => {
-            cy.findByText("Question").should("exist");
+            cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
         });
@@ -364,7 +366,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    describe.only("created_at filter", () => {
+    describe("created_at filter", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
       });
@@ -380,14 +382,35 @@ describe("scenarios > search", () => {
             cy.findByLabelText("close icon").should("exist");
           });
         });
+      });
 
-        it.only(`should filter results by created_at=${filter}`, () => {
-          cy.visit(`/search?q=orders`);
-          cy.findByTestId("created_at-search-filter").click();
-          popover().within(() => {
-            cy.findByText(label).click();
-          })
-        })
+      // we can only test the 'today' filter since we currently
+      // can't edit the created_at column of a question in our database
+      it(`should filter results by Today (created_at=past1days)`, () => {
+        cy.createQuestion(
+          {
+            name: "Test Question from Today",
+            query: { "source-table": ORDERS_ID },
+          },
+          {
+            interceptAlias: "createQuestion",
+          },
+        );
+
+        cy.visit(`/search?q=e`);
+        cy.findByTestId("created_at-search-filter").click();
+
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+
+        cy.wait("@search").then(({ response }) => {
+          console.log(response.body);
+        });
+
+        cy.findByTestId("search-result-section").within(() => {
+          cy.findByText("Test Question from Today").should("exist");
+        });
       });
     });
 
