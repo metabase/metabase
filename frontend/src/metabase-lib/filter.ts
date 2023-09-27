@@ -1,6 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import { expressionClause } from "./expression";
+import {
+  expressionClause,
+  expressionParts,
+  isColumnMetadata,
+  isNumberLiteralOrCurrent,
+  isTemporalUnit,
+} from "./expression";
 import type {
   BooleanFilterParts,
   ColumnWithOperators,
@@ -82,4 +88,42 @@ export function relativeDateFilterClause({
       offsetUnit,
     ]),
   ]);
+}
+
+export function relativeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  clause: FilterClause,
+): RelativeDateFilterParts | null {
+  const { operator, args, options } = expressionParts(
+    query,
+    stageIndex,
+    clause,
+  );
+
+  if (operator === "time-interval" && args.length === 3) {
+    const [column, value, unit] = args;
+    if (
+      isColumnMetadata(column) &&
+      isNumberLiteralOrCurrent(value) &&
+      isTemporalUnit(unit)
+    ) {
+      return {
+        column,
+        value,
+        unit,
+        options,
+      };
+    }
+  }
+
+  return null;
+}
+
+export function isRelativeDateFilter(
+  query: Query,
+  stageIndex: number,
+  clause: FilterClause,
+): boolean {
+  return relativeDateFilterParts(query, stageIndex, clause) != null;
 }
