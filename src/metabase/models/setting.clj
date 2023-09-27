@@ -91,14 +91,13 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword Symbol)
+   (clojure.lang Keyword)
    (java.io StringWriter)
    (java.time.temporal Temporal)))
-
 
 (set! *warn-on-reflection* true)
 
@@ -227,12 +226,13 @@
   (set-value-of-type! :string key value))
 
 (def ^:private Type
-  (s/pred (fn [a-type]
-            (contains? (set (keys (methods get-value-of-type))) a-type))
-          "Valid Setting :type"))
+  [:fn
+   {:error/message "Valid Setting :type"}
+   (fn [a-type]
+     (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  (s/enum :public :authenticated :settings-manager :admin :internal))
+  [:enum :public :authenticated :settings-manager :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -281,42 +281,47 @@
 (def ^:private LocalOption
   "Schema for valid values of `:database-local`. See [[metabase.models.setting]] docstring for description of what these
   options mean."
-  (s/enum :only :allowed :never))
+  [:enum :only :allowed :never])
 
 (def ^:private SettingDefinition
-  {:name        s/Keyword
-   :munged-name s/Str
-   :namespace   s/Symbol
-   :description s/Any            ; description is validated via the macro, not schema
+  [:map
+   [:name        :keyword]
+   [:munged-name :string]
+   [:namespace   :symbol]
+   ;; description is validated via the macro, not schema
+   [:description :any]
    ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
    ;; from source. To exclude a setting from documenation, set to `false`. See metabase.cmd.env-var-dox.
-   :doc         s/Any
-   :default     s/Any
-   :type        Type             ; all values are stored in DB as Strings,
-   :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
-   :setter      clojure.lang.IFn
-   :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
-   :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
-   :visibility  Visibility       ; where this setting should be visible (default: :admin)
-   :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
-   :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
-
+   [:doc         :any]
+   [:default     :any]
+   ;; all values are stored in DB as Strings,
+   [:type        Type]
+   ;; different getters/setters take care of parsing/unparsing
+   [:getter      [:=> [:cat] :any]]
+   [:setter      [:=> [:cat :any] :nil]]
+   ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
+   [:tag         [:maybe :symbol]]
+   ;; is this sensitive (never show in plaintext), like a password? (default: false)
+   [:sensitive?  :boolean]
+   ;; where this setting should be visible (default: :admin)
+   [:visibility  Visibility]
+   ;; should the getter always fetch this value "fresh" from the DB? (default: false)
+   [:cache?      :boolean]
+   ;; if non-nil, contains the Metabase version in which this setting was deprecated
+   [:deprecated  [:maybe :string]]
    ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
-   :database-local LocalOption
-   :user-local     LocalOption
-
-   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+   [:database-local LocalOption]
+   [:user-local     LocalOption]
+   ;; called whenever setting value changes, whether from [[update-setting!]] or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-   :on-change   (s/maybe clojure.lang.IFn)
-
+   [:on-change   [:maybe [:=> [:cat :any :any] :nil]]]
    ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
    ;; the setting will behave the same as if `enabled?` returns `false` (see below).
-   :feature     (s/maybe s/Keyword)
-
+   [:feature     [:maybe :keyword]]
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
-   :enabled?    (s/maybe clojure.lang.IFn)})
+   [:enabled?    [:maybe [:=> [:cat] :any]]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -324,7 +329,8 @@
 
 (defprotocol Resolvable
   (resolve-setting [setting-definition-or-name]
-    "Resolve the definition map for a Setting. `setting-definition-or-name` map be a map, keyword, or string."))
+    "Resolve the definition map for a Setting. `setting-definition-or-name` map be a map, keyword, or string. Throw an
+    exception if the Setting does not exist."))
 
 (extend-protocol Resolvable
   clojure.lang.IPersistentMap
@@ -487,7 +493,11 @@
   tests (see [[metabase.test/with-temporary-setting-values]]). This value is already deserialized."
   [setting-definition-or-name]
   (when *thread-local-values*
-    (core/get *thread-local-values* (keyword (setting-name setting-definition-or-name)))))
+    (let [value (core/get *thread-local-values* (keyword (setting-name setting-definition-or-name)) ::not-found)]
+      (cond
+        (= value ::not-found) nil
+        (nil? value)          ::nil
+        :else                 value))))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
@@ -552,14 +562,20 @@
   5. From the application database (i.e., set via the admin panel) (excluding empty string values)
   6. The default value, if one was specified
 
+  [[raw-value-source-fns]] are tried in order, and the first non-`nil` value is returned. To specify `nil` and
+  short-circut without trying other sources, these source functions can return the special marker `::nil`.
+
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
   This is the underlying function powering all the other getters such as methods of [[get-value-of-type]]. These
   getter functions *must* be coded to handle either String or non-String values. You can use the three-arity version
   of this function to do that.
 
-  Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
-  conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
+  Args:
+
+  * `pred` specifies under what conditions values can be returned directly, e.g. [[boolean?]] for a `:boolean` Setting
+
+  * `parse-fn` specifies how to parse non-empty String values e.g. [[parse-long]] for an `:integer` Setting"
   [setting-definition-or-name pred parse-fn]
   (let [setting (resolve-setting setting-definition-or-name)]
     (letfn [(parse-string-value [v]
@@ -568,24 +584,27 @@
                   (when (pred parsed)
                     parsed))
                 (catch Throwable e
-                  (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
-                                  {:setting (:name setting)}
-                                  e)))))
+                  (log/warnf e "Error parsing Setting %s, ignoring value: %s" (pr-str setting-name) (ex-message e))
+                  nil)))
             (warn-about-invalid-value [v]
               (log/warnf "Ignoring value ^%s %s for Setting %s: value is not valid for Settings of type %s"
-                         (.getCanonicalName (class v))
+                         (some-> v class .getCanonicalName)
                          (pr-str v)
                          (u/qualified-name (:name setting))
                          (:type setting))
               nil)]
       (loop [[f & more] raw-value-source-fns]
-        (if-some [v (f setting)]
+        (let [v (when-some [v (f setting)]
+                  (cond
+                    (= v ::nil) ::nil
+                    (pred v)    v
+                    (string? v) (parse-string-value v)
+                    :else       (warn-about-invalid-value v)))]
           (cond
-            (pred v)    v
-            (string? v) (parse-string-value v)
-            :else       (warn-about-invalid-value v))
-          (when (seq more)
-            (recur more)))))))
+            (= v ::nil) (when (seq more)
+                          (recur [#'default-value]))
+            (some? v)   v
+            (seq more)  (recur more)))))))
 
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
@@ -602,9 +621,9 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name string? identity))
 
-(s/defn string->boolean :- (s/maybe s/Bool)
+(mu/defn string->boolean :- [:maybe :boolean]
   "Interpret a `string-value` of a Setting as a boolean."
-  [string-value :- (s/maybe s/Str)]
+  [string-value :- [:maybe :string]]
   (when (seq string-value)
     (case (u/lower-case-en string-value)
       "true"  true
@@ -703,8 +722,8 @@
   (fn [setting-type _ _]
     (keyword setting-type)))
 
-(s/defmethod set-value-of-type! :string
-  [_setting-type setting-definition-or-name new-value :- (s/maybe s/Str)]
+(mu/defmethod set-value-of-type! :string
+  [_setting-type setting-definition-or-name new-value :- [:maybe :string]]
   (let [new-value                         (when (seq new-value)
                                             new-value)
         {:keys [sensitive? deprecated]
@@ -854,60 +873,74 @@
 ;;; |                                               register-setting!                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn register-setting!
-  "Register a new Setting with a map of [[SettingDefinition]] attributes. Returns the map it was passed. This is used
-  internally by [[defsetting]]; you shouldn't need to use it yourself."
-  [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
-  (let [munged-name (munge-setting-name (name setting-name))]
-    (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
-               (merge
-                {:name           setting-name
-                 :munged-name    munged-name
-                 :namespace      setting-ns
-                 :description    nil
-                 :doc            nil
-                 :type           setting-type
-                 :default        default
-                 :on-change      nil
-                 :getter         (partial (default-getter-for-type setting-type) setting-name)
-                 :setter         (partial (default-setter-for-type setting-type) setting-name)
-                 :tag            (default-tag-for-type setting-type)
-                 :visibility     :admin
-                 :sensitive?     false
-                 :cache?         true
-                 :feature        nil
-                 :database-local :never
-                 :user-local     :never
-                 :deprecated     nil
-                 :enabled?       nil}
-                (dissoc setting :name :type :default)))
-      (s/validate SettingDefinition <>)
-      (validate-default-value-for-type <>)
-      ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-      (when-let [registered-setting (core/get @registered-settings setting-name)]
-        (when (not= setting-ns (:namespace registered-setting))
-          (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
-                          {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
-      (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
-                                           (vals @registered-settings)))]
-        (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
-          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
-                               setting-name (:name same-munge))
-                          {:existing-setting (dissoc same-munge :on-change :getter :setter)
-                           :new-setting      (dissoc <> :on-change :getter :setter)}))))
-      (when (and (retired-setting-names (name setting-name)) (not *allow-retired-setting-names*))
-        (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
-                        {:retired-setting-name (name setting-name)
-                         :new-setting          (dissoc <> :on-change :getter :setter)})))
-      (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
-        (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
-                             setting-name)
-                        {:setting setting})))
-      (when (and (:enabled? setting) (:feature setting))
-        (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
-                             setting-name)
-                        {:setting setting})))
-      (swap! registered-settings assoc setting-name <>))))
+(mu/defn ^:private -register-setting!
+  [{setting-name :name
+    setting-ns   :namespace
+    :keys        [munged-name]
+    :as          setting} :- SettingDefinition]
+  (validate-default-value-for-type setting)
+  ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
+  (when-let [registered-setting (core/get @registered-settings setting-name)]
+    (when (not= setting-ns (:namespace registered-setting))
+      (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
+                      {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
+  (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
+                                       (vals @registered-settings)))]
+    (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
+      (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+                           setting-name (:name same-munge))
+                      {:existing-setting (dissoc same-munge :on-change :getter :setter)
+                       :new-setting      (dissoc setting :on-change :getter :setter)}))))
+  (when (and (retired-setting-names (name setting-name)) (not *allow-retired-setting-names*))
+    (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
+                    {:retired-setting-name (name setting-name)
+                     :new-setting          (dissoc setting :on-change :getter :setter)})))
+  (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
+    (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                         setting-name)
+                    {:setting setting})))
+  (when (and (:enabled? setting) (:feature setting))
+    (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
+                         setting-name)
+                    {:setting setting})))
+  (swap! registered-settings assoc setting-name setting))
+
+(mu/defn register-setting! :- SettingDefinition
+  "Register a new Setting with a map of [[SettingDefinition]] attributes. Returns the registered setting definition.
+  This is used internally by [[defsetting]]; you shouldn't need to use it yourself."
+  [{setting-name :name
+    setting-ns   :namespace
+    setting-type :type
+    default      :default
+    :or          {setting-type :string}
+    :as          setting}
+   :-
+   [:map
+    [:type {:optional true} [:maybe Type]]]]
+  (let [munged-name (munge-setting-name (name setting-name))
+        setting     (merge
+                     {:name           setting-name
+                      :munged-name    munged-name
+                      :namespace      setting-ns
+                      :description    nil
+                      :doc            nil
+                      :type           setting-type
+                      :default        default
+                      :on-change      nil
+                      :getter         (partial (default-getter-for-type setting-type) setting-name)
+                      :setter         (partial (default-setter-for-type setting-type) setting-name)
+                      :tag            (default-tag-for-type setting-type)
+                      :visibility     :admin
+                      :sensitive?     false
+                      :cache?         true
+                      :feature        nil
+                      :database-local :never
+                      :user-local     :never
+                      :deprecated     nil
+                      :enabled?       nil}
+                     (dissoc setting :name :type :default))]
+    (-register-setting! setting)
+    setting))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                defsetting macro                                                |

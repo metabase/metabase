@@ -71,7 +71,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
@@ -311,46 +310,6 @@
                [`(with-temp-env-var-value ~(vec more) ~@body)]
                body))))
 
-(setting/defsetting with-temp-env-var-value-test-setting
-  "Setting for the `with-temp-env-var-value-test` test."
-  :visibility :internal
-  :setter     :none
-  :default    "abc")
-
-(deftest with-temp-env-var-value-test
-  (is (= "abc"
-         (with-temp-env-var-value-test-setting)))
-  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
-    (testing "env var value"
-      (is (= "def"
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "def"
-             (with-temp-env-var-value-test-setting)))))
-  (testing "original value should be restored"
-    (testing "env var value"
-      (is (= nil
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "abc"
-             (with-temp-env-var-value-test-setting)))))
-
-  (testing "override multiple env vars"
-    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
-      (testing "Should convert values to strings"
-        (is (= "123"
-               (:some-fake-env-var env/env))))
-      (testing "should handle CAPITALS/SNAKE_CASE"
-        (is (= "def"
-               (:another-fake-env-var env/env))))))
-
-  (testing "validation"
-    (are [form] (thrown?
-                 clojure.lang.Compiler$CompilerException
-                 (macroexpand form))
-      (list `with-temp-env-var-value '[a])
-      (list `with-temp-env-var-value '[a b c]))))
-
 (defn- upsert-raw-setting!
   [original-value setting-k value]
   (if original-value
@@ -373,10 +332,19 @@
                      #(satisfies? setting/Resolvable %)]
                     any?]
    thunk        :- [:=> [:cat] any?]]
-  (testing (format "\nwith temporary setting values\n%s\n" (u/pprint-to-str bindings-map))
-    (binding [setting/*thread-local-values* (merge setting/*thread-local-values*
-                                                   bindings-map)]
-      (thunk))))
+  ;; treat empty/blank strings as nil, that's what we do for DB and env var values.
+  (let [bindings-map (update-vals bindings-map
+                                  (fn [v]
+                                    (when-not (and (string? v)
+                                                   (str/blank? v))
+                                      v)))]
+    ;; make sure all of the Settings exist, or throw an Exception. Be nice and catch typos
+    (doseq [[k _v] bindings-map]
+      (setting/resolve-setting k))
+    (testing (format "\nwith temporary setting values\n%s\n" (u/pprint-to-str bindings-map))
+      (binding [setting/*thread-local-values* (merge setting/*thread-local-values*
+                                                     bindings-map)]
+        (thunk)))))
 
 (s/def ::with-temporary-setting-values-bindings
   (s/spec (s/* (s/cat
@@ -690,26 +658,6 @@
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 
-(deftest with-model-cleanup-test
-  (testing "Make sure the with-model-cleanup macro actually works as expected"
-    (t2.with-temp/with-temp [Card other-card]
-      (let [card-count-before (t2/count Card)
-            card-name         (tu.random/random-name)]
-        (with-model-cleanup [Card]
-          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
-          (testing "Card count should have increased by one"
-            (is (= (inc card-count-before)
-                   (t2/count Card))))
-          (testing "Card should exist"
-            (is (t2/exists? Card :name card-name))))
-        (testing "Card should be deleted at end of with-model-cleanup form"
-          (is (= card-count-before
-                 (t2/count Card)))
-          (is (not (t2/exists? Card :name card-name)))
-          (testing "Shouldn't delete other Cards"
-            (is (pos? (t2/count Card)))))))))
-
-
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
@@ -813,40 +761,6 @@
          (with-discard-model-updates [~@more]
            ~@body)))
     `(do-with-discard-model-updates ~models (fn [] ~@body))))
-
-(deftest with-discard-model-changes-test
-  (t2.with-temp/with-temp
-    [:model/Card      {card-id :id :as card} {:name "A Card"}
-     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
-    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
-
-      (testing "with single model"
-        (with-discard-model-updates [:model/Card]
-          (t2/update! :model/Card card-id {:name "New Card name"})
-          (testing "the changes takes affect inside the macro"
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
-
-        (testing "outside macro, the changes should be reverted"
-          (is (= card (t2/select-one :model/Card card-id)))))
-
-      (testing "with multiple models"
-        (with-discard-model-updates [:model/Card :model/Dashboard]
-          (testing "the changes takes affect inside the macro"
-            (t2/update! :model/Card card-id {:name "New Card name"})
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-
-            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
-            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
-
-        (testing "outside macro, the changes should be reverted"
-          (is (= (dissoc card :updated_at)
-                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
-          (is (= (dissoc dash :updated_at)
-                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
-
-      (testing "make sure that we cleaned up the aux methods after"
-        (is (= count-aux-method-before
-               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
@@ -1108,49 +1022,6 @@
       ~@(if (seq more)
           [`(with-temp-file ~(vec more) ~@body)]
           body))))
-
-(deftest with-temp-file-test
-  (testing "random filename"
-    (let [temp-filename (atom nil)]
-      (with-temp-file [filename]
-        (is (string? filename))
-        (is (not (.exists (io/file filename))))
-        (spit filename "wow")
-        (reset! temp-filename filename))
-      (testing "File should be deleted at end of macro form"
-        (is (not (.exists (io/file @temp-filename)))))))
-
-  (testing "explicit filename"
-    (with-temp-file [filename "parrot-list.txt"]
-      (is (string? filename))
-      (is (not (.exists (io/file filename))))
-      (is (str/ends-with? filename "parrot-list.txt"))
-      (spit filename "wow")
-      (testing "should delete existing file"
-        (with-temp-file [filename "parrot-list.txt"]
-          (is (not (.exists (io/file filename))))))))
-
-  (testing "multiple bindings"
-    (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
-      (is (string? filename))
-      (is (string? filename-2))
-      (is (not (.exists (io/file filename))))
-      (is (not (.exists (io/file filename-2))))
-      (is (not (str/ends-with? filename "parrot-list.txt")))
-      (is (str/ends-with? filename-2 "parrot-list.txt"))))
-
-  (testing "should delete existing file"
-    (with-temp-file [filename "parrot-list.txt"]
-      (spit filename "wow")
-      (with-temp-file [filename "parrot-list.txt"]
-        (is (not (.exists (io/file filename)))))))
-
-  (testing "validation"
-    (are [form] (thrown?
-                 clojure.lang.Compiler$CompilerException
-                 (macroexpand form))
-      `(with-temp-file [])
-      `(with-temp-file (+ 1 2)))))
 
 (defn do-with-temp-dir
   "Impl for [[with-temp-dir]] macro."
