@@ -21,7 +21,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
@@ -103,7 +102,7 @@
 
 (mu/defn param-target->field-clause :- [:maybe mbql.s/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field 100 nil]]`, and return the field
-   it references (if any)."
+  it references (if any)."
   [target card]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
@@ -111,9 +110,9 @@
             field-form    (if (mbql.u/is-clause? :template-tag dimension)
                             (template-tag->field-form dimension card)
                             dimension)]
-        (if (some? field-form)
-          (unwrap-field-clause field-form)
-          (log/warn (format "Could not find matching Field ID for target: %s from card %d" target (:id card))))))))
+        (when (or (integer? field-form)
+                  (mbql.u/is-clause? :field field-form))
+          (unwrap-field-clause field-form))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

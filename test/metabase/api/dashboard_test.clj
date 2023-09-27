@@ -542,10 +542,9 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (is (= [:warn  nil
-              (format "Could not find matching Field ID for target: [:dimension [:template-tag \"not-existed-filter\"]] from card %d" card-id)]
-             (first (mt/with-log-messages-for-level ['metabase.models.params :warn]
-                      (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id)))))))))))
+      (is (= nil
+             (mt/with-log-messages-for-level ['metabase.models.params :error]
+               (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
 
 (deftest dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/dashboard/:id"
@@ -1791,6 +1790,37 @@
                  (map (partial into {})
                       (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                                  :dashboard_id dashboard-id)))))))))
+
+(deftest can-update-card-parameter-with-legacy-field-and-expression-test
+  (testing "PUT /api/dashboard/:id/cards should works with legacy field forms"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {}]
+      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards        [{:id                     -1
+                                                                :card_id                card-id
+                                                                :row                    0
+                                                                :col                    0
+                                                                :size_x                 4
+                                                                :size_y                 4
+                                                                :parameter_mappings     [{:parameter_id "abc"
+                                                                                          :card_id card-id
+                                                                                          :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
+        (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
+
+  (testing "PUT /api/dashboard/:id/cards should works with expression"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
+      (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                               {:cards        [{:id                     -1
+                                                                :card_id                card-id
+                                                                :row                    0
+                                                                :col                    0
+                                                                :size_x                 4
+                                                                :size_y                 4
+                                                                :parameter_mappings     [{:parameter_id "abc"
+                                                                                          :card_id card-id
+                                                                                          :target [:dimension [:expression "A"]]}]}]}))]
+        (is (some? (t2/select-one :model/DashboardCard (:id (first resp)))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
   (mt/with-temp [Dashboard {dashboard-id :id} {}
