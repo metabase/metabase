@@ -92,7 +92,7 @@ describe("ToggleSidebarFilter", () => {
     expect(switchElement).toHaveAttribute("data-is-checked", "true");
   });
 
-  it("should have the switch unchecked when value is false", () => {
+  it("should have the switch unchecked when value is undefined", () => {
     setup({
       value: undefined,
     });
