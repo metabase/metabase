@@ -55,7 +55,7 @@ export function expressionClause(
 export function isColumnMetadata(
   arg: ExpressionArg | ExpressionParts,
 ): arg is ColumnMetadata {
-  return typeof arg === "object";
+  return typeof arg === "object"; // TODO
 }
 
 export function isStringLiteral(
