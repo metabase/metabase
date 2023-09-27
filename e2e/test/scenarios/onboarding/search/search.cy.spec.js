@@ -60,6 +60,17 @@ const typeFilters = [
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
+const TEST_CREATED_AT_FILTERS = {
+  Today: "thisday",
+  // Yesterday: "past1days",
+  // "Previous Week": "past1weeks",
+  // "Previous 7 Days": "past7days",
+  // "Previous 30 Days": "past30days",
+  // "Previous Month": "past1months",
+  // "Previous 3 Months": "past3months",
+  // "Previous 12 Months": "past12months",
+};
+
 describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
@@ -350,6 +361,33 @@ describe("scenarios > search", () => {
             expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
           },
         );
+      });
+    });
+
+    describe.only("created_at filter", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+      });
+
+      Object.entries(TEST_CREATED_AT_FILTERS).forEach(([label, filter]) => {
+        it(`should hydrate created_at=${filter}`, () => {
+          cy.visit(`/search?q=orders&created_at=${filter}`);
+
+          cy.wait("@search");
+
+          cy.findByTestId("created_at-search-filter").within(() => {
+            cy.findByText(label).should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+        });
+
+        it.only(`should filter results by created_at=${filter}`, () => {
+          cy.visit(`/search?q=orders`);
+          cy.findByTestId("created_at-search-filter").click();
+          popover().within(() => {
+            cy.findByText(label).click();
+          })
+        })
       });
     });
 
