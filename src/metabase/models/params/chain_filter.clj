@@ -487,26 +487,6 @@
                             (get v->human-readable v (get v->human-readable (str v))))
                           values)))
 
-(s/defn ^:private human-readable-values-remapped-chain-filter
-  "Chain filter, but for Fields that have human-readable values defined (e.g. you've went in and specified that enum
-  value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
-  database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- su/IntGreaterThanZero
-   v->human-readable :- HumanReadableRemappingMap
-   constraints       :- (s/maybe ConstraintsMap)
-   options           :- (s/maybe Options)]
-  (let [result (unremapped-chain-filter field-id constraints options)]
-    (update result :values add-human-readable-values v->human-readable)))
-
-(s/defn ^:private field-to-field-remapped-chain-filter
-  "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZero
-   remapped-field-id :- su/IntGreaterThanZero
-   constraints       :- (s/maybe ConstraintsMap)
-   options           :- (s/maybe Options)]
-  (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
-
 (defn- format-union
   "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
   fail on Postgres."
@@ -686,17 +666,6 @@
                               values)
                limit (take limit))
      :has_more_values has_more_values}))
-
-(s/defn ^:private field-to-field-remapped-chain-filter-search
-  "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- su/IntGreaterThanZero
-   remapped-field-id :- su/IntGreaterThanZero
-   constraints       :- (s/maybe ConstraintsMap)
-   query             :- su/NonBlankString
-   options           :- (s/maybe Options)]
-  (unremapped-chain-filter-search remapped-field-id constraints query
-                                  (assoc options :original-field-id original-field-id)))
 
 (s/defn chain-filter-search
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
