@@ -76,6 +76,7 @@ describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
     cy.intercept("GET", "/api/search?q=*").as("search");
+    cy.signInAsAdmin();
   });
 
   describe("universal search", () => {
@@ -176,10 +177,6 @@ describe("scenarios > search", () => {
   });
 
   describe("applying search filters", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-    });
-
     describe("no filters", () => {
       it("hydrating search from URL", () => {
         cy.visit("/search?q=orders");
@@ -280,14 +277,9 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        // Check that we're getting elements other than Questions by checking the
-        // result text and checking if there's more than one result-link-info-text text
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
-            );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+        getNumberOfUniqueResultDescriptions().then(
+          uniqueTypeDescriptionsCount => {
+            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
           },
         );
       });
@@ -302,7 +294,6 @@ describe("scenarios > search", () => {
           cy.createQuestion(question);
         }
         cy.signOut();
-
         cy.signInAsAdmin();
       });
 
@@ -353,24 +344,15 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
         });
 
-        // Check that we're getting elements from other users by checking for other types,
-        // since all assets, for the user we're querying are questions
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
-            );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+        getNumberOfUniqueResultDescriptions().then(
+          uniqueTypeDescriptionsCount => {
+            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
           },
         );
       });
     });
 
     describe("created_at filter", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-      });
-
       Object.entries(TEST_CREATED_AT_FILTERS).forEach(([label, filter]) => {
         it(`should hydrate created_at=${filter}`, () => {
           cy.visit(`/search?q=orders&created_at=${filter}`);
@@ -386,31 +368,60 @@ describe("scenarios > search", () => {
 
       // we can only test the 'today' filter since we currently
       // can't edit the created_at column of a question in our database
-      it(`should filter results by Today (created_at=past1days)`, () => {
-        cy.createQuestion(
-          {
-            name: "Test Question from Today",
-            query: { "source-table": ORDERS_ID },
-          },
-          {
-            interceptAlias: "createQuestion",
-          },
-        );
-
-        cy.visit(`/search?q=e`);
+      it(`should filter results by Today (created_at=thisday)`, () => {
+        cy.visit(`/search?q=Test`);
         cy.findByTestId("created_at-search-filter").click();
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        cy.createQuestion({
+          name: "Test Question from Today",
+          query: { "source-table": ORDERS_ID },
+        });
 
         popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        cy.wait("@search").then(({ response }) => {
-          console.log(response.body);
-        });
-
-        cy.findByTestId("search-result-section").within(() => {
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
           cy.findByText("Test Question from Today").should("exist");
         });
+      });
+
+      it("should remove created_at filter when `X` is clicked on search filter", () => {
+        cy.createQuestion({
+          name: "Test Question from Today",
+          query: { "source-table": ORDERS_ID },
+        });
+
+        cy.visit(`/search?q=Test&created_at=past1days`);
+
+        cy.wait("@search");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByText("Yesterday").should("exist");
+          cy.findByLabelText("close icon").click();
+          cy.findByText("Yesterday").should("not.exist");
+          cy.findByText("Creation date").should("exist");
+        });
+
+        cy.url().should("not.contain", "created_at");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("exist");
+        });
+
+        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
       });
     });
 
@@ -524,4 +535,18 @@ function generateQuestions(prefix, count) {
     query: { "source-table": ORDERS_ID },
     collection_id: null,
   }));
+}
+
+function getNumberOfUniqueResultDescriptions() {
+  return cy
+    .findAllByTestId("result-link-info-text")
+    .then($resultTypeDescriptions => {
+      const uniqueTypeDescriptions = new Set(
+        $resultTypeDescriptions.toArray().map(el => el.textContent),
+      );
+      cy.wrap({
+        uniqueTypeDescriptions,
+        uniqueTypeDescriptionsCount: uniqueTypeDescriptions.size,
+      });
+    });
 }
