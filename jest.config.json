@@ -38,6 +38,7 @@
     "ace": {},
     "ga": {}
   },
+  "reporters": [["github-actions", {"silent": false}], "summary"],
   "coverageDirectory": "./coverage",
   "coverageReporters": ["html", "lcov"],
   "collectCoverageFrom": [
