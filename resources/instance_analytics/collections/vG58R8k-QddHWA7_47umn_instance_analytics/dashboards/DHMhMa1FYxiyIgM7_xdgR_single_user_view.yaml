@@ -1,6 +1,6 @@
 description: Check what a user saw and done
 archived: false
-collection_position: 2
+collection_position: 4
 ordered_cards:
 - size_x: 5
   dashboard_tab_id: null
@@ -53,7 +53,7 @@ ordered_cards:
     column_settings: null
   size_y: 3
   created_at: '2023-06-15T01:39:12.073639Z'
-  row: 2
+  row: 0
 - size_x: 5
   dashboard_tab_id: null
   action_id: null
@@ -105,7 +105,7 @@ ordered_cards:
     column_settings: null
   size_y: 3
   created_at: '2023-06-15T01:39:36.242489Z'
-  row: 2
+  row: 0
 - size_x: 4
   dashboard_tab_id: null
   action_id: null
@@ -157,8 +157,8 @@ ordered_cards:
     column_settings: null
   size_y: 3
   created_at: '2023-06-15T01:41:12.262632Z'
-  row: 2
-- size_x: 4
+  row: 0
+- size_x: 5
   dashboard_tab_id: null
   action_id: null
   col: 14
@@ -209,7 +209,7 @@ ordered_cards:
     column_settings: null
   size_y: 3
   created_at: '2023-06-15T01:41:53.184658Z'
-  row: 2
+  row: 0
 - size_x: 8
   dashboard_tab_id: null
   action_id: null
@@ -261,7 +261,7 @@ ordered_cards:
     column_settings: null
   size_y: 7
   created_at: '2023-06-15T01:50:45.976511Z'
-  row: 17
+  row: 15
 - size_x: 8
   dashboard_tab_id: null
   action_id: null
@@ -313,11 +313,11 @@ ordered_cards:
     column_settings: null
   size_y: 7
   created_at: '2023-06-15T01:54:16.820341Z'
-  row: 17
-- size_x: 4
+  row: 15
+- size_x: 5
   dashboard_tab_id: null
   action_id: null
-  col: 18
+  col: 19
   parameter_mappings:
   - parameter_id: 6b3da96f
     card_id: JPERH6xYVcj3m2Zw0YVY1
@@ -381,7 +381,7 @@ ordered_cards:
     column_settings: null
   size_y: 3
   created_at: '2023-06-15T01:56:53.613044Z'
-  row: 2
+  row: 0
 - size_x: 8
   dashboard_tab_id: null
   action_id: null
@@ -449,38 +449,7 @@ ordered_cards:
     column_settings: null
   size_y: 7
   created_at: '2023-06-15T02:00:30.798995Z'
-  row: 17
-- size_x: 24
-  dashboard_tab_id: null
-  action_id: null
-  col: 0
-  parameter_mappings:
-  - parameter_id: 6b3da96f
-    target:
-    - text-tag
-    - user_id
-  - parameter_id: 4a221c3a
-    target:
-    - text-tag
-    - user_name
-  - parameter_id: d53443e8
-    target:
-    - text-tag
-    - user_email
-  card_id: null
-  entity_id: Tq8aSNDs66PMYOh3hW8v3
-  visualization_settings:
-    virtual_card:
-      name: null
-      display: text
-      visualization_settings: {}
-      dataset_query: {}
-      archived: false
-    text: '# Data from user  Luiz Arakaki'
-    column_settings: null
-  size_y: 2
-  created_at: '2023-06-15T02:02:53.210732Z'
-  row: 0
+  row: 15
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -532,7 +501,7 @@ ordered_cards:
     column_settings: null
   size_y: 6
   created_at: '2023-06-15T02:08:35.62614Z'
-  row: 5
+  row: 3
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -584,7 +553,7 @@ ordered_cards:
     column_settings: null
   size_y: 6
   created_at: '2023-06-15T02:13:22.483217Z'
-  row: 5
+  row: 3
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -636,7 +605,7 @@ ordered_cards:
     column_settings: null
   size_y: 6
   created_at: '2023-06-15T02:29:03.42306Z'
-  row: 11
+  row: 9
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -688,7 +657,7 @@ ordered_cards:
     column_settings: null
   size_y: 6
   created_at: '2023-06-15T02:29:55.706733Z'
-  row: 11
+  row: 9
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
