@@ -139,9 +139,12 @@
         ;; works from uberjar
         (u.files/unzip-file analytics-zip-resource
                             (fn [entry-name]
-                              ;; n.b. This needs to work on absolute and relative file paths
+                              ;; TODO: reconcile how uberjar and ci work
+                              ;; in an uberjar, this path is resources/instance_analytics/
+                              ;; but on CI tests, this path is simply "instance_analytics"
+                              ;; so we match both here.
                               (str/replace entry-name
-                                           "resources/instance_analytics/" ;; works in uberjar!
+                                           #"instance_analytics/|resources/instance_analytics/"
                                            "plugins/instance_analytics/")))
         (log/info "Unzipping complete."))
     dir-resource
