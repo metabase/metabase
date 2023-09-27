@@ -102,12 +102,22 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
+      - name: Install Chrome v111
+        uses: browser-actions/setup-chrome@v1
+        with:
+          # https://chromium.cypress.io/linux/stable/111.0.5563.146
+          chrome-version: 1097615
+        id: setup-chrome
+      - run: |
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
       - name: Upload Cypress Artifacts upon failure
