@@ -1,6 +1,5 @@
 (ns metabase.events.view-log
   (:require
-   [java-time :as t]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util :as u]

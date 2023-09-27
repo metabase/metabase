@@ -1,6 +1,7 @@
 (ns metabase.models.recent-views-test
   (:require
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -26,6 +27,19 @@
 
       (is (= [{:model "card" :model_id 2}]
              (recent-views/user-recent-views (mt/user->id :rasta) 1))))))
+
+(deftest most-recently-viewed-dashboard-id-test
+  (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
+    (clear-test-user-recent-views :rasta)
+    (t2.with-temp/with-temp [:model/RecentViews _ {:model "dashboard"
+                                                   :model_id 1
+                                                   :user_id (mt/user->id :rasta)
+                                                   :timestamp (t/minus (t/zoned-date-time) (t/days 2))}]
+      (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
+
+      (t2.with-temp/with-temp [:model/RecentViews _ {:model "dashboard" :model_id 2 :user_id (mt/user->id :rasta)}
+                               :model/RecentViews _ {:model "dashboard" :model_id 3 :user_id (mt/user->id :rasta)}]
+        (is (= 3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 (deftest update-users-recent-views!-test
   (clear-test-user-recent-views :rasta)

@@ -59,8 +59,8 @@
         (when (seq ids-to-prune)
          (t2/delete! :model/RecentViews :id [:in ids-to-prune]))))))
 
-(defn most-recently-viewed-dashboard
-  "Returns the most recently viewed dashboard for a given user, or `nil` if the user has not viewed any dashboards."
+(defn most-recently-viewed-dashboard-id
+  "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
   [user-id]
   (t2/select-one-fn
    :model_id

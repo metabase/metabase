@@ -1,15 +1,13 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
    [metabase.events :as events]
    [metabase.events.view-log :as view-log]
    [metabase.models :refer [Card Dashboard Table User ViewLog]]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest card-create-test
   (mt/with-temp [User user {}
@@ -119,21 +117,3 @@
       (is (true? (view-log/dismissed-custom-dashboard-toast)))
       (view-log/dismissed-custom-dashboard-toast! false)
       (is (false? (view-log/dismissed-custom-dashboard-toast))))))
-
-(deftest most-recently-viewed-dashboard-test
-  (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
-    (mt/with-model-cleanup [ViewLog]
-      (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
-        (mt/with-test-user :crowberto
-          (is (nil? (view-log/most-recently-viewed-dashboard! nil)))
-          (is (nil? (view-log/most-recently-viewed-dashboard)))
-          (events/publish-event! :event/dashboard-read (assoc dash :actor_id (mt/user->id :crowberto)))
-          (is (= (u/the-id dash)
-                 (view-log/most-recently-viewed-dashboard)))
-          (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
-            (is (string?
-                 (setting/set-value-of-type! :json
-                                             :most-recently-viewed-dashboard
-                                             {:id        (u/the-id dash)
-                                              :timestamp (t/minus (t/zoned-date-time) (t/hours 25))})))
-            (is (nil? (view-log/most-recently-viewed-dashboard)))))))))
