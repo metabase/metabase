@@ -135,14 +135,6 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionArg =
-  | null
-  | boolean
-  | number
-  | string
-  | ColumnMetadata
-  | ExpressionParts;
-
 export type ExpressionOperator =
   | "="
   | "!="
@@ -159,12 +151,19 @@ export type ExpressionOperator =
   | "starts-with"
   | "ends-width"
   | "between"
+  | "interval"
   | "time-interval"
   | "relative-datetime";
 
+export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+
+export type ExpressionClauseArg = ExpressionArg | ExpressionClause;
+
+export type ExpressionPartsArg = ExpressionArg | ExpressionParts;
+
 export type ExpressionParts = {
   operator: ExpressionOperator;
-  args: ExpressionArg[];
+  args: ExpressionPartsArg[];
   options: ExpressionOptions;
 };
 
