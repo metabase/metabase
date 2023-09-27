@@ -46,24 +46,16 @@ describe("scenarios > question > joined questions", () => {
     });
 
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
-    filter();
-    cy.get(".Modal").within(() => {
-      // Temporal compat between MLv1 and MLv2
-      // MLv2 does a better job naming joined tables,
-      // but simple mode filters UI still uses MLv1
-      // Once it's ported, we should just look for "Review"
-      const joinedTable = new RegExp(/Reviews? - Products?/);
-      cy.findByText(joinedTable).click();
-      cy.findByTestId("filter-field-Rating").contains("2").click();
-      cy.button("Apply Filters").click();
-      cy.wait("@dataset");
+    openNotebook();
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Reviews - Product").click();
+      cy.findByText("Rating").click();
+      cy.findByLabelText("2").click();
+      cy.button("Add filter").click();
     });
 
-    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
-
     // Post-join aggregation (metabase#11452):
-    openNotebook();
-
     summarize({ mode: "notebook" });
     addSummaryField({
       metric: "Average of ...",
