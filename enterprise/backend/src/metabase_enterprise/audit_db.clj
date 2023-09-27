@@ -3,18 +3,19 @@
    [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
+   [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,7 +65,7 @@
     (when (= :mysql mdb.env/db-type)
       (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
     (when (= :h2 mdb.env/db-type)
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :name] :name [:lower :name]})
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
       (t2/update! :model/Field
                   {:table_id
                    [:in
@@ -112,14 +113,6 @@
       :else
       ::no-op)))
 
-(defn- map-instance-analytics-files-to-plugins-dir [path]
-  (let [sep File/separatorChar
-        pattern (re-pattern (str ".*" sep "(instance_analytics" sep ".*)"))]
-    (->> path
-         (re-find pattern)
-         second
-         (str "plugins" sep))))
-
 (def analytics-zip-resource
   "A zip file containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics.zip"))
@@ -128,22 +121,28 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn- plug-in-ia-content
+(def plugin-dir
+  "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
+  (plugins/plugins-dir))
+
+(defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
   [zip-resource dir-resource]
   (cond
     zip-resource
-    (do (log/info "Unzipping instance_analytics to plugins...")
-        (u.files/unzip-file
-          analytics-zip-resource
-          map-instance-analytics-files-to-plugins-dir)
+    (do (log/info "Unzipping instance_analytics to " plugin-dir "...")
+        (u.files/unzip-file analytics-zip-resource
+                            (fn [entry-name]
+                              (str/replace entry-name
+                                           "resources/instance_analytics/"
+                                           "plugins/instance_analytics/")))
         (log/info "Unzipping done."))
     dir-resource
     (do
-      (log/info "Copying resources/instance_analytics to plugins...")
-      ;; TODO use clojure.java.io or fs library?
-      (sh/sh "cp" "-r" "resources/instance_analytics" "plugins")
+      (log/info "Copying resources/instance_analytics to " plugin-dir "...")
+      ;; TODO add a recursive copy to u.files
+      (sh/sh "cp" "-r" "resources/instance_analytics" (str plugin-dir))
       (log/info "Copying done."))))
 
 (defenterprise ensure-audit-db-installed!
@@ -163,9 +162,8 @@
            (fn []
              (ee.internal-user/ensure-internal-user-exists!)
              (adjust-audit-db-to-source! audit-db)
-
              (log/info "Loading Analytics Content...")
-             (plug-in-ia-content analytics-zip-resource analytics-dir-resource)
+             (ia-content->plugins analytics-zip-resource analytics-dir-resource)
              (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
              (let [report (log/with-no-logs
