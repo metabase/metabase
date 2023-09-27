@@ -3,7 +3,7 @@ import * as ML from "cljs/metabase.lib.js";
 import { expressionClause } from "./expression";
 import type {
   BooleanFilterParts,
-  ColumnWithOperators,
+  ColumnMetadata,
   ExpressionClause,
   FilterClause,
   NumberFilterParts,
@@ -15,7 +15,7 @@ import type {
 export function filterableColumns(
   query: Query,
   stageIndex: number,
-): ColumnWithOperators[] {
+): ColumnMetadata[] {
   return ML.filterable_columns(query, stageIndex);
 }
 
@@ -37,7 +37,7 @@ export function textFilterClause({
   values,
   options,
 }: TextFilterParts): ExpressionClause {
-  return expressionClause(operator, options, [column, ...values]);
+  return expressionClause(operator, [column, ...values], options);
 }
 
 export function numberFilterClause({
@@ -45,7 +45,7 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return expressionClause(operator, null, [column, ...values]);
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function booleanFilterClause({
@@ -53,7 +53,7 @@ export function booleanFilterClause({
   column,
   values,
 }: BooleanFilterParts): ExpressionClause {
-  return expressionClause(operator, null, [column, ...values]);
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function relativeDateFilterClause({
@@ -65,21 +65,15 @@ export function relativeDateFilterClause({
   options,
 }: RelativeDateFilterParts): ExpressionClause {
   if (offsetValue == null || offsetUnit == null) {
-    return expressionClause("time-interval", options, [column, value, unit]);
+    return expressionClause("time-interval", [column, value, unit], options);
   }
 
-  return expressionClause("between", null, [
-    expressionClause("+", null, [
+  return expressionClause("between", [
+    expressionClause("+", [
       column,
-      expressionClause("interval", null, [-offsetValue, offsetUnit]),
+      expressionClause("interval", [-offsetValue, offsetUnit]),
     ]),
-    expressionClause("relative-datetime", null, [
-      value < 0 ? value : 0,
-      offsetUnit,
-    ]),
-    expressionClause("relative-datetime", null, [
-      value > 0 ? value : 0,
-      offsetUnit,
-    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, offsetUnit]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, offsetUnit]),
   ]);
 }

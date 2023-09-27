@@ -5,6 +5,7 @@ import type {
   ExpressionClause,
   ExpressionOperator,
   ExpressionOptions,
+  ExpressionParts,
   FilterClause,
   Query,
 } from "./types";
@@ -37,18 +38,14 @@ export function expressionParts(
   query: Query,
   stageIndex: number,
   clause: ExpressionClause | FilterClause,
-) {
+): ExpressionParts {
   return ML.expression_parts(query, stageIndex, clause);
 }
 
 export function expressionClause(
   operator: ExpressionOperator,
-  options: ExpressionOptions | null,
   args: (ExpressionArg | ExpressionClause)[],
+  options: ExpressionOptions | null = null,
 ): ExpressionClause {
-  return ML.expression_clause(operator, options, args);
-}
-
-export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
+  return ML.expression_clause(operator, args, options);
 }

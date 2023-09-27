@@ -58,11 +58,6 @@ export type Limit = number | null;
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
-declare const ColumnWithOperators: unique symbol;
-export type ColumnWithOperators = ColumnMetadata & {
-  _opaque: typeof ColumnWithOperators;
-};
-
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 

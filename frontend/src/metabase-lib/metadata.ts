@@ -167,3 +167,7 @@ export function visibleColumns(
 ): ColumnMetadata[] {
   return ML.visible_columns(query, stageIndex);
 }
+
+export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.is_column_metadata(arg);
+}
