@@ -66,7 +66,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   };
 
   return (
-    <Stack py="0.5rem">
+    <Stack>
       {getFilter(SearchFilterKeys.Type)}
       {getFilter(SearchFilterKeys.CreatedBy)}
       {getFilter(SearchFilterKeys.Verified)}

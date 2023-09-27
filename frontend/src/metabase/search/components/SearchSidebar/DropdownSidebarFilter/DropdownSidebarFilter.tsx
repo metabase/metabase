@@ -101,6 +101,7 @@ export const DropdownSidebarFilter = ({
       ref={dropdownRef}
       onClick={() => setIsPopoverOpen(!isPopoverOpen)}
       w="100%"
+      mt={fieldHasValue ? "0.25rem" : 0}
     >
       <DropdownFieldSet
         noPadding
