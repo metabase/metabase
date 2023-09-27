@@ -47,7 +47,7 @@
 (defn do-with-temporary-global-setting-value
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value + test-helpers-set-global-values!")
+  (mb.hawk.parallel/assert-test-is-not-parallel `do-with-temporary-global-setting-value)
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
@@ -107,7 +107,7 @@
     ;; make sure all of the Settings exist, or throw an Exception. Be nice and catch typos
     (doseq [[k _v] bindings-map]
       (setting/resolve-setting k))
-    (testing (format "\nwith temporary setting values\n%s\n" (u/pprint-to-str bindings-map))
+    (testing (format "\nwith temporary (thread-local) Setting values\n%s\n" (u/pprint-to-str bindings-map))
       (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
                                                            bindings-map))]
         (thunk)))))

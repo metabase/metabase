@@ -31,6 +31,10 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with MBQL source-query"

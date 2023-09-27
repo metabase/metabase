@@ -75,9 +75,10 @@
 (defn- handle-conn-uri [details user account private-key-file]
   (let [existing-conn-uri (or (:connection-uri details)
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
-        opts-str (sql-jdbc.common/additional-opts->string :url
-                                                          {:user (codec/url-encode user)
-                                                           :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
+        opts-str (sql-jdbc.common/additional-opts->string
+                  :url
+                  {:user (codec/url-encode user)
+                   :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)

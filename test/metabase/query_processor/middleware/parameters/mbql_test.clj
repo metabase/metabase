@@ -9,6 +9,10 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 (defn- expand-parameters [query]
   (let [query (mbql.normalize/normalize query)]
     (qp.store/with-metadata-provider (mt/id)
@@ -94,10 +98,6 @@
 (deftest ^:parallel date-ranges-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that date ranges work correctly"
-      ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
-      ;; results
-      (when (= :snowflake driver/*driver*)
-        (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (= [[29]]
              (mt/formatted-rows [int]
                (qp/process-query

@@ -23,7 +23,7 @@
         ;; might exist
         (when (initialize/initialized? :db)
           (initialize/initialize-if-needed! :plugins)
-          (#'driver/notify-all-databases-updated))
+          (#'driver/notify-all-databases-updated!))
         (try
           (TimeZone/setDefault new-timezone)
           (System/setProperty "user.timezone" timezone-id)

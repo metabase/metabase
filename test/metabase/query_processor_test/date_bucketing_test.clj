@@ -1105,17 +1105,17 @@
                                                                 "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
-  [[3        :day             "2014-03-03"]
-   [135      :day-of-week     1]
-   [36       :day-of-month    1]
-   [9        :day-of-year     214]
-   [11       :week            "2014-03-03"]
-   [7        :week-of-year    2]
-   [48       :month           "2014-03"]
-   [38       :month-of-year   1]
-   [107      :quarter         "2014-01"]
-   [200      :quarter-of-year 1]
-   [498      :year            "2014"]])
+  [[3   :day             "2014-03-03"]
+   [135 :day-of-week     1]
+   [36  :day-of-month    1]
+   [9   :day-of-year     214]
+   [11  :week            "2014-03-03"]
+   [7   :week-of-year    2]
+   [48  :month           "2014-03"]
+   [38  :month-of-year   1]
+   [107 :quarter         "2014-01"]
+   [200 :quarter-of-year 1]
+   [498 :year            "2014"]])
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst

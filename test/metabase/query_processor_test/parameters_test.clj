@@ -15,6 +15,10 @@
    [metabase.util.date-2 :as u.date]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 (defn- run-count-query [query]
   (or (ffirst
        (mt/formatted-rows [int]

@@ -15,6 +15,10 @@
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [report-timezone "UTC"]
+                        (thunk))))
+
 ;; TIMEZONE FIXME
 (def broken-drivers
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
@@ -53,7 +57,10 @@
                  {:fields   [$id $last_login]
                   :filter   [:= $id 10 12]
                   :order-by [[:asc $last_login]]})))
-          "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
+          "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))))
+
+(deftest ^:parallel result-rows-test-2
+  (mt/dataset test-data-with-timezones
     (mt/test-drivers (set-timezone-drivers)
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
                                                       [10 "2014-07-03T19:30:00Z"]]

@@ -23,7 +23,7 @@
 
 (declare notify-database-updated)
 
-(defn- notify-all-databases-updated
+(defn- notify-all-databases-updated!
   "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
 
   Currently only used below by [[report-timezone]] setter (i.e., only used when report timezone changes). Reusing
@@ -54,10 +54,11 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :default "UTC"
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+    (notify-all-databases-updated!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -678,13 +679,20 @@
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release ALL related resources when this is called."
+  release related resources as needed when this is called."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod notify-database-updated ::driver [_ _]
-  nil) ; no-op
+;;; no-op
+(defmethod notify-database-updated ::driver
+  [driver database]
+  (log/debugf "%s: %d Database %d %s updated"
+              `driver/notify-database-updated
+              driver
+              (:id database)
+              (pr-str (:name database)))
+  nil)
 
 (defmulti sync-in-context
   "Drivers may provide this function if they need to do special setup before a sync operation such as
