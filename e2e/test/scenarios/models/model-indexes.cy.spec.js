@@ -194,8 +194,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Doohickey");
     });
 
-    // for some reason we hit this endpoint twice on initial load
-    expectCardQueries(2);
+    expectCardQueries(1);
 
     cy.get("body").type("{esc}");
 
@@ -212,7 +211,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Upton, Kovacek and Halvorson");
     });
 
-    expectCardQueries(2);
+    expectCardQueries(1);
   });
 });
 
