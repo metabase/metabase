@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-db
   (:require
+   [babashka.fs :as fs]
    [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
@@ -125,25 +126,29 @@
   "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
   (plugins/plugins-dir))
 
+(def instance-analytics-plugin-dir
+  (fs/path plugin-dir "instance_analytics"))
+
+;; in uberjar:
+#_{:entry    "/Users/bcm/dv/mb/metabase/resources/instance_analytics/collections/vG58R8k-QddHWA7_47umn_instance_analytics/vG58R8k-QddHWA7_47umn_instance_analytics.yaml"
+ :out-file "/Users/bcm/dv/mb/metabase/resources/plugins/instance_analytics/collections/vG58R8k-QddHWA7_47umn_plugins/instance_analytics/vG58R8k-QddHWA7_47umn_instance_analytics.yaml"}
+
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
   [zip-resource dir-resource]
-  (cond
-    zip-resource
-    (do (log/info "Unzipping instance_analytics to " plugin-dir "...")
-        (u.files/unzip-file analytics-zip-resource
-                            (fn [entry-name]
-                              (str/replace entry-name
-                                           "instance_analytics/"
-                                           (str "plugins" "/instance_analytics/"))))
-        (log/info "Unzipping done."))
-    dir-resource
-    (do
-      (log/info "Copying resources/instance_analytics to " plugin-dir "...")
-      ;; TODO add a recursive copy to u.files
-      (sh/sh "cp" "-r" "resources/instance_analytics" (str plugin-dir))
-      (log/info "Copying done."))))
+  ;; if the zip file is there, unzip it 'in place' to where the resources usually are:
+  (when zip-resource
+    (log/info "Unzipping instance_analytics.zip to resources/instance_analytics")
+    (fs/unzip analytics-zip-resource)
+    (log/info "Unzipping complete."))
+  ;; the resources should be there now, so copy them to be loaded.
+  (when-let [dir-resource (io/resource "instance_analytics")]
+    (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " plugin-dir))
+    (fs/copy-tree (u.files/relative-path (fs/path analytics-dir-resource))
+                  (u.files/relative-path instance-analytics-plugin-dir)
+                  {:replace-existing true})
+    (log/info "Copying complete.")))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
