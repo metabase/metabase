@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.activity :as activity :refer [Activity]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.recent-views :as recent-views]
    [methodical.core :as methodical]
@@ -17,15 +16,15 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic object]
-  (audit-log/record-event! topic object))
+  [topic card]
+  (audit-log/record-event! topic card))
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
 
 (methodical/defmethod events/publish-event! ::card-read-event
-  [topic {id :id}]
-  (audit-log/record-event! topic {} api/*current-user-id* :model/Card id))
+  [topic card]
+  (audit-log/record-event! topic card))
 
 (derive ::card-query-event ::event)
 (derive :event/card-query ::card-query-event)
@@ -43,8 +42,8 @@
 (derive :event/dashboard-delete ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic object]
-  (audit-log/record-event! topic object))
+  [topic dashboard]
+  (audit-log/record-event! topic dashboard))
 
 (derive ::dashboard-card-event ::event)
 (derive :event/dashboard-add-cards ::dashboard-card-event)
@@ -110,8 +109,8 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
-  [topic object]
-  (audit-log/record-event! topic object))
+  [topic segment]
+  (audit-log/record-event! topic segment))
 
 (derive ::user-joined-event ::event)
 (derive :event/user-joined ::user-joined-event)
@@ -126,6 +125,6 @@
 (derive :event/install ::install-event)
 
 (methodical/defmethod events/publish-event! ::install-event
-  [_topic _event]
-  (when-not (t2/exists? Activity :topic "install")
-    (t2/insert! Activity, :topic "install", :model "install")))
+  [topic _event]
+  (when-not (t2/exists? :model/AuditLog :topic "install")
+    (audit-log/record-event! topic {})))
