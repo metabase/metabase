@@ -99,16 +99,20 @@ function ActionCreator({
     ui: UIProps,
     patchAction,
     patchFormSettings,
-    setAction,
+    // setAction,
     renderEditorBody,
   } = useActionContext();
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
+  const [skipUnsavedChangesWarning, setSkipUnsavedChangesWarning] =
+    useState(false);
 
   const isEditable = isNew || (model != null && model.canWriteActions());
   const [actionToSubmit, scheduleSubmitAction] = useState<WritebackAction>();
 
-  useBeforeUnload(!route && isEditable && isDirty);
+  const showUnsavedChangesWarning =
+    isEditable && isDirty && !skipUnsavedChangesWarning;
+  useBeforeUnload(!route && showUnsavedChangesWarning);
 
   useEffect(() => {
     /**
@@ -132,8 +136,9 @@ function ActionCreator({
       visualization_settings: formSettings,
     } as WritebackQueryAction);
 
+    setSkipUnsavedChangesWarning(true);
     const createdAction = Actions.HACK_getObjectFromAction(reduxAction);
-    setAction(createdAction); // sync the editor state
+    // setAction(createdAction); // sync the editor state
     scheduleSubmitAction(createdAction);
 
     setShowSaveModal(false);
@@ -147,8 +152,9 @@ function ActionCreator({
         visualization_settings: formSettings,
       });
 
+      setSkipUnsavedChangesWarning(true);
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
-      setAction(updatedAction); // sync the editor state
+      // setAction(updatedAction); // sync the editor state
       scheduleSubmitAction(updatedAction);
     }
   };
@@ -200,7 +206,7 @@ function ActionCreator({
 
       {route && (
         <LeaveConfirmationModal
-          isEnabled={isEditable && isDirty}
+          isEnabled={showUnsavedChangesWarning}
           route={route}
         />
       )}
