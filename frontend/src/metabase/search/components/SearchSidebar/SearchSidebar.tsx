@@ -25,22 +25,8 @@ const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
-  const isValidFilterValue = (
-    key: FilterTypeKeys,
-    filterValue: SearchQueryParamValue,
-  ): boolean => {
-    if (!filterValue || !filterMap[key]) {
-      return false;
-    }
-
-    if (Array.isArray(filterValue)) {
-      return filterValue.length > 0;
-    }
-    return true;
-  };
-
   const onOutputChange = (key: FilterTypeKeys, val: SearchQueryParamValue) => {
-    if (!isValidFilterValue(key, val)) {
+    if (!val) {
       onChange(_.omit(value, key));
     } else {
       const filterMapElement = filterMap[key];
