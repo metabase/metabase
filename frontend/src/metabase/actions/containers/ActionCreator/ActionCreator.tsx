@@ -114,7 +114,7 @@ function ActionCreator({
   useEffect(() => {
     /**
      * onSubmit and onClose are called in an effect so that
-     * showUnsavedChangesWarning has a chance to recompute on re-render
+     * showUnsavedChangesWarning has a chance to re-compute on re-render
      */
     if (actionToSubmit) {
       onSubmit?.(actionToSubmit);
