@@ -357,7 +357,8 @@ export type Expression =
       ExpressionOperand,
       ExpressionOperand,
       ExpressionOperand,
-    ];
+    ]
+  | ConcreteFieldReference;
 
 type ExpressionOperator = string;
 type ExpressionOperand =

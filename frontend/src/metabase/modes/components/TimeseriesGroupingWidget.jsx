@@ -30,7 +30,9 @@ export default class TimeseriesGroupingWidget extends Component {
       return (
         <PopoverWithTrigger
           triggerElement={
-            <SelectButton hasValue>{dimension.subDisplayName()}</SelectButton>
+            <SelectButton hasValue dataTestId="time-series-grouping">
+              {dimension.subDisplayName()}
+            </SelectButton>
           }
           triggerClasses="my2"
           ref={ref => (this._popover = ref)}
