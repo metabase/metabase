@@ -538,16 +538,12 @@
    (dissoc options :session-timezone)
    (fn [^java.sql.Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (let [read-only? (not write?)]
-         ;; in H2, setting readOnly to true doesn't prevent writes
-         ;; see https://github.com/h2database/h2database/issues/1163
-         (.setReadOnly conn read-only?)
-         ;; it seems like sometimes even when we try to make the Connection read-write it doesn't work. Log it at least
-         ;; so we can be sad about it
-         (when-not (= (.isReadOnly conn) read-only?)
-           (log/debugf "Failed to set H2 Connection read-only to %s; (.setReadOnly conn %s) had no effect"
-                       (pr-str read-only?)
-                       (pr-str read-only?)))))
+       ;; in H2, setting readOnly to true doesn't prevent writes
+       ;; see https://github.com/h2database/h2database/issues/1163
+       ;;
+       ;; it seems like sometimes even when we try to make the Connection read-only or read-write it doesn't work. So
+       ;; this is a best-effort thing I guess.
+       (.setReadOnly conn (not write?)))
      (f conn))))
 
 ;; de-CLOB any CLOB values that come back
