@@ -737,12 +737,6 @@
         ;; into keep this number as low as we can
         (is (= 16 (call-count)))))))
 
-(deftest search-models-test
-  (testing "Should get at least a card model when a card exists"
-    (mt/with-temp
-      [Card _ {:name "test card"}]
-        (is (some #{"card"} (mt/user-http-request :crowberto :get 200 "search/models"))))))
-
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
@@ -761,3 +755,9 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
+
+(deftest search-models-test
+  (testing "Should get at least a card model when a card exists"
+    (mt/with-temp
+      [Card _ {:name "test card"}]
+      (is (some #{"card"} (mt/user-http-request :crowberto :get 200 "search/models"))))))
