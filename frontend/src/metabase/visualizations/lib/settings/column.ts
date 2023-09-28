@@ -45,7 +45,7 @@ export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
 }: VisualizationSettingDefinition<Series> & {
-  getColumns: GetColumns;
+  getColumns?: GetColumns;
 }): VisualizationSettingsDefinitions<Series> {
   return nestedSettings<DatasetColumn>("column_settings", {
     section: t`Formatting`,

@@ -95,8 +95,9 @@ export type VisualizationSettingDefinition<
   TObject = unknown,
   TValue = unknown,
   TProps = unknown,
+  TExtra = any,
 > = {
-  widget?: WidgetName | React.ComponentType<TProps>;
+  widget?: WidgetName | any; // FIXME: setting this to React.ComponentType<TProps> didn’t seem to work
   inline?: boolean;
   useRawSeries?: boolean;
   group?: string;
@@ -112,54 +113,54 @@ export type VisualizationSettingDefinition<
   getDefault?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => TValue;
   persistDefault?: boolean;
 
   getValue?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => TValue;
   isValid?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => boolean;
 
   section?: string;
   getSection?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => string;
 
   title?: string;
   getTitle?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => string;
 
   hidden?: boolean;
   getHidden?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => boolean;
 
   marginBottom?: string;
   getMarginBottom?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => string;
 
   disabled?: boolean;
   getDisabled?: (
     object: TObject,
     settings: VisualizationSettings,
-    extra: unknown,
+    extra: TExtra,
   ) => boolean;
 
   props?: TProps;
@@ -167,15 +168,15 @@ export type VisualizationSettingDefinition<
     object: TObject,
     settings: VisualizationSettings,
     onChange: (value: TValue) => void,
-    extra: unknown,
+    extra: TExtra,
   ) => TProps;
   getExtraProps?: (
     object: TObject,
     settings: VisualizationSettings,
     onChange: (value: TValue) => void,
-    extra: unknown,
+    extra: TExtra,
   ) => TProps;
-  onUpdate?: (value: TValue, extra: unknown) => void;
+  onUpdate?: (value: TValue, extra: TExtra) => void;
 };
 
 export type VisualizationSettingsDefinitions<TObject = unknown> = {
@@ -187,7 +188,7 @@ export type VisualizationSettingsDefinitions<TObject = unknown> = {
 
 // returned by getSettingWidget
 export type VisualizationSettingWidget<TObject, TValue> =
-  VisualizationSettingDefinition<TObject, TValue, unknown> & {
+  VisualizationSettingDefinition<TObject, TValue> & {
     id: string;
     value: TValue;
     set: boolean;

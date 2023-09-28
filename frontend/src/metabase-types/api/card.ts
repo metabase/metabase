@@ -14,6 +14,8 @@ import type {
   PublicDatasetQuery,
 } from "./query";
 import type { UserInfo } from "./user";
+import type { ClickBehavior } from "metabase-types/api/click-behavior";
+import type { ActionDisplayType } from "metabase-types/api/actions";
 
 export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
@@ -241,6 +243,9 @@ export type BasicVisualizationSettings = {
   currency_in_header?: boolean;
   show_mini_bar?: boolean;
   _numberFormatter?: any;
+
+  click_behavior?: ClickBehavior;
+  actionDisplayType?: ActionDisplayType;
 
   // options are also mixed in
 } & NumberFormatOptions &

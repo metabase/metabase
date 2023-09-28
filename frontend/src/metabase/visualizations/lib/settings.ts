@@ -15,7 +15,10 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingsDefinitions,
+  WidgetName,
+} from "metabase/visualizations/types";
 import type {
   TransformedSeries,
   VisualizationSettingId,
@@ -23,7 +26,7 @@ import type {
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
-const WIDGETS = {
+const WIDGETS: Record<WidgetName, any> = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
@@ -185,10 +188,7 @@ function getSettingWidget(
         : {}),
     },
     set: settingId in storedSettings,
-    widget:
-      typeof settingDef.widget === "string"
-        ? WIDGETS[settingDef.widget]
-        : settingDef.widget,
+    widget: WIDGETS[settingDef.widget as WidgetName] ?? settingDef.widget,
     onChange,
     onChangeSettings, // this gives a widget access to update other settings
   };
