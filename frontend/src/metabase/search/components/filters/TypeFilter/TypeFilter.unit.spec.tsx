@@ -1,9 +1,8 @@
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import type { EnabledSearchModelType } from "metabase-types/api";
-import { checkNotNull } from "metabase/core/utils/types";
 
-const fromUrl = checkNotNull(TypeFilter.fromUrl);
-const toUrl = checkNotNull(TypeFilter.toUrl);
+const fromUrl = TypeFilter.fromUrl;
+const toUrl = TypeFilter.toUrl;
 
 describe("fromUrl", () => {
   it("should return an array with a single valid type when the input exactly matches a type", () => {
@@ -54,16 +53,16 @@ describe("toUrl", () => {
     expect(result).toEqual(["collection", "dashboard"]);
   });
 
-  it("should return an empty array when the input array is empty", () => {
+  it("should return undefined when the input array is empty", () => {
     const types: EnabledSearchModelType[] = [];
     const result = toUrl(types);
-    expect(result).toEqual([]);
+    expect(result).toEqual(undefined);
   });
 
-  it("should return an empty array when the input is undefined", () => {
+  it("should return undefined when the input is undefined", () => {
     const types = undefined;
     const result = toUrl(types);
-    expect(result).toEqual([]);
+    expect(result).toEqual(undefined);
   });
 
   it("should return an array with a single valid type when the input array has one valid type", () => {

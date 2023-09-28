@@ -41,11 +41,9 @@ const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
 const TestTypeFilterComponent = ({
   initialValue = [],
   onChangeFilters,
-  onApplyFilters,
 }: {
   initialValue?: EnabledSearchModelType[];
   onChangeFilters: jest.Mock;
-  onApplyFilters: jest.Mock;
 }) => {
   const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
 
@@ -54,13 +52,7 @@ const TestTypeFilterComponent = ({
     setValue(selectedValues);
   };
 
-  return (
-    <TypeFilterContent
-      value={value}
-      onChange={onChange}
-      onApply={onApplyFilters}
-    />
-  );
+  return <TypeFilterContent value={value} onChange={onChange} />;
 };
 
 const TEST_DATABASE = createMockDatabase({
@@ -87,12 +79,10 @@ const setup = async ({
   );
 
   const onChangeFilters = jest.fn();
-  const onApplyFilters = jest.fn();
 
   renderWithProviders(
     <TestTypeFilterComponent
       onChangeFilters={onChangeFilters}
-      onApplyFilters={onApplyFilters}
       initialValue={initialValue}
     />,
   );
@@ -102,7 +92,6 @@ const setup = async ({
 
   return {
     onChangeFilters,
-    onApplyFilters,
   };
 };
 
@@ -153,10 +142,10 @@ describe("TypeFilterContent", () => {
 
     for (let i = 0; i < options.length; i++) {
       userEvent.click(options[i]);
-      expect(onChangeFilters).toHaveReturnedTimes(i + 1);
     }
 
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
+    userEvent.click(screen.getByText("Apply filters"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
 
@@ -168,15 +157,8 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
+    userEvent.click(screen.getByText("Apply filters"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
-  });
-
-  it("calls onApply when 'Apply Filters' selected", async () => {
-    const { onApplyFilters } = await setup();
-
-    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
-    expect(onApplyFilters).toHaveBeenCalled();
   });
 });

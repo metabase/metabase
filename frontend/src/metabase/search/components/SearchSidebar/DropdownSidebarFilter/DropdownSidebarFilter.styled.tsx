@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
-import type { ButtonProps } from "metabase/ui";
-import { Button, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -45,12 +43,6 @@ export const DropdownFieldSet = styled(FieldSet)<{
 
 export const DropdownDisplayContent = styled(Group)`
   overflow: hidden;
-`;
-
-export const DropdownClearButton = styled(Button)<
-  ButtonProps & HTMLAttributes<HTMLButtonElement>
->`
-  pointer-events: all;
 `;
 
 export const SearchEventSandbox = styled(EventSandbox)`

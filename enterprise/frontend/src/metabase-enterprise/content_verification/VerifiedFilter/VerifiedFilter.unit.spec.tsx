@@ -1,8 +1,7 @@
-import { checkNotNull } from "metabase/core/utils/types";
 import { VerifiedFilter } from "./VerifiedFilter";
 
-const fromUrl = checkNotNull(VerifiedFilter.fromUrl);
-const toUrl = checkNotNull(VerifiedFilter.toUrl);
+const fromUrl = VerifiedFilter.fromUrl;
+const toUrl = VerifiedFilter.toUrl;
 
 describe("fromUrl", () => {
   it('should convert "true" string to boolean true', () => {

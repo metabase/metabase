@@ -1,5 +1,8 @@
 import { t } from "ttag";
-import type { SearchFilterComponent } from "metabase/search/types";
+import type {
+  SearchFilterComponent,
+  TypeFilterProps,
+} from "metabase/search/types";
 import { TypeFilterContent } from "metabase/search/components/filters/TypeFilter/TypeFilterContent";
 import { TypeFilterDisplay } from "metabase/search/components/filters/TypeFilter/TypeFilterDisplay";
 import type { EnabledSearchModelType } from "metabase-types/api";
@@ -19,5 +22,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = {
     }
     return isEnabledSearchModelType(value) ? [value] : [];
   },
-  toUrl: value => value,
+  toUrl: (value?: TypeFilterProps) => {
+    return !value || value.length > 0 ? value : undefined;
+  },
 };
