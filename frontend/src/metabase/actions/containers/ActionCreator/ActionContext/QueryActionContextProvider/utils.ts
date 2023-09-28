@@ -99,26 +99,27 @@ export const areActionsEqual = (
 
   return (
     _.isEqual(action1Rest, action2Rest) &&
-    /**
-     * TODO: do not use "value" attribute in this context.
-     *
-     * The "value" attribute of a parameter is needed only when running the action.
-     * It should not be present when creating/editing the action.
-     * @see https://github.com/metabase/metabase/pull/31891/files#r1295701954
-     */
     _.isEqual(
-      parametersWithoutValue(action1Parameters),
-      parametersWithoutValue(action2Parameters),
+      getActionCrudParameters(action1Parameters),
+      getActionCrudParameters(action2Parameters),
     )
   );
 };
 
-const parametersWithoutValue = (parameters?: WritebackParameter[]) => {
+/**
+ * The presence of "value" and "hasVariableTemplateTagTarget" attributes
+ * is due to Question usage in QueryActionContextProvider.
+ * They are not useful in the context of creating/editing actions.
+ * Note: "value" is used when running the action though.
+ *
+ * @see https://github.com/metabase/metabase/pull/28031
+ */
+const getActionCrudParameters = (parameters?: WritebackParameter[]) => {
   if (!parameters) {
     return parameters;
   }
 
   return parameters.map(parameter => {
-    return _.omit(parameter, "value");
+    return _.omit(parameter, ["value", "hasVariableTemplateTagTarget"]);
   });
 };

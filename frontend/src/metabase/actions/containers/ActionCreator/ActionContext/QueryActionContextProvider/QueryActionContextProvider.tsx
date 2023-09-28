@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import _ from "underscore";
 
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 
@@ -106,17 +107,7 @@ function convertQuestionToAction(
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     type: "query" as const,
-    visualization_settings: {
-      name: "",
-      type: "button" as const,
-      description: "",
-      confirmMessage: "",
-      successMessage: "",
-      ...formSettings,
-      fields: {
-        ...formSettings.fields,
-      },
-    },
+    visualization_settings: formSettings,
   };
 
   // Include id and description only when they're not undefined.
@@ -155,15 +146,19 @@ function QueryActionContextProvider({
     initialAction?.visualization_settings || {},
   );
 
+  const originalAction = initialAction || newEmptyAction;
+
   const [question, setQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
   );
 
   const query = useMemo(() => question.query() as NativeQuery, [question]);
 
-  const [formSettings, setFormSettings] = useState(
-    getDefaultFormSettings(initialAction?.visualization_settings),
+  const originalFormSettings = getDefaultFormSettings(
+    originalAction.visualization_settings,
   );
+
+  const [formSettings, setFormSettings] = useState(originalFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -218,11 +213,15 @@ function QueryActionContextProvider({
     [query, handleQueryChange],
   );
 
-  const originalAction = initialAction || newEmptyAction;
-  const isDirty = useMemo(
-    () => !areActionsEqual(action, originalAction),
-    [action, originalAction],
-  );
+  const isDirty = useMemo(() => {
+    const isActionDirty = !areActionsEqual(
+      _.omit(action, "visualization_settings"),
+      _.omit(originalAction, "visualization_settings"),
+    );
+    const areFormSettingsDirty = !_.isEqual(formSettings, originalFormSettings);
+
+    return isActionDirty || areFormSettingsDirty;
+  }, [action, originalAction, formSettings, originalFormSettings]);
 
   const value = useMemo(
     (): ActionContextType => ({
