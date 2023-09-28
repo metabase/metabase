@@ -275,9 +275,12 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        getNumberOfUniqueResultDescriptions().then(
-          ({ uniqueTypeDescriptionsCount }) => {
-            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
+        cy.findAllByTestId("result-link-info-text").then(
+          $resultTypeDescriptions => {
+            const uniqueTypeDescriptions = new Set(
+              $resultTypeDescriptions.toArray().map(el => el.textContent),
+            );
+            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
           },
         );
       });
@@ -345,9 +348,12 @@ describe("scenarios > search", () => {
 
         // Check that we're getting elements from other users by checking for other types,
         // since all assets, for the user we're querying are questions
-        getNumberOfUniqueResultDescriptions().then(
-          ({ uniqueTypeDescriptionsCount }) => {
-            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
+        cy.findAllByTestId("result-link-info-text").then(
+          $resultTypeDescriptions => {
+            const uniqueTypeDescriptions = new Set(
+              $resultTypeDescriptions.toArray().map(el => el.textContent),
+            );
+            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
           },
         );
       });
@@ -539,17 +545,4 @@ function generateQuestions(prefix, count) {
     query: { "source-table": ORDERS_ID },
     collection_id: null,
   }));
-}
-
-function getNumberOfUniqueResultDescriptions() {
-  return cy
-    .findAllByTestId("result-link-info-text")
-    .then($resultTypeDescriptions => {
-      const uniqueTypeDescriptions = new Set(
-        $resultTypeDescriptions.toArray().map(el => el.textContent),
-      );
-      cy.wrap({
-        uniqueTypeDescriptionsCount: uniqueTypeDescriptions.size,
-      });
-    });
 }
