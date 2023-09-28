@@ -126,22 +126,6 @@ export function describeTemporalUnit(
   return ML.describe_temporal_unit(n, unit);
 }
 
-type IntervalAmount = number | "current" | "next" | "last";
-
-export function describeTemporalInterval(
-  n: IntervalAmount,
-  unit?: string,
-): string {
-  return ML.describe_temporal_interval(n, unit);
-}
-
-export function describeRelativeDatetime(
-  n: IntervalAmount,
-  unit?: string,
-): string {
-  return ML.describe_relative_datetime(n, unit);
-}
-
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   tableID: number | string,
@@ -166,8 +150,4 @@ export function visibleColumns(
   stageIndex: number,
 ): ColumnMetadata[] {
   return ML.visible_columns(query, stageIndex);
-}
-
-export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
 }

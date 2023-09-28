@@ -154,14 +154,15 @@ export type ExpressionOperator =
   | "time-interval"
   | "relative-datetime";
 
-export type TemporalUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year";
+export enum TemporalUnit {
+  minute = "minute",
+  hour = "hour",
+  day = "day",
+  week = "week",
+  quarter = "quarter",
+  month = "month",
+  year = "year",
+}
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
