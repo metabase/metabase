@@ -52,6 +52,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -742,6 +743,39 @@
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(declare with-discard-model-updates)
+
+(defn do-with-discard-model-updates
+  "Impl for `with-discard-model-changes`."
+  [models thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
+  (if (= (count models) 1)
+   (let [model             (first models)
+         pk->original      (atom {})
+         method-unique-key (str (random-uuid))
+         before-method-fn  (fn [_model row]
+                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             row)]
+     (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
+     (try
+      (thunk)
+      (finally
+       (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
+       (doseq [[id orignal-val] @pk->original]
+         (t2/update! model id orignal-val)))))
+   (with-discard-model-updates (rest models)
+     (thunk))))
+
+(defmacro with-discard-model-updates
+  "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
+  [models & body]
+  (if (> (count models) 1)
+    (let [[model & more] models]
+      `(with-discard-model-updates [~model]
+         (with-discard-model-updates [~@more]
+           ~@body)))
+    `(do-with-discard-model-updates ~models (fn [] ~@body))))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")

@@ -42,7 +42,7 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-type CollectionItemModel =
+export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"

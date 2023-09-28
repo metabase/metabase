@@ -57,21 +57,20 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 function mapStateToProps(state, props) {
   const uploadDbId = getSetting(state, "uploads-database-id");
   const uploadsEnabled = getSetting(state, "uploads-enabled");
-  const canAccessUploadsDb =
-    uploadsEnabled &&
+  const canUploadToDb =
     uploadDbId &&
     Databases.selectors
       .getObject(state, {
         entityId: uploadDbId,
       })
-      ?.canWrite();
+      ?.canUpload();
 
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
     uploadsEnabled,
-    canAccessUploadsDb,
+    canUploadToDb,
   };
 }
 
@@ -95,7 +94,7 @@ function CollectionContent({
   openNavbar,
   uploadFile,
   uploadsEnabled,
-  canAccessUploadsDb,
+  canUploadToDb,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -106,7 +105,7 @@ function CollectionContent({
   });
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
-  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
@@ -205,8 +204,7 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
-  const canUpload =
-    uploadsEnabled && canAccessUploadsDb && collection.can_write;
+  const canUpload = uploadsEnabled && canUploadToDb && collection.can_write;
 
   const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
@@ -293,7 +291,7 @@ function CollectionContent({
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {
-                      toggleAll(unselected);
+                      selectOnlyTheseItems(unpinnedItems);
                     };
 
                     const loading = loadingPinnedItems || loadingUnpinnedItems;

@@ -95,6 +95,10 @@ class Database {
     return this.native_permissions === "write";
   }
 
+  canUpload() {
+    return this.can_upload;
+  }
+
   isPersisted() {
     return this.hasFeature("persist-models-enabled");
   }

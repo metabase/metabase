@@ -24,6 +24,7 @@
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def ^:private JoinWithOptionalAlias
@@ -62,7 +63,12 @@
     (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
     :mbql/join
-    (u/assoc-dissoc field-or-joinable :alias join-alias)))
+    (u/assoc-dissoc field-or-joinable :alias join-alias)
+
+    ;; this should not happen (and cannot happen in CLJ land)
+    ;; but it does seem to happen in JS land with broken MLv1 queries
+    (do (log/error "with-join-value should not be called with" (pr-str field-or-joinable))
+        field-or-joinable)))
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."

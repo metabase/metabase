@@ -306,6 +306,7 @@
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.2.164"}
     io.github.metabase/hawk            {:sha "70611745e3cb8b95d5793a88581d5c330148715b"}
+    org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     ;; Forcibly targeting a newer release than ships by default with shadow-cljs 2.20.20.
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}

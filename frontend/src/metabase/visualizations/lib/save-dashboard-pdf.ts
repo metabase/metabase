@@ -21,6 +21,11 @@ export const saveDashboardPdf = async (
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      const title = doc.createElement("h2") as HTMLElement;
+      title.innerHTML = dashboardName;
+      title.style["borderBottom"] = `1px solid ${color("border")}`;
+      title.style["paddingBottom"] = "1rem";
+      node.insertBefore(title, node.firstChild);
     },
   });
 
@@ -38,11 +43,6 @@ export const saveDashboardPdf = async (
   });
 
   pdf.addImage(image, "JPEG", 0, 60, imageWidth, imageHeight, "", "FAST", 0);
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(color("text-dark"));
-  pdf.text(dashboardName, 32, 40);
-  pdf.setDrawColor(color("border"));
-  pdf.line(32, 52, imageWidth - 32, 52, "S");
 
   pdf.save(fileName);
 };

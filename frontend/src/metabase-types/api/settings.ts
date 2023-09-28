@@ -175,6 +175,7 @@ export interface SettingDefinition {
   env_name?: string;
   is_env_setting: boolean;
   value?: unknown;
+  default?: unknown;
 }
 
 export interface OpenAiModel {

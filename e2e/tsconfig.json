@@ -2,7 +2,7 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": "./",
-    "types": ["cypress", "@testing-library/cypress"],
+    "types": ["cypress", "@testing-library/cypress", "cypress-real-events"],
     "paths": {
       "*": ["../frontend/src/*"],
       "e2e/*": ["./*"]

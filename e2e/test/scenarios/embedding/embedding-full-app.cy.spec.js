@@ -3,6 +3,11 @@ import {
   popover,
   appBar,
   restore,
+  navigationSidebar,
+  getDashboardCard,
+  createTextCard,
+  closeNavigationSidebar,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -18,23 +23,26 @@ describe("scenarios > embedding > full app", () => {
 
   describe("home page navigation", () => {
     it("should hide the top nav when nothing is shown", () => {
-      visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+      visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { side_nav: false, logo: false },
+      });
       appBar().should("not.exist");
     });
 
     it("should show the top nav by default", () => {
-      visitUrl({ url: "/" });
+      visitFullAppEmbeddingUrl({ url: "/" });
       appBar().should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
     });
 
     it("should hide the top nav by a param", () => {
-      visitUrl({ url: "/", qs: { top_nav: false } });
+      visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
       appBar().should("not.exist");
     });
 
     it("should not hide the top nav when the logo is still visible", () => {
-      visitUrl({
+      visitFullAppEmbeddingUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { breadcrumbs: false },
       });
@@ -45,7 +53,7 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
-      visitUrl({
+      visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
           logo: false,
@@ -60,7 +68,7 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should show the top nav by a param", () => {
-      visitUrl({ url: "/" });
+      visitFullAppEmbeddingUrl({ url: "/" });
       appBar().should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
       appBar().within(() => {
@@ -70,7 +78,7 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the side nav by a param", () => {
-      visitUrl({ url: "/", qs: { side_nav: false } });
+      visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
       appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
       });
@@ -79,21 +87,21 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should show question creation controls by a param", () => {
-      visitUrl({ url: "/", qs: { new_button: true } });
+      visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       appBar().within(() => {
         cy.button(/New/).should("be.visible");
       });
     });
 
     it("should show search controls by a param", () => {
-      visitUrl({ url: "/", qs: { search: true } });
+      visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
       appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
     });
 
     it("should preserve params when navigating", () => {
-      visitUrl({ url: "/", qs: { search: true } });
+      visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
 
       appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
@@ -112,7 +120,10 @@ describe("scenarios > embedding > full app", () => {
 
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
-      visitUrl({ url: "/browse", qs: { side_nav: false, logo: false } });
+      visitFullAppEmbeddingUrl({
+        url: "/browse",
+        qs: { side_nav: false, logo: false },
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our data").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -179,7 +190,7 @@ describe("scenarios > embedding > full app", () => {
       });
 
       it("should allow to create a new question from the navbar (metabase#21511)", () => {
-        visitUrl({
+        visitFullAppEmbeddingUrl({
           url: "/collection/root",
           qs: { top_nav: true, new_button: true, side_nav: false },
         });
@@ -203,7 +214,7 @@ describe("scenarios > embedding > full app", () => {
           visualization_settings: {},
         };
 
-        visitUrl({
+        visitFullAppEmbeddingUrl({
           url: `/question#${adhocQuestionHash(newQuestionQuery)}`,
           qs: { side_nav: false },
         });
@@ -302,6 +313,64 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByTestId("main-logo").should("be.visible");
     });
+
+    it("should have parameters header occupied the entire horizontal space when visiting a dashboard via navigation (metabase#30645)", () => {
+      const dashboardDetails = {
+        name: "interactive dashboard embedding",
+        parameters: [
+          {
+            id: "50c9eac6",
+            name: "ID",
+            slug: "id",
+            type: "id",
+          },
+        ],
+      };
+      cy.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboardId } }) => {
+          const card = createTextCard({
+            col: 0,
+            row: 0,
+            size_x: 6,
+            size_y: 20,
+            text: "I am a very long text card",
+          });
+          updateDashboardCards({ dashboard_id: dashboardId, cards: [card] });
+        },
+      );
+
+      visitFullAppEmbeddingUrl({ url: "/" });
+
+      cy.log("Navigate to a dashboard via in-app navigation");
+      navigationSidebar().findByText("Our analytics").click();
+      cy.findByRole("main").findByText(dashboardDetails.name).click();
+      closeNavigationSidebar();
+      navigationSidebar().findByText("Our analytics").should("not.be.visible");
+
+      cy.get("main header")
+        .findByText(dashboardDetails.name)
+        .should("be.visible");
+      getDashboardCard()
+        .findByText("I am a very long text card")
+        .should("be.visible");
+
+      // The bug won't appear if we scroll instantly and check the position of the dashboard parameter header.
+      // I suspect that happens because we used to calculate the dashboard parameter header position in JavaScript,
+      // which could take some time.
+      const FPS = 1000 / 60;
+      cy.findByRole("main").scrollTo("bottom", { duration: 2 * FPS });
+
+      getDashboardCard()
+        .findByText("I am a very long text card")
+        .should("not.be.visible");
+      cy.findByTestId("dashboard-parameters-widget-container").then(
+        $dashboardParameters => {
+          const dashboardParametersRect =
+            $dashboardParameters[0].getBoundingClientRect();
+          expect(dashboardParametersRect.x).to.equal(0);
+        },
+      );
+    });
   });
 
   describe("x-ray dashboards", () => {
@@ -326,7 +395,7 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitUrl = ({ url, qs }) => {
+const visitFullAppEmbeddingUrl = ({ url, qs }) => {
   cy.visit({
     url,
     qs,
@@ -339,18 +408,18 @@ const visitUrl = ({ url, qs }) => {
 };
 
 const visitQuestionUrl = urlOptions => {
-  visitUrl(urlOptions);
+  visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
 const visitDashboardUrl = urlOptions => {
-  visitUrl(urlOptions);
+  visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
 const visitXrayDashboardUrl = urlOptions => {
-  visitUrl(urlOptions);
+  visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
 

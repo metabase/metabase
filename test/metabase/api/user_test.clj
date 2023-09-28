@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -10,9 +11,10 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-set]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -60,34 +62,93 @@
 
 (deftest user-list-test
   (testing "GET /api/user"
-    (testing "Check that anyone can get a list of all active Users"
+    (testing "Check that admins can get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :crowberto)
-                 :email       "crowberto@metabase.com"
-                 :first_name  "Crowberto"
-                 :last_name   "Corv"
-                 :common_name "Crowberto Corv"}
-                {:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}
-                {:id          (mt/user->id :rasta)
-                 :email       "rasta@metabase.com"
-                 :first_name  "Rasta"
-                 :last_name   "Toucan"
-                 :common_name "Rasta Toucan"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                    (filter mt/test-user?))))))
-    (testing "Get list of users with a query"
+        (let [result (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
+                          (filter mt/test-user?))]
+          ;; since this is an admin, all keys are available on each user
+          (is (= (set (concat
+                       user/admin-or-self-visible-columns
+                       [:common_name :group_ids :personal_collection_id]))
+                 (->> result first keys set)))
+          ;; just make sure all users are there by checking the emails
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> result (map :email) set))))
+        (testing "with a query"
+          (is (= "lucky@metabase.com"
+                 (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
+    (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user" :query "lUck") :data)
-                    (filter mt/test-user?))))))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user")))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
+
+(deftest user-list-for-group-managers-test
+  (testing "Group Managers"
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (t2.with-temp/with-temp
+          [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
+           :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+           :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+        (testing "admin can get users from any group"
+          (is (= #{"lucky@metabase.com"
+                   "rasta@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set)))
+          (is (= #{"lucky@metabase.com"
+                   "crowberto@metabase.com"}
+                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
+                      (filter mt/test-user?)
+                      (map :email)
+                      set))))
+        (testing "member but non-manager cannot get users"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
+        (testing "manager of a different group cannot get users from groups they're not a member of"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+        (if config/ee-available?
+          ;; Group management is an EE feature
+          (testing "manager can get users from their groups"
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (testing "see users from all groups the user manages"
+              (is (= #{"lucky@metabase.com"
+                       "rasta@metabase.com"
+                       "crowberto@metabase.com"}
+                     (->> ((mt/user-http-request :lucky :get 200 "user") :data)
+                          (filter mt/test-user?)
+                          (map :email)
+                          set)))))
+          ;; In OSS, non-admins have no way to see users, because group management is an EE feature
+          (testing "in OSS, non-admins have no way to get users"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id1)))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "user")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "user")))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
@@ -126,7 +187,7 @@
                             (map :email))))))))))))
 
 (deftest user-recipients-list-ee-test
-  (premium-features-set/with-premium-features #{:email-restrict-recipients}
+  (premium-features-test/with-premium-features #{:email-restrict-recipients}
     (testing "GET /api/user/recipients"
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [crowberto "crowberto@metabase.com"
@@ -319,11 +380,11 @@
       (is (= (t2/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
-      (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
+      (let [first-three-users (:data (mt/user-http-request :crowberto :get 200 "user" :limit "3", :offset "0"))]
         (is (= 3
                (count first-three-users)))
         (is (= (drop 1 first-three-users)
-               (:data (mt/user-http-request :rasta :get 200 "user" :limit "2", :offset "1") :data)))))))
+               (:data (mt/user-http-request :crowberto :get 200 "user" :limit "2", :offset "1") :data)))))))
 
 (deftest get-current-user-test
   (testing "GET /api/user/current"

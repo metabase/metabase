@@ -7,15 +7,14 @@
 
 ;;;; Pre-processing
 
-(defn- diff-indecies
+(defn- diff-indices
   "Given two sequential collections, return indecies that are different between the two."
   [coll-1 coll-2]
-  (->> (map not= coll-1 coll-2)
-       (map-indexed (fn [i transformed?]
-                      (when transformed?
-                        i)))
-       (filter identity)
-       set))
+  (into #{}
+        (keep-indexed (fn [i transformed?]
+                        (when transformed?
+                          i)))
+        (map not= coll-1 coll-2)))
 
 (s/defn ^:private replace-cumulative-ags :- mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
@@ -28,18 +27,18 @@
 
 (defn rewrite-cumulative-aggregations
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
-  information about the indecies of the replaced aggregations under the `::replaced-indecies` key."
+  information about the indecies of the replaced aggregations under the `::replaced-indices` key."
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
   (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
     query
     (let [query'            (replace-cumulative-ags query)
           ;; figure out which indexes are being changed in the results. Since breakouts always get included in
           ;; results first we need to offset the indexes to change by the number of breakouts
-          replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
-                                                        (-> query' :query :aggregation))]
-                                   (+ (count breakouts) i)))]
+          replaced-indices (set (for [i (diff-indices (-> query  :query :aggregation)
+                                                      (-> query' :query :aggregation))]
+                                  (+ (count breakouts) i)))]
       (cond-> query'
-        (seq replaced-indecies) (assoc ::replaced-indecies replaced-indecies)))))
+        (seq replaced-indices) (assoc ::replaced-indices replaced-indices)))))
 
 
 ;;;; Post-processing
@@ -59,7 +58,7 @@
    :else
    (recur more last-row (update (vec row) index (partial (fnil + 0 0) (nth last-row index))))))
 
-(defn- cumulative-ags-xform [replaced-indecies rf]
+(defn- cumulative-ags-xform [replaced-indices rf]
   {:pre [(fn? rf)]}
   (let [last-row (volatile! nil)]
     (fn
@@ -68,15 +67,15 @@
       ([result] (rf result))
 
       ([result row]
-       (let [row' (add-values-from-last-row replaced-indecies @last-row row)]
+       (let [row' (add-values-from-last-row replaced-indices @last-row row)]
          (vreset! last-row row')
          (rf result row'))))))
 
 (defn sum-cumulative-aggregation-columns
   "Post-processing middleware. Sum the cumulative count aggregations that were rewritten
   by [[rewrite-cumulative-aggregations]] in Clojure-land."
-  [{::keys [replaced-indecies]} rff]
-  (if (seq replaced-indecies)
+  [{::keys [replaced-indices]} rff]
+  (if (seq replaced-indices)
     (fn sum-cumulative-aggregation-columns-rff* [metadata]
-      (cumulative-ags-xform replaced-indecies (rff metadata)))
+      (cumulative-ags-xform replaced-indices (rff metadata)))
     rff))

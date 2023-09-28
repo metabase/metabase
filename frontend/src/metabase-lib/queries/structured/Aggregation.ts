@@ -156,24 +156,7 @@ export default class Aggregation extends MBQLClause {
    * Predicate function to test if a given aggregation clause is valid
    */
   isValid() {
-    if (this.hasOptions()) {
-      return this.aggregation().isValid();
-    } else if (this.isStandard() && this.dimension()) {
-      const dimension = this.dimension()?.getMLv1CompatibleDimension();
-      const aggregationOperator = this.query().aggregationOperator(this[0]);
-      return (
-        aggregationOperator &&
-        (!aggregationOperator.requiresField ||
-          this.query()
-            .aggregationFieldOptions(aggregationOperator)
-            .hasDimension(dimension))
-      );
-    } else if (this.isMetric()) {
-      return !!this.metric();
-    } else {
-      // FIXME: custom aggregation validation
-      return true;
-    }
+    return true;
   }
 
   // There are currently 3 "classes" of aggregations that are handled differently, "standard", "segment", and "custom"

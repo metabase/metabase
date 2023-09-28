@@ -38,6 +38,10 @@ title: Driver interface changelog
 - The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
   of a set.
 
+- The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
+  `database` argument for the arity which previously had one argument. This function might be used in the implementation
+  of a driver's multimethods.
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look

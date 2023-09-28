@@ -194,6 +194,10 @@ const SAML_ATTRS = [
   "saml-attribute-email",
   "saml-attribute-firstname",
   "saml-attribute-lastname",
+  "saml-identity-provider-uri",
+  "saml-identity-provider-issuer",
+  "saml-identity-provider-certificate",
+  "saml-application-name",
 ];
 
 const getAttributeValues = (values, defaults) => {

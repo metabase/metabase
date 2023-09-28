@@ -18,7 +18,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > x-rays", () => {
+describe("scenarios > x-rays", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -106,10 +106,12 @@ describe("scenarios > x-rays", () => {
       });
 
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15655").click();
+
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("15655").click();
+      });
+
       visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
@@ -119,14 +121,14 @@ describe("scenarios > x-rays", () => {
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Automatic insights…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(action).click();
+      popover().within(() => {
+        cy.findByText("Automatic insights…").click();
+        cy.findByText(action).click();
+      });
 
-      for (let c = 0; c < XRAY_DATASETS; ++c) {
-        cy.wait("@postDataset");
-      }
+      cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
+        timeout: 15 * 1000,
+      });
 
       cy.wait("@xray").then(xhr => {
         expect(xhr.response.body.cause).not.to.exist;
