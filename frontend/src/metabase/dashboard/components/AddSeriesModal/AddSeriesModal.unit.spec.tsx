@@ -8,9 +8,12 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import registerVisualizations from "metabase/visualizations/register";
 
 import type { Props as AddSeriesModalProps } from "./AddSeriesModal";
 import { AddSeriesModal } from "./AddSeriesModal";
+
+registerVisualizations();
 
 const displayColumnName = "Birthday";
 
