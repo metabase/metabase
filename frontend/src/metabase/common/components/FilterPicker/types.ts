@@ -1,10 +1,15 @@
-import type { ColumnMetadata, FilterClause, Query } from "metabase-lib/types";
+import type {
+  ColumnMetadata,
+  FilterClause,
+  ExpressionClause,
+  Query,
+} from "metabase-lib/types";
 
 export interface FilterPickerWidgetProps {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
   filter?: FilterClause;
-  onChange: (filter: FilterClause) => void;
+  onChange: (filter: ExpressionClause) => void;
   onBack: () => void;
 }
