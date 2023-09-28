@@ -100,9 +100,9 @@
 
 (methodical/defmethod events/publish-event! ::user-deactivated-event
   [topic object]
-  {:pre [(pos-int? (:updater object))]}
-  (let [{:keys [updater deactivated-user]} object]
-   (audit-log/record-event! topic object updater :model/User (:id deactivated-user))))
+  {:pre [(pos-int? (:deactivator object))]}
+  (let [{:keys [deactivator deactivated-user]} object]
+   (audit-log/record-event! topic object deactivator :model/User (:id deactivated-user))))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)

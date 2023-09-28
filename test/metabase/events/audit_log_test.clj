@@ -372,3 +372,37 @@
               :model_id    (mt/user->id :rasta)
               :details     {}}
              (event "user-joined" (mt/user->id :rasta)))))))
+
+(deftest user-update-event-test
+ (testing :event/user-update
+  (mt/with-model-cleanup [Activity]
+    (let [event {:updater (mt/user->id :rasta)
+                 :changes {:id        (mt/user->id :lucky)
+                           :last_name "Charms"}}]
+      (is (= event (events/publish-event! :event/user-update event))))
+    (is (= {:model_id (mt/user->id :lucky)
+            :user_id  (mt/user->id :rasta)
+            :details  {:updater (mt/user->id :rasta) :changes {:id        (mt/user->id :lucky)
+                                                               :last_name "Charms"}}
+            :topic    :user-update
+            :model    "User"}
+     (event :user-update (mt/user->id :lucky)))))))
+
+(deftest user-deactivated-event-test
+ (testing :event/user-deactivated
+  (mt/with-model-cleanup [Activity]
+    (let [event {:deactivator      (mt/user->id :rasta)
+                 :deactivated-user {:id         (mt/user->id :lucky)
+                                    :first_name "Lucky"
+                                    :last_name  "Toucan"}}]
+    (is (= event (events/publish-event! :event/user-deactivated event))))
+    (is (= {:model_id (mt/user->id :lucky)
+            :user_id  (mt/user->id :rasta)
+            :details
+            {:deactivator      (mt/user->id :rasta)
+             :deactivated-user {:id (mt/user->id :lucky)
+                                :first_name "Lucky"
+                                :last_name "Toucan"}}
+            :topic    :user-deactivated
+            :model    "User"}
+     (event :user-deactivated (mt/user->id :lucky)))))))
