@@ -1,11 +1,18 @@
 import type React from "react";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  Card,
+  DatasetQuery,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { UpdateQuestionOpts } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/Question";
 import type {
   ClickActionProps,
   OnChangeCardAndRun,
 } from "metabase-lib/queries/drills/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export type {
   ClickActionProps,
@@ -106,11 +113,25 @@ export const isQuestionChangeClickAction = (
   clickAction: ClickAction,
 ): clickAction is QuestionChangeClickAction => "question" in clickAction;
 
-export const AlwaysDefaultClickAction = (
+export const isAlwaysDefaultClickAction = (
   clickAction: ClickAction,
 ): clickAction is AlwaysDefaultClickAction =>
   "defaultAlways" in clickAction && clickAction.defaultAlways;
 
 export const isRegularClickAction = (
   clickAction: ClickAction,
-): clickAction is RegularClickAction => !AlwaysDefaultClickAction(clickAction);
+): clickAction is RegularClickAction =>
+  !isAlwaysDefaultClickAction(clickAction);
+
+export interface ModeFooterComponentProps {
+  lastRunCard: Card;
+  question: Question;
+  query: StructuredQuery;
+  className?: string;
+
+  updateQuestion: (newQuestion: Question, options?: UpdateQuestionOpts) => void;
+  setDatasetQuery: (
+    datasetQuery: DatasetQuery,
+    options?: UpdateQuestionOpts,
+  ) => void;
+}
