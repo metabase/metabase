@@ -1,4 +1,5 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { TEMPORAL_UNITS } from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -154,15 +155,7 @@ export type ExpressionOperator =
   | "time-interval"
   | "relative-datetime";
 
-export enum TemporalUnit {
-  minute = "minute",
-  hour = "hour",
-  day = "day",
-  week = "week",
-  quarter = "quarter",
-  month = "month",
-  year = "year",
-}
+export type TemporalUnit = typeof TEMPORAL_UNITS[number];
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 

@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { TEMPORAL_UNITS } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import type {
   BooleanFilterParts,
@@ -10,9 +11,9 @@ import type {
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
+  TemporalUnit,
   TextFilterParts,
 } from "./types";
-import { TemporalUnit } from "./types";
 
 export function filterableColumns(
   query: Query,
@@ -106,7 +107,8 @@ function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
 }
 
 function isTemporalUnit(arg: unknown): arg is TemporalUnit {
-  return typeof arg === "string" && arg in TemporalUnit;
+  const units: ReadonlyArray<string> = TEMPORAL_UNITS;
+  return typeof arg === "string" && units.includes(arg);
 }
 
 function isExpression(arg: unknown): arg is ExpressionParts {
@@ -163,7 +165,11 @@ function relativeDateFilterPartsWithOffset({
   }
 
   const [column, intervalParts] = offsetParts.args;
-  if (!isColumnMetadata(column) || !isExpression(intervalParts)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isExpression(intervalParts) ||
+    intervalParts.operator !== "interval"
+  ) {
     return null;
   }
 
