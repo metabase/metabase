@@ -5,7 +5,7 @@ import { FilterPopover } from "metabase/query_builder/components/filters/FilterP
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
 
-function FilterStep({
+export function FilterStep({
   query,
   color,
   isLastOpened,
@@ -35,6 +35,3 @@ function FilterStep({
     />
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FilterStep;
