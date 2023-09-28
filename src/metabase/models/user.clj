@@ -170,13 +170,17 @@
       email       (update :email u/lower-case-en))))
 
 (defn add-common-name
-  "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
+  "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
+  The key will only be added if `user` contains the required keys to derive it correctly."
   [{:keys [first_name last_name email], :as user}]
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
     (cond-> user
-      common-name (assoc :common_name common-name))))
+      (and (contains? user :first_name)
+           (contains? user :last_name)
+           common-name)
+      (assoc :common_name common-name))))
 
 (t2/define-after-select :model/User
   [user]

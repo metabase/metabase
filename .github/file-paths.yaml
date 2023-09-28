@@ -64,7 +64,6 @@ backend_all: &backend_all
   - *ci
   - *backend_sources
   - *backend_specs
-  - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
   - *shared_sources

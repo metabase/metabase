@@ -28,14 +28,18 @@
   (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 (api/defendpoint GET "/"
-  "Fetch all alerts"
+  "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
+  The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [archived user_id]
   {archived [:maybe ms/BooleanString]
    user_id  [:maybe ms/PositiveInt]}
-  (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
-                                :user-id   user_id}) <>
-    (filter mi/can-read? <>)
-    (t2/hydrate <> :can_write)))
+  (let [user-id (if api/*is-superuser?*
+                  user_id
+                  api/*current-user-id*)]
+    (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
+                                  :user-id   user-id}) <>
+      (filter mi/can-read? <>)
+      (t2/hydrate <> :can_write))))
 
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
@@ -45,7 +49,7 @@
       (t2/hydrate :can_write)))
 
 (api/defendpoint GET "/question/:id"
-  "Fetch all questions for the given question (`Card`) id"
+  "Fetch all alerts for the given question (`Card`) id"
   [id archived]
   {id       [:maybe ms/PositiveInt]
    archived [:maybe ms/BooleanString]}
