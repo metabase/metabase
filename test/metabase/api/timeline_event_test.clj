@@ -72,7 +72,7 @@
     (mt/with-temp [Collection    collection {:name "Example Data"}
                    Timeline      timeline   {:name          "Some Events"
                                              :collection_id (u/the-id collection)}
-                   TimelineEvent event      {:name        "Example Event"
+                   TimelineEvent {event-id :id}      {:name        "Example Event"
                                              :timeline_id (u/the-id timeline)}]
       (let [event-id (u/the-id event)]
         (testing "delete the timeline-event by `id`"
