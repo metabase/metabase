@@ -1,6 +1,6 @@
 description: Each row describes one user event
 archived: false
-collection_position: 3
+collection_position: 5
 table_id:
 - Internal Metabase Database
 - public
@@ -51,13 +51,13 @@ result_metadata:
   fingerprint:
     global:
       distinct-count: 3
-      nil%: 0.0
+      nil%: 0
     type:
       type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
+        percent-json: 0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
         average-length: 13.3124
   base_type: type/Text
 - description: null
@@ -84,7 +84,7 @@ result_metadata:
   fingerprint:
     global:
       distinct-count: 9999
-      nil%: 0.0
+      nil%: 0
     type:
       type/DateTime:
         earliest: '2015-10-24T15:03:46.941Z'
@@ -113,14 +113,14 @@ result_metadata:
   fingerprint:
     global:
       distinct-count: 1
-      nil%: 1.0
+      nil%: 1
     type:
       type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
-        average-length: 0.0
+        percent-json: 0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
+        average-length: 0
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -149,10 +149,10 @@ result_metadata:
       nil%: 0.0208
     type:
       type/Number:
-        min: 1.0
+        min: 1
         q1: 1.1751828410841485
         q3: 135.79773790552096
-        max: 161.0
+        max: 161
         sd: 63.12930913321324
         avg: 60.00071486928105
   base_type: type/Integer
@@ -179,13 +179,13 @@ result_metadata:
   fingerprint:
     global:
       distinct-count: 3
-      nil%: 0.0
+      nil%: 0
     type:
       type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
+        percent-json: 0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
         average-length: 6.186
   base_type: type/Text
 - description: null
@@ -211,13 +211,13 @@ result_metadata:
   fingerprint:
     global:
       distinct-count: 773
-      nil%: 0.0
+      nil%: 0
     type:
       type/Number:
-        min: 1.0
+        min: 1
         q1: 17.00948990804476
         q3: 6017.086550431709
-        max: 37846.0
+        max: 37846
         sd: 5704.15845424433
         avg: 3276.8677
   base_type: type/Text
@@ -248,9 +248,9 @@ result_metadata:
     type:
       type/Text:
         percent-json: 0.5246
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
         average-length: 18.6105
   base_type: type/Text
 database_id: Internal Metabase Database
