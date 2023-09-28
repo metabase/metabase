@@ -73,8 +73,9 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
 export const SearchInput = styled.input<{ isActive: boolean }>`
   background-color: transparent;
   border: none;
-  color: ${color("text-dark")};
+  color: ${({ theme }) => theme.colors.text[2]};
   font-weight: 700;
+  font-size: 0.875rem;
 
   width: 100%;
 
@@ -83,7 +84,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   }
 
   &::placeholder {
-    color: ${color("text-dark")};
+    color: ${({ theme }) => theme.colors.text[2]};
   }
 
   ${breakpointMinSmall} {
