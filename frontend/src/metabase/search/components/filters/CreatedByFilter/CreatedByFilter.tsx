@@ -11,15 +11,15 @@ export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   ContentComponent: CreatedByContent,
   fromUrl: value => {
     if (!value || Array.isArray(value)) {
-      return undefined;
+      return null;
     }
     const numValue = Number(value);
 
     if (!numValue || isNaN(numValue) || numValue <= 0) {
-      return undefined;
+      return null;
     }
 
     return numValue;
   },
-  toUrl: value => (Number.isInteger(value) ? String(value) : undefined),
+  toUrl: value => (Number.isInteger(value) ? String(value) : null),
 };

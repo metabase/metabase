@@ -18,31 +18,31 @@ describe("fromUrl", () => {
     expect(undefinedResult).toBeNull();
   });
 
-  it("should return undefined when userId is 0", () => {
+  it("should return null when userId is 0", () => {
     const userId = "0";
     const result = fromUrl(userId);
     expect(result).toBeNull();
   });
 
-  it("should return undefined when userId is a negative number", () => {
+  it("should return null when userId is a negative number", () => {
     const userId = "-1";
     const result = fromUrl(userId);
     expect(result).toBeNull();
   });
 
-  it("should return undefined when userId is a string that cannot be converted to a number", () => {
+  it("should return null when userId is a string that cannot be converted to a number", () => {
     const userId = "abc";
     const result = fromUrl(userId);
     expect(result).toBeNull();
   });
 
-  it("should return undefined when userId is an empty string", () => {
+  it("should return null when userId is an empty string", () => {
     const userId = "";
     const result = fromUrl(userId);
     expect(result).toBeNull();
   });
 
-  it("should return undefined when userId is an array", () => {
+  it("should return null when userId is an array", () => {
     const userId = ["123"];
     const result = fromUrl(userId);
     expect(result).toBeNull();
@@ -56,7 +56,7 @@ describe("toUrl", () => {
     expect(result).toBe("1");
   });
 
-  it("should return undefined if the input is undefined", () => {
+  it("should return null if the input is null", () => {
     const userId = undefined;
     const result = toUrl(userId);
     expect(result).toBeNull();
