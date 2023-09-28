@@ -240,8 +240,7 @@
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values
-  with-user-in-groups
-  with-verified-cards]
+  with-user-in-groups]
 
  [tu.async
   wait-for-result

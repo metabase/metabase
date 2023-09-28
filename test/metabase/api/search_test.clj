@@ -786,7 +786,7 @@
                  (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
 
 (deftest models-table-db-id-test
-  (testing "search request includes `table-db-id` param"
+  (testing "search/models request includes `table-db-id` param"
     (with-search-items-in-root-collection "Available models"
       (testing "`table-db-id` is invalid"
         (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
@@ -794,6 +794,6 @@
       (testing "`table-db-id` is for a non-existent database"
         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
-      (testing "`table-db-id` is for an existing databse"
+      (testing "`table-db-id` is for an existing database"
         (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
