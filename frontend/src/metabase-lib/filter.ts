@@ -15,6 +15,7 @@ import type {
   ExpressionClause,
   ExpressionParts,
   FilterClause,
+  FilterParts,
   NumberFilterParts,
   NumberOperator,
   Query,
@@ -383,4 +384,19 @@ export function isExcludeDateFilter(
   filterClause: FilterClause,
 ): boolean {
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function filterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): FilterParts | null {
+  return (
+    stringFilterParts(query, stageIndex, filterClause) ??
+    numberFilterParts(query, stageIndex, filterClause) ??
+    booleanFilterParts(query, stageIndex, filterClause) ??
+    specificDateFilterParts(query, stageIndex, filterClause) ??
+    relativeDateFilterParts(query, stageIndex, filterClause) ??
+    excludeDateFilterParts(query, stageIndex, filterClause)
+  );
 }
