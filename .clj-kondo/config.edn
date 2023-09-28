@@ -65,12 +65,6 @@
     metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase\\.db\\.data-migrations"]}
     metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase\\.db\\.data-migrations"]}
     metabase.db.data-migrations/run-migration-if-needed!                         {:namespaces ["metabase\\.db\\.data-migrations"]}
-    metabase.driver.common/ThreadSafeSimpleDateFormat                            {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/create-db-time-formatters                             {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time                                       {:namespaces ["metabase.*"]}
-    metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
@@ -150,38 +144,7 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
-   toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}
-   toucan.db/select                                   {:message "Use t2/select instead of toucan.db/select"}
-   toucan.db/select-one                               {:message "Use t2/select-one instead of toucan.db/select-one"}
-   toucan.db/select-one-id                            {:message "Use t2/select-one-pk instead of toucan.db/select-one-id"}
-   toucan.db/select-one-field                         {:message "Use t2/select-one-fn instead of toucan.db/select-one-field"}
-   toucan.db/select-ids                               {:message "Use t2/select-pks-set instead of toucan.db/select-ids"}
-   toucan.db/select-field                             {:message "Use t2/select-fn instead of toucan.db/select-field"}
-   toucan.db/select-field->field                      {:message "Use t2/select-fn->fn instead of toucan.db/select-field->field"}
-   toucan.db/select-field->id                         {:message "Use t2/select-fn->pk instead of toucan.db/select-field->id"}
-   toucan.db/select-id->field                         {:message "Use t2/select-pk->field instead of toucan.db/select-id->field"}
-   toucan.db/simple-insert!                           {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert!"}
-   toucan.db/simple-insert-many!                      {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert-many!"}
-   toucan.db/simple-delete!                           {:message "Use t2/delete! with table name instead of toucan.db/simple-delete!"}
-   toucan.db/delete!                                  {:message "Use t2/delete! instead of toucan.db/delete!"}
-   toucan.db/insert!                                  {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
-   toucan.db/update!                                  {:message "Use t2/update! instead of toucan.db/update!"}
-   toucan.db/update-where!                            {:message "Use t2/update! instead of toucan.db/update-where!"}
-   toucan.db/query                                    {:message "Use mdb.query/query instead of toucan.db/query"}
-   toucan.db/count                                    {:message "Use t2/count instead of toucan.db/count"}
-   toucan.db/exists?                                  {:message "Use t2/exists? instead of toucan.db/exists?"}
-   toucan.db/transaction                              {:message "Use t2/with-transaction instead of toucan.db/transaction"}
-   toucan.db/with-call-counting                       {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
-   toucan.db/execute!                                 {:message "Use t2/query-one instead of toucan.db/execute!"}
-   toucan.db/reducible-query                          {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
-   toucan.db/resolve-model                            {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
-   toucan.models/defmodel                             {:message "Define a method for t2/table-name instead of toucan.models/defmodel"}
-   toucan.models/primary-key                          {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
-   toucan.models/model?                               {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
-   toucan.hydrate/hydrate                             {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
-   toucan.util.test/with-temp-defaults                {:message "Use t2.with-temp/with-temp-defaults instead of toucan.util.test/with-temp-defaults"}
-   toucan.util.test/with-temp                         {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp"}
-   toucan.util.test/with-temp*                        {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}}
+   toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -284,6 +247,7 @@
     metabase.api.util                                               api.util
     metabase.async.streaming-response.thread-pool                   thread-pool
     metabase.automagic-dashboards.core                              magic
+    metabase.automagic-dashboards.dashboard-templates               dashboard-templates
     metabase.automagic-dashboards.populate                          populate
     metabase.cmd.copy.h2                                            copy.h2
     metabase.config                                                 config
@@ -475,8 +439,9 @@
     toucan.db                                                       db
     toucan.models                                                   models}}
 
-  :metabase/validate-deftest                   {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs {:level :warning}}
+  :metabase/validate-deftest                                           {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -567,7 +532,6 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -589,6 +553,7 @@
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
+   metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
    metabase.mbql.schema.macros/defclause                                                                                     hooks.metabase.mbql.schemas.macros/defclause
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings

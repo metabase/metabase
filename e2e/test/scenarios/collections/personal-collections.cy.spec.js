@@ -12,6 +12,7 @@ import { USERS } from "e2e/support/cypress_data";
 import {
   NO_DATA_PERSONAL_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 describe("personal collections", () => {
@@ -56,7 +57,7 @@ describe("personal collections", () => {
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       // Turn normal user into another admin
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         is_superuser: true,
       });
 

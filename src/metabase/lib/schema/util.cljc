@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.util
+  (:refer-clojure :exclude [ref])
   (:require
    [metabase.lib.options :as lib.options]))
 
@@ -54,3 +55,22 @@
     :error/fn      (fn [{:keys [value]} _]
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
+
+(defn remove-namespaced-keys
+  "Remove all the namespaced keys from a map."
+  [m]
+  (into {} (remove (fn [[k _v]] (qualified-keyword? k))) m))
+
+(defn distinct-refs?
+  "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
+  aren't important such as namespaced keys and type info)?"
+  [refs]
+  (or
+   (< (count refs) 2)
+   (apply
+    distinct?
+    (for [ref refs]
+      (lib.options/update-options ref (fn [options]
+                                        (-> options
+                                            remove-namespaced-keys
+                                            (dissoc :base-type :effective-type))))))))

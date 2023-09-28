@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [honey.sql :as sql]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -252,17 +251,15 @@
   (-> ((get-method driver/describe-database :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
-(defmethod driver.common/current-db-time-date-formatters :vertica
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
-
-(defmethod driver.common/current-db-time-native-query :vertica
-  [_]
-  "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
-
-(defmethod driver/current-db-time :vertica
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :vertica
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "show timezone;")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset "setting"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 

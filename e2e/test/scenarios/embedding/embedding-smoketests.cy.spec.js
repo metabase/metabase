@@ -203,13 +203,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   });
 
   context("embedding enabled", () => {
+    const ids = {
+      question: ORDERS_QUESTION_ID,
+      dashboard: ORDERS_DASHBOARD_ID,
+    };
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         const embeddableObject = object === "question" ? "card" : "dashboard";
         const objectName =
           object === "question" ? "Orders" : "Orders in a dashboard";
 
-        cy.intercept("PUT", `/api/${embeddableObject}/1`).as("embedObject");
+        cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
+          "embedObject",
+        );
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );

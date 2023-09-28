@@ -170,15 +170,17 @@ const Triggerable = ComposedComponent =>
                 })
               : triggerElement}
           </Trigger>
-          <ComposedComponent
-            {...this.props}
-            isOpen={isOpen}
-            onClose={this.onClose}
-            target={() => this.target()}
-            sizeToFit
-          >
-            {children}
-          </ComposedComponent>
+          {isOpen && (
+            <ComposedComponent
+              {...this.props}
+              isOpen={isOpen}
+              onClose={this.onClose}
+              target={() => this.target()}
+              sizeToFit
+            >
+              {children}
+            </ComposedComponent>
+          )}
         </>
       );
     }

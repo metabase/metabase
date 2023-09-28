@@ -8,7 +8,10 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
@@ -47,7 +50,7 @@ describe("scenarios > dashboard > filters > number", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery1");
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
   });
