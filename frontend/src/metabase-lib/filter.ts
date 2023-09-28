@@ -20,6 +20,7 @@ import type {
   Query,
   RelativeDateFilterParts,
   RelativeDateUnit,
+  SpecificDateFilterParts,
   StringFilterParts,
   StringOperator,
 } from "./types";
@@ -204,6 +205,22 @@ export function relativeDateFilterClause({
   ]);
 }
 
+export function specificDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): SpecificDateFilterParts | null {
+  return null;
+}
+
+export function specificDateFilterClause({
+  operator,
+  column,
+  values,
+}: SpecificDateFilterParts): ExpressionClause {
+  throw new TypeError();
+}
+
 export function relativeDateFilterParts(
   query: Query,
   stageIndex: number,
@@ -301,6 +318,15 @@ function relativeDateFilterPartsWithOffset({
     offsetUnit,
     options: {},
   };
+}
+
+export function excludeDateFilterClause({
+  operator,
+  column,
+  values,
+  unit,
+}: ExcludeDateFilterParts): ExpressionClause {
+  throw new TypeError();
 }
 
 export function excludeDateFilterParts(
