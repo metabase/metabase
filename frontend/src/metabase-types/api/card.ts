@@ -2,6 +2,7 @@ import type { GaugeSegment } from "metabase/static-viz/components/Gauge/types";
 import type { HeaderWidthType } from "metabase/visualizations/visualizations/PivotTable/types";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import type { DatasetColumn } from "metabase-types/api/dataset";
 import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
@@ -101,7 +102,7 @@ export type TableColumnOrderSetting = {
   field_ref?: FieldReference;
 };
 
-export type VisualizationSettings = {
+export type BasicVisualizationSettings = {
   "button.label"?: string;
   "button.variant"?:
     | "primary"
@@ -241,11 +242,19 @@ export type VisualizationSettings = {
   show_mini_bar?: boolean;
   _numberFormatter?: any;
 
-  column_settings?: any;
-
   // options are also mixed in
 } & NumberFormatOptions &
   OptionsType;
+
+export type VisualizationColumnSettings = {
+  column: (column: DatasetColumn) => BasicVisualizationSettings;
+  column_settings: {
+    [columnKey in string]: BasicVisualizationSettings;
+  };
+};
+
+export type VisualizationSettings = BasicVisualizationSettings &
+  Partial<VisualizationColumnSettings>;
 
 export type VisualizationSettingId = keyof VisualizationSettings;
 
