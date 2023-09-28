@@ -269,11 +269,15 @@ function QueryBuilder(props) {
   const handleCreate = useCallback(
     async newQuestion => {
       const shouldBePinned = newQuestion.isDataset();
-      await apiCreateQuestion(newQuestion.setPinned(shouldBePinned));
+      const createdQuestion = await apiCreateQuestion(
+        newQuestion.setPinned(shouldBePinned),
+      );
+
+      await updateUrl(createdQuestion, { dirty: false });
 
       setRecentlySaved("created");
     },
-    [apiCreateQuestion, setRecentlySaved],
+    [apiCreateQuestion, setRecentlySaved, updateUrl],
   );
 
   const handleSave = useCallback(
