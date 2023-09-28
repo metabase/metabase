@@ -1,0 +1,151 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_alerts_subscriptions
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Alerts and subscriptions on this content
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    source-table: 5ojUtU9iE-DCggHdFPIll
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - archived
+      - null
+    - false
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - id
+      - null
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - created_at
+      - temporal-unit: default
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - updated_at
+      - temporal-unit: default
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - creator_id
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - recipient_type
+      - null
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - recipient_external
+      - null
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: Bp2r19P5a9HjDTR4-VuZa
+  label: alerts_and_subscriptions_on_this_content
+display: table
+entity_id: Bp2r19P5a9HjDTR4-VuZa
+collection_preview: true
+visualization_settings:
+  table.pivot_column: name
+  table.cell_column: recipient_external
+  table.columns:
+  - name: id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - id
+    - null
+    enabled: true
+  - name: created_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - created_at
+    - temporal-unit: default
+    enabled: true
+  - name: updated_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - updated_at
+    - temporal-unit: default
+    enabled: true
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - name
+    - null
+    enabled: false
+  - fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - full_name
+    - source-field: 988
+    enabled: true
+  - name: recipient_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - recipient_type
+    - null
+    enabled: true
+  - name: recipient_external
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - recipient_external
+    - null
+    enabled: true
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-08-18T19:02:09.768319Z'
+public_uuid: null
