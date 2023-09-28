@@ -4,7 +4,7 @@ import type { SearchSidebarSetupOptions } from "metabase/search/components/Searc
 import { setup } from "metabase/search/components/SearchSidebar/tests/setup";
 
 const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
-  await setup({
+  setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({ content_verification: true }),
     hasEnterprisePlugins: true,

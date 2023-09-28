@@ -18,13 +18,13 @@ type SearchSidebarProps = {
   onChange: (value: URLSearchFilterQueryParams) => void;
 };
 
-const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
-  [SearchFilterKeys.Type]: TypeFilter,
-  [SearchFilterKeys.CreatedBy]: CreatedByFilter,
-  [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-};
-
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
+    [SearchFilterKeys.Type]: TypeFilter,
+    [SearchFilterKeys.CreatedBy]: CreatedByFilter,
+    [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+  };
+
   const onOutputChange = (key: FilterTypeKeys, val: SearchQueryParamValue) => {
     if (!val) {
       onChange(_.omit(value, key));

@@ -18,12 +18,12 @@ describe("fromUrl", () => {
     expect(invalidValue).toBe(false);
   });
 
-  it("should return undefined when value is null or undefined", () => {
+  it("should return null when value is null or undefined", () => {
     const nullValue = fromUrl(null);
     const undefinedValue = fromUrl(undefined);
 
-    expect(nullValue).toBe(undefined);
-    expect(undefinedValue).toBe(undefined);
+    expect(nullValue).toBe(false);
+    expect(undefinedValue).toBe(false);
   });
 });
 
@@ -34,9 +34,9 @@ describe("toUrl", () => {
     expect(result).toBe("true");
   });
 
-  it("should convert boolean false to undefined", () => {
+  it("should convert boolean false to null", () => {
     const value = false;
     const result = toUrl(value);
-    expect(result).toBe(undefined);
+    expect(result).toBeNull();
   });
 });

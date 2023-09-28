@@ -62,18 +62,18 @@ describe("CreatedByContent", () => {
     expect(screen.queryByText("Bob")).not.toBeInTheDocument();
   });
 
-  it("calls onChange when a user is selected", async () => {
+  it("should not call onChange when a user is selected", async () => {
     const { mockOnChange } = await setup();
 
     userEvent.click(screen.getByText("Alice"));
 
-    expect(mockOnChange).toHaveBeenCalledWith(1);
+    expect(mockOnChange).not.toHaveBeenCalled();
   });
 
-  it("calls onApply when 'Apply Filters' selected", async () => {
+  it("should call onChange when 'Apply Filters' selected", async () => {
     const { mockOnApply } = await setup();
 
     userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
-    expect(mockOnApply).toHaveBeenCalled();
+    expect(mockOnApply).toHaveBeenCalledWith(1);
   });
 });
