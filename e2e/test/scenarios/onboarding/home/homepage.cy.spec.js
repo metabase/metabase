@@ -286,7 +286,9 @@ describe("scenarios > home > custom homepage", () => {
       restore();
       cy.signInAsAdmin();
       cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
     });
 
     it("should redirect you if you do not have permissions for set dashboard", () => {

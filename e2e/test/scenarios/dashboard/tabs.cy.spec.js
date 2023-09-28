@@ -35,7 +35,10 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only display cards on the selected tab", () => {
     // Create new tab
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
       cy.findByText(`There's nothing here, yet.`).should("be.visible");
@@ -61,7 +64,10 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should allow undoing a tab deletion", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Delete first tab
     deleteTab("Tab 1");
@@ -76,7 +82,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should leave dashboard if navigating back after initial load", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1 });
+    visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
     visitCollection("root");
 
     main().within(() => {
@@ -91,7 +97,10 @@ describe("scenarios > dashboard > tabs", () => {
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*/cards").as("saveDashboardCards");
 
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Add card to second tab
     cy.icon("pencil").click();

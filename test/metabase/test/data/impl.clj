@@ -17,7 +17,6 @@
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
@@ -352,11 +351,10 @@
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                             (binding [db/*disable-db-logging* true]
-                               (let [db (get-or-create-database! driver dbdef)]
-                                 (assert db)
-                                 (assert (pos-int? (:id db)))
-                                 db))))
+                             (let [db (get-or-create-database! driver dbdef)]
+                               (assert db)
+                               (assert (pos-int? (:id db)))
+                               db)))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*    db-fn
               *db-id-fn* #(u/the-id (db-fn))]
