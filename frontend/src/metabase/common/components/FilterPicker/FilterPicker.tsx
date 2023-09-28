@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "../QueryColumnPicker";
-import { FilterEditor } from "./FilterEditor";
+import { BooleanFilterPicker } from "./BooleanFilterPicker";
+import { NumberFilterPicker } from "./NumberFilterPicker";
+import { StringFilterPicker } from "./StringFilterPicker";
 
 export interface FilterPickerProps {
   query: Lib.Query;
@@ -32,18 +34,9 @@ export function FilterPicker({
 
   const checkColumnSelected = () => false;
 
-  return (
-    <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
-      {column ? (
-        <FilterEditor
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          onChange={onSelect}
-          onBack={() => setColumn(undefined)}
-        />
-      ) : (
+  const renderContent = () => {
+    if (!column) {
+      return (
         <QueryColumnPicker
           query={query}
           stageIndex={stageIndex}
@@ -52,7 +45,25 @@ export function FilterPicker({
           checkIsColumnSelected={checkColumnSelected}
           onSelect={setColumn}
         />
-      )}
+      );
+    }
+
+    const FilterWidget = getFilterWidget(column);
+    return (
+      <FilterWidget
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onSelect}
+        onBack={() => setColumn(undefined)}
+      />
+    );
+  };
+
+  return (
+    <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
+      {renderContent()}
     </Box>
   );
 }
@@ -65,4 +76,22 @@ function getInitialColumn(
   return filter
     ? Lib.filterParts(query, stageIndex, filter)?.column
     : undefined;
+}
+
+const NotImplementedPicker = () => <div />;
+
+function getFilterWidget(column: Lib.ColumnMetadata) {
+  if (Lib.isBoolean(column)) {
+    return BooleanFilterPicker;
+  }
+  if (Lib.isDate(column)) {
+    return NotImplementedPicker;
+  }
+  if (Lib.isNumber(column)) {
+    return NumberFilterPicker;
+  }
+  if (Lib.isString(column)) {
+    return StringFilterPicker;
+  }
+  return NotImplementedPicker;
 }

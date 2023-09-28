@@ -1,18 +1,18 @@
 import { t } from "ttag";
 import { Box, Button, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { FilterEditorProps } from "./types";
+import type { FilterPickerWidgetProps } from "./types";
 import { BackButton } from "./BackButton";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 
-export function BooleanFilterEditor({
+export function NumberFilterPicker({
   query,
   stageIndex,
   column,
   filter,
   onBack,
-}: FilterEditorProps) {
+}: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
   return (
     <>
@@ -20,7 +20,7 @@ export function BooleanFilterEditor({
         <BackButton onClick={onBack}>{columnName}</BackButton>
       </Header>
       <Flex p="sm">
-        <Text>Boolean editor UI</Text>
+        <Text>Number editor UI</Text>
       </Flex>
       <Footer>
         <Box />

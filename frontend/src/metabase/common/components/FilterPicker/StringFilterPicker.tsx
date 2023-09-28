@@ -1,18 +1,18 @@
 import { t } from "ttag";
 import { Box, Button, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { FilterEditorProps } from "./types";
+import type { FilterPickerWidgetProps } from "./types";
 import { BackButton } from "./BackButton";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 
-export function StringFilterEditor({
+export function StringFilterPicker({
   query,
   stageIndex,
   column,
   filter,
   onBack,
-}: FilterEditorProps) {
+}: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
   return (
     <>
