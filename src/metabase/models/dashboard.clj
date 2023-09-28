@@ -31,10 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -460,7 +457,7 @@
 
 (def ^:private ParamWithMapping
   [:map
-   [:id su/NonBlankString]
+   [:id ms/NonBlankString]
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
