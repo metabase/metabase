@@ -69,11 +69,11 @@
 
 (deftest delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"
-    (mt/with-temp [Collection    collection                 {:name "Example Data"}
-                   Timeline      {timeline-id :timeline_id} {:name "Some Events"
-                                                             :collection_id (u/the-id collection)}
-                   TimelineEvent {event-id :id}             {:name "Example Event"
-                                                             :timeline_id timeline-id}]
+    (mt/with-temp [Collection    {collection-id :id} {:name "Example Data"}
+                   Timeline      {timeline-id :id}   {:name "Some Events"
+                                                      :collection_id collection-id}
+                   TimelineEvent {event-id :id}      {:name "Example Event"
+                                                      :timeline_id timeline-id}]
       (testing "delete the timeline-event by `id`"
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "timeline-event/" event-id))))
