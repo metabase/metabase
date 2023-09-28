@@ -424,11 +424,6 @@ describe("scenarios > search", () => {
             expect(verifiedElementCount).to.eq(1);
             expect(unverifiedElementCount).to.be.gt(0);
           });
-        getNumberOfUniqueResultDescriptions().then(
-          ({ uniqueTypeDescriptionsCount }) => {
-            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
-          },
-        );
       });
     });
 

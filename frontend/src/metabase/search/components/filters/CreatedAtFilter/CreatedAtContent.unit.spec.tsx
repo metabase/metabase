@@ -2,10 +2,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { CreatedAtContent } from "./CreatedAtContent";
 
 type SetupProps = {
-  value?: string;
+  value?: string | null;
 };
 
-const setup = ({ value = undefined }: SetupProps = {}) => {
+const setup = ({ value = null }: SetupProps = {}) => {
   const onChangeMock = jest.fn();
   renderWithProviders(
     <CreatedAtContent value={value} onChange={onChangeMock} />,
