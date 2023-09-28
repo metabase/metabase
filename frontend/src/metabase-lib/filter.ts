@@ -131,6 +131,14 @@ export function stringFilterParts(
   return { operator, column, values, options };
 }
 
+export function isStringFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return stringFilterParts(query, stageIndex, filterClause) != null;
+}
+
 export function numberFilterClause({
   operator,
   column,
@@ -155,6 +163,14 @@ export function numberFilterParts(
   }
 
   return { operator, column, values };
+}
+
+export function isNumberFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return numberFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function booleanFilterClause({
@@ -183,6 +199,38 @@ export function booleanFilterParts(
   return { operator, column, values };
 }
 
+export function isBooleanFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return booleanFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function specificDateFilterClause({
+  operator,
+  column,
+  values,
+}: SpecificDateFilterParts): ExpressionClause {
+  throw new TypeError();
+}
+
+export function specificDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): SpecificDateFilterParts | null {
+  return null;
+}
+
+export function isSpecificDateFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return specificDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
 export function relativeDateFilterClause({
   column,
   value,
@@ -203,22 +251,6 @@ export function relativeDateFilterClause({
     expressionClause("relative-datetime", [value < 0 ? value : 0, offsetUnit]),
     expressionClause("relative-datetime", [value > 0 ? value : 0, offsetUnit]),
   ]);
-}
-
-export function specificDateFilterParts(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): SpecificDateFilterParts | null {
-  return null;
-}
-
-export function specificDateFilterClause({
-  operator,
-  column,
-  values,
-}: SpecificDateFilterParts): ExpressionClause {
-  throw new TypeError();
 }
 
 export function relativeDateFilterParts(
@@ -320,6 +352,14 @@ function relativeDateFilterPartsWithOffset({
   };
 }
 
+export function isRelativeDateFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return relativeDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
 export function excludeDateFilterClause({
   operator,
   column,
@@ -335,4 +375,12 @@ export function excludeDateFilterParts(
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
   return null;
+}
+
+export function isExcludeDateFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return excludeDateFilterParts(query, stageIndex, filterClause) != null;
 }
