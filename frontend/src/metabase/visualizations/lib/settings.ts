@@ -15,6 +15,8 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type { VisualizationSettings } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
 const WIDGETS = {
@@ -32,98 +34,9 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-// VisualizationSettings?
-type ComputedSettings = {
-  currency?: string;
-  date_style?: string;
-  date_separator?: string;
-  date_abbreviate?: boolean;
-  currency_in_header?: boolean;
-  currency_style?: string;
-  number_style?: string;
-  time_enabled?: boolean;
-  [key: string]: any;
-};
-
-// VisualizationSettingDefinition?
-export type SettingDef = {
-  persistDefault: boolean;
-  default?: any;
-  widget: keyof typeof WIDGETS;
-  inline?: boolean;
-  useRawSeries?: boolean;
-  readDependencies?: string[];
-  writeDependencies?: string[];
-  eraseDependencies?: string[];
-  getDefault?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => any;
-  getValue?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => any;
-  isValid?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => boolean;
-  onUpdate?: (value: any, extra: any) => void;
-
-  section?: string;
-  getSection?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => string;
-
-  title?: string;
-  getTitle?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => string;
-
-  hidden?: boolean;
-  getHidden?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => boolean;
-
-  marginBottom?: string;
-  getMarginBottom?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => string;
-
-  disabled?: boolean;
-  getDisabled?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    extra: any,
-  ) => boolean;
-
-  props?: object;
-  getProps?: (
-    object: SettingObject,
-    settings: ComputedSettings,
-    onChange: any,
-    extra: any,
-  ) => object;
-};
-
 type SettingObject = {
   _raw: any;
   [key: string]: any;
-};
-
-// VisualizationSettingsDefinitions
-type SettingsDefs = {
-  [key: string]: SettingDef;
 };
 
 type SettingWidget = SettingDef & {
@@ -132,13 +45,16 @@ type SettingWidget = SettingDef & {
   set: boolean;
   widget: any;
   onChange: any;
-  onChangeSettings: (newSettings: ComputedSettings, question: Question) => void;
+  onChangeSettings: (
+    newSettings: VisualizationSettings,
+    question: Question,
+  ) => void;
 };
 
 export function getComputedSettings(
-  settingsDefs: SettingsDefs,
+  settingsDefs: VisualizationSettingsDefinitions,
   object: SettingObject,
-  storedSettings: ComputedSettings,
+  storedSettings: VisualizationSettings,
   extra = {},
 ) {
   const computedSettings = {};
@@ -156,11 +72,11 @@ export function getComputedSettings(
 }
 
 function getComputedSetting(
-  computedSettings: ComputedSettings, // MUTATED!
-  settingsDefs: SettingsDefs,
+  computedSettings: VisualizationSettings, // MUTATED!
+  settingsDefs: VisualizationSettingsDefinitions,
   settingId: string,
   object: SettingObject,
-  storedSettings: ComputedSettings,
+  storedSettings: VisualizationSettings,
   extra = {},
 ) {
   if (settingId in computedSettings) {
@@ -217,10 +133,10 @@ function getComputedSetting(
 }
 
 function getSettingWidget(
-  settingsDefs: SettingsDefs,
+  settingsDefs: VisualizationSettingsDefinitions,
   settingId: string,
-  storedSettings: SettingsDefs,
-  computedSettings: SettingsDefs,
+  storedSettings: VisualizationSettingsDefinitions,
+  computedSettings: VisualizationSettingsDefinitions,
   object: SettingObject,
   onChangeSettings: SettingWidget["onChangeSettings"],
   extra = {},
@@ -278,9 +194,9 @@ function getSettingWidget(
 }
 
 export function getSettingsWidgets(
-  settingsDefs: SettingsDefs,
-  storedSettings: ComputedSettings,
-  computedSettings: ComputedSettings,
+  settingsDefs: VisualizationSettingsDefinitions,
+  storedSettings: VisualizationSettings,
+  computedSettings: VisualizationSettings,
   object: SettingObject,
   onChangeSettings,
   extra = {},
@@ -301,7 +217,7 @@ export function getSettingsWidgets(
 }
 
 export function getPersistableDefaultSettings(
-  settingsDefs: SettingsDefs,
+  settingsDefs: VisualizationSettingsDefinitions,
   completeSettings,
 ) {
   const persistableDefaultSettings = {};

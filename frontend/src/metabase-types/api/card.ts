@@ -191,7 +191,7 @@ export type VisualizationSettings = {
   "pivot.show_column_totals"?: boolean;
   "pivot.show_row_totals"?: boolean;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
-  "pivot_table.column_show_totals": boolean;
+  "pivot_table.column_show_totals"?: boolean;
   "pivot_table.column_split"?: {
     columns: DimensionReference[];
     rows: DimensionReference[];
@@ -204,7 +204,7 @@ export type VisualizationSettings = {
   "scalar.switch_positive_negative"?: boolean;
   "scalar.decimals"?: number; // legacy
   "scalar.locale"?: null | string; // legacy
-  "scalar.prefix": string; // legacy
+  "scalar.prefix"?: string; // legacy
   "scalar.scale"?: number; // legacy
   "scalar.suffix"?: string; // legacy
   "scatter.bubble"?: string;
@@ -231,10 +231,9 @@ export type VisualizationSettings = {
   "waterfall.show_total"?: boolean;
   "waterfall.total_color"?: string;
 
-  // legacy? (non-namespaced)
   title?: string;
   display?: "line" | "area" | "bar";
-  axis: null | "left" | "right";
+  axis?: null | "left" | "right";
   _header_unit?: string;
   column_title?: string;
   currency_in_header?: boolean;

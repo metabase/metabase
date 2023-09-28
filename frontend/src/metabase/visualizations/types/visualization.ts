@@ -75,37 +75,103 @@ export interface VisualizationProps {
   onUpdateWarnings?: any;
 }
 
-export type VisualizationSettingDefinition<TValue, TProps = void> = {
-  section?: string;
-  title?: string;
+export type WidgetName =
+  | "input"
+  | "inputGroup"
+  | "number"
+  | "radio"
+  | "select"
+  | "toggle"
+  | "segmentedControl"
+  | "field"
+  | "fields"
+  | "fieldsPartition"
+  | "color"
+  | "colors";
+
+export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
+  widget: WidgetName | React.ComponentType<TProps>;
+  inline?: boolean;
+  useRawSeries?: boolean;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
-  isValid?: (series: Series, settings: VisualizationSettings) => boolean;
-  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
-  getValue?: (series: Series, settings: VisualizationSettings) => TValue;
-  default?: TValue;
-  marginBottom?: string;
-  getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
-  persistDefault?: boolean;
-  props?: TProps;
-  getProps?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
-    onChange: (value: TValue) => void,
-    extra: unknown,
-  ) => TProps;
+
+  // is the setting visible in the dashboard card viz settings
+  dashboard?: boolean;
+
   readDependencies?: string[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
-  // is the setting visible in the dashboard card viz settings
-  dashboard?: boolean;
-  useRawSeries?: boolean;
-  inline?: boolean;
+
+  default?: TValue;
+  persistDefault: boolean;
+  getDefault?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => TValue;
+
+  getValue?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => TValue;
+  isValid?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => boolean;
+
+  section?: string;
+  getSection?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => string;
+
+  title?: string;
+  getTitle?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => string;
+
+  hidden?: boolean;
+  getHidden?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => boolean;
+
+  marginBottom?: string;
+  getMarginBottom?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => string;
+
+  disabled?: boolean;
+  getDisabled?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    extra: unknown,
+  ) => boolean;
+
+  props?: TProps;
+  getProps?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    onChange: (value: TValue) => void,
+    extra: unknown,
+  ) => TProps;
+  onUpdate?: (value: TValue, extra: unknown) => void;
 };
 
 export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown>;
+  [key in keyof VisualizationSettings]: VisualizationSettingDefinition<
+    unknown,
+    VisualizationSettings[key],
+    unknown
+  >;
 };
 
 export type VisualizationGridSize = {
