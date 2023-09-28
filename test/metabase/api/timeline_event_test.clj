@@ -74,8 +74,11 @@
                                                       :collection_id collection-id}
                    TimelineEvent {event-id :id}      {:name "Example Event"
                                                       :timeline_id timeline-id}]
-      (testing "delete the timeline-event by `id`"
+      (testing "delete an existing timeline-event `id`"
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "timeline-event/" event-id))))
         (is (= "Not found."
-               (mt/user-http-request :rasta :get 404 (str "timeline-event/" event-id))))))))
+               (mt/user-http-request :rasta :get 404 (str "timeline-event/" event-id)))))
+      (testing "delete a non-existent timeline-event `id`"
+        (is (= "Not found."
+               (mt/user-http-request :rasta :get 404 (str "timeline-event/" Integer/MAX_VALUE))))))))
