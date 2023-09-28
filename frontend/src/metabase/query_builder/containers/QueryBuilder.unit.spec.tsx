@@ -497,7 +497,7 @@ describe("QueryBuilder", () => {
         );
       });
 
-      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      it("should not trigger beforeunload event when user tries to leave an ad-hoc structured query", async () => {
         const { mockEventListener } = await setup({
           card: TEST_UNSAVED_STRUCTURED_CARD,
         });
