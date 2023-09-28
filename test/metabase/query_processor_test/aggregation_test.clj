@@ -140,11 +140,11 @@
 (deftest ^:parallel multiple-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
-      (is (= [(qp.test-util/aggregate-col :count)
-              (assoc (qp.test-util/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
-             (mt/cols
-              (mt/run-mbql-query venues
-                {:aggregation [[:count] [:count]]})))))))
+      (is (=? [(qp.test-util/aggregate-col :count)
+               (assoc (qp.test-util/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+              (mt/cols
+               (mt/run-mbql-query venues
+                 {:aggregation [[:count] [:count]]})))))))
 
 
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------

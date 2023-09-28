@@ -399,8 +399,9 @@
             :source :breakout))
    (for [[i aggregation] (m/indexed aggregations)]
      (assoc (col-info-for-aggregation-clause inner-query aggregation)
-            :source    :aggregation
-            :field_ref [:aggregation i]))))
+            :source            :aggregation
+            :field_ref         [:aggregation i]
+            :aggregation_index i))))
 
 (mu/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
