@@ -275,14 +275,15 @@
                             :target $date
                             :value  ["2014-06" "2015-06"]}]})))))
 
-(defn- build-filter-clause [param]
+(defn- build-filter-clause [query param]
   (qp.store/with-metadata-provider (mt/id)
-    (#'qp.mbql/build-filter-clause param)))
+    (#'qp.mbql/build-filter-clause query param)))
 
 (deftest ^:parallel convert-ids-to-numbers-test
   (is (= (mt/$ids venues
            [:= $id 1])
          (build-filter-clause
+          nil
           (mt/$ids venues
             {:type   :id
              :target [:dimension $id]

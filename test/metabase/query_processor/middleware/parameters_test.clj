@@ -78,6 +78,27 @@
                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
                :aggregation  [[:count]]}))))))
 
+(deftest ^:parallel expand-mbql-source-query-date-expression-param-test
+  (testing "can we expand MBQL number and date expression params in a source query?"
+    (is (= (mt/mbql-query users
+             {:source-query {:source-table (meta/id :users)
+                             :expressions {"date-column" [:field (meta/id :users :last-login) nil]
+                                           "number-column" [:field (meta/id :users :id) nil]}
+                             :filter [:and
+                                      [:between [:expression "date-column"] "2019-09-29" "2023-09-29"]
+                                      [:= [:expression "number-column"] 1]]}})
+           (substitute-params
+            (mt/mbql-query users
+              {:source-query {:source-table (meta/id :users)
+                              :expressions {"date-column" [:field (meta/id :users :last-login) nil]
+                                            "number-column" [:field (meta/id :users :id) nil]}
+                              :parameters   [{:type :date/range
+                                              :value "2019-09-29~2023-09-29"
+                                              :target [:dimension [:expression "date-column"]]}
+                                             {:type :category
+                                              :value 1
+                                              :target [:dimension [:expression "number-column"]]}]}}))))))
+
 (deftest ^:parallel expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
     (is (= (mt/mbql-query nil

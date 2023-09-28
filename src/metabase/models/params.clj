@@ -46,15 +46,22 @@
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
-(mu/defn unwrap-field-clause :- mbql.s/field
-  "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
-  legacy compatibility.
+(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
+  "Unwrap something that contains a `:field` clause, such as a template tag.
+  Also handles unwrapped integers for legacy compatibility.
 
-    (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
+    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
     (mbql.u/match-one field-form :field)))
+
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
+  legacy compatibility."
+  [field-or-ref-form]
+  (or (unwrap-field-clause field-or-ref-form)
+      (mbql.u/match-one field-or-ref-form :expression)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field` clause if needed."
@@ -101,7 +108,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/field]
+(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -109,7 +116,7 @@
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
-          (unwrap-field-clause
+          (unwrap-field-or-expression-clause
            (if (mbql.u/is-clause? :template-tag dimension)
              (template-tag->field-form dimension card)
              dimension))
@@ -215,7 +222,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/field]]
+(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/Field]]
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashcards]
