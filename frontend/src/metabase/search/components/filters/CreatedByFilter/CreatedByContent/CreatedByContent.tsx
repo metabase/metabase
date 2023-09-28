@@ -8,7 +8,7 @@ import { Center, Text, TextInput } from "metabase/ui";
 import type { SearchFilterDropdown } from "metabase/search/types";
 
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
-import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
+import { UserListElement } from "../../../UserListElement";
 import {
   CreatedByContainer,
   CreatedByContentContainer,

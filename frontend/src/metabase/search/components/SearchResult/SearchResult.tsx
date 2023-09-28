@@ -10,6 +10,7 @@ import type { SearchScore, SearchModelType } from "metabase-types/api";
 
 import type { WrappedResult } from "metabase/search/types";
 import Link from "metabase/core/components/Link/Link";
+import { InfoText } from "../InfoText";
 import {
   IconWrapper,
   ResultButton,
@@ -23,7 +24,6 @@ import {
   ResultLinkContent,
   ResultInner,
 } from "./SearchResult.styled";
-import { InfoText } from "./InfoText";
 
 const DEFAULT_ICON_SIZE = 20;
 
