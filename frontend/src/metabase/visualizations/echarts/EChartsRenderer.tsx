@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useMount } from "react-use";
+import { useMount, useUnmount } from "react-use";
 import { init } from "echarts";
 import type { EChartsType } from "echarts";
 
@@ -25,6 +25,13 @@ export function EChartsRenderer({
       height,
       renderer: "svg",
     });
+  });
+
+  useUnmount(() => {
+    eventHandlers.forEach(h => chartRef.current?.off(h.eventName, h.handler));
+    zrEventHandlers.forEach(h =>
+      chartRef.current?.getZr().off(h.eventName, h.handler),
+    );
   });
 
   useEffect(() => {

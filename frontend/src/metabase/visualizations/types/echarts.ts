@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 
-import { VisualizationProps } from "./visualization";
+import type { VisualizationProps } from "./visualization";
 
 export type EChartsEventHandler = {
   // TODO better types

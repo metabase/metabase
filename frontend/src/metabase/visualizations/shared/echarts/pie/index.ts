@@ -7,6 +7,8 @@ import type {
   EChartsEventHandler,
   HoveredObject,
   RenderingEnvironment,
+  VisualizationProps,
+  ZREventHandler,
 } from "metabase/visualizations/types";
 import type { RawSeries, RowValues } from "metabase-types/api";
 import { findWithIndex } from "metabase/core/utils/arrays";
@@ -204,16 +206,15 @@ export const buildPieChart = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
-  onHoverChange?: any,
-  hovered?: HoveredObject,
-  onVisualizationClick?: any,
+  props?: VisualizationProps,
 ): {
   option: EChartsOption;
   legend: PieLegendItem[];
   eventHandlers: EChartsEventHandler[];
+  zrEventHandlers: ZREventHandler[];
 } => {
   if (series.length === 0) {
-    return { option: {}, legend: [], eventHandlers: [] };
+    return { option: {}, legend: [], eventHandlers: [], zrEventHandlers: [] };
   }
 
   const [{ data }] = series;
@@ -256,27 +257,19 @@ export const buildPieChart = (
       radius: ["60%", "90%"],
       emphasis: { focus: "none" },
       sort: undefined,
-      label: {
-        rotate: 0,
-        overflow: "none",
-        lineHeight: 50,
-        fontSize: 16,
-        formatter: ({ value }) => {
-          const percent = value / total;
-          if (percent > 0.1) {
-            return formatPercent(value / total, labelsDecimals);
-          }
-          // returning an " " when we want to hide a label :(
-          // requires computing arcs by ourselves to detect if a label can fit inside one
-          return " ";
-        },
-        // should check contrast manually — that's ok
-        color: "white",
+      emphasis: {
+        focus: "self",
       },
+      blur: {
+        itemStyle: {
+          opacity: 0.1,
+        },
+      },
+      // nodeClick: false,
       data: slices.map((s, index) => {
         let opacity = 1;
 
-        if (hovered != null && index !== hovered?.index) {
+        if (props?.hovered != null && index !== props?.hovered?.index) {
           opacity = 0.2;
         }
 
@@ -302,68 +295,55 @@ export const buildPieChart = (
     ].filter(isNotNull),
   }));
 
+  if (!props) {
+    return { option, legend, eventHandlers: [], zrEventHandlers: [] };
+  }
+
+  option.graphic = {
+    type: "group",
+    top: "center",
+    left: "center",
+    children: [
+      {
+        type: "text",
+        cursor: "text",
+        // TODO styles
+        style: {
+          fill: "#000",
+          font: "bold 26px sans-serif",
+          textAlign: "center",
+          text: `${
+            props.hovered?.data?.[0].value ??
+            slices.reduce((prev, s) => (s.value as number) + prev, 0)
+          }`,
+        },
+      },
+      {
+        type: "text",
+        cursor: "text",
+        top: 25,
+        // TODO styles
+        style: {
+          fill: "#000",
+          font: "bold 26px sans-serif",
+          textAlign: "center",
+          text: "Total",
+        },
+      },
+    ],
+  };
+
   const eventHandlers: EChartsEventHandler[] = [
     {
+      eventName: "mouseover",
+      handler: event => {
+        // setState(event.event.event.target);
+        props.onHoverChange(getHoveredObject({ event, slices, environment }));
+      },
+    },
+    {
       eventName: "mouseout",
-      handler: () => {
-        onHoverChange?.(null);
-      },
-    },
-    {
-      eventName: "mousemove",
-      handler: event => {
-        const { index } = findWithIndex(
-          slices,
-          slice => slice.key === event.data?.name,
-        );
-
-        const simplifiedTooltipModelForTest = getTooltipModel(
-          slices,
-          index,
-          getFriendlyName(pieColumns.dimension.column),
-          formatDimension,
-          formatMetric,
-        );
-
-        onHoverChange?.({
-          settings,
-          index,
-          event: event.event.event,
-          stackedTooltipModel: simplifiedTooltipModelForTest,
-        });
-      },
-    },
-    {
-      eventName: "click",
-      handler: event => {
-        const slice = slices.find(slice => slice.key === event.data?.name);
-
-        if (!slice) {
-          return;
-        }
-
-        const sliceRows = slice.rowIndex != null && rows[slice.rowIndex];
-        const data =
-          sliceRows &&
-          sliceRows.map((value, index) => ({
-            value,
-            col: cols[index],
-          }));
-
-        onVisualizationClick?.({
-          event: event.event.event,
-          value: slice.value,
-          column: pieColumns.metric.column,
-          data,
-          dimensions: [
-            {
-              value: slice.key,
-              column: pieColumns.dimension.column,
-            },
-          ],
-          settings,
-        });
-      },
+      handler: () => props.onHoverChange(null),
     },
   ];
 
@@ -371,5 +351,36 @@ export const buildPieChart = (
     option,
     legend,
     eventHandlers,
+    zrEventHandlers: [],
   };
 };
+
+export function getHoveredObject({
+  event,
+  slices,
+  environment,
+}: {
+  event: any;
+  slices: any[];
+  environment: RenderingEnvironment;
+}): HoveredObject {
+  console.log("event", event);
+
+  return {
+    data: [
+      {
+        key: event.data.name,
+        value: event.data.value,
+      },
+    ],
+    element: event.event.event.target,
+    stackedTooltipModel: {
+      headerTitle: "A tooltip",
+      headerRows: [],
+      bodyRows: [],
+      totalFormatter: () => "asdf",
+      showPercentages: false,
+      showTotal: false,
+    },
+  };
+}
