@@ -81,8 +81,6 @@ describe("scenarios > search", () => {
 
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
-      cy.signInAsAdmin();
-
       cy.visit("/");
       getSearchBar().as("searchBox").type("product").blur();
 
@@ -264,14 +262,14 @@ describe("scenarios > search", () => {
       });
 
       it("should remove type filter when `X` is clicked on search filter", () => {
-        const { filterName } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
+        const { label, filterName } = typeFilters[0];
+        cy.visit(`/search?q=e&type=${filterName}`);
         cy.wait("@search");
 
         cy.findByTestId("type-search-filter").within(() => {
-          cy.findByText("Question").should("exist");
+          cy.findByText(label).should("exist");
           cy.findByLabelText("close icon").click();
-          cy.findByText("Question").should("not.exist");
+          cy.findByText(label).should("not.exist");
           cy.findByText("Content type").should("exist");
         });
 
@@ -294,6 +292,7 @@ describe("scenarios > search", () => {
           cy.createQuestion(question);
         }
         cy.signOut();
+
         cy.signInAsAdmin();
       });
 
@@ -344,6 +343,87 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
         });
 
+        // Check that we're getting elements from other users by checking for other types,
+        // since all assets, for the user we're querying are questions
+        cy.findAllByTestId("result-link-info-text").then(
+          $resultTypeDescriptions => {
+            const uniqueTypeDescriptions = new Set(
+              $resultTypeDescriptions.toArray().map(el => el.textContent),
+            );
+            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+          },
+        );
+      });
+    });
+
+    describeEE("verified filter", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+        cy.createModerationReview({
+          status: "verified",
+          moderated_item_type: "card",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+        });
+      });
+
+      it("should hydrate search with search text and verified filter", () => {
+        cy.visit("/search?q=orders&verified=true");
+        cy.wait("@search");
+
+        getSearchBar().should("have.value", "orders");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "orders"').should("exist");
+        });
+
+        cy.findAllByTestId("search-result-item").each(result => {
+          cy.wrap(result).within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+      });
+
+      it("should filter results by verified items", () => {
+        cy.visit("/");
+
+        getSearchBar().clear().type("e{enter}");
+        cy.wait("@search");
+
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
+
+        cy.findAllByTestId("search-result-item").each(result => {
+          cy.wrap(result).within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+      });
+
+      it("should not filter results when verified items is off", () => {
+        cy.visit("/search?q=e&verified=true");
+
+        cy.wait("@search");
+
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
+        cy.url().should("not.include", "verified=true");
+
+        let verifiedElementCount = 0;
+        let unverifiedElementCount = 0;
+        cy.findAllByTestId("search-result-item")
+          .each($el => {
+            if (!$el.find('[aria-label="verified icon"]').length) {
+              unverifiedElementCount++;
+            } else {
+              verifiedElementCount++;
+            }
+          })
+          .then(() => {
+            expect(verifiedElementCount).to.eq(1);
+            expect(unverifiedElementCount).to.be.gt(0);
+          });
         getNumberOfUniqueResultDescriptions().then(
           ({ uniqueTypeDescriptionsCount }) => {
             expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);

@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-import type {
-  SearchFilterComponent,
-  VerifiedFilterProps,
-} from "metabase/search/types";
+import type { SearchFilterComponent } from "metabase/search/types";
 import type { ToggleSidebarFilterProps } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
 
@@ -12,6 +9,8 @@ const mockFilter: SearchFilterComponent = {
   title: "Mock Filter",
   iconName: "filter",
   type: "toggle",
+  fromUrl: value => value,
+  toUrl: value => value,
 };
 
 const MockToggleSidebarFilter = ({
@@ -20,9 +19,9 @@ const MockToggleSidebarFilter = ({
   onChange,
 }: ToggleSidebarFilterProps) => {
   const [toggleValue, setToggleValue] = useState(value);
-  const onFilterChange = (elem: ToggleSidebarFilterProps["value"]) => {
-    setToggleValue(elem);
-    onChange(elem);
+  const onFilterChange = (toggleValue: ToggleSidebarFilterProps["value"]) => {
+    setToggleValue(toggleValue);
+    onChange(toggleValue);
   };
 
   return (
@@ -35,12 +34,12 @@ const MockToggleSidebarFilter = ({
 };
 
 const setup = ({
-  value = undefined,
+  value = false,
   onChange = jest.fn(),
 }: {
-  value?: VerifiedFilterProps;
+  value?: ToggleSidebarFilterProps["value"];
   onChange?: jest.Mock;
-}) => {
+} = {}) => {
   renderWithProviders(
     <MockToggleSidebarFilter
       filter={mockFilter}
@@ -94,9 +93,7 @@ describe("ToggleSidebarFilter", () => {
   });
 
   it("should have the switch unchecked when value is false", () => {
-    setup({
-      value: undefined,
-    });
+    setup();
 
     const switchElement = screen.getByRole("checkbox");
     expect(switchElement).toHaveAttribute("data-is-checked", "false");

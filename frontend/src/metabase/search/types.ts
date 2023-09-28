@@ -24,7 +24,7 @@ export interface WrappedResult extends SearchResult {
 export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId;
 export type CreatedAtFilterProps = string;
-export type VerifiedFilterProps = true | undefined;
+export type VerifiedFilterProps = true;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
@@ -37,8 +37,9 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
 // All URL query parameters are returned as strings so we need to account
 // for that when parsing them to our filter components
+export type SearchQueryParamValue = string | string[] | null | undefined;
 export type URLSearchFilterQueryParams = Partial<
-  Record<FilterTypeKeys, string | string[] | null | undefined>
+  Record<FilterTypeKeys, SearchQueryParamValue>
 >;
 export type SearchAwareLocation = Location<
   { q?: string } & URLSearchFilterQueryParams
@@ -47,8 +48,8 @@ export type SearchAwareLocation = Location<
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
-  value?: SearchFilterPropTypes[T];
-  onChange: (value?: SearchFilterPropTypes[T]) => void;
+  value: SearchFilterPropTypes[T] | null;
+  onChange: (value: SearchFilterPropTypes[T] | null) => void;
   "data-testid"?: string;
 } & Record<string, unknown>;
 
@@ -58,12 +59,12 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   type: SidebarFilterType;
   title: string;
   iconName?: IconName;
-  // two functions for converting strings to the desired prop type and back
-  // (e.g. for converting a string to a date)
-  fromUrl?: (
-    value: string | string[] | null | undefined,
-  ) => SearchFilterPropTypes[T];
-  toUrl?: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
+
+  // parses the string value of a URL query parameter to the filter value
+  fromUrl: (value: SearchQueryParamValue) => SearchFilterPropTypes[T];
+
+  // converts filter value to URL query parameter string value
+  toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
 }
 
 export interface SearchFilterDropdown<T extends FilterTypeKeys = any>

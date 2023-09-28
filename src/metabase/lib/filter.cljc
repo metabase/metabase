@@ -250,7 +250,7 @@
    (let [[op _ first-arg] a-filter-clause
          stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col     (lib.equality/closest-matching-metadata query stage-number first-arg columns)]
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))
                       (lib.filter.operator/operator-def op)))))
@@ -291,7 +291,7 @@
     legacy-ref   :- some?]
    (let [a-ref   (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref)
          columns (filterable-columns query stage-number)]
-     (lib.equality/closest-matching-metadata a-ref columns))))
+     (lib.equality/find-matching-column a-ref columns))))
 
 (def ^:private FilterParts
   [:map
@@ -313,7 +313,7 @@
    (let [[op options first-arg & rest-args] a-filter-clause
          stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         col     (lib.equality/closest-matching-metadata query stage-number first-arg columns)]
+         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
      {:lib/type :mbql/filter-parts
       :operator (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                                (lib.filter.operator/filter-operators col))

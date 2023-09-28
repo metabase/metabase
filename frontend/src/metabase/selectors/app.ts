@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -182,4 +183,22 @@ export const getCollectionId = createSelector(
   [getQuestion, getDashboard, getDashboardId],
   (question, dashboard, dashboardId) =>
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
+);
+
+export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
+  [
+    getIsEmbedded,
+    getEmbedOptions,
+    getIsAppBarVisible,
+    (state: State) => state.app.isNavbarOpen,
+  ],
+  (isEmbedded, embedOptions, isAppBarVisible, isNavbarOpen) => {
+    // in an embedded instance, when the app bar is hidden, but the nav bar is not
+    // we need to force the sidebar to be open or else it will be totally inaccessible
+    if (isEmbedded && embedOptions.side_nav === true && !isAppBarVisible) {
+      return true;
+    }
+
+    return isNavbarOpen;
+  },
 );

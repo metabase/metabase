@@ -7,7 +7,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Group, Text, Box } from "metabase/ui";
+import { Group, Text, Box, Button } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -16,7 +16,6 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
 import {
-  DropdownClearButton,
   DropdownDisplayContent,
   DropdownFieldSet,
   SearchEventSandbox,
@@ -66,7 +65,7 @@ export const DropdownSidebarFilter = ({
     }
   }, [isNavbarOpen, isSmallScreen]);
 
-  const onApplyFilter = (value?: SearchFilterPropTypes) => {
+  const onApplyFilter = (value: SearchFilterPropTypes) => {
     setSelectedValues(value);
     onChange(value);
     setIsPopoverOpen(false);
@@ -101,6 +100,7 @@ export const DropdownSidebarFilter = ({
       ref={dropdownRef}
       onClick={() => setIsPopoverOpen(!isPopoverOpen)}
       w="100%"
+      mt={fieldHasValue ? "0.25rem" : 0}
     >
       <DropdownFieldSet
         noPadding
@@ -116,7 +116,7 @@ export const DropdownSidebarFilter = ({
               <Text weight={700}>{title}</Text>
             </Group>
           )}
-          <DropdownClearButton
+          <Button
             data-testid="sidebar-filter-dropdown-button"
             compact
             c="inherit"

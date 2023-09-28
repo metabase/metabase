@@ -27,12 +27,7 @@ export const setup = ({
     setupEnterprisePlugins();
   }
 
-  const defaultProps = {
-    value,
-    onChange,
-  };
-
-  renderWithProviders(<SearchSidebar {...defaultProps} />, {
+  renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {
     storeInitialState: state,
   });
 };

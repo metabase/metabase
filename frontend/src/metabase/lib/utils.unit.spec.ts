@@ -3,7 +3,7 @@ import {
   compareVersions,
   isEmpty,
   isJWT,
-} from "metabase/lib/utils";
+} from "./utils";
 
 describe("utils", () => {
   describe("versionToNumericComponents", () => {
