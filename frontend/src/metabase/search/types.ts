@@ -79,10 +79,3 @@ export interface SearchFilterToggle extends SearchFilter {
 export type SearchFilterComponent<T extends FilterTypeKeys = any> =
   | SearchFilterDropdown<T>
   | SearchFilterToggle;
-
-export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
-  title: string;
-  iconName: IconName;
-  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
-};
