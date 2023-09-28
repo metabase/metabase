@@ -133,7 +133,7 @@ function getSettingWidget(
   onChangeSettings: any /* VisualizationSettingWidget["onChangeSettings"] */,
   extra: unknown = {},
 ) /* returns VisualizationSettingWidget */ {
-  const settingDef = settingsDefs[settingId];
+  const settingDef = settingsDefs[settingId] ?? {};
   const value = computedSettings[settingId];
   const onChange = (newValue: typeof value, question: Question) => {
     const newSettings: VisualizationSettings = { [settingId]: newValue };
@@ -224,7 +224,7 @@ export function getPersistableDefaultSettings(
   const persistableDefaultSettings: VisualizationSettings = {};
   for (const id in settingsDefs) {
     const settingId = id as VisualizationSettingId;
-    const settingDef = settingsDefs[settingId];
+    const settingDef = settingsDefs[settingId] ?? {};
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];
     }

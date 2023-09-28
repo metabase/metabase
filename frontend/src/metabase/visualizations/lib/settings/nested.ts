@@ -3,8 +3,15 @@ import { t } from "ttag";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
-import type { Series, VisualizationSettings } from "metabase-types/api";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  Series,
+  VisualizationSettingId,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 
 type NestedSettingsOptions<T> = {
   objectName: string;
@@ -17,10 +24,11 @@ type NestedSettingsOptions<T> = {
   getInheritedSettingsForObject: (
     object: T,
   ) => VisualizationSettingsDefinitions;
+  component: unknown;
 };
 
 export function nestedSettings<T>(
-  id: string,
+  id: VisualizationSettingId,
   {
     objectName = "object",
     getObjects,
@@ -29,8 +37,8 @@ export function nestedSettings<T>(
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
-  }: VisualizationSettings & NestedSettingsOptions<T>,
-): VisualizationSettingsDefinitions {
+  }: VisualizationSettingDefinition<Series> & NestedSettingsOptions<T>,
+): VisualizationSettingsDefinitions<Series> {
   function getComputedSettingsForObject(
     series: Series,
     object: T,
@@ -103,7 +111,12 @@ export function nestedSettings<T>(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings, onChange, extra) => {
+      getProps: (
+        series: Series,
+        settings: VisualizationSettings,
+        onChange: (value: unknown) => void,
+        extra: unknown,
+      ) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -117,15 +130,15 @@ export function nestedSettings<T>(
           objects,
           allComputedSettings,
           extra: { series, settings },
-          ...def.getExtraProps?.(series, settings, onChange, extra),
-          ...extra,
+          ...(def.getExtraProps?.(series, settings, onChange, extra) as object),
+          ...(extra as object),
         };
       },
       widget,
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings) {
+      getDefault(series: Series, settings: VisualizationSettings) {
         const cache = new Map();
         return (object: T) => {
           const key = getObjectKey(object);

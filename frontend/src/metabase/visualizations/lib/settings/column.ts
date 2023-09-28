@@ -7,6 +7,7 @@ import type {
   DatetimeUnit,
   FieldReference,
   Series,
+  VisualizationSettingId,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -30,22 +31,22 @@ import { hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
-const DEFAULT_GET_COLUMNS = (
+type GetColumns = (
+  series: Series,
+  vizSettings: VisualizationSettings,
+) => DatasetColumn[];
+
+const DEFAULT_GET_COLUMNS: GetColumns = (
   series: Series,
   vizSettings: VisualizationSettings,
 ) => series.flatMap(s => s.data?.cols ?? []);
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
-  hidden,
   ...def
-}: VisualizationSettingDefinition<unknown, unknown> & {
-  getColumns?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
-  ) => DatasetColumn[];
-  hidden?: boolean;
-}): VisualizationSettingsDefinitions {
+}: VisualizationSettingDefinition<Series> & {
+  getColumns: GetColumns;
+}): VisualizationSettingsDefinitions<Series> {
   return nestedSettings<DatasetColumn>("column_settings", {
     section: t`Formatting`,
     objectName: "column",
@@ -443,7 +444,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetCol
         "number_style",
         "currency",
         "currency_style",
-        "currency_header_only",
+        "currency_header_only" as VisualizationSettingId, // dead id?
       ],
     },
   };

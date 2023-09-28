@@ -91,7 +91,11 @@ export type WidgetName =
   | "color"
   | "colors";
 
-export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
+export type VisualizationSettingDefinition<
+  TObject = unknown,
+  TValue = unknown,
+  TProps = unknown,
+> = {
   widget?: WidgetName | React.ComponentType<TProps>;
   inline?: boolean;
   useRawSeries?: boolean;
@@ -165,14 +169,19 @@ export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
     onChange: (value: TValue) => void,
     extra: unknown,
   ) => TProps;
+  getExtraProps?: (
+    object: TObject,
+    settings: VisualizationSettings,
+    onChange: (value: TValue) => void,
+    extra: unknown,
+  ) => TProps;
   onUpdate?: (value: TValue, extra: unknown) => void;
 };
 
 export type VisualizationSettingsDefinitions<TObject = unknown> = {
-  [id in VisualizationSettingId]: VisualizationSettingDefinition<
+  [id in VisualizationSettingId]?: VisualizationSettingDefinition<
     TObject,
-    VisualizationSettings[id],
-    unknown
+    VisualizationSettings[id]
   >;
 };
 
