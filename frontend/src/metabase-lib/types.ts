@@ -287,6 +287,15 @@ export type TimeFilterParts = {
   values: string[]; // HH:mm:ss
 };
 
+export type FilterParts =
+  | StringFilterParts
+  | NumberFilterParts
+  | BooleanFilterParts
+  | TimeFilterParts
+  | SpecificDateFilterParts
+  | RelativeDateFilterParts
+  | ExcludeDateFilterParts;
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 
