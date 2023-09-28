@@ -10,6 +10,48 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { DEFAULT_SLICE_THRESHOLD } from "metabase/visualizations/echarts/visualizations/PieChart/constants";
 
+const getDimensionIndex = _.memoize((series, settings) => {
+  const [
+    {
+      data: { cols },
+    },
+  ] = series;
+
+  return _.findIndex(cols, col => col.name === settings["pie.dimension"]);
+});
+
+const getDimensionTitles = _.memoize((series, settings) => {
+  const [
+    {
+      data: { rows, cols },
+    },
+  ] = series;
+
+  const dimensionIndex = getDimensionIndex(series, settings);
+  if (dimensionIndex == null || dimensionIndex < 0) {
+    return null;
+  }
+
+  return rows.map(row =>
+    formatValue(row[dimensionIndex], settings.column(cols[dimensionIndex])),
+  );
+});
+
+const getDimensionValues = _.memoize((series, settings) => {
+  const [
+    {
+      data: { rows },
+    },
+  ] = series;
+
+  const dimensionIndex = getDimensionIndex(series, settings);
+  if (dimensionIndex == null || dimensionIndex < 0) {
+    return null;
+  }
+
+  return rows.map(row => String(row[dimensionIndex]));
+});
+
 export const PIE_CHART_SETTINGS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("pie.dimension", {
@@ -60,16 +102,15 @@ export const PIE_CHART_SETTINGS = {
     section: t`Display`,
     title: t`Colors`,
     widget: "colors",
-    getDefault: (series, settings) =>
-      settings["pie._dimensionValues"]
-        ? getColorsForValues(settings["pie._dimensionValues"])
-        : {},
+    getDefault: (series, settings) => {
+      const dimensionValues = getDimensionValues(series, settings);
+      return dimensionValues ? getColorsForValues(dimensionValues) : {};
+    },
     getProps: (series, settings) => ({
-      seriesValues: settings["pie._dimensionValues"] || [],
-      seriesTitles: settings["pie._dimensionTitles"] || [],
+      seriesValues: getDimensionValues(series, settings) || [],
+      seriesTitles: getDimensionTitles(series, settings) || [],
     }),
-    getDisabled: (series, settings) => !settings["pie._dimensionValues"],
-    readDependencies: ["pie._dimensionValues", "pie._dimensionTitles"],
+    getDisabled: (series, settings) => !getDimensionValues(series, settings),
   },
   // this setting recomputes color assignment using pie.colors as the existing
   // assignments in case the user previous modified pie.colors and a new value
@@ -78,73 +119,9 @@ export const PIE_CHART_SETTINGS = {
   "pie._colors": {
     getValue: (series, settings) =>
       getColorsForValues(
-        settings["pie._dimensionValues"],
+        getDimensionValues(series, settings),
         settings["pie.colors"],
       ),
-    readDependencies: ["pie._dimensionValues", "pie.colors"],
-  },
-  // TODO: remove
-  "pie._metricIndex": {
-    getValue: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => _.findIndex(cols, col => col.name === settings["pie.metric"]),
-    readDependencies: ["pie.metric"],
-  },
-  // TODO: remove
-  "pie._dimensionIndex": {
-    getValue: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
-    readDependencies: ["pie.dimension"],
-  },
-  // TODO: remove
-  "pie._dimensionValues": {
-    getValue: (
-      [
-        {
-          data: { rows },
-        },
-      ],
-      settings,
-    ) => {
-      const dimensionIndex = settings["pie._dimensionIndex"];
-      if (dimensionIndex == null || dimensionIndex < 0) {
-        return null;
-      }
-
-      return rows.map(row => String(row[dimensionIndex]));
-    },
-    readDependencies: ["pie._dimensionIndex"],
-  },
-  // TODO: remove
-  "pie._dimensionTitles": {
-    getValue: (
-      [
-        {
-          data: { rows, cols },
-        },
-      ],
-      settings,
-    ) => {
-      const dimensionIndex = settings["pie._dimensionIndex"];
-      if (dimensionIndex == null || dimensionIndex < 0) {
-        return null;
-      }
-
-      return rows.map(row =>
-        formatValue(row[dimensionIndex], settings.column(cols[dimensionIndex])),
-      );
-    },
-    readDependencies: ["pie._dimensionIndex"],
+    readDependencies: ["pie.colors"],
   },
 };
