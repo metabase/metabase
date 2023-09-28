@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+      backend_all: ${{ steps.changes.outputs.backend_all }}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
