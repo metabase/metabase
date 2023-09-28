@@ -5,6 +5,7 @@ import { Legend } from "metabase/static-viz/components/Legend";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/echarts";
 import { calculateLegendRows } from "metabase/static-viz/components/Legend/utils";
 import { buildPieChart } from "metabase/visualizations/shared/echarts/pie";
+import { computeStaticPieChartSettings } from "metabase/static-viz/components/PieChart/settings";
 
 const WIDTH = 400;
 const HEIGHT = 400;
@@ -17,7 +18,13 @@ export const PieChart = ({ rawSeries, environment }: IsomorphicChartProps) => {
     height: HEIGHT,
   });
 
-  const { option, legend } = buildPieChart(rawSeries, environment);
+  const computedVisualizationSettings =
+    computeStaticPieChartSettings(rawSeries);
+  const { option, legend } = buildPieChart(
+    rawSeries,
+    computedVisualizationSettings,
+    environment,
+  );
 
   chart.setOption(option);
 

@@ -5,56 +5,97 @@ import type {
   ComputedVisualizationSettings,
   RenderingEnvironment,
 } from "metabase/visualizations/types";
-import type {
-  RawSeries,
-  RowValues,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
+import type { RawSeries, RowValues } from "metabase-types/api";
 import { findWithIndex } from "metabase/core/utils/arrays";
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import type {
   PieChartColumns,
   PieLegendItem,
+  PieSlice,
 } from "metabase/visualizations/shared/echarts/pie/types";
-import {
-  computeLegendDecimals,
-  formatPercent,
-} from "metabase/visualizations/visualizations/PieChart/utils";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { isNotNull } from "metabase/core/utils/types";
+import { OTHER_SLICE_MIN_PERCENTAGE } from "metabase/visualizations/echarts/visualizations/PieChart/constants";
+import { computeLegendDecimals } from "./utils";
 
-export const DEFAULT_SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
-export const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
+type Formatter = (value: unknown) => string;
+type PercentFormatter = (value: unknown, decimals: number) => string;
+
+interface Formatters {
+  formatDimension: Formatter;
+  formatMetric: Formatter;
+  formatPercent: PercentFormatter;
+}
+
+const getFormatters = (
+  pieColumns: PieChartColumns,
+  settings: ComputedVisualizationSettings,
+  { formatValue }: RenderingEnvironment,
+): Formatters => {
+  const formatDimension = (value: unknown, jsx = true) =>
+    formatValue(value, {
+      ...settings.column(pieColumns.dimension.column),
+      jsx,
+      majorWidth: 0,
+    });
+  const formatMetric = (value: unknown, jsx = true) =>
+    formatValue(value, {
+      ...settings.column(pieColumns.metric.column),
+      jsx,
+      majorWidth: 0,
+    });
+
+  const formatPercent = (percent: unknown, decimals: number) =>
+    formatValue(percent, {
+      column: pieColumns.metric.column,
+      number_separators: settings.column(pieColumns.metric.column)
+        ?.number_separators,
+      jsx: true,
+      majorWidth: 0,
+      number_style: "percent",
+      decimals,
+    });
+
+  return {
+    formatDimension,
+    formatMetric,
+    formatPercent,
+  };
+};
 
 export function getSlices(
   rows: RowValues[],
   pieColumns: PieChartColumns,
-  settings: VisualizationSettings,
+  settings: ComputedVisualizationSettings,
   sliceThreshold: number,
-  { getColor, formatValue }: RenderingEnvironment,
-) {
+  { getColor }: RenderingEnvironment,
+): PieSlice[] {
   const { dimension, metric } = pieColumns;
 
   const total = rows.reduce((sum, row) => sum + row[metric.index], 0);
-  const colors = getSlicesColors(pieColumns, settings, rows);
 
   const [slices, others] = _.chain(rows)
-    .map((row, index) => ({
-      // TODO remove the unused properties here
-      key: row[dimension.index],
-      // Value is used to determine arc size and is modified for very small
-      // other slices. We save displayValue for use in tooltips.
-      value: row[metric.index],
-      displayValue: row[metric.index],
-      percentage: row[metric.index] / total,
-      rowIndex: index,
-      color: colors[row[dimension.index]],
-    }))
+    .map((row, index): PieSlice => {
+      const metricValue = row[metric.index] ?? 0;
+      const dimensionValue = row[dimension.index] ?? NULL_DISPLAY_VALUE;
+
+      if (typeof metricValue != "number") {
+        throw new Error("pie chart metric column should be numeric");
+      }
+
+      return {
+        key: dimensionValue,
+        value: metricValue,
+        percentage: metricValue / total,
+        rowIndex: index,
+        color: settings["pie.colors"]?.[dimensionValue],
+      };
+    })
     .partition(d => d.percentage > sliceThreshold)
     .value();
 
   const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
   // Multiple others get squashed together under the key "Other"
-  const otherSlice =
+  const otherSlice: PieSlice =
     others.length === 1
       ? others[0]
       : {
@@ -75,22 +116,11 @@ export function getSlices(
 }
 
 export const getTotalValueGraphic = (
-  rows: RowValues[],
-  pieColumns: PieChartColumns,
-  settings: ComputedVisualizationSettings,
-  { formatValue }: RenderingEnvironment,
+  slices: PieSlice[],
+  formatMetric: Formatter,
 ) => {
-  if (settings["pie.show_total"]) {
-    return null;
-  }
-
-  const { metric } = pieColumns;
-
-  const total = rows.reduce((sum, row) => sum + row[metric.index], 0);
-  const formattedTotal = formatValue(total, {
-    ...settings.column?.(metric.column),
-    majorWidth: 0,
-  });
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const formattedTotal = formatMetric(total);
 
   return {
     type: "group",
@@ -117,33 +147,30 @@ export const getTotalValueGraphic = (
           fill: "#000",
           font: "bold 26px sans-serif",
           textAlign: "center",
-          text: "Total",
+          text: t`Total`,
         },
       },
     ],
   };
 };
 
-const getPieChartColumns = (series: RawSeries): PieChartColumns => {
-  const [{ card, data }] = series;
-  const settings = card.visualization_settings;
+const getPieChartColumns = (
+  series: RawSeries,
+  settings: ComputedVisualizationSettings,
+): PieChartColumns => {
+  const [{ data }] = series;
 
-  let dimensionName = settings["pie.dimension"];
-  let metricName = settings["pie.metric"];
-
-  if (!dimensionName || !metricName) {
-    const defaultColumns = getDefaultDimensionAndMetric(series);
-
-    dimensionName ??= defaultColumns.dimension;
-    metricName ??= defaultColumns.metric;
-  }
-
-  const dimension = findWithIndex(data.cols, col => col.name === dimensionName);
-  const metric = findWithIndex(data.cols, col => col.name === metricName);
+  const dimension = findWithIndex(
+    data.cols,
+    col => col.name === settings["pie.dimension"],
+  );
+  const metric = findWithIndex(
+    data.cols,
+    col => col.name === settings["pie.metric"],
+  );
 
   if (!dimension || !metric) {
-    // should we throw actually?
-    throw new Error("No columns selected");
+    throw new Error(t`No columns selected`);
   }
 
   return {
@@ -158,36 +185,27 @@ const getPieChartColumns = (series: RawSeries): PieChartColumns => {
   };
 };
 
-export const getSlicesColors = (
-  pieColumns: PieChartColumns,
-  settings: VisualizationSettings,
-  rows: RowValues[],
-) => {
-  const dimensionValues = rows.map(row =>
-    String(row[pieColumns.dimension.index]),
-  );
-
-  return getColorsForValues(dimensionValues, settings["pie.colors"] ?? {});
-};
-
 export const buildPieChart = (
   series: RawSeries,
+  settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
 ): { option: EChartsOption; legend: PieLegendItem[] } => {
   if (series.length === 0) {
     return { option: {}, legend: [] };
   }
 
-  const [{ card, data }] = series;
+  const [{ data }] = series;
   const { rows } = data;
-  const settings = card.visualization_settings;
 
-  const pieColumns = getPieChartColumns(series);
+  const pieColumns = getPieChartColumns(series, settings);
 
-  const sliceThreshold =
-    typeof settings["pie.slice_threshold"] === "number"
-      ? settings["pie.slice_threshold"] / 100
-      : DEFAULT_SLICE_THRESHOLD;
+  const { formatDimension, formatMetric, formatPercent } = getFormatters(
+    pieColumns,
+    settings,
+    environment,
+  );
+
+  const sliceThreshold = settings["pie.slice_threshold"]! / 100;
 
   const slices = getSlices(
     rows,
@@ -198,7 +216,9 @@ export const buildPieChart = (
   );
 
   const option = {
-    graphic: getTotalValueGraphic(rows, pieColumns, settings, environment),
+    graphic: settings["pie.show_total"]
+      ? getTotalValueGraphic(slices, formatMetric)
+      : null,
     series: {
       type: "sunburst",
       radius: ["60%", "90%"],
@@ -213,25 +233,17 @@ export const buildPieChart = (
     },
   };
 
+  const percentages = slices.map(s => s.percentage);
+  const legendDecimals = computeLegendDecimals({ percentages });
   const legend = slices.map(slice => ({
-    title: [String(slice.key)],
     color: slice.color,
+    title: [
+      slice.key === t`Other` ? slice.key : formatDimension(slice.key),
+      settings["pie.percent_visibility"] === "legend"
+        ? formatPercent(slice.percentage, legendDecimals ?? 0)
+        : undefined,
+    ].filter(isNotNull),
   }));
-  // const percentages = slices.map(s => s.percentage);
-  // const legendDecimals = computeLegendDecimals({ percentages });
-  //
-  // const legendTitles = slices.map(s => [
-  //   s.key === "Other" ? s.key : formatDimension({ value: s.key, props }),
-  //   settings["pie.percent_visibility"] === "legend"
-  //     ? formatPercent({
-  //         percent: s.percentage,
-  //         decimals: legendDecimals ?? 0,
-  //         settings: settings,
-  //         cols: data.cols,
-  //       })
-  //     : undefined,
-  // ]);
-  // const legendColors = slices.map(s => s.color);
 
   return {
     option,

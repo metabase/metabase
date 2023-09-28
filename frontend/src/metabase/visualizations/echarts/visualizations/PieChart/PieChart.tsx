@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { PIE_CHART_SETTINGS } from "metabase/visualizations/visualizations/PieChart/constants";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { buildPieChart } from "metabase/visualizations/shared/echarts/pie";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { color } from "metabase/lib/colors";
+import { PIE_CHART_SETTINGS } from "metabase/visualizations/echarts/visualizations/PieChart/settings";
 import { EChartsRenderer } from "../../EChartsRenderer";
 import { PieChartLegend } from "./PieChartLegend";
 import { useChartDimension } from "./utils";
@@ -20,12 +20,12 @@ Object.assign(PieChart, {
 export function PieChart(props: VisualizationProps) {
   const { option, legend } = useMemo(
     () =>
-      buildPieChart(props.rawSeries, {
+      buildPieChart(props.rawSeries, props.settings, {
         getColor: color,
         measureText: measureTextWidth,
         formatValue: formatValue,
       }),
-    [],
+    [props.rawSeries, props.settings],
   );
 
   const { sideLength, onChartDimensionChange } = useChartDimension();
