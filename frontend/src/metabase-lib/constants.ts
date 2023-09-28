@@ -25,6 +25,12 @@ export const NUMBER_OPERATORS = [
 
 export const BOOLEAN_OPERATORS = ["=", "is-empty", "not-empty"] as const;
 
+export const TIME_OPERATORS = ["<", ">", "between"] as const;
+
+export const SPECIFIC_DATE_OPERATORS = ["=", "<", ">", "between"] as const;
+
+export const RELATIVE_DATE_OPERATORS = ["time-interval", "between"] as const;
+
 export const RELATIVE_DATE_UNITS = [
   "minute",
   "hour",

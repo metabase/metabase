@@ -4,8 +4,11 @@ import type {
   EXCLUDE_DATE_OPERATORS,
   EXCLUDE_DATE_UNITS,
   NUMBER_OPERATORS,
-  STRING_OPERATORS,
+  RELATIVE_DATE_OPERATORS,
   RELATIVE_DATE_UNITS,
+  SPECIFIC_DATE_OPERATORS,
+  STRING_OPERATORS,
+  TIME_OPERATORS,
 } from "./constants";
 
 /**
@@ -181,6 +184,12 @@ export type NumberOperator = typeof NUMBER_OPERATORS[number];
 
 export type BooleanOperator = typeof BOOLEAN_OPERATORS[number];
 
+export type TimeOperator = typeof TIME_OPERATORS[number];
+
+export type SpecificDateOperator = typeof SPECIFIC_DATE_OPERATORS[number];
+
+export type RelativeDateOperator = typeof RELATIVE_DATE_OPERATORS[number];
+
 export type RelativeDateUnit = typeof RELATIVE_DATE_UNITS[number];
 
 export type ExcludeDateUnit = typeof EXCLUDE_DATE_UNITS[number];
@@ -208,6 +217,12 @@ export type BooleanFilterParts = {
   operator: BooleanOperator;
   column: ColumnMetadata;
   values: boolean[];
+};
+
+export type TimeFilterParts = {
+  operator: TimeOperator;
+  column: ColumnMetadata;
+  values: string[]; // HH:mm:ss
 };
 
 export type RelativeDateFilterParts = {
