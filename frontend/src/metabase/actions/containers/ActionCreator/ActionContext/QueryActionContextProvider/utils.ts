@@ -100,8 +100,8 @@ export const areActionsEqual = (
   return (
     _.isEqual(action1Rest, action2Rest) &&
     _.isEqual(
-      getActionCrudParameters(action1Parameters),
-      getActionCrudParameters(action2Parameters),
+      getCleanParameters(action1Parameters),
+      getCleanParameters(action2Parameters),
     )
   );
 };
@@ -114,7 +114,7 @@ export const areActionsEqual = (
  *
  * @see https://github.com/metabase/metabase/pull/28031
  */
-const getActionCrudParameters = (parameters?: WritebackParameter[]) => {
+const getCleanParameters = (parameters?: WritebackParameter[]) => {
   if (!parameters) {
     return parameters;
   }
