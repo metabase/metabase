@@ -27,7 +27,7 @@ export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentCompon
 
     const onUserSelect = (user: UserListResult) => {
       if (selectedUserId && isEqual(selectedUserId, user.id)) {
-        setSelectedUserId(undefined);
+        setSelectedUserId(null);
       } else {
         setSelectedUserId(user.id);
       }

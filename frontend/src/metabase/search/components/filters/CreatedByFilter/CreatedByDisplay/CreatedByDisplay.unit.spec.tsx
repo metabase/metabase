@@ -12,13 +12,10 @@ const TEST_USERS = [
 
 type SetupProps = {
   users?: User[];
-  value?: CreatedByFilterProps;
+  value?: CreatedByFilterProps | null;
 };
 
-const setup = async ({
-  users = TEST_USERS,
-  value = undefined,
-}: SetupProps = {}) => {
+const setup = async ({ users = TEST_USERS, value = null }: SetupProps = {}) => {
   setupUsersEndpoints(users);
   renderWithProviders(<CreatedByDisplay value={value} />);
   await waitFor(() => {

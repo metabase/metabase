@@ -22,9 +22,9 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedByFilterProps = UserId | undefined;
+export type CreatedByFilterProps = UserId;
 
-export type VerifiedFilterProps = true | undefined;
+export type VerifiedFilterProps = true;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
@@ -47,8 +47,8 @@ export type SearchAwareLocation = Location<
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
-  value?: SearchFilterPropTypes[T];
-  onChange: (value: SearchFilterPropTypes[T]) => void;
+  value: SearchFilterPropTypes[T] | null;
+  onChange: (value: SearchFilterPropTypes[T] | null) => void;
   "data-testid"?: string;
 } & Record<string, unknown>;
 
@@ -63,7 +63,7 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   fromUrl: (value: SearchQueryParamValue) => SearchFilterPropTypes[T];
 
   // converts filter value to URL query parameter string value
-  toUrl: (value?: SearchFilterPropTypes[T]) => SearchQueryParamValue;
+  toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
 }
 
 export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
