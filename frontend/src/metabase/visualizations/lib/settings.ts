@@ -20,6 +20,8 @@ import type {
   WidgetName,
 } from "metabase/visualizations/types";
 import type {
+  BasicVisualizationSettings,
+  ClickBehavior,
   TransformedSeries,
   VisualizationSettingId,
   VisualizationSettings,
@@ -280,6 +282,12 @@ export function mergeSettings(
   return merged;
 }
 
+type ColumnClickBehaviors = {
+  [columnKey in string]: {
+    click_behavior: ClickBehavior;
+  };
+};
+
 export function getClickBehaviorSettings(settings: VisualizationSettings) {
   const newSettings: VisualizationSettings = {};
 
@@ -295,7 +303,9 @@ export function getClickBehaviorSettings(settings: VisualizationSettings) {
   return newSettings;
 }
 
-function getColumnClickBehavior(columnSettings) {
+function getColumnClickBehavior(
+  columnSettings?: BasicVisualizationSettings,
+): ColumnClickBehaviors | null {
   if (columnSettings == null) {
     return null;
   }
@@ -304,7 +314,7 @@ function getColumnClickBehavior(columnSettings) {
     .filter(([_, fieldSettings]) => fieldSettings.click_behavior != null)
     .reduce((acc, [key, fieldSettings]) => {
       return {
-        ...acc,
+        ...(acc as any),
         [key]: {
           click_behavior: fieldSettings.click_behavior,
         },
@@ -323,7 +333,9 @@ const KEYS_TO_COMPARE = new Set([
   "suffix",
 ]);
 
-export function getLineAreaBarComparisonSettings(columnSettings) {
+export function getLineAreaBarComparisonSettings(
+  columnSettings: BasicVisualizationSettings,
+) {
   return _.pick(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
       return false;
