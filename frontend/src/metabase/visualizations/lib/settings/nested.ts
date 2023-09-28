@@ -7,6 +7,7 @@ import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 
 type NestedSettingsOptions<T> = {
+  objectName: string;
   getObjects: (series: Series, settings: VisualizationSettings) => T[];
   getObjectKey: (object: T) => string;
   getSettingDefinitionsForObject: (

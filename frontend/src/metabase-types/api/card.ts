@@ -236,8 +236,10 @@ export type VisualizationSettings = {
   axis?: null | "left" | "right";
   _header_unit?: string;
   column_title?: string;
+  _column_title_full?: string;
   currency_in_header?: boolean;
   show_mini_bar?: boolean;
+  _numberFormatter?: any;
 
   // options are also mixed in
 } & NumberFormatOptions &
