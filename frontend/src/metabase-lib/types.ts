@@ -3,6 +3,7 @@ import type {
   BOOLEAN_OPERATORS,
   EXCLUDE_DATE_OPERATORS,
   EXCLUDE_DATE_UNITS,
+  EXPRESSION_OPERATORS,
   NUMBER_OPERATORS,
   RELATIVE_DATE_OPERATORS,
   RELATIVE_DATE_UNITS,
@@ -141,29 +142,7 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
-  | "+"
-  | "-"
-  | "*"
-  | "/"
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "between"
-  | "interval"
-  | "time-interval"
-  | "relative-datetime";
+export type ExpressionOperator = typeof EXPRESSION_OPERATORS[number];
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
