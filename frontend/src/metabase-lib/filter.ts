@@ -1,3 +1,4 @@
+import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
 import { expressionClause, expressionParts } from "./expression";
@@ -6,6 +7,7 @@ import type {
   BooleanFilterParts,
   ColumnMetadata,
   ExcludeDateFilterParts,
+  ExcludeTemporalUnit,
   ExpressionClause,
   ExpressionParts,
   FilterClause,
@@ -263,6 +265,7 @@ export function specificDateFilterClause({
   column,
   values,
 }: SpecificDateFilterParts): ExpressionClause {
+  // TODO if values have time, we need to set "minute" temporal-unit on the column
   return expressionClause(operator, [column, ...values]);
 }
 
@@ -431,7 +434,34 @@ export function excludeDateFilterClause({
   values,
   unit,
 }: ExcludeDateFilterParts): ExpressionClause {
-  throw new TypeError();
+  return expressionClause(operator, [
+    column, // TODO set temporal-unit on the column
+    ...values.map(value => excludeDateFilterClauseValue(value, unit)),
+  ]);
+}
+
+function excludeDateFilterClauseValue(
+  value: number,
+  unit: ExcludeTemporalUnit,
+): string {
+  const date = moment();
+
+  switch (unit) {
+    case "day-of-week":
+      date.isoWeekday(value);
+      break;
+    case "month-of-year":
+      date.month(value);
+      break;
+    case "quarter-of-year":
+      date.quarter(value);
+      break;
+    case "hour-of-day":
+      date.hour(value);
+      break;
+  }
+
+  return date.format("yyyy-MM-dd");
 }
 
 export function excludeDateFilterParts(
