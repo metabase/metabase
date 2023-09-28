@@ -1,16 +1,4 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type {
-  BOOLEAN_OPERATORS,
-  EXCLUDE_DATE_OPERATORS,
-  EXCLUDE_DATE_UNITS,
-  EXPRESSION_OPERATORS,
-  NUMBER_OPERATORS,
-  RELATIVE_DATE_OPERATORS,
-  RELATIVE_DATE_UNITS,
-  SPECIFIC_DATE_OPERATORS,
-  STRING_OPERATORS,
-  TIME_OPERATORS,
-} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -142,7 +130,26 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator = typeof EXPRESSION_OPERATORS[number];
+export type ExpressionOperator =
+  | "+"
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with"
+  | "interval"
+  | "time-interval"
+  | "relative-datetime";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -157,26 +164,70 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type StringOperator = typeof STRING_OPERATORS[number];
+export type StringFilterOperator = Extract<
+  ExpressionOperator,
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with"
+>;
 
-export type NumberOperator = typeof NUMBER_OPERATORS[number];
+export type NumberFilterOperator = Extract<
+  ExpressionOperator,
+  "=" | "!=" | ">" | "<" | "between" | ">=" | "<=" | "is-null" | "not-null"
+>;
 
-export type BooleanOperator = typeof BOOLEAN_OPERATORS[number];
+export type BooleanFilterOperator = Extract<
+  ExpressionOperator,
+  "=" | "is-null" | "not-null"
+>;
 
-export type TimeOperator = typeof TIME_OPERATORS[number];
+export type SpecificDateFilterOperator = Extract<
+  ExpressionOperator,
+  "=" | "<" | ">" | "between"
+>;
 
-export type SpecificDateOperator = typeof SPECIFIC_DATE_OPERATORS[number];
+export type ExcludeDateFilterOperator = Extract<
+  ExpressionOperator,
+  "!=" | "is-null" | "not-null"
+>;
 
-export type RelativeDateOperator = typeof RELATIVE_DATE_OPERATORS[number];
+export type TimeFilterOperator = Extract<
+  ExpressionOperator,
+  "<" | ">" | "between"
+>;
 
-export type RelativeDateUnit = typeof RELATIVE_DATE_UNITS[number];
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";
 
-export type ExcludeDateUnit = typeof EXCLUDE_DATE_UNITS[number];
+export type RelativeTemporalUnit = Extract<
+  TemporalUnit,
+  "minute" | "hour" | "day" | "week" | "quarter" | "month" | "year"
+>;
 
-export type ExcludeDateOperator = typeof EXCLUDE_DATE_OPERATORS[number];
+export type ExcludeTemporalUnit = Extract<
+  TemporalUnit,
+  "day-of-week" | "month-of-year" | "quarter-of-year" | "hour-of-day"
+>;
 
 export type StringFilterParts = {
-  operator: StringOperator;
+  operator: StringFilterOperator;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -187,25 +238,19 @@ export type StringFilterOptions = {
 };
 
 export type NumberFilterParts = {
-  operator: NumberOperator;
+  operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: BooleanOperator;
+  operator: BooleanFilterOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
 
-export type TimeFilterParts = {
-  operator: TimeOperator;
-  column: ColumnMetadata;
-  values: string[]; // HH:mm:ss
-};
-
 export type SpecificDateFilterParts = {
-  operator: SpecificDateOperator;
+  operator: SpecificDateFilterOperator;
   column: ColumnMetadata;
   values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
 };
@@ -213,9 +258,9 @@ export type SpecificDateFilterParts = {
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   value: number | "current";
-  unit: RelativeDateUnit;
+  unit: RelativeTemporalUnit;
   offsetValue?: number;
-  offsetUnit?: RelativeDateUnit;
+  offsetUnit?: RelativeTemporalUnit;
   options: RelativeDateFilterOptions;
 };
 
@@ -224,15 +269,22 @@ export type RelativeDateFilterOptions = {
 };
 
 // values depend on the unit
-// date-of-week => 1-7 (Monday-Sunday)
+// day-of-week => 1-7 (Monday-Sunday)
 // month-of-year => 0-11 (January-December)
 // quarter-of-year => 1-4
 // hour-of-day => 0-23
+
 export type ExcludeDateFilterParts = {
-  operator: ExcludeDateOperator;
+  operator: ExcludeDateFilterOperator;
   column: ColumnMetadata;
   values: number[];
-  unit: ExcludeDateUnit;
+  unit: ExcludeTemporalUnit;
+};
+
+export type TimeFilterParts = {
+  operator: TimeFilterOperator;
+  column: ColumnMetadata;
+  values: string[]; // HH:mm:ss
 };
 
 export type FilterParts =

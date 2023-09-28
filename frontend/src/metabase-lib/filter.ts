@@ -1,29 +1,23 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import {
-  BOOLEAN_OPERATORS,
-  NUMBER_OPERATORS,
-  RELATIVE_DATE_UNITS,
-  STRING_OPERATORS,
-} from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import type {
+  BooleanFilterOperator,
   BooleanFilterParts,
-  BooleanOperator,
   ColumnMetadata,
   ExcludeDateFilterParts,
   ExpressionClause,
   ExpressionParts,
   FilterClause,
   FilterParts,
+  NumberFilterOperator,
   NumberFilterParts,
-  NumberOperator,
   Query,
   RelativeDateFilterParts,
-  RelativeDateUnit,
+  RelativeTemporalUnit,
   SpecificDateFilterParts,
+  StringFilterOperator,
   StringFilterParts,
-  StringOperator,
 } from "./types";
 
 export function filterableColumns(
@@ -73,24 +67,65 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
   return Array.isArray(arg) && arg.every(isBooleanLiteral);
 }
 
-function isStringOperator(arg: unknown): arg is StringOperator {
-  const operators: ReadonlyArray<string> = STRING_OPERATORS;
-  return typeof arg === "string" && operators.includes(arg);
+function isStringFilterOperator(arg: unknown): arg is StringFilterOperator {
+  switch (arg) {
+    case "=":
+    case "!=":
+    case "contains":
+    case "does-not-contain":
+    case "is-null":
+    case "not-null":
+    case "is-empty":
+    case "not-empty":
+    case "starts-with":
+    case "ends-with":
+      return true;
+    default:
+      return false;
+  }
 }
 
-function isNumberOperator(arg: unknown): arg is NumberOperator {
-  const operators: ReadonlyArray<string> = NUMBER_OPERATORS;
-  return typeof arg === "string" && operators.includes(arg);
+function isNumberFilterOperator(arg: unknown): arg is NumberFilterOperator {
+  switch (arg) {
+    case "=":
+    case "!=":
+    case ">":
+    case "<":
+    case "between":
+    case ">=":
+    case "<=":
+    case "is-null":
+    case "not-null":
+      return true;
+    default:
+      return false;
+  }
 }
 
-function isBooleanOperator(arg: unknown): arg is BooleanOperator {
-  const operators: ReadonlyArray<string> = BOOLEAN_OPERATORS;
-  return typeof arg === "string" && operators.includes(arg);
+function isBooleanFilterOperator(arg: unknown): arg is BooleanFilterOperator {
+  switch (arg) {
+    case "=":
+    case "is-null":
+    case "not-null":
+      return true;
+    default:
+      return false;
+  }
 }
 
-function isRelativeDateUnit(arg: unknown): arg is RelativeDateUnit {
-  const units: ReadonlyArray<string> = RELATIVE_DATE_UNITS;
-  return typeof arg === "string" && units.includes(arg);
+function isRelativeTemporalUnit(arg: unknown): arg is RelativeTemporalUnit {
+  switch (arg) {
+    case "minute":
+    case "hour":
+    case "day":
+    case "week":
+    case "quarter":
+    case "month":
+    case "year":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function isExpression(arg: unknown): arg is ExpressionParts {
@@ -120,7 +155,7 @@ export function stringFilterParts(
     stageIndex,
     filterClause,
   );
-  if (!isStringOperator(operator) || args.length < 1) {
+  if (!isStringFilterOperator(operator) || args.length < 1) {
     return null;
   }
 
@@ -154,7 +189,7 @@ export function numberFilterParts(
   filterClause: FilterClause,
 ): NumberFilterParts | null {
   const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isNumberOperator(operator) || args.length < 1) {
+  if (!isNumberFilterOperator(operator) || args.length < 1) {
     return null;
   }
 
@@ -188,7 +223,7 @@ export function booleanFilterParts(
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
   const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isBooleanOperator(operator) || args.length < 1) {
+  if (!isBooleanFilterOperator(operator) || args.length < 1) {
     return null;
   }
 
@@ -280,7 +315,7 @@ function relativeDateFilterPartsWithoutOffset({
   if (
     !isColumnMetadata(column) ||
     !isNumberOrCurrentLiteral(value) ||
-    !isRelativeDateUnit(unit)
+    !isRelativeTemporalUnit(unit)
   ) {
     return null;
   }
@@ -326,7 +361,7 @@ function relativeDateFilterPartsWithOffset({
   }
 
   const [offsetValue, offsetUnit] = intervalParts.args;
-  if (!isNumberLiteral(offsetValue) || !isRelativeDateUnit(offsetUnit)) {
+  if (!isNumberLiteral(offsetValue) || !isRelativeTemporalUnit(offsetUnit)) {
     return null;
   }
 
@@ -334,9 +369,9 @@ function relativeDateFilterPartsWithOffset({
   const [endValue, endUnit] = endParts.args;
   if (
     !isNumberLiteral(startValue) ||
-    !isRelativeDateUnit(startUnit) ||
+    !isRelativeTemporalUnit(startUnit) ||
     !isNumberLiteral(endValue) ||
-    !isRelativeDateUnit(endUnit) ||
+    !isRelativeTemporalUnit(endUnit) ||
     startUnit !== endUnit ||
     (startValue !== 0 && endValue !== 0)
   ) {
