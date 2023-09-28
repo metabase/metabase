@@ -20,4 +20,5 @@ export * from "./order_by";
 export * from "./query";
 export * from "./segments";
 export * from "./temporal_bucket";
+export * from "./temporal_unit";
 export * from "./types";
