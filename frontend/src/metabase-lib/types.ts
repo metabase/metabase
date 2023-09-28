@@ -1,9 +1,11 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   BOOLEAN_OPERATORS,
+  EXCLUDE_DATE_OPERATORS,
+  EXCLUDE_DATE_UNITS,
   NUMBER_OPERATORS,
   STRING_OPERATORS,
-  TEMPORAL_UNITS,
+  RELATIVE_DATE_UNITS,
 } from "./constants";
 
 /**
@@ -160,14 +162,6 @@ export type ExpressionOperator =
   | "time-interval"
   | "relative-datetime";
 
-export type StringOperator = typeof STRING_OPERATORS[number];
-
-export type NumberOperator = typeof NUMBER_OPERATORS[number];
-
-export type BooleanOperator = typeof BOOLEAN_OPERATORS[number];
-
-export type TemporalUnit = typeof TEMPORAL_UNITS[number];
-
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
@@ -180,6 +174,18 @@ export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
 };
+
+export type StringOperator = typeof STRING_OPERATORS[number];
+
+export type NumberOperator = typeof NUMBER_OPERATORS[number];
+
+export type BooleanOperator = typeof BOOLEAN_OPERATORS[number];
+
+export type RelativeDateUnit = typeof RELATIVE_DATE_UNITS[number];
+
+export type ExcludeDateUnit = typeof EXCLUDE_DATE_UNITS[number];
+
+export type ExcludeDateOperator = typeof EXCLUDE_DATE_OPERATORS[number];
 
 export type StringFilterParts = {
   operator: StringOperator;
@@ -207,14 +213,21 @@ export type BooleanFilterParts = {
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   value: number | "current";
-  unit: TemporalUnit;
+  unit: RelativeDateUnit;
   offsetValue?: number;
-  offsetUnit?: TemporalUnit;
+  offsetUnit?: RelativeDateUnit;
   options: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
+};
+
+export type ExcludeDateFilterParts = {
+  operator: ExcludeDateOperator;
+  column: ColumnMetadata;
+  values: number[];
+  unit: ExcludeDateUnit;
 };
 
 declare const Join: unique symbol;

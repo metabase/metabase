@@ -3,24 +3,25 @@ import * as ML from "cljs/metabase.lib.js";
 import {
   BOOLEAN_OPERATORS,
   NUMBER_OPERATORS,
+  RELATIVE_DATE_UNITS,
   STRING_OPERATORS,
-  TEMPORAL_UNITS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import type {
   BooleanFilterParts,
+  BooleanOperator,
   ColumnMetadata,
+  ExcludeDateFilterParts,
   ExpressionClause,
   ExpressionParts,
   FilterClause,
   NumberFilterParts,
+  NumberOperator,
   Query,
   RelativeDateFilterParts,
-  TemporalUnit,
+  RelativeDateUnit,
   StringFilterParts,
   StringOperator,
-  NumberOperator,
-  BooleanOperator,
 } from "./types";
 
 export function filterableColumns(
@@ -85,8 +86,8 @@ function isBooleanOperator(arg: unknown): arg is BooleanOperator {
   return typeof arg === "string" && operators.includes(arg);
 }
 
-function isTemporalUnit(arg: unknown): arg is TemporalUnit {
-  const units: ReadonlyArray<string> = TEMPORAL_UNITS;
+function isRelativeDateUnit(arg: unknown): arg is RelativeDateUnit {
+  const units: ReadonlyArray<string> = RELATIVE_DATE_UNITS;
   return typeof arg === "string" && units.includes(arg);
 }
 
@@ -229,7 +230,7 @@ function relativeDateFilterPartsWithoutOffset({
   if (
     !isColumnMetadata(column) ||
     !isNumberOrCurrentLiteral(value) ||
-    !isTemporalUnit(unit)
+    !isRelativeDateUnit(unit)
   ) {
     return null;
   }
@@ -275,7 +276,7 @@ function relativeDateFilterPartsWithOffset({
   }
 
   const [offsetValue, offsetUnit] = intervalParts.args;
-  if (!isNumberLiteral(offsetValue) || !isTemporalUnit(offsetUnit)) {
+  if (!isNumberLiteral(offsetValue) || !isRelativeDateUnit(offsetUnit)) {
     return null;
   }
 
@@ -283,9 +284,9 @@ function relativeDateFilterPartsWithOffset({
   const [endValue, endUnit] = endParts.args;
   if (
     !isNumberLiteral(startValue) ||
-    !isTemporalUnit(startUnit) ||
+    !isRelativeDateUnit(startUnit) ||
     !isNumberLiteral(endValue) ||
-    !isTemporalUnit(endUnit) ||
+    !isRelativeDateUnit(endUnit) ||
     startUnit !== endUnit ||
     (startValue !== 0 && endValue !== 0)
   ) {
@@ -300,4 +301,12 @@ function relativeDateFilterPartsWithOffset({
     offsetUnit,
     options: {},
   };
+}
+
+export function excludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  return null;
 }

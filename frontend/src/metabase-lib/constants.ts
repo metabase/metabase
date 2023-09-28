@@ -25,7 +25,7 @@ export const NUMBER_OPERATORS = [
 
 export const BOOLEAN_OPERATORS = ["=", "is-empty", "not-empty"] as const;
 
-export const TEMPORAL_UNITS = [
+export const RELATIVE_DATE_UNITS = [
   "minute",
   "hour",
   "day",
@@ -33,4 +33,13 @@ export const TEMPORAL_UNITS = [
   "quarter",
   "month",
   "year",
+] as const;
+
+export const EXCLUDE_DATE_OPERATORS = ["!=", "is-null", "not-null"] as const;
+
+export const EXCLUDE_DATE_UNITS = [
+  "day-of-week",
+  "month-of-year",
+  "quarter-of-year",
+  "hour-of-day",
 ] as const;
