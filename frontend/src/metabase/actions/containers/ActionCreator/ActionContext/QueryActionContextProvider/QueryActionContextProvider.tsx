@@ -110,19 +110,6 @@ function convertQuestionToAction(
     visualization_settings: formSettings,
   };
 
-  // Include id and description only when they're not undefined.
-  // This is needed due to Actions.HACK_getObjectFromAction usage in ActionCreator.
-  const id = question.id();
-  const description = question.description();
-
-  if (typeof id !== "undefined") {
-    action.id = id;
-  }
-
-  if (typeof description !== "undefined") {
-    action.description = description;
-  }
-
   return action;
 }
 
