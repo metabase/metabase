@@ -223,6 +223,11 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
+// values depend on the unit
+// date-of-week => 1-7 (Monday-Sunday)
+// month-of-year => 0-11 (January-December)
+// quarter-of-year => 1-4
+// hour-of-day => 0-23
 export type ExcludeDateFilterParts = {
   operator: ExcludeDateOperator;
   column: ColumnMetadata;
