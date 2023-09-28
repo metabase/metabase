@@ -225,6 +225,12 @@ export type TimeFilterParts = {
   values: string[]; // HH:mm:ss
 };
 
+export type SpecificDateFilterParts = {
+  operator: SpecificDateOperator;
+  column: ColumnMetadata;
+  values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
+};
+
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   value: number | "current";
