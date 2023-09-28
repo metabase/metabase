@@ -8,6 +8,7 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   database: t`Database`,
   collection: t`Collection`,
   segment: t`Segment`,
+  "indexed-entity": t`Indexed Entity`,
   metric: t`Metric`,
   pulse: t`Pulse`,
 };

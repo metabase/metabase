@@ -413,14 +413,9 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(columnIndex) {
+  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
     try {
-      return getTableHeaderClickedObject(
-        this.props.data,
-        columnIndex,
-        this.props.isPivoted,
-        this.props.query,
-      );
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
     } catch (e) {
       console.error(e);
     }
@@ -498,7 +493,7 @@ class TableInteractive extends Component {
     }
   };
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
+  cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
     const { data, settings } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
@@ -523,7 +518,8 @@ class TableInteractive extends Component {
     );
 
     const isLink = cellData && cellData.type === ExternalLink;
-    const isClickable = !isLink && this.visualizationIsClickable(clicked);
+    const isClickable =
+      !isLink && !isScrolling && this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,
@@ -686,15 +682,19 @@ class TableInteractive extends Component {
       hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
+      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-
-    const clicked = this.getHeaderClickedObject(columnIndex);
-
+    const clicked = this.getHeaderClickedObject(
+      data,
+      columnIndex,
+      isPivoted,
+      query,
+    );
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
@@ -1144,6 +1144,7 @@ export default _.compose(
     "getCellBackgroundColor",
     "getCellFormattedValue",
     "getDimension",
+    "getHeaderClickedObject",
   ),
 )(TableInteractive);
 
