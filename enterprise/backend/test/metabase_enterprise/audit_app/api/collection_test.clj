@@ -30,7 +30,7 @@
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
-            (is (= nil
+            (is (nil?
                    (->> (mt/user-http-request :rasta :get 200 "collection")
                         last
                         :type))))
