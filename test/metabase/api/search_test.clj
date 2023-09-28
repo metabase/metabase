@@ -15,6 +15,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -284,6 +285,42 @@
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
+
+(deftest query-model-set-test
+  (let [search-term "query-model-set"]
+    (with-search-items-in-root-collection search-term
+      (testing "should returns a list of models that search result will return"
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
+      (testing "return a subset of model for created-by filter"
+        (is (= #{"dashboard" "dataset" "card" "action"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :created_by (mt/user->id :rasta))))))
+      (testing "return a subset of model for verified filter"
+        (t2.with-temp/with-temp
+          [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
+           :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
+           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          (testing "when has both :content-verification features"
+            (premium-features-test/with-premium-features #{:content-verification}
+              (mt/with-verified-cards [v-card-id v-model-id]
+                (is (= #{"card" "dataset"}
+                       (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                  :q search-term
+                                                  :verified true)))))))
+          (testing "when has :content-verification feature only"
+            (premium-features-test/with-premium-features #{:content-verification}
+              (mt/with-verified-cards [v-card-id]
+                (is (= #{"card"}
+                       (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                  :q search-term
+                                                  :verified true)))))))))
+      (testing "return a subset of model for created_at filter"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :created_at "today"))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -761,3 +798,25 @@
     (mt/with-temp
       [Card _ {:name "test card"}]
       (is (some #{"card"} (mt/user-http-request :crowberto :get 200 "search/models"))))))
+
+(deftest available-models-should-be-independent-of-models-param-test
+  (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
+    (let [search-term "Available models"]
+      (with-search-items-in-root-collection search-term
+        (testing "GET /api/search"
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card")
+                     :available_models
+                     set)))
+
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard")
+                     :available_models
+                     set))))
+
+        (testing "GET /api/search/models"
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card"))))
+
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))

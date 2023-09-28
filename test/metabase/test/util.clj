@@ -34,6 +34,7 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
@@ -112,6 +113,9 @@
    Collection
    (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
+
+   :model/Action
+   (fn [_] {:creator_id (rasta-id)})
 
    :model/Dashboard
    (fn [_] {:creator_id (rasta-id)
@@ -533,6 +537,8 @@
        ~@body)))
 
 
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -681,6 +687,49 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
+(defn do-with-verified-cards
+  "Impl for [[with-verified-cards]]."
+  [card-or-ids thunk]
+  (with-model-cleanup [:model/ModerationReview]
+    (doseq [card-or-id card-or-ids]
+      (doseq [status ["verified" nil "verified"]]
+        ;; create multiple moderation review for a card, but the end result is it's still verified
+        (moderation-review/create-review!
+         {:moderated_item_id   (u/the-id card-or-id)
+          :moderated_item_type "card"
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
+    (thunk)))
+
+(defmacro with-verified-cards
+  "Execute the body with all `card-or-ids` verified."
+  [card-or-ids & body]
+  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+
+(deftest with-verified-cards-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {}]
+    (with-verified-cards [card-id]
+      (is (=? #{{:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         true
+                 :status              "verified"}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              nil}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              "verified"}}
+              (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
+                                :model/ModerationReview
+                                :moderated_item_id card-id
+                                :moderated_item_type "card"))))
+    (testing "everything is cleaned up after the macro"
+      (is (= 0 (t2/count :model/ModerationReview
+                         :moderated_item_id card-id
+                         :moderated_item_type "card"))))))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
