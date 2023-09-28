@@ -56,25 +56,28 @@
            spec
            {:write? true}
            (fn [conn]
-             (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
-             (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
-             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
-               (testing "database id is not in our connection map initially"
-                 ;; deref'ing a var to get the atom. looks weird
-                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
-                                     (u/id database)))))
-               (testing "when getting a pooled connection it is now in our connection map"
-                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
-                   (is (seq birds))
-                   (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
-                                  (u/id database)))))
-               (testing "and is no longer in our connection map after cleanup"
-                 (#'sql-jdbc.conn/notify-database-deleted! (u/id database))
-                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
-                                     (u/id database)))))
-               (testing "the pool has been destroyed"
-                 (is @destroyed?))))))))))
+             (try
+               (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
+               (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
+               (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+                 (testing "database id is not in our connection map initially"
+                   ;; deref'ing a var to get the atom. looks weird
+                   (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
+                                       (u/id database)))))
+                 (testing "when getting a pooled connection it is now in our connection map"
+                   (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+                         birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
+                     (is (seq birds))
+                     (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
+                                    (u/id database)))))
+                 (testing "and is no longer in our connection map after cleanup"
+                   (#'sql-jdbc.conn/notify-database-deleted! database)
+                   (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash
+                                       (u/id database)))))
+                 (testing "the pool has been destroyed"
+                   (is @destroyed?)))
+               (finally
+                 (next.jdbc/execute! conn ["DROP TABLE IF EXISTS birds;"]))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -174,7 +177,8 @@
                                   :source     nil
                                   :value      (.getBytes "super secret")
                                   :creator_id (mt/user->id :crowberto)}]
-      (let [db {:engine  :postgres
+      (let [db {:id      1
+                :engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"
                           :ssl-root-cert-options    "uploaded"

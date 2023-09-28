@@ -305,12 +305,14 @@
   `database` has been updated, so lets soft reset the connection pool (if it exists) under the assumption that the
   connection details have changed."
   [database :- DatabaseWithRequiredKeys]
-  (soft-reset-connection-pool! database))
+  (soft-reset-connection-pool! database)
+  nil)
 
 (mu/defn notify-database-deleted! :- :nil
   "Default implementation of [[driver/notify-database-deleted!]] for JDBC-based drivers."
   [database :- DatabaseWithRequiredKeys]
-  (destroy-connection-pool! database))
+  (destroy-connection-pool! database)
+  nil)
 
 (mu/defn ^:private log-ssh-tunnel-reconnect-msg! :- :nil
   [db-id :- ::lib.schema.id/database]
