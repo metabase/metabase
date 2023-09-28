@@ -9,10 +9,9 @@
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [potemkin :as p]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -48,8 +47,8 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(s/defmethod driver/substitute-native-parameters :sql
-  [_driver {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
+(mu/defmethod driver/substitute-native-parameters :sql
+  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ms/NonBlankString}]]]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]

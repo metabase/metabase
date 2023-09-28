@@ -2,9 +2,8 @@
   "Utility functions for querying the application database."
   (:require
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
@@ -32,9 +31,9 @@
                [:= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword
-  (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))
+  [:and :keyword [:fn (comp seq namespace)]])
 
-(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/NonBlankString})
+(mu/defn ^:private type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 
