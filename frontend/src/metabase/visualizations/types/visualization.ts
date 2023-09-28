@@ -166,7 +166,7 @@ export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
   onUpdate?: (value: TValue, extra: unknown) => void;
 };
 
-export type VisualizationSettingsDefinitions<TObject> = {
+export type VisualizationSettingsDefinitions<TObject = unknown> = {
   [key in keyof VisualizationSettings]: VisualizationSettingDefinition<
     TObject,
     VisualizationSettings[key],

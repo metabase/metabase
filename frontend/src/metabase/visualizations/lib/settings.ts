@@ -15,7 +15,10 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
@@ -34,12 +37,10 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-type SettingObject = {
-  _raw: any;
-  [key: string]: any;
-};
-
-type SettingWidget = SettingDef & {
+type SettingWidget<TObject> = Omit<
+  VisualizationSettingDefinition<TObject, unknown>,
+  "widget"
+> & {
   id: string;
   value: any;
   set: boolean;
@@ -53,7 +54,7 @@ type SettingWidget = SettingDef & {
 
 export function getComputedSettings(
   settingsDefs: VisualizationSettingsDefinitions,
-  object: SettingObject,
+  object: unknown,
   storedSettings: VisualizationSettings,
   extra = {},
 ) {
@@ -62,7 +63,7 @@ export function getComputedSettings(
     getComputedSetting(
       computedSettings,
       settingsDefs,
-      settingId,
+      settingId as keyof VisualizationSettings,
       object,
       storedSettings,
       extra,
@@ -74,8 +75,8 @@ export function getComputedSettings(
 function getComputedSetting(
   computedSettings: VisualizationSettings, // MUTATED!
   settingsDefs: VisualizationSettingsDefinitions,
-  settingId: string,
-  object: SettingObject,
+  settingId: keyof VisualizationSettings,
+  object: unknown,
   storedSettings: VisualizationSettings,
   extra = {},
 ) {
@@ -134,14 +135,17 @@ function getComputedSetting(
 
 function getSettingWidget(
   settingsDefs: VisualizationSettingsDefinitions,
-  settingId: string,
+  settingId: keyof VisualizationSettings,
   storedSettings: VisualizationSettingsDefinitions,
   computedSettings: VisualizationSettingsDefinitions,
-  object: SettingObject,
+  object: unknown,
   onChangeSettings: SettingWidget["onChangeSettings"],
   extra = {},
 ): SettingWidget {
-  const settingDef = settingsDefs[settingId];
+  const settingDef = settingsDefs[settingId] as VisualizationSettingDefinition<
+    any,
+    any
+  >;
   const value = computedSettings[settingId];
   const onChange = (value, question) => {
     const newSettings = { [settingId]: value };
