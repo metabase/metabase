@@ -1,6 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import { TEMPORAL_UNITS } from "./constants";
+import {
+  BOOLEAN_OPERATORS,
+  NUMBER_OPERATORS,
+  STRING_OPERATORS,
+  TEMPORAL_UNITS,
+} from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import type {
   BooleanFilterParts,
@@ -12,7 +17,10 @@ import type {
   Query,
   RelativeDateFilterParts,
   TemporalUnit,
-  TextFilterParts,
+  StringFilterParts,
+  StringOperator,
+  NumberOperator,
+  BooleanOperator,
 } from "./types";
 
 export function filterableColumns(
@@ -34,13 +42,91 @@ export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
 
-export function textFilterClause({
+function isStringLiteral(arg: unknown): arg is string {
+  return typeof arg === "string";
+}
+
+function isStringLiteralArray(arg: unknown): arg is string[] {
+  return Array.isArray(arg) && arg.every(isStringLiteral);
+}
+
+function isNumberLiteral(arg: unknown): arg is number {
+  return typeof arg === "number";
+}
+
+function isNumberLiteralArray(arg: unknown): arg is number[] {
+  return Array.isArray(arg) && arg.every(isNumberLiteral);
+}
+
+function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
+  return arg === "current" || isNumberLiteral(arg);
+}
+
+function isBooleanLiteral(arg: unknown): arg is boolean {
+  return typeof arg === "boolean";
+}
+
+function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
+  return Array.isArray(arg) && arg.every(isBooleanLiteral);
+}
+
+function isStringOperator(arg: unknown): arg is StringOperator {
+  const operators: ReadonlyArray<string> = STRING_OPERATORS;
+  return typeof arg === "string" && operators.includes(arg);
+}
+
+function isNumberOperator(arg: unknown): arg is NumberOperator {
+  const operators: ReadonlyArray<string> = NUMBER_OPERATORS;
+  return typeof arg === "string" && operators.includes(arg);
+}
+
+function isBooleanOperator(arg: unknown): arg is BooleanOperator {
+  const operators: ReadonlyArray<string> = BOOLEAN_OPERATORS;
+  return typeof arg === "string" && operators.includes(arg);
+}
+
+function isTemporalUnit(arg: unknown): arg is TemporalUnit {
+  const units: ReadonlyArray<string> = TEMPORAL_UNITS;
+  return typeof arg === "string" && units.includes(arg);
+}
+
+function isExpression(arg: unknown): arg is ExpressionParts {
+  return arg != null && typeof arg === "object";
+}
+
+function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.is_column_metadata(arg);
+}
+
+export function stringFilterClause({
   operator,
   column,
   values,
   options,
-}: TextFilterParts): ExpressionClause {
+}: StringFilterParts): ExpressionClause {
   return expressionClause(operator, [column, ...values], options);
+}
+
+export function stringFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): StringFilterParts | null {
+  const { operator, args, options } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (!isStringOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+    return null;
+  }
+
+  return { operator, column, values, options };
 }
 
 export function numberFilterClause({
@@ -51,12 +137,48 @@ export function numberFilterClause({
   return expressionClause(operator, [column, ...values]);
 }
 
+export function numberFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): NumberFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isNumberOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (!isColumnMetadata(column) || !isNumberLiteralArray(values)) {
+    return null;
+  }
+
+  return { operator, column, values };
+}
+
 export function booleanFilterClause({
   operator,
   column,
   values,
 }: BooleanFilterParts): ExpressionClause {
   return expressionClause(operator, [column, ...values]);
+}
+
+export function booleanFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): BooleanFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isBooleanOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (!isColumnMetadata(column) || !isBooleanLiteralArray(values)) {
+    return null;
+  }
+
+  return { operator, column, values };
 }
 
 export function relativeDateFilterClause({
@@ -84,35 +206,14 @@ export function relativeDateFilterClause({
 export function relativeDateFilterParts(
   query: Query,
   stageIndex: number,
-  filter: FilterClause,
+  filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filter);
+  const filterParts = expressionParts(query, stageIndex, filterClause);
 
   return (
     relativeDateFilterPartsWithoutOffset(filterParts) ??
     relativeDateFilterPartsWithOffset(filterParts)
   );
-}
-
-function isNumberLiteral(arg: unknown): arg is number {
-  return typeof arg === "number";
-}
-
-function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
-  return arg === "current" || isNumberLiteral(arg);
-}
-
-function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
-}
-
-function isTemporalUnit(arg: unknown): arg is TemporalUnit {
-  const units: ReadonlyArray<string> = TEMPORAL_UNITS;
-  return typeof arg === "string" && units.includes(arg);
-}
-
-function isExpression(arg: unknown): arg is ExpressionParts {
-  return arg != null && typeof arg === "object";
 }
 
 function relativeDateFilterPartsWithoutOffset({

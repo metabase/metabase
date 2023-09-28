@@ -1,5 +1,10 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type { TEMPORAL_UNITS } from "./constants";
+import type {
+  BOOLEAN_OPERATORS,
+  NUMBER_OPERATORS,
+  STRING_OPERATORS,
+  TEMPORAL_UNITS,
+} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -149,11 +154,17 @@ export type ExpressionOperator =
   | "contains"
   | "does-not-contain"
   | "starts-with"
-  | "ends-width"
+  | "ends-with"
   | "between"
   | "interval"
   | "time-interval"
   | "relative-datetime";
+
+export type StringOperator = typeof STRING_OPERATORS[number];
+
+export type NumberOperator = typeof NUMBER_OPERATORS[number];
+
+export type BooleanOperator = typeof BOOLEAN_OPERATORS[number];
 
 export type TemporalUnit = typeof TEMPORAL_UNITS[number];
 
@@ -170,25 +181,25 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type TextFilterParts = {
-  operator: ExpressionOperator;
+export type StringFilterParts = {
+  operator: StringOperator;
   column: ColumnMetadata;
   values: string[];
-  options: TextFilterOptions;
+  options: StringFilterOptions;
 };
 
-export type TextFilterOptions = {
+export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
 export type NumberFilterParts = {
-  operator: ExpressionOperator;
+  operator: NumberOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: ExpressionOperator;
+  operator: BooleanOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
