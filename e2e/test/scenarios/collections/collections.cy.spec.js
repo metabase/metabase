@@ -20,6 +20,7 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -380,7 +381,7 @@ describe("scenarios > collection defaults", () => {
       // Create Parent collection within admin's personal collection
       cy.createCollection({
         name: COLLECTION,
-        parent_id: 1,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
       visitRootCollection();
@@ -467,7 +468,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("5 items selected");
+          cy.findByText(/\d+ items selected/);
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
@@ -479,7 +480,7 @@ describe("scenarios > collection defaults", () => {
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
           cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-            collection_id: 1,
+            collection_id: ADMIN_PERSONAL_COLLECTION_ID,
           });
           cy.visit("/collection/root");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

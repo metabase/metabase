@@ -5,6 +5,9 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import type { FieldVisibilityType } from "metabase-types/api";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 function setup({
   rows,
