@@ -81,51 +81,51 @@
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions.
   "
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [clojure.math.combinatorics :as math.combo]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [clojure.zip :as zip]
-   [flatland.ordered.map :refer [ordered-map]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [java-time :as t]
-   [kixi.stats.core :as stats]
-   [kixi.stats.math :as math]
-   [medley.core :as m]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.filters :as filters]
-   [metabase.automagic-dashboards.populate :as populate]
-   [metabase.automagic-dashboards.schema :as ads]
-   [metabase.automagic-dashboards.visualization-macros :as visualization]
-   [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
-   [metabase.models.query :refer [Query]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
-   [metabase.sync.analyze.classify :as classify]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [potemkin :as p]
-   [ring.util.codec :as codec]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+    [buddy.core.codecs :as codecs]
+    [cheshire.core :as json]
+    [clojure.math.combinatorics :as math.combo]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [clojure.walk :as walk]
+    [clojure.zip :as zip]
+    [flatland.ordered.map :refer [ordered-map]]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [java-time :as t]
+    [kixi.stats.core :as stats]
+    [kixi.stats.math :as math]
+    [medley.core :as m]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.filters :as filters]
+    [metabase.automagic-dashboards.populate :as populate]
+    [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.db.query :as mdb.query]
+    [metabase.driver :as driver]
+    [metabase.mbql.normalize :as mbql.normalize]
+    [metabase.mbql.predicates :as mbql.preds]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.card :as card :refer [Card]]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :as field :refer [Field]]
+    [metabase.models.interface :as mi]
+    [metabase.models.metric :as metric :refer [Metric]]
+    [metabase.models.query :refer [Query]]
+    [metabase.models.segment :refer [Segment]]
+    [metabase.models.table :refer [Table]]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.related :as related]
+    [metabase.sync.analyze.classify :as classify]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [metabase.util.schema :as su]
+    [potemkin :as p]
+    [ring.util.codec :as codec]
+    [schema.core :as s]
+    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -742,7 +742,7 @@
     (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
 
 (defn- instantiate-metadata
-  [x context {:keys [available-metrics]} bindings]
+  [x context available-metrics bindings]
   (-> (walk/postwalk
        (fn [form]
          (if (i18n/localized-string? form)
@@ -781,8 +781,6 @@
   bindings are provided. E.g. if X is mapped over Y and multiple fields are candidates for dimension Y, you will end
   up with a dashcard for each potential valid X and Y combination."
   [context
-   ;; TODO - Is this needed or can we just use satisfied-dimensions?
-   {:keys [available-dimensions] :as available-values}
    {card-dimensions :dimensions
     card-query      :query
     card-score      :score
@@ -792,69 +790,84 @@
    bindings]
   (let [score          (if card-query
                          card-score
-                         (* (or (->> card-dimensions
-                                     (map (partial get available-dimensions))
-                                     (concat satisfied-filters satisfied-metrics)
+                         (* (or (->> (concat (vals satisfied-filters)
+                                             (vals satisfied-metrics)
+                                             (vals satisfied-dimensions))
                                      (transduce (keep :score) stats/mean))
                                 dashboard-templates/max-score)
                             (/ card-score dashboard-templates/max-score)))
-        metrics        (for [metric satisfied-metrics]
+        metrics        (for [metric (vals satisfied-metrics)]
                          {:name   ((some-fn :name (comp metric-name :metric)) metric)
                           :metric (:metric metric)
                           :op     (-> metric :metric metric-op)})
         dashcard       (visualization/expand-visualization
                          card-template
-                         (map (comp bindings second) satisfied-dimensions)
+                         (vals bindings)
                          metrics)
         dashcard-query (if card-query
                          (build-native-query context bindings card-query)
                          (build-mbql-query context
                                            bindings
-                                           satisfied-filters
+                                           (vals satisfied-filters)
                                            metrics
-                                           satisfied-dimensions
+                                           (map (comp #(into [:dimension] %) first) card-dimensions)
                                            limit
                                            (build-order-by dashcard)))]
     (-> dashcard
-        (instantiate-metadata context available-values (->> (map :name metrics)
+        (instantiate-metadata context satisfied-metrics (->> (map :name metrics)
                                                             (zipmap (:metrics dashcard))
                                                             (merge bindings)))
         (assoc :dataset_query dashcard-query
                :metrics metrics
-               :dimensions (map (comp :name bindings second) satisfied-dimensions)
+               :dimensions (map :name (vals bindings))
                :score score))))
 
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
     (->> satisfied-dimensions
-         (map (fn [[_ identifier opts]]
+         (map first)
+         (map (fn [[identifier opts]]
                 (merge (bindings identifier) opts)))
          (every? (every-pred valid-breakout-dimension?
                              (complement (comp cell-dimension? id-or-name)))))))
 
-(defn- card-candidates
+(mu/defn card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [{:keys [query-filter] :as context}
-   satisfied-bindings
-   {:keys [available-metrics available-filters] :as available-values}
-   {required-dimensions :dimensions
-    required-metrics    :metrics
-    required-filters    :filters
+  [{:keys [query-filter] :as context} :- ads/context
+   satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
+   {:keys [available-dimensions available-metrics available-filters]} :- ads/available-values
+   {card-dimensions :dimensions
+    card-metrics    :metrics
+    card-filters    :filters
     :as                 card-template}]
-  (let [satisfied-metrics    (map available-metrics required-metrics)
-        satisfied-filters    (cond-> (map available-filters required-filters)
+  (let [satisfied-metrics    (zipmap
+                               card-metrics
+                               (map available-metrics card-metrics))
+        satisfied-filters    (cond-> (zipmap
+                                       card-filters
+                                       (map available-filters card-filters))
                                query-filter
-                               (conj {:filter query-filter}))
-        satisfied-dimensions (map (comp (partial into [:dimension]) first) required-dimensions)
+                               (assoc "query-filter" {:filter query-filter}))
+        satisfied-dimensions (zipmap
+                               card-dimensions
+                               (map
+                                 (fn [card-dimension]
+                                   (-> card-dimension
+                                       ffirst
+                                       available-dimensions
+                                       (dissoc :matches)))
+                                 card-dimensions))
         satisfied-values     {:satisfied-dimensions satisfied-dimensions
                               :satisfied-metrics    satisfied-metrics
                               :satisfied-filters    satisfied-filters}
-        dimension-locations  [satisfied-dimensions satisfied-metrics satisfied-filters]
-        used-dimensions      (set (dashboard-templates/collect-dimensions dimension-locations))]
+        dimension-locations  [satisfied-metrics satisfied-filters]
+        used-dimensions      (set (into
+                                    (map ffirst card-dimensions)
+                                    (dashboard-templates/collect-dimensions dimension-locations)))]
     (->> (satisfied-bindings (set used-dimensions))
-         (filter (partial valid-bindings? context satisfied-dimensions))
-         (map (partial build-dashcard context available-values card-template satisfied-values)))))
+         (filter (partial valid-bindings? context card-dimensions))
+         (map (partial build-dashcard context card-template satisfied-values)))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -1008,6 +1021,35 @@
             (ordered-map)
             met-affinities)))
 
+(defn semantically-satisfiable-dimension-matches
+  "Given dimensions, an entity type (e.g. :entity/GenericTable) and some Fields,
+  return a sequence of satisfiable dimensions containing potential matches within
+  those dimensions.
+
+  Note that dimensions are specified as defined in the templates -- a seq of maps,
+  each map being a single string key (the dimension name) to the dimension spec.
+
+  The return values are a seq of maps, with the dimension name being inserted into
+  the dimension value as `:dimension-name`.
+
+  Note that this function does NOT prevent multiple fields from binding to the
+  same dimension."
+  [dimensions entity_type fields]
+  (->> (for [dimension dimensions
+             :let [[dimension-name {:keys [field_type] :as dimension-spec}] (first dimension)
+                   [required-entity-type required-semantic-type] (cond->> field_type
+                                                                          (nil? (second field_type))
+                                                                          (into [:entity/*]))]]
+         (assoc dimension-spec
+           :dimension-name dimension-name
+           :matches (for [{:keys [semantic_type effective_type] :as field} fields
+                          :when (and
+                                  (isa? entity_type required-entity-type)
+                                  (isa? (or semantic_type effective_type)
+                                        required-semantic-type))]
+                      field)))
+       (filter (comp seq :matches))))
+
 (defn semantically-satisfiable-dimensions
   "Given dimensions, an entity type (e.g. :entity/GenericTable) and some Fields,
   return a set of dimensions that can be satisfied with the fields.
@@ -1015,29 +1057,77 @@
   Note that dimensions are specified as defined in the templates -- a seq of maps,
   each map being a single string key (the dimension name) to the dimension spec."
   [dimensions entity_type fields]
-  (set
-    (for [dimension dimensions
-          :let [[dimension-name {:keys [field_type]}] (first dimension)
-                [required-entity-type required-semantic-type] (cond->> field_type
-                                                                       (nil? (second field_type))
-                                                                       (into [:entity/*]))]
-          {:keys [semantic_type effective_type]} fields
-          :when (and
-                  (isa? entity_type required-entity-type)
-                  (isa? (or semantic_type effective_type)
-                        required-semantic-type))]
-      dimension-name)))
+  (->> (semantically-satisfiable-dimension-matches dimensions entity_type fields)
+       (map :dimension-name)
+       set))
+
+(defn normalized-metrics [metrics]
+  (for [metric metrics
+        :let [[metric-name metric-def] (first metric)]]
+    (assoc metric-def
+      :metric-name metric-name
+      :base-dims (set (dashboard-templates/collect-dimensions metric-def)))))
 
 (comment
   (->> (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
        dash-template->affinities)
 
-  (let [fields           (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
+  (->> (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
+       :cards)
+
+  ;; This is the CountByCoords card. How might I synthesize this with only the satisfied dimensions?
+  ;; No query or anything?
+  (let [entity-type          :entity/TransactionTable
+        {all-metrics    :metrics
+         all-dimensions :dimensions} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])
+        ;; I know that this is satisfiable
+        card                 {:dimensions    [{"Long" {:aggregation "default"}} {"Lat" {:aggregation "default"}}],
+                              :metrics       ["TotalOrders"],
+                              :visualization ["map" {}],
+                              :width         11,
+                              :title         "Sales by coordinates",
+                              :score         80,
+                              :height        10,
+                              :group         "Geographical"}
+        db-id                1
+        {table-id :id :as source-table} (t2/select-one :model/Table :db_id 1 :name "PEOPLE")
+        lat                  (t2/select-one :model/Field :table_id table-id :name "LATITUDE")
+        lon                  (t2/select-one :model/Field :table_id table-id :name "LONGITUDE")
+        fields               [lat lon]
+        ssd-matches          (semantically-satisfiable-dimension-matches all-dimensions entity-type fields)
+        available-dimensions (zipmap
+                               (map :dimension-name ssd-matches)
+                               ssd-matches)
+        ssds                 (set (keys available-dimensions))
+        good-metrics         (->> all-metrics
+                                  normalized-metrics
+                                  (filter (fn [{:keys [base-dims]}]
+                                            (set/subset? base-dims ssds))))
+        context              {:root   {:database db-id}
+                              :source source-table}
+        available-values     {:available-dimensions available-dimensions
+                              :available-metrics    (zipmap
+                                                      (map :metric-name good-metrics)
+                                                      good-metrics)
+                              :available-filters    {}}
+        satisfied            {:satisfied-dimensions (map (fn [dim] [:dimension dim]) ssds)
+                              :satisfied-metrics    good-metrics
+                              :satisfied-filters    []}
+        bindings             (update-vals available-dimensions (fn [{:keys [matches]}] (apply max-key :score matches)))]
+    (build-dashcard
+      context
+      available-values
+      card
+      satisfied
+      bindings))
+
+
+  (let [fields      (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
         entity-type :entity/GenericTable
         {:keys [dimensions]} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])]
     (semantically-satisfiable-dimensions dimensions :entity/GenericTable fields))
 
-  (let [fields           (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
+  (let [fields      (t2/select :model/Field :name [:in ["LONGITUDE" "LATITUDE"]])
         entity-type :entity/TransactionTable
         {:keys [dimensions]} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])]
     (semantically-satisfiable-dimensions dimensions :entity/GenericTable fields))
@@ -1140,14 +1230,121 @@
 (defn- make-dashboard
   ([root dashboard-template]
    (make-dashboard root dashboard-template {:tables [(:source root)] :root root} nil))
-  ([root dashboard-template context available-values]
+  ([root dashboard-template context {:keys [available-metrics]}]
    (-> dashboard-template
        (select-keys [:title :description :transient_title :groups])
        (cond->
          (:comparison? root)
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
-       (instantiate-metadata context available-values {}))))
+       (instantiate-metadata context available-metrics {}))))
+
+(defn build-affinity-card [entity-type affinity-name fields]
+  (let [{table-id :table_id} (first fields)
+        {db-id :db_id :as source-table} (t2/select-one :model/Table table-id)
+        {all-metrics    :metrics
+         all-dimensions :dimensions
+         all-cards      :cards
+         :as dashboard-template} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])
+        card                 (some (fn [card-map]
+                                     (let [[card-name card] (first card-map)]
+                                       (when (= card-name affinity-name)
+                                         (assoc card :card-name card-name))))
+                                   all-cards)
+        ssd-matches          (semantically-satisfiable-dimension-matches all-dimensions entity-type fields)
+        available-dimensions (zipmap
+                               (map :dimension-name ssd-matches)
+                               ssd-matches)
+        ssds                 (set (keys available-dimensions))
+        good-metrics         (->> all-metrics
+                                  normalized-metrics
+                                  (filter (fn [{:keys [base-dims]}]
+                                            (set/subset? base-dims ssds))))
+        root                 {:database  db-id
+                              :full-name "TEST"}
+        context              {:root   root
+                              :source source-table}
+        available-values     {:available-dimensions available-dimensions
+                              :available-metrics    (zipmap
+                                                      (map :metric-name good-metrics)
+                                                      good-metrics)
+                              :available-filters    {}}
+        satisfied            {:satisfied-dimensions (map (fn [dim] [:dimension dim]) ssds)
+                              :satisfied-metrics    good-metrics
+                              :satisfied-filters    []}
+        bindings             (update-vals available-dimensions
+                                          (fn [{:keys [matches]}]
+                                            (println (map :score matches))
+                                            (apply max-key :score matches)))]
+    (build-dashcard
+      context
+      available-values
+      card
+      satisfied
+      bindings)))
+
+(comment
+  (let [db-id  1
+        {table-id :id} (t2/select-one :model/Table :db_id db-id :name "PEOPLE")
+        lat    (t2/select-one :model/Field :table_id table-id :name "LATITUDE")
+        lon    (t2/select-one :model/Field :table_id table-id :name "LONGITUDE")
+        fields [lat lon]]
+    (build-affinity-card
+      :entity/GenericTable
+      "Rowcount"
+      fields)))
+
+(defn build-affinity-dashboard [entity-type affinity-names fields]
+  (let [{table-id :table_id} (first fields)
+        {db-id :db_id :as source-table} (t2/select-one :model/Table table-id)
+        {all-metrics    :metrics
+         all-dimensions :dimensions
+         all-cards      :cards
+         :as dashboard-template} (dashboard-templates/get-dashboard-template ["table" (name entity-type)])
+
+
+        ssd-matches          (semantically-satisfiable-dimension-matches all-dimensions entity-type fields)
+        available-dimensions (zipmap
+                               (map :dimension-name ssd-matches)
+                               ssd-matches)
+        ssds                 (set (keys available-dimensions))
+        good-metrics         (->> all-metrics
+                                  normalized-metrics
+                                  (filter (fn [{:keys [base-dims]}]
+                                            (set/subset? base-dims ssds))))
+        root {:database db-id
+              :full-name "affinities"}
+        context              {:root   root
+                              :source source-table}
+        available-values     {:available-dimensions available-dimensions
+                              :available-metrics    (zipmap
+                                                      (map :metric-name good-metrics)
+                                                      good-metrics)
+                              :available-filters    {}}
+        cards (map #(build-affinity-card entity-type % fields) affinity-names)]
+    (-> (make-dashboard root dashboard-template context available-values)
+        (assoc
+          :cards cards
+          :name "Here's a look at your affinities"
+          :transient_name "Cards generated by selected affinity groups",
+          :description "Some interesting insights into your selected fields")
+        (populate/create-dashboard :all))))
+
+(comment
+  (let [db-id  1
+        {table-id :id} (t2/select-one :model/Table :db_id db-id :name "PEOPLE")
+        lat    (t2/select-one :model/Field :table_id table-id :name "LATITUDE")
+        lon    (t2/select-one :model/Field :table_id table-id :name "LONGITUDE")
+        fields [lat lon]]
+    (build-affinity-card
+      :entity/GenericTable
+      "CountByCoords"
+      fields)
+    #_(build-affinity-dashboard
+      :entity/GenericTable
+      ["CountByCoords"]
+      fields))
+  )
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

@@ -313,6 +313,24 @@
                         (update :filters vec)
                         (update :base-dims vec)))))})))
 
+(api/defendpoint GET "/_affinity_cards/:entity-type/field-ids/:field-ids"
+  "Return affinity groups for the provided entity type and field ids"
+  [entity-type field-ids]
+  {entity-type :string
+   field-ids   :string}
+  (api/let-404 [{:keys [dimensions] :as template} (dashboard-templates/get-dashboard-template ["table" entity-type])]
+    (let [entity_type            (keyword "entity" entity-type)
+          field-ids              (edn/read-string (codec/url-decode field-ids))
+          _                      (api/check-400 (every? int? field-ids))
+          fields                 (t2/select :model/Field :id [:in field-ids])
+          _                      (doseq [field fields :when field] (api/read-check field))
+          satisfiable-dimensions (magic/semantically-satisfiable-dimensions dimensions entity_type fields)
+          card-names (->> (magic/dash-template->affinities template)
+                                      (filter (fn [{:keys [base-dims]}]
+                                                (set/subset? base-dims satisfiable-dimensions)))
+                                      (mapv :affinity-name))]
+      (magic/build-affinity-dashboard entity_type card-names fields))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"

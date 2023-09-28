@@ -2110,7 +2110,7 @@
   (testing "Cases in which the bindings are valid."
     (is (true?
          (let [context           nil
-               common-dimensions [[:dimension "Date" {}]]
+               common-dimensions [{"Date" {}}]
                bindings          {"Date"     {:name "SALES_DATE"}
                                   "Discount" {:name "Price Discount"}
                                   "Income"   {:name "Income"}}]
@@ -2128,13 +2128,13 @@
     (is (false?
          (let [context           {:root {:cell-query
                                          [:= [:field 123 {:base-type :type/Integer}]]}}
-               common-dimensions [[:dimension "ID" {}]]
+               common-dimensions [{"ID" {}}]
                bindings          {"ID" {:id 123}}]
            (#'magic/valid-bindings? context common-dimensions bindings))))
     (is (false?
          (let [context           {:root {:cell-query
                                          [:= [:field "X" {:base-type :type/Integer}]]}}
-               common-dimensions [[:dimension "X" {}]]
+               common-dimensions [{"X" {}}]
                bindings          {"X" {:name "X"}}]
            (#'magic/valid-bindings? context common-dimensions bindings))))))
 
