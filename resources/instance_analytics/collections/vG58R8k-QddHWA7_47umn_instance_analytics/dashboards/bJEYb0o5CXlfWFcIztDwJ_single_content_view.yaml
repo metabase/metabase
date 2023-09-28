@@ -1,0 +1,328 @@
+description: Information about dashboards, questions, models, and tables
+archived: false
+collection_position: 3
+ordered_cards:
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: c02bd3d3
+    card_id: W34-Nzp-T3-SPdZwGvLeB
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35
+  - parameter_id: daa2cf92
+    card_id: W34-Nzp-T3-SPdZwGvLeB
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - id
+      - join-alias: Question 35
+  card_id: W34-Nzp-T3-SPdZwGvLeB
+  entity_id: 1d46RUV7YxaRBwo9Yks_6
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-08-17T21:51:54.863964Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: c02bd3d3
+    card_id: XIiIsCNMk9gg-eO2hkl8S
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35
+  - parameter_id: daa2cf92
+    card_id: XIiIsCNMk9gg-eO2hkl8S
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - id
+      - join-alias: Question 35
+  - parameter_id: 2ea1dae2
+    card_id: XIiIsCNMk9gg-eO2hkl8S
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Question 34
+  - parameter_id: 25f8871e
+    card_id: XIiIsCNMk9gg-eO2hkl8S
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
+  card_id: XIiIsCNMk9gg-eO2hkl8S
+  entity_id: bvo3bHzsPRHm4yNdGLkRD
+  visualization_settings:
+    column_settings: null
+  size_y: 6
+  created_at: '2023-08-17T21:56:01.551685Z'
+  row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: c02bd3d3
+    card_id: _p6UGMWOQn5-yf03uGsaN
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35
+  - parameter_id: daa2cf92
+    card_id: _p6UGMWOQn5-yf03uGsaN
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - id
+      - join-alias: Question 35
+  - parameter_id: 2ea1dae2
+    card_id: _p6UGMWOQn5-yf03uGsaN
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Question 34
+  - parameter_id: 25f8871e
+    card_id: _p6UGMWOQn5-yf03uGsaN
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
+  card_id: _p6UGMWOQn5-yf03uGsaN
+  entity_id: 8-R___ABOFNA--DmJNq_H
+  visualization_settings:
+    column_settings: null
+  size_y: 7
+  created_at: '2023-08-17T22:03:45.266592Z'
+  row: 6
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: 25f8871e
+    card_id: xrgv7nzXe_v8ORWIbq839
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
+  - parameter_id: 2ea1dae2
+    card_id: xrgv7nzXe_v8ORWIbq839
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Question 34
+  - parameter_id: daa2cf92
+    card_id: xrgv7nzXe_v8ORWIbq839
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - id
+      - join-alias: Question 35
+  - parameter_id: c02bd3d3
+    card_id: xrgv7nzXe_v8ORWIbq839
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35
+  card_id: xrgv7nzXe_v8ORWIbq839
+  entity_id: _8MUvI8zFhQ2_vzIf5kw3
+  visualization_settings:
+    column_settings: null
+  size_y: 7
+  created_at: '2023-08-18T18:53:47.157159Z'
+  row: 6
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: daa2cf92
+    card_id: Bp2r19P5a9HjDTR4-VuZa
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - subscription_dashboard_id
+      - null
+  card_id: Bp2r19P5a9HjDTR4-VuZa
+  entity_id: Qej2SQh7Dn_UTa8dNr6An
+  visualization_settings:
+    column_settings: null
+  size_y: 8
+  created_at: '2023-08-18T19:03:05.982419Z'
+  row: 21
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: daa2cf92
+    card_id: yVr4oMzxq8BPWf5HLbdwL
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - dashboard_id
+      - null
+  - parameter_id: c02bd3d3
+    card_id: yVr4oMzxq8BPWf5HLbdwL
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35_2
+  card_id: yVr4oMzxq8BPWf5HLbdwL
+  entity_id: 0hFypwh3v0Nhzxs4affHH
+  visualization_settings:
+    column_settings: null
+  size_y: 8
+  created_at: '2023-09-21T13:28:19.041097Z'
+  row: 13
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 12
+  parameter_mappings:
+  - parameter_id: daa2cf92
+    card_id: Fnu5Kh0gYPN6P8A_fvICu
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - question_id
+      - null
+  - parameter_id: c02bd3d3
+    card_id: Fnu5Kh0gYPN6P8A_fvICu
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - join-alias: Question 35
+  card_id: Fnu5Kh0gYPN6P8A_fvICu
+  entity_id: 4ypJ0UXyGX2eatBzXvmZ0
+  visualization_settings:
+    column_settings: null
+  size_y: 8
+  created_at: '2023-09-21T13:30:49.26848Z'
+  row: 13
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+show_in_getting_started: false
+name: Single content view
+caveats: null
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+ordered_tabs: []
+serdes/meta:
+- model: Dashboard
+  id: bJEYb0o5CXlfWFcIztDwJ
+  label: single_content_view
+position: null
+entity_id: bJEYb0o5CXlfWFcIztDwJ
+parameters:
+- name: Content name
+  slug: content_name
+  id: c02bd3d3
+  type: string/=
+  sectionId: string
+  isMultiSelect: false
+- name: Content ID
+  slug: content_id
+  id: daa2cf92
+  type: string/=
+  sectionId: string
+  isMultiSelect: false
+  values_query_type: search
+  default:
+  - dashboard_357
+- name: Group Name
+  slug: group_name
+  id: 2ea1dae2
+  type: string/=
+  sectionId: string
+  isMultiSelect: false
+  default:
+  - All Users
+- name: Date Filter
+  slug: date_filter
+  id: 25f8871e
+  type: date/all-options
+  sectionId: date
+  default: past12months~
+auto_apply_filters: true
+created_at: '2023-08-17T21:40:01.620493Z'
+public_uuid: null
+points_of_interest: null
