@@ -1,15 +1,14 @@
 (ns metabase.email
   (:require
+   [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [postal.core :as postal]
-   [postal.support :refer [make-props]]
-   [schema.core :as s])
+   [postal.support :refer [make-props]])
   (:import
    (javax.mail Session)))
 
@@ -31,19 +30,18 @@
   :visibility :settings-manager)
 
 (def ^:private ReplyToAddresses
-  (s/maybe [su/Email]))
+  [:maybe [:sequential ms/Email]])
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
-  (s/validator ReplyToAddresses))
+  (mc/validator ReplyToAddresses))
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
   :type :json
   :visibility :settings-manager
   :setter (fn [new-value]
-            (->> new-value
-                 validate-reply-to-addresses
-                 (setting/set-value-of-type! :json :email-reply-to))))
+           (when (validate-reply-to-addresses new-value)
+             (setting/set-value-of-type! :json :email-reply-to new-value))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
@@ -106,54 +104,56 @@
       (add-ssl-settings (email-smtp-security))))
 
 (def ^:private EmailMessage
-  (s/constrained
-   {:subject               s/Str
-    :recipients            [(s/pred u/email?)]
-    :message-type          (s/enum :text :html :attachments)
-    :message               (s/cond-pre s/Str [su/Map]) ; TODO - what should this be a sequence of?
-    (s/optional-key :bcc?) (s/maybe s/Bool)}
-   (fn [{:keys [message-type message]}]
-     (if (= message-type :attachments)
-       (and (sequential? message) (every? map? message))
-       (string? message)))
-   (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
-        "other types should have a String message.")))
+  [:and
+   [:map {:closed true}
+    [:subject      :string]
+    [:recipients   [:sequential ms/Email]]
+    [:message-type [:enum :text :html :attachments]]
+    [:message      [:or :string [:sequential :map]]]
+    [:bcc?         {:optional true} [:maybe :boolean]]]
+   [:fn {:error/message (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
+                             "other types should have a String message.")}
+    (fn [{:keys [message-type message]}]
+      (if (= message-type :attachments)
+        (and (sequential? message) (every? map? message))
+        (string? message)))]])
 
-(s/defn send-message-or-throw!
+(mu/defn send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
-  [{:keys [subject recipients message-type message], :as email} :- EmailMessage]
+  [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
   (try
-    (when-not (email-smtp-host)
-      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-    ;; Now send the email
-    (let [to-type (if (:bcc? email) :bcc :to)]
-      (send-email! (smtp-settings)
-                   (merge
-                    {:from    (if-let [from-name (email-from-name)]
-                                (str from-name " <" (email-from-address) ">")
-                                (email-from-address))
-                     to-type  recipients
-                     :subject subject
-                     :body    (case message-type
-                                :attachments message
-                                :text        message
-                                :html        [{:type    "text/html; charset=utf-8"
-                                               :content message}])}
-                    (when-let [reply-to (email-reply-to)]
-                      {:reply-to reply-to}))))
-    (catch Throwable e
-      (prometheus/inc :metabase-email/message-errors)
-      (throw e))
-    (finally
-      (prometheus/inc :metabase-email/messages))))
+   (when-not (email-smtp-host)
+     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+   ;; Now send the email
+   (let [to-type (if (:bcc? email) :bcc :to)]
+     (send-email! (smtp-settings)
+                  (merge
+                   {:from    (if-let [from-name (email-from-name)]
+                               (str from-name " <" (email-from-address) ">")
+                               (email-from-address))
+                    to-type  recipients
+                    :subject subject
+                    :body    (case message-type
+                               :attachments message
+                               :text        message
+                               :html        [{:type    "text/html; charset=utf-8"
+                                              :content message}])}
+                   (when-let [reply-to (email-reply-to)]
+                     {:reply-to reply-to}))))
+   (catch Throwable e
+     (prometheus/inc :metabase-email/message-errors)
+     (throw e))
+   (finally
+    (prometheus/inc :metabase-email/messages))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
   `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
   with the error."
-  {::error (s/maybe Throwable)})
+  [:map {:closed true}
+   [::error [:maybe [:fn #(instance? Throwable %)]]]])
 
 (defn send-message!
   "Send an email to one or more `:recipients`. `:recipients` is a sequence of email addresses; `:message-type` must be
@@ -175,17 +175,18 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                         su/NonBlankString
-   :port                         su/IntGreaterThanZero
-     ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   (s/optional-key :user)        (s/maybe s/Str)
-   (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
-   (s/optional-key :pass)        (s/maybe s/Str)
-   (s/optional-key :sender)      (s/maybe s/Str)
-   (s/optional-key :sender-name) (s/maybe s/Str)
-   (s/optional-key :reply-to)    (s/maybe [s/Str])})
+  [:map {:closed true}
+   [:host                         ms/NonBlankString]
+   [:port                         ms/IntGreaterThanZero]
+   ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
+   [:user        {:optional true} [:maybe ms/Str]]
+   [:security    {:optional true} [:maybe [:enum :tls :ssl :none :starttls]]]
+   [:pass        {:optional true} [:maybe ms/Str]]
+   [:sender      {:optional true} [:maybe ms/Str]]
+   [:sender-name {:optional true} [:maybe ms/Str]]
+   [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
 
-(s/defn ^:private test-smtp-settings :- SMTPStatus
+(mu/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
@@ -215,7 +216,7 @@
   us from getting banned on Outlook.com."
   500)
 
-(s/defn ^:private guess-smtp-security :- (s/maybe (s/enum :tls :starttls :ssl))
+(mu/defn ^:private guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
   "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
   when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
   other than the provided method, a warning gets printed on the config page.
@@ -233,9 +234,7 @@
          nil)))
    email-security-order))
 
-(s/defn test-smtp-connection :- (s/conditional
-                                 ::error SMTPStatus
-                                 :else   SMTPSettings)
+(mu/defn test-smtp-connection :- [:or SMTPStatus SMTPSettings]
   "Test the connection to an SMTP server to determine if we can send emails. Takes in a dictionary of properties such
   as:
 
