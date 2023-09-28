@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { CreatedAtContent } from "./CreatedAtContent";
 
@@ -24,5 +25,11 @@ describe("CreatedAtContent", () => {
   it("should not display Exclude… in the date picker shortcut options", () => {
     setup();
     expect(screen.queryByText("Exclude…")).not.toBeInTheDocument();
+  });
+
+  it("should call onChange when a date is selected", () => {
+    const { onChangeMock } = setup();
+    userEvent.click(screen.getByText("Today"));
+    expect(onChangeMock).toHaveBeenCalled();
   });
 });
