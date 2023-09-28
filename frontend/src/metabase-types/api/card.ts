@@ -241,9 +241,13 @@ export type VisualizationSettings = {
   show_mini_bar?: boolean;
   _numberFormatter?: any;
 
+  column_settings?: any;
+
   // options are also mixed in
 } & NumberFormatOptions &
   OptionsType;
+
+export type VisualizationSettingId = keyof VisualizationSettings;
 
 export interface ModerationReview {
   moderator_id: number;

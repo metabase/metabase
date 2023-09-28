@@ -15,11 +15,12 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type {
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
-import type { VisualizationSettings } from "metabase-types/api";
+  TransformedSeries,
+  VisualizationSettingId,
+  VisualizationSettings,
+} from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
 const WIDGETS = {
@@ -37,21 +38,6 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-type SettingWidget<TObject> = Omit<
-  VisualizationSettingDefinition<TObject, unknown>,
-  "widget"
-> & {
-  id: string;
-  value: any;
-  set: boolean;
-  widget: any;
-  onChange: any;
-  onChangeSettings: (
-    newSettings: VisualizationSettings,
-    question: Question,
-  ) => void;
-};
-
 export function getComputedSettings(
   settingsDefs: VisualizationSettingsDefinitions,
   object: unknown,
@@ -63,7 +49,7 @@ export function getComputedSettings(
     getComputedSetting(
       computedSettings,
       settingsDefs,
-      settingId as keyof VisualizationSettings,
+      settingId as VisualizationSettingId,
       object,
       storedSettings,
       extra,
@@ -75,7 +61,7 @@ export function getComputedSettings(
 function getComputedSetting(
   computedSettings: VisualizationSettings, // MUTATED!
   settingsDefs: VisualizationSettingsDefinitions,
-  settingId: keyof VisualizationSettings,
+  settingId: VisualizationSettingId,
   object: unknown,
   storedSettings: VisualizationSettings,
   extra = {},
@@ -90,15 +76,18 @@ function getComputedSetting(
     getComputedSetting(
       computedSettings,
       settingsDefs,
-      dependentId,
+      dependentId as VisualizationSettingId,
       object,
       storedSettings,
       extra,
     );
   }
 
-  if (settingDef.useRawSeries && object._raw) {
-    object = object._raw;
+  if (settingDef.useRawSeries) {
+    const series = object as TransformedSeries;
+    if (series._raw) {
+      object = series;
+    }
   }
 
   const settings = { ...storedSettings, ...computedSettings };
@@ -133,22 +122,21 @@ function getComputedSetting(
   return (computedSettings[settingId] = undefined);
 }
 
+// I couldn’t convince TypeScript to use our VisualizationSettingWidget type here,
+// but it describes the format of what is returned.
 function getSettingWidget(
   settingsDefs: VisualizationSettingsDefinitions,
-  settingId: keyof VisualizationSettings,
-  storedSettings: VisualizationSettingsDefinitions,
-  computedSettings: VisualizationSettingsDefinitions,
+  settingId: VisualizationSettingId,
+  storedSettings: VisualizationSettings,
+  computedSettings: VisualizationSettings,
   object: unknown,
-  onChangeSettings: SettingWidget["onChangeSettings"],
-  extra = {},
-): SettingWidget {
-  const settingDef = settingsDefs[settingId] as VisualizationSettingDefinition<
-    any,
-    any
-  >;
+  onChangeSettings: any /* VisualizationSettingWidget["onChangeSettings"] */,
+  extra: unknown = {},
+) /* returns VisualizationSettingWidget */ {
+  const settingDef = settingsDefs[settingId];
   const value = computedSettings[settingId];
-  const onChange = (value, question) => {
-    const newSettings = { [settingId]: value };
+  const onChange = (newValue: typeof value, question: Question) => {
+    const newSettings: VisualizationSettings = { [settingId]: newValue };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }
@@ -156,16 +144,20 @@ function getSettingWidget(
       newSettings[settingId] = null;
     }
     onChangeSettings(newSettings, question);
-    settingDef.onUpdate?.(value, extra);
+    settingDef.onUpdate?.(newValue, extra);
   };
-  if (settingDef.useRawSeries && object._raw) {
-    extra.transformedSeries = object;
-    object = object._raw;
+  if (settingDef.useRawSeries) {
+    const series = object as TransformedSeries;
+    if (series._raw) {
+      (extra as any).transformedSeries = series;
+      object = series;
+    }
   }
+
   return {
     ...settingDef,
     id: settingId,
-    value: value,
+    value,
     section: settingDef.getSection
       ? settingDef.getSection(object, computedSettings, extra)
       : settingDef.section,
@@ -182,9 +174,14 @@ function getSettingWidget(
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
     props: {
-      ...(settingDef.props ? settingDef.props : {}),
+      ...(settingDef.props ? (settingDef.props as object) : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, computedSettings, onChange, extra)
+        ? (settingDef.getProps(
+            object,
+            computedSettings,
+            onChange as any,
+            extra,
+          ) as object)
         : {}),
     },
     set: settingId in storedSettings,
@@ -201,15 +198,15 @@ export function getSettingsWidgets(
   settingsDefs: VisualizationSettingsDefinitions,
   storedSettings: VisualizationSettings,
   computedSettings: VisualizationSettings,
-  object: SettingObject,
-  onChangeSettings,
+  object: unknown,
+  onChangeSettings: any /* VisualizationSettingWidget["onChangeSettings"] */,
   extra = {},
 ) {
   return Object.keys(settingsDefs)
     .map(settingId =>
       getSettingWidget(
         settingsDefs,
-        settingId,
+        settingId as VisualizationSettingId,
         storedSettings,
         computedSettings,
         object,
@@ -222,10 +219,11 @@ export function getSettingsWidgets(
 
 export function getPersistableDefaultSettings(
   settingsDefs: VisualizationSettingsDefinitions,
-  completeSettings,
+  completeSettings: VisualizationSettings,
 ) {
-  const persistableDefaultSettings = {};
-  for (const settingId in settingsDefs) {
+  const persistableDefaultSettings: VisualizationSettings = {};
+  for (const id in settingsDefs) {
+    const settingId = id as VisualizationSettingId;
     const settingDef = settingsDefs[settingId];
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];
@@ -234,7 +232,10 @@ export function getPersistableDefaultSettings(
   return persistableDefaultSettings;
 }
 
-export function updateSettings(storedSettings, changedSettings) {
+export function updateSettings(
+  storedSettings: VisualizationSettings,
+  changedSettings: VisualizationSettings,
+) {
   for (const key of Object.keys(changedSettings)) {
     MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
   }
@@ -245,7 +246,7 @@ export function updateSettings(storedSettings, changedSettings) {
   // remove undefined settings
   for (const [key, value] of Object.entries(changedSettings)) {
     if (value === undefined) {
-      delete newSettings[key];
+      delete newSettings[key as VisualizationSettingId];
     }
   }
   return newSettings;
@@ -273,8 +274,8 @@ export function mergeSettings(first = {}, second = {}) {
   return merged;
 }
 
-export function getClickBehaviorSettings(settings) {
-  const newSettings = {};
+export function getClickBehaviorSettings(settings: VisualizationSettings) {
+  const newSettings: VisualizationSettings = {};
 
   if (settings.click_behavior) {
     newSettings.click_behavior = settings.click_behavior;

@@ -4,12 +4,14 @@ import type {
   RawSeries,
   Series,
   TransformedSeries,
+  VisualizationSettingId,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 import type Query from "metabase-lib/queries/Query";
 
+import type Question from "metabase-lib/Question";
 import type { HoveredObject } from "./hover";
 import type { RemappingHydratedDatasetColumn } from "./columns";
 
@@ -98,17 +100,17 @@ export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
 
-  readDependencies?: string[];
-  writeDependencies?: string[];
-  eraseDependencies?: string[];
+  readDependencies?: VisualizationSettingId[];
+  writeDependencies?: VisualizationSettingId[];
+  eraseDependencies?: VisualizationSettingId[];
 
   default?: TValue;
-  persistDefault?: boolean;
   getDefault?: (
     object: TObject,
     settings: VisualizationSettings,
     extra: unknown,
   ) => TValue;
+  persistDefault?: boolean;
 
   getValue?: (
     object: TObject,
@@ -167,12 +169,26 @@ export type VisualizationSettingDefinition<TObject, TValue, TProps = void> = {
 };
 
 export type VisualizationSettingsDefinitions<TObject = unknown> = {
-  [key in keyof VisualizationSettings]: VisualizationSettingDefinition<
+  [id in VisualizationSettingId]: VisualizationSettingDefinition<
     TObject,
-    VisualizationSettings[key],
+    VisualizationSettings[id],
     unknown
   >;
 };
+
+// returned by getSettingWidget
+export type VisualizationSettingWidget<TObject, TValue> =
+  VisualizationSettingDefinition<TObject, TValue, unknown> & {
+    id: string;
+    value: TValue;
+    set: boolean;
+    widget: any;
+    onChange: (newValue: TValue, question: Question) => void;
+    onChangeSettings: (
+      newSettings: VisualizationSettings,
+      question: Question,
+    ) => void;
+  };
 
 export type VisualizationGridSize = {
   // grid columns
