@@ -19,9 +19,25 @@ jobs:
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
-    timeout-minutes: 6
+    timeout-minutes: 5
     outputs:
-      backend_all: ${{ steps.changes.outputs.backend_all }}
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  static-viz-files-changed:
+    needs: files-changed
+    if: needs.files-changed.outputs.backend_all != 'true'
+    name: Check whether static-viz files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v3
@@ -38,12 +54,7 @@ jobs:
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
-      - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
+
       - name: Check for static viz changes
         uses: dorny/paths-filter@v2.11.1
         id: static_viz
@@ -73,8 +84,8 @@ jobs:
           flags: back-end
 
   be-linter-clj-kondo:
-    needs: files-changed
-    if: needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true'
+    needs: [files-changed, static-viz-files-changed]
+    if: needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
@@ -131,8 +142,8 @@ jobs:
           ./modules/drivers/vertica/test
 
   be-linter-eastwood:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
+    needs: [files-changed, static-viz-files-changed]
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -148,8 +159,8 @@ jobs:
   # we have to extract that job manually here. Backend developers have requested that this
   # test runs at all times to give them an early warning sign is something is broken.
   be-tests-java-11-ee-pre-check:
-    needs: files-changed
-    if: github.event.pull_request.draft == true && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
+    needs: [files-changed, static-viz-files-changed]
+    if: github.event.pull_request.draft == true && (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
     timeout-minutes: 60
@@ -181,8 +192,8 @@ jobs:
           fail-on-error: false
 
   be-tests:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
+    needs: [files-changed, static-viz-files-changed]
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 60
@@ -220,11 +231,11 @@ jobs:
           fail-on-error: false
 
   be-tests-stub:
-    needs: files-changed
+    needs: [files-changed, static-viz-files-changed]
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.static_viz == 'false')
+      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 5
@@ -240,8 +251,8 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.static_viz == 'true')
+    needs: [files-changed, static-viz-files-changed]
+    if: github.event.pull_request.draft == false && (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
@@ -258,11 +269,11 @@ jobs:
         run: clojure -M:ee:drivers:check
 
   be-check-stub:
-    needs: files-changed
+    needs: [files-changed, static-viz-files-changed]
     if: |
       always() &&
       github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.static_viz == 'false')
+      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
     runs-on: ubuntu-22.04
     name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
