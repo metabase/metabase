@@ -47,4 +47,3 @@
         (record-view! model model-id user-id metadata)))
     (catch Throwable e
       (log/warnf e "Failed to process activity event. %s" topic))))
-
