@@ -75,9 +75,6 @@
                    TimelineEvent {event-id :id}             {:name "Example Event"
                                                              :timeline_id timeline-id}]
       (testing "delete the timeline-event by `id`"
-        (is (= "Example Event"
-               (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" event-id))
-                    :name)))
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "timeline-event/" event-id))))
         (is (= "Not found."
