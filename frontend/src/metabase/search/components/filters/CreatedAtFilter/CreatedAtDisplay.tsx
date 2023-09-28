@@ -10,7 +10,7 @@ export const CreatedAtDisplay: SearchFilterDropdown<"created_at">["DisplayCompon
     const dateFilter = value != null && dateParameterValueToMBQL(value, null);
 
     return (
-      <Text c="inherit" fw={700}>
+      <Text c="inherit" fw={700} truncate>
         {value ? getFilterTitle(dateFilter) : CreatedAtFilter.title}
       </Text>
     );
