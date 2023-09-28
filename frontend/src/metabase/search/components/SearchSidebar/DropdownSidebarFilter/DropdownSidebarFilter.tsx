@@ -2,10 +2,12 @@ import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type {
+  FilterTypeKeys,
   SearchFilterComponentProps,
-  SearchSidebarFilterComponent,
+  SearchFilterDropdown,
+  SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Group, Text, Box } from "metabase/ui";
+import { Group, Text, Box, Button } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -14,22 +16,21 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
 import {
-  DropdownClearButton,
   DropdownDisplayContent,
   DropdownFieldSet,
   SearchEventSandbox,
-} from "./SidebarFilter.styled";
+} from "./DropdownSidebarFilter.styled";
 
-export type SearchSidebarFilterProps = {
-  filter: SearchSidebarFilterComponent;
-} & SearchFilterComponentProps;
+export type DropdownSidebarFilterProps<T extends FilterTypeKeys = any> = {
+  filter: SearchFilterDropdown<T>;
+} & SearchFilterComponentProps<T>;
 
-export const SidebarFilter = ({
+export const DropdownSidebarFilter = ({
   filter: { title, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,
   onChange,
-}: SearchSidebarFilterProps) => {
+}: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -64,8 +65,9 @@ export const SidebarFilter = ({
     }
   }, [isNavbarOpen, isSmallScreen]);
 
-  const onApplyFilter = () => {
-    onChange(selectedValues);
+  const onApplyFilter = (value: SearchFilterPropTypes) => {
+    setSelectedValues(value);
+    onChange(value);
     setIsPopoverOpen(false);
   };
 
@@ -98,6 +100,7 @@ export const SidebarFilter = ({
       ref={dropdownRef}
       onClick={() => setIsPopoverOpen(!isPopoverOpen)}
       w="100%"
+      mt={fieldHasValue ? "0.25rem" : 0}
     >
       <DropdownFieldSet
         noPadding
@@ -109,11 +112,11 @@ export const SidebarFilter = ({
             <DisplayComponent value={value} />
           ) : (
             <Group noWrap>
-              <Icon name={iconName} />
+              {iconName && <Icon name={iconName} />}
               <Text weight={700}>{title}</Text>
             </Group>
           )}
-          <DropdownClearButton
+          <Button
             data-testid="sidebar-filter-dropdown-button"
             compact
             c="inherit"
@@ -136,8 +139,7 @@ export const SidebarFilter = ({
           <Box w={popoverWidth ?? "100%"}>
             <ContentComponent
               value={selectedValues}
-              onChange={selected => setSelectedValues(selected)}
-              onApply={onApplyFilter}
+              onChange={selected => onApplyFilter(selected)}
             />
           </Box>
         </SearchEventSandbox>

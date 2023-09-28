@@ -22,10 +22,13 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedByFilterProps = UserId | undefined;
+export type CreatedByFilterProps = UserId;
+
+export type VerifiedFilterProps = true;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
 };
 
@@ -33,8 +36,9 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
 // All URL query parameters are returned as strings so we need to account
 // for that when parsing them to our filter components
+export type SearchQueryParamValue = string | string[] | null | undefined;
 export type URLSearchFilterQueryParams = Partial<
-  Record<FilterTypeKeys, string | string[] | null | undefined>
+  Record<FilterTypeKeys, SearchQueryParamValue>
 >;
 export type SearchAwareLocation = Location<
   { q?: string } & URLSearchFilterQueryParams
@@ -43,22 +47,36 @@ export type SearchAwareLocation = Location<
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
-  value?: SearchFilterPropTypes[T];
-  onChange: (value: SearchFilterPropTypes[T]) => void;
+  value: SearchFilterPropTypes[T] | null;
+  onChange: (value: SearchFilterPropTypes[T] | null) => void;
   "data-testid"?: string;
 } & Record<string, unknown>;
 
-export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
+type SidebarFilterType = "dropdown" | "toggle";
+
+interface SearchFilter<T extends FilterTypeKeys = any> {
+  type: SidebarFilterType;
   title: string;
-  iconName: IconName;
+  iconName?: IconName;
+
+  // parses the string value of a URL query parameter to the filter value
+  fromUrl: (value: SearchQueryParamValue) => SearchFilterPropTypes[T];
+
+  // converts filter value to URL query parameter string value
+  toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
+}
+
+export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
+  extends SearchFilter {
+  type: "dropdown";
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<
-    { onApply: () => void } & SearchFilterComponentProps<T>
-  >;
-  // two functions for converting strings to the desired prop type and back
-  // (e.g. for converting a string to a date)
-  fromUrl: (
-    value: string | string[] | null | undefined,
-  ) => SearchFilterPropTypes[T];
-  toUrl: (value?: SearchFilterPropTypes[T]) => string | string[] | undefined;
-};
+  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+}
+
+export interface SearchFilterToggle extends SearchFilter {
+  type: "toggle";
+}
+
+export type SearchFilterComponent<T extends FilterTypeKeys = any> =
+  | SearchFilterDropdown<T>
+  | SearchFilterToggle;

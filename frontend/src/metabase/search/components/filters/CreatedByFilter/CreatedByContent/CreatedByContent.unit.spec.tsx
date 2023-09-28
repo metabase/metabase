@@ -12,37 +12,26 @@ const TEST_USERS: User[] = [
   createMockUser({ id: 2, common_name: "Bob" }),
 ];
 
-const TestCreatedByContent = ({
-  onChange,
-  onApply,
-}: {
-  onChange: jest.Func;
-  onApply: jest.Func;
-}) => {
-  const [value, setValue] = useState<CreatedByFilterProps>();
-  const onUserChange = (value: CreatedByFilterProps) => {
+const TestCreatedByContent = ({ onChange }: { onChange: jest.Func }) => {
+  const [value, setValue] = useState<CreatedByFilterProps | null>(null);
+  const onUserChange = (value: CreatedByFilterProps | null) => {
     setValue(value);
     onChange(value);
   };
-  return (
-    <CreatedByContent value={value} onChange={onUserChange} onApply={onApply} />
-  );
+  return <CreatedByContent value={value} onChange={onUserChange} />;
 };
 
 const setup = async () => {
   setupUsersEndpoints(TEST_USERS);
 
   const mockOnChange = jest.fn();
-  const mockOnApply = jest.fn();
-  renderWithProviders(
-    <TestCreatedByContent onChange={mockOnChange} onApply={mockOnApply} />,
-  );
+  renderWithProviders(<TestCreatedByContent onChange={mockOnChange} />);
 
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 
-  return { mockOnChange, mockOnApply };
+  return { mockOnChange };
 };
 
 describe("CreatedByContent", () => {
@@ -62,18 +51,19 @@ describe("CreatedByContent", () => {
     expect(screen.queryByText("Bob")).not.toBeInTheDocument();
   });
 
-  it("calls onChange when a user is selected", async () => {
+  it("should not call onChange when a user is selected", async () => {
     const { mockOnChange } = await setup();
 
     userEvent.click(screen.getByText("Alice"));
 
-    expect(mockOnChange).toHaveBeenCalledWith(1);
+    expect(mockOnChange).not.toHaveBeenCalled();
   });
 
-  it("calls onApply when 'Apply Filters' selected", async () => {
-    const { mockOnApply } = await setup();
+  it("should call onChange when 'Apply Filters' selected", async () => {
+    const { mockOnChange } = await setup();
 
+    userEvent.click(screen.getByText("Alice"));
     userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
-    expect(mockOnApply).toHaveBeenCalled();
+    expect(mockOnChange).toHaveBeenCalledWith(1);
   });
 });

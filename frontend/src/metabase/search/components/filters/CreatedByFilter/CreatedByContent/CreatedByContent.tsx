@@ -5,28 +5,31 @@ import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserListResult } from "metabase-types/api";
 import { Center, Text, TextInput } from "metabase/ui";
+import type { SearchFilterDropdown } from "metabase/search/types";
+
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
+import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
 import {
   CreatedByContainer,
   CreatedByContentContainer,
-} from "metabase/search/components/filters/CreatedByFilter/CreatedByContent.styled";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
-import { UserListElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper";
+} from "./CreatedByContent.styled";
 
-export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["ContentComponent"] =
-  ({ value, onChange, onApply }) => {
+export const CreatedByContent: SearchFilterDropdown<"created_by">["ContentComponent"] =
+  ({ value, onChange }) => {
     const { data: users = [], isLoading } = useUserListQuery();
     const [userFilter, setUserFilter] = useState("");
+
+    const [selectedUserId, setSelectedUserId] = useState(value);
 
     const filteredUsers = users.filter(user => {
       return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
     });
 
     const onUserSelect = (user: UserListResult) => {
-      if (value && isEqual(value, user.id)) {
-        onChange(undefined);
+      if (selectedUserId && isEqual(selectedUserId, user.id)) {
+        setSelectedUserId(null);
       } else {
-        onChange(user.id);
+        setSelectedUserId(user.id);
       }
     };
 
@@ -34,7 +37,7 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
       return userList.map(user => (
         <UserListElement
           key={user.id}
-          isSelected={value ? isEqual(value, user.id) : false}
+          isSelected={selectedUserId ? isEqual(selectedUserId, user.id) : false}
           onClick={onUserSelect}
           value={user}
         />
@@ -42,7 +45,10 @@ export const CreatedByContent: SearchSidebarFilterComponent<"created_by">["Conte
     };
 
     return (
-      <SearchFilterPopoverWrapper isLoading={isLoading} onApply={onApply}>
+      <SearchFilterPopoverWrapper
+        isLoading={isLoading}
+        onApply={() => onChange(selectedUserId)}
+      >
         <CreatedByContainer p="sm" h="100%" spacing="xs">
           <TextInput
             size="md"

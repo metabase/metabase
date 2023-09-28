@@ -1,6 +1,6 @@
 import type { UserListResult } from "metabase-types/api";
 import { Text } from "metabase/ui";
-import { UserElement } from "metabase/search/components/filters/CreatedByFilter/UserListElement.styled";
+import { UserElement } from "./UserListElement.styled";
 
 export type UserListElementProps = {
   value: UserListResult;

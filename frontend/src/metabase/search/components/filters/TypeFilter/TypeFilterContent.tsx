@@ -1,18 +1,23 @@
 /* eslint-disable react/prop-types */
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
+import { useState } from "react";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Stack } from "metabase/ui";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { EnabledSearchModelType } from "metabase-types/api";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper";
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
-export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentComponent"] =
-  ({ value, onChange, onApply }) => {
+export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
+  ({ value, onChange }) => {
     const { metadata, isLoading } = useSearchListQuery({
       query: EMPTY_SEARCH_QUERY,
     });
+
+    const [selectedTypes, setSelectedTypes] = useState<
+      EnabledSearchModelType[]
+    >(value ?? []);
 
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters: EnabledSearchModelType[] = enabledSearchTypes.filter(
@@ -20,12 +25,17 @@ export const TypeFilterContent: SearchSidebarFilterComponent<"type">["ContentCom
     );
 
     return (
-      <SearchFilterPopoverWrapper isLoading={isLoading} onApply={onApply}>
+      <SearchFilterPopoverWrapper
+        isLoading={isLoading}
+        onApply={() => onChange(selectedTypes)}
+      >
         <Checkbox.Group
           data-testid="type-filter-checkbox-group"
           w="100%"
-          value={value}
-          onChange={onChange}
+          value={selectedTypes}
+          onChange={value =>
+            setSelectedTypes(value as EnabledSearchModelType[])
+          }
         >
           <Stack spacing="md" p="md" justify="center" align="flex-start">
             {typeFilters.map(model => (

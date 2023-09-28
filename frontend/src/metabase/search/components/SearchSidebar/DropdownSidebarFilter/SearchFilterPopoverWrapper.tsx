@@ -1,13 +1,17 @@
 import { t } from "ttag";
 import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+import type {
+  FilterTypeKeys,
+  SearchFilterPropTypes,
+} from "metabase/search/types";
 import {
   DropdownApplyButtonDivider,
   SearchPopoverContainer,
-} from "metabase/search/components/SidebarFilter/SearchFilterPopoverWrapper.styled";
+} from "./SearchFilterPopoverWrapper.styled";
 
-type SearchFilterPopoverWrapperProps = {
+type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
   children: React.ReactNode;
-  onApply: () => void;
+  onApply: (value: SearchFilterPropTypes[T]) => void;
   isLoading?: boolean;
 };
 

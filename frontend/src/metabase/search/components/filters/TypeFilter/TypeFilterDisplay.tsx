@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { Text } from "metabase/ui";
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
+import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 
-export const TypeFilterDisplay: SearchSidebarFilterComponent<"type">["DisplayComponent"] =
+export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"] =
   ({ value }) => {
     let titleText = "";
     if (!value || !value.length) {

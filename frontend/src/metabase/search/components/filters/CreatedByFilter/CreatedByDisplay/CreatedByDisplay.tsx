@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
 import { Text } from "metabase/ui";
-import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter/CreatedByFilter";
+import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
+import type { SearchFilterDropdown } from "metabase/search/types";
 
-export const CreatedByDisplay: SearchSidebarFilterComponent<"created_by">["DisplayComponent"] =
+export const CreatedByDisplay: SearchFilterDropdown<"created_by">["DisplayComponent"] =
   ({ value }) => {
     const { data: users = [], isLoading } = useUserListQuery();
 
