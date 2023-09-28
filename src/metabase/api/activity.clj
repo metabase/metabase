@@ -69,6 +69,7 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
+  ;; TODO update to use RecentViews instead of ViewLog
   (let [dashboard-and-table-views (t2/select [ViewLog
                                               [[:min :view_log.user_id] :user_id]
                                               :model
