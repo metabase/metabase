@@ -237,7 +237,7 @@ class Visualization extends PureComponent {
     return mode
       ? mode.actionsForClick(
           { ...clicked, extraData: getExtraDataForClick(clicked) },
-          {},
+          this.state.computedSettings,
         )
       : [];
   }

@@ -93,7 +93,7 @@ export const QueryColumnSelector = ({
         columnItems={columnItems}
         getColumnName={({ datasetColumn, metadataColumn }) => (
           <>
-            <Icon name={getColumnIcon(metadataColumn)} />{" "}
+            {metadataColumn && <Icon name={getColumnIcon(metadataColumn)} />}{" "}
             {getColumnName(datasetColumn)}
           </>
         )}

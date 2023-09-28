@@ -70,7 +70,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       name: "formatting",
       title: t`Column formatting`,
       section: "sort",
-      buttonType: "formatting",
+      buttonType: "sort",
       icon: "gear",
       tooltip: t`Column formatting`,
       popoverProps: {

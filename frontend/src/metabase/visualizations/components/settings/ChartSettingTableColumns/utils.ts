@@ -199,13 +199,13 @@ export const disableColumnInQuery = (
 
 export const findColumnSettingIndex = (
   query: Lib.Query,
-  column: Lib.ColumnMetadata,
+  column: Lib.ColumnMetadata | DatasetColumn,
   columnSettings: ColumnSetting[],
 ) => {
   const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     STAGE_INDEX,
-    [column],
+    [column] as Lib.ColumnMetadata[] | DatasetColumn[],
     columnSettings.map(({ fieldRef }) => fieldRef),
   );
 

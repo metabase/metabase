@@ -54,7 +54,7 @@ export type ClickActionBase = {
 };
 
 type ReduxClickActionBase = {
-  action: () => Dispatcher;
+  action: () => Dispatcher | null;
 };
 
 export type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
