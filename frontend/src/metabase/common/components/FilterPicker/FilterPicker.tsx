@@ -5,16 +5,15 @@ import { QueryColumnPicker } from "../QueryColumnPicker";
 export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
+  filter?: Lib.FilterClause;
   onSelect: (filter: Lib.FilterClause) => void;
   onClose?: () => void;
 }
 
-export function FilterPicker({
-  query,
-  stageIndex,
-  onClose,
-}: FilterPickerProps) {
-  const [, setColumn] = useState<Lib.ColumnMetadata | null>(null);
+export function FilterPicker({ query, stageIndex, filter }: FilterPickerProps) {
+  const [column, setColumn] = useState<Lib.ColumnMetadata | null>(
+    getInitialColumn(query, stageIndex, filter),
+  );
 
   const columnGroups = useMemo(() => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -22,6 +21,10 @@ export function FilterPicker({
   }, [query, stageIndex]);
 
   const checkColumnSelected = () => false;
+
+  if (column) {
+    return <div>✨ Filter editor ✨</div>;
+  }
 
   return (
     <QueryColumnPicker
@@ -31,7 +34,22 @@ export function FilterPicker({
       color="filter"
       checkIsColumnSelected={checkColumnSelected}
       onSelect={setColumn}
-      onClose={onClose}
     />
   );
+}
+
+function getInitialColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  filter?: Lib.FilterClause,
+) {
+  if (filter) {
+    const {
+      args: [maybeColumn],
+    } = Lib.expressionParts(query, stageIndex, filter);
+
+    return Lib.isColumnMetadata(maybeColumn) ? maybeColumn : null;
+  }
+
+  return null;
 }
