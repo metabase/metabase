@@ -15,6 +15,7 @@ import type {
   Query,
   RelativeDateFilterParts,
   RelativeTemporalUnit,
+  SpecificDateFilterOperator,
   SpecificDateFilterParts,
   StringFilterOperator,
   StringFilterParts,
@@ -107,6 +108,20 @@ function isBooleanFilterOperator(arg: unknown): arg is BooleanFilterOperator {
     case "=":
     case "is-null":
     case "not-null":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isSpecificDateFilterOperator(
+  arg: unknown,
+): arg is SpecificDateFilterOperator {
+  switch (arg) {
+    case "=":
+    case "<":
+    case ">":
+    case "between":
       return true;
     default:
       return false;
@@ -248,7 +263,7 @@ export function specificDateFilterClause({
   column,
   values,
 }: SpecificDateFilterParts): ExpressionClause {
-  throw new TypeError();
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function specificDateFilterParts(
@@ -256,7 +271,21 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  return null;
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isSpecificDateFilterOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+    return null;
+  }
+
+  return {
+    operator,
+    column,
+    values,
+  };
 }
 
 export function isSpecificDateFilter(
