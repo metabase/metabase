@@ -42,8 +42,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -468,7 +466,7 @@
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
-(s/defn ^:private check-parameter-mapping-permissions
+(mu/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   [parameter-mappings :- [dashboard-card/ParamMapping]]
@@ -786,8 +784,8 @@
   "How many results to return when chain filtering"
   1000)
 
-(s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
-  [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
+(mu/defn ^:private mappings->field-ids :- [:maybe [:set ms/PositiveInt]]
+  [parameter-mappings :- [:maybe [:or [:set dashboard-card/ParamMapping] [:sequential dashboard-card/ParamMapping]]]]
   (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
              :let  [field-clause (params/param-target->field-clause target card)]
              :when field-clause
@@ -857,7 +855,7 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(s/defn param-values
+(mu/defn param-values
   "Fetch values for a parameter.
 
   The source of values could be:
@@ -867,10 +865,10 @@
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
-  ([dashboard                   :- su/Map
-    param-key                   :- su/NonBlankString
-    constraint-param-key->value :- su/Map
-    query                       :- (s/maybe su/NonBlankString)]
+  ([dashboard                   :- :map
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- :map
+    query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param

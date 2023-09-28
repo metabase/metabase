@@ -10,10 +10,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
-   [user-agent :as user-agent]))
+   [user-agent :as user-agent])
+  (:import
+   (java.time ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -92,11 +94,12 @@
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
-  {:device_id          su/NonBlankString
-   :device_description su/NonBlankString
-   :ip_address         su/NonBlankString})
+  [:map {:closed true}
+   [:device_id          ms/NonBlankString]
+   [:device_description ms/NonBlankString]
+   [:ip_address         ms/NonBlankString]])
 
-(s/defn device-info :- DeviceInfo
+(mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
@@ -139,12 +142,16 @@
   reason or another."
   5000)
 
-(def ^:private IPAddress
-  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
+(def ^:private IPAddress->Info
+  [:map-of
+   [:and {:error/message "valid IP address string"}
+    ms/NonBlankString u/ip-address?]
+   [:map {:closed true}
+    [:description ms/NonBlankString]
+    [:timezone    (ms/InstanceOfClass ZoneId)]]])
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
-                                                     :timezone    (s/maybe java.time.ZoneId)}})
+(mu/defn geocode-ip-addresses :- [:maybe IPAddress->Info]
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
   [ip-addresses :- [s/Str]]
@@ -152,15 +159,15 @@
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try
-          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                            :socket-timeout     gecode-ip-address-timeout-ms
-                                            :connection-timeout gecode-ip-address-timeout-ms})
-                             :body
-                             (json/parse-string true))]
-            (into {} (for [info response]
-                       [(:ip info) {:description (or (describe-location info)
-                                                     "Unknown location")
-                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-          (catch Throwable e
-            (log/error e (trs "Error geocoding IP addresses") {:url url})
-            nil))))))
+         (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                           :socket-timeout     gecode-ip-address-timeout-ms
+                                           :connection-timeout gecode-ip-address-timeout-ms})
+                            :body
+                            (json/parse-string true))]
+           (into {} (for [info response]
+                      [(:ip info) {:description (or (describe-location info)
+                                                    "Unknown location")
+                                   :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+         (catch Throwable e
+           (log/error e (trs "Error geocoding IP addresses") {:url url})
+           nil))))))

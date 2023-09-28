@@ -11,6 +11,7 @@
   - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -23,9 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -35,14 +34,14 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/Parameter]) parameters)
+  (when (mc/validate [:maybe [:sequential ms/Parameter]] parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
+  (when (mc/validate [:maybe [:sequential ms/ParameterMapping]] parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
@@ -175,11 +174,11 @@
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
-(s/defn ^:private param-field-ids->fields
+(mu/defn ^:private param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
+  [field-ids :- [:maybe [:set ms/PositiveInt]]]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
                         (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
@@ -234,7 +233,7 @@
   [cards]
   (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
-(s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
+(mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
   `dashcards` must be hydrated with :card."
@@ -274,7 +273,7 @@
              :when                      field]
          field)))
 
-(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
+(mu/defn card->template-tag-field-ids :- [:set ms/PositiveInt]
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]

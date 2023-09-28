@@ -25,10 +25,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as schema]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
@@ -321,18 +318,6 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
-
-(def DefaultUser
-  "Standard form of a user (for consumption by the frontend and such)"
-  {:id           su/IntGreaterThanOrEqualToZero
-   :email        su/NonBlankString
-   :first_name   su/NonBlankString
-   :last_name    su/NonBlankString
-   :common_name  su/NonBlankString
-   :last_login   schema/Any
-   :date_joined  schema/Any
-   :is_qbnewb    schema/Bool
-   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

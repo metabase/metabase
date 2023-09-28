@@ -40,8 +40,9 @@
   :type :json
   :visibility :settings-manager
   :setter (fn [new-value]
-           (when (validate-reply-to-addresses new-value)
-             (setting/set-value-of-type! :json :email-reply-to new-value))))
+           (if (validate-reply-to-addresses new-value)
+             (setting/set-value-of-type! :json :email-reply-to new-value)
+             (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")

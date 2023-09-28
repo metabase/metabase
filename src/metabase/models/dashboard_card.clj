@@ -199,10 +199,12 @@
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  {:parameter_id su/NonBlankString
-   ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
-   #_:target       #_s/Any
-   s/Keyword     s/Any})
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
+    [:parameter_id ms/NonBlankString]
+    #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys

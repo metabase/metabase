@@ -23,11 +23,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -36,8 +34,10 @@
 
 (set! *warn-on-reflection* true)
 
-(s/defn ^:private record-login-history!
-  [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
+(mu/defn ^:private record-login-history!
+  [session-id  :- (ms/InstanceOfClass UUID)
+   user-id     :-  ms/PositiveInt
+   device-info :- request.u/DeviceInfo]
   (t2/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
@@ -50,11 +50,18 @@
     session-type))
 
 (def ^:private CreateSessionUserInfo
-  {:id         su/IntGreaterThanZero
-   :last_login s/Any
-   s/Keyword   s/Any})
+  [:map
+   [:id          ms/PositiveInt]
+   [:last_login :any]])
 
-(s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
+(def ^:private SessionSchema
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    [:id   (ms/InstanceOfClass UUID)]
+    [:type [:enum :normal :full-app-embed]]]])
+
+(mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (random-uuid)
         session      (first (t2/insert-returning-instances! Session
@@ -70,8 +77,10 @@
       (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
     (assoc session :id session-uuid)))
 
-(s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
-  [session-type user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
+(mu/defmethod create-session! :password :- SessionSchema
+  [session-type
+   user         :- CreateSessionUserInfo
+   device-info  :- request.u/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
@@ -95,7 +104,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
+(mu/defn ^:private ldap-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request.u/DeviceInfo]
@@ -118,9 +127,11 @@
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
-(s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
+(mu/defn ^:private email-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
-  [username password device-info :- request.u/DeviceInfo]
+  [username    :- ms/NonBlankString
+   password    :- ms/NonBlankString
+   device-info :- request.u/DeviceInfo]
   (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
@@ -141,10 +152,12 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
+(mu/defn ^:private login :- SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username :- su/NonBlankString password :- su/NonBlankString device-info :- request.u/DeviceInfo]
+  [username    :- ms/NonBlankString
+   password    :- ms/NonBlankString
+   device-info :- request.u/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication

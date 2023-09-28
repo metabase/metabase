@@ -7,13 +7,10 @@
    [metabase.api.action :as api.action]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.collection :as collection]
-   [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -25,25 +22,37 @@
 
 (comment api.action/keep-me)
 
+(def ^:private DefaultUser
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:email        ms/NonBlankString]
+   [:first_name   ms/NonBlankString]
+   [:last_name    ms/NonBlankString]
+   [:common_name  ms/NonBlankString]
+   [:last_login   :any]
+   [:date_joined  :any]
+   [:is_qbnewb    :boolean]
+   [:is_superuser :boolean]])
+
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
-  {:id                     su/IntGreaterThanOrEqualToZero
-   :type                   (s/eq "query")
-   :model_id               su/IntGreaterThanOrEqualToZero
-   :database_id            su/IntGreaterThanOrEqualToZero
-   :dataset_query          {:database su/IntGreaterThanOrEqualToZero
-                            :type     (s/eq "native")
-                            :native   {:query    s/Str
-                                       s/Keyword s/Any}
-                            s/Keyword s/Any}
-   :parameters             s/Any
-   :parameter_mappings     s/Any
-   :visualization_settings su/Map
-   :public_uuid            (s/maybe su/UUIDString)
-   :made_public_by_id      (s/maybe su/IntGreaterThanOrEqualToZero)
-   :creator_id             su/IntGreaterThanZero
-   :creator                user/DefaultUser
-   s/Keyword               s/Any})
+ [:map
+  [:id                     ms/PositiveInt]
+  [:type                   [:= "query"]]
+  [:model_id               ms/PositiveInt]
+  [:database_id            ms/PositiveInt]
+  [:dataset_query          [:map
+                             [:database ms/PositiveInt]
+                             [:type     [:= "native"]]
+                             [:native   [:map
+                                         [:query :string]]]]]
+  [:parameters             :any]
+  [:parameter_mappings     :any]
+  [:visualization_settings :map]
+  [:public_uuid            [:maybe ms/UUIDString]]
+  [:made_public_by_id      [:maybe ms/PositiveInt]]
+  [:creator_id             ms/PositiveInt]
+  [:creator                DefaultUser]])
 
 (defn all-actions-default
   [card-id]
@@ -113,7 +122,7 @@
             (doseq [action response
                     :when (= (:type action) "query")]
               (testing "Should return a query action deserialized (#23201)"
-                (is (schema= ExpectedGetQueryActionAPIResponse
+                (is (malli= ExpectedGetQueryActionAPIResponse
                              action)))))
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
@@ -127,7 +136,7 @@
               (doseq [action response
                       :when (= (:type action) "query")]
                 (testing "Should return a query action deserialized (#23201)"
-                  (is (schema= ExpectedGetQueryActionAPIResponse
+                  (is (malli= ExpectedGetQueryActionAPIResponse
                                action))))
               (testing "Does not have archived actions"
                 (is (not (contains? action-ids (:id archived)))))
@@ -143,7 +152,7 @@
         (mt/with-actions [{:keys [action-id]} {}]
           (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
             (testing "Should return a query action deserialized (#23201)"
-              (is (schema= ExpectedGetQueryActionAPIResponse
+              (is (malli= ExpectedGetQueryActionAPIResponse
                            action))))
           (testing "Should not be allowed to get the action without permission on the model"
             (is (= "You don't have permissions to do that."
