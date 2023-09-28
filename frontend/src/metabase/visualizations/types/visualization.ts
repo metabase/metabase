@@ -24,16 +24,14 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
+  column: (col: RemappingHydratedDatasetColumn) => Record<string, any>;
 };
 
 export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingEnvironment {
   getColor: ColorGetter;
-  formatValue: (value: unknown, options: OptionsType) => string;
+  formatValue: (value: unknown, options?: OptionsType) => string;
   measureText: TextWidthMeasurer;
 }
 

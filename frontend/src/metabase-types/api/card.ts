@@ -95,6 +95,7 @@ export type TableColumnOrderSetting = {
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
+  column_settings: Record<string, any>;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -129,7 +130,13 @@ export type VisualizationSettings = {
   "table.column_formatting"?: ColumnFormattingSetting[];
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
-  [key: string]: any;
+  // Pie
+  "pie.dimension"?: string;
+  "pie.metric"?: string;
+  "pie.show_total"?: boolean;
+  "pie.slice_threshold"?: number;
+  "pie.colors"?: Record<string, string>;
+  "pie.percent_visibility"?: string;
 };
 
 export interface ModerationReview {
