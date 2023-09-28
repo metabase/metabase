@@ -164,19 +164,6 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export const STRING_FILTER_OPERATORS = [
-  "=",
-  "!=",
-  "contains",
-  "does-not-contain",
-  "is-null",
-  "not-null",
-  "is-empty",
-  "not-empty",
-  "starts-with",
-  "ends-with",
-];
-
 export type StringFilterOperator = Extract<
   ExpressionOperator,
   | "="
