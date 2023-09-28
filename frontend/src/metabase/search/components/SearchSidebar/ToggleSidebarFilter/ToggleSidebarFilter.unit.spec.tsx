@@ -39,7 +39,7 @@ const setup = ({
 }: {
   value?: ToggleSidebarFilterProps["value"];
   onChange?: jest.Mock;
-}) => {
+} = {}) => {
   renderWithProviders(
     <MockToggleSidebarFilter
       filter={mockFilter}
@@ -92,10 +92,8 @@ describe("ToggleSidebarFilter", () => {
     expect(switchElement).toHaveAttribute("data-is-checked", "true");
   });
 
-  it("should have the switch unchecked when value is undefined", () => {
-    setup({
-      value: undefined,
-    });
+  it("should have the switch unchecked when value is false", () => {
+    setup();
 
     const switchElement = screen.getByRole("checkbox");
     expect(switchElement).toHaveAttribute("data-is-checked", "false");

@@ -56,13 +56,13 @@ describe("toUrl", () => {
   it("should return undefined when the input array is empty", () => {
     const types: EnabledSearchModelType[] = [];
     const result = toUrl(types);
-    expect(result).toEqual(undefined);
+    expect(result).toBeNull();
   });
 
   it("should return undefined when the input is undefined", () => {
     const types = undefined;
     const result = toUrl(types);
-    expect(result).toEqual(undefined);
+    expect(result).toBeNull();
   });
 
   it("should return an array with a single valid type when the input array has one valid type", () => {
