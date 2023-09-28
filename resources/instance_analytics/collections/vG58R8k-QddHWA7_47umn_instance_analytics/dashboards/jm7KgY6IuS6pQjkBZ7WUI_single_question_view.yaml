@@ -1,0 +1,25 @@
+description: null
+archived: false
+collection_position: null
+ordered_cards: []
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+show_in_getting_started: false
+name: Single question view
+caveats: null
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+ordered_tabs: []
+serdes/meta:
+- model: Dashboard
+  id: jm7KgY6IuS6pQjkBZ7WUI
+  label: single_question_view
+position: null
+entity_id: jm7KgY6IuS6pQjkBZ7WUI
+parameters: []
+auto_apply_filters: true
+created_at: '2023-06-15T19:16:35.989393Z'
+public_uuid: null
+points_of_interest: null

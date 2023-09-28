@@ -1,0 +1,53 @@
+description: null
+database_type: int4
+semantic_type: type/Category
+table_id:
+- Internal Metabase Database
+- public
+- v_dashboardcard
+coercion_strategy: null
+name: size_x
+fingerprint_version: 5
+has_field_values: auto-list
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Integer
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-09-21T13:22:51.201966Z'
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: v_dashboardcard
+- model: Field
+  id: size_x
+database_is_auto_increment: false
+json_unfolding: false
+position: 6
+visibility_type: normal
+preview_display: true
+display_name: Size X
+database_position: 6
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 23
+    nil%: 0.0
+  type:
+    type/Number:
+      min: 1.0
+      q1: 6.231338150329106
+      q3: 15.647543451754933
+      max: 24.0
+      sd: 6.767071177106806
+      avg: 11.868479059515062
+created_at: '2023-09-21T13:22:50.069446Z'
+base_type: type/Integer
+points_of_interest: null
