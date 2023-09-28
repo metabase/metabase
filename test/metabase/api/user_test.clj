@@ -1227,3 +1227,31 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+
+(defn- event
+  ([topic]
+   (event topic nil))
+
+  ([topic model-id]
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  :topic    topic
+                  :model_id model-id
+                  {:order-by [[:id :desc]]})))
+
+(deftest user-update-event-test
+  (testing "User Updates via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+          (testing "PUT /api/user/:id"
+            (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                                  {:first_name "Johnny" :last_name "Appleseed"})
+            (is (= {:topic    :user-update
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "User"
+                    :model_id id
+                    :details  {:updater (mt/user->id :crowberto)
+                               :changes {:first_name "Johnny"
+                                         :last_name "Appleseed"
+                                         :id id}}}
+                   (event :user-update id))))))))
