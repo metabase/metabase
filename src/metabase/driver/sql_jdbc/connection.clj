@@ -271,7 +271,8 @@
     ;; close existing SSH tunnel if one exists
     (ssh/close-tunnel! pool-spec)
     ;; create a new unpooled DataSource from the presumably updated Database details, and create a new SSH tunnel
-    (let [{[unpooled-data-source ssh-tunnel-spec] :keys} (database->unpooled-data-source-and-ssh-tunnel-spec database)
+    (let [{:keys [unpooled-data-source ssh-tunnel-spec]} (database->unpooled-data-source-and-ssh-tunnel-spec database)
+          _                                              (assert (instance? DataSource unpooled-data-source))
           ;; update the keys related to the SSH tunnel in the pooled spec
           new-spec                                       (merge (select-keys pool-spec [:datasource ::unpooled-data-source])
                                                                 ssh-tunnel-spec)]
