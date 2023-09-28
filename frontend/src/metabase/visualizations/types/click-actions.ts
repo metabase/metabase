@@ -167,5 +167,5 @@ export interface QueryClickActionsMode {
 
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
-  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element;
+  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element | null;
 }

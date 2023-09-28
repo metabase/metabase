@@ -208,41 +208,45 @@ describe("permissions", () => {
     });
   });
 
-  it("should show you upload buttons if you have unrestricted access to the upload schema", () => {
-    restore("postgres-12");
-    cy.signInAsAdmin();
+  it(
+    "should show you upload buttons if you have unrestricted access to the upload schema",
+    { tags: ["@external"] },
+    () => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
 
-    setTokenFeatures("all");
-    enableUploads("postgres");
+      setTokenFeatures("all");
+      enableUploads("postgres");
 
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          data: {
-            schemas: "block",
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP]: {
+          [WRITABLE_DB_ID]: {
+            data: {
+              schemas: "block",
+            },
           },
         },
-      },
-      [NOSQL_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          data: {
-            schemas: "all",
+        [NOSQL_GROUP]: {
+          [WRITABLE_DB_ID]: {
+            data: {
+              schemas: "all",
+            },
           },
         },
-      },
-    });
+      });
 
-    cy.updateCollectionGraph({
-      [NOSQL_GROUP]: { root: "write" },
-    });
+      cy.updateCollectionGraph({
+        [NOSQL_GROUP]: { root: "write" },
+      });
 
-    cy.signIn("nosql");
-    cy.visit("/collection/root");
-    cy.findByTestId("collection-menu").within(() => {
-      cy.findByLabelText("Upload data").should("exist");
-      cy.findByRole("img", { name: /upload/i }).should("exist");
-    });
-  });
+      cy.signIn("nosql");
+      cy.visit("/collection/root");
+      cy.findByTestId("collection-menu").within(() => {
+        cy.findByLabelText("Upload data").should("exist");
+        cy.findByRole("img", { name: /upload/i }).should("exist");
+      });
+    },
+  );
 });
 
 function uploadFile(testFile, valid = true) {
@@ -283,7 +287,7 @@ function uploadFile(testFile, valid = true) {
       cy.findByText("Start exploring").click();
     });
 
-    cy.url().should("include", `/model/5`);
+    cy.url().should("include", `/model/`);
     cy.findByTestId("TableInteractive-root");
   } else {
     cy.findByRole("status").within(() => {

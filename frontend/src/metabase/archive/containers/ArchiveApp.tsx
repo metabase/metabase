@@ -18,7 +18,8 @@ import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useSearchListQuery } from "metabase/common/hooks";
 
-import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
+import { openNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
@@ -73,7 +74,7 @@ export function ArchiveApp() {
       <ArchiveHeader>
         <PageHeading>{t`Archive`}</PageHeading>
       </ArchiveHeader>
-      <ArchiveBody>
+      <ArchiveBody data-testid="archived-list">
         <Card
           style={{
             height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",

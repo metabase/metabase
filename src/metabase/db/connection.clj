@@ -138,8 +138,54 @@
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
 
-(methodical/defmethod t2.conn/do-with-transaction :around java.sql.Connection
-  [connection options f]
-  ;; Do not deadlock if using a Connection in a different thread inside of a transaction -- see
-  ;; https://github.com/seancorfield/next-jdbc/issues/244.
-  (next-method connection (assoc options :nested-transaction-rule :ignore) f))
+(def ^:private ^:dynamic *transaction-depth* 0)
+
+(defn- do-transaction [^java.sql.Connection connection f]
+  (letfn [(thunk []
+            (let [savepoint (.setSavepoint connection)]
+              (try
+                (let [result (f connection)]
+                  (when (= *transaction-depth* 1)
+                    ;; top-level transaction, commit
+                    (.commit connection))
+                  result)
+                (catch Throwable e
+                  (.rollback connection savepoint)
+                  (throw e)))))]
+    ;; optimization: don't set and unset autocommit if it's already false
+    (if (.getAutoCommit connection)
+      (try
+        (.setAutoCommit connection false)
+        (thunk)
+        (finally
+          (.setAutoCommit connection true)))
+      (thunk))))
+
+(methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
+  "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
+  https://github.com/seancorfield/next-jdbc/issues/244. Use `Savepoint`s because MySQL only supports nested
+  transactions when done this way.
+
+  See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929
+
+  Note that these \"nested transactions\" are not the real thing (e.g., as in Oracle):
+    - there is only one commit, meaning that every transaction in a tree of transactions can see the changes
+      other transactions have made,
+    - in the presence of unsynchronized concurrent threads running nested transactions, the effects of rollback
+      are not well defined - a rollback will undo all work done by other transactions in the same tree that
+      started later."
+  [^java.sql.Connection connection {:keys [nested-transaction-rule] :or {nested-transaction-rule :allow} :as options} f]
+  (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
+  (cond
+   (and (pos? *transaction-depth*)
+        (= nested-transaction-rule :ignore))
+   (f connection)
+
+   (and (pos? *transaction-depth*)
+        (= nested-transaction-rule :prohibit))
+   (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
+                   {:options options}))
+
+   :else
+   (binding [*transaction-depth* (inc *transaction-depth*)]
+     (do-transaction connection f))))

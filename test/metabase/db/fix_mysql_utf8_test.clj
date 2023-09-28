@@ -9,8 +9,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.map-backend.honeysql2 :as t2.honeysql]))
 
 (defn- create-test-db! []
   (let [spec (sql-jdbc.conn/connection-details->spec
@@ -96,7 +96,7 @@
             (convert-to-charset! jdbc-spec charset collation)
             (remove-utf8mb4-migrations! jdbc-spec)
             (t2/with-connection [_conn jdbc-spec]
-              (binding [db/*quoting-style* :mysql]
+              (binding [t2.honeysql/*options* (assoc t2.honeysql/*options* :dialect :mysql)]
                 (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
                   (let [db-cs  (db-charset)
                         tb-cs  (table-charset)

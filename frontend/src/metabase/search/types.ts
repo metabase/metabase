@@ -23,7 +23,6 @@ export interface WrappedResult extends SearchResult {
 
 export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId;
-
 export type VerifiedFilterProps = true;
 
 export type SearchFilterPropTypes = {
@@ -80,3 +79,10 @@ export interface SearchFilterToggle extends SearchFilter {
 export type SearchFilterComponent<T extends FilterTypeKeys = any> =
   | SearchFilterDropdown<T>
   | SearchFilterToggle;
+
+export type SearchSidebarFilterComponent<T extends FilterTypeKeys = any> = {
+  title: string;
+  iconName: IconName;
+  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
+  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+};
