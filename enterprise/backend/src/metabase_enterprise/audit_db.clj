@@ -131,14 +131,13 @@
   [zip-resource dir-resource]
   (cond
     zip-resource
-    (do (log/info "Unzipping instance_analytics to " (u.files/relative-path instance-analytics-plugin-dir))
+    (do (log/info (str "Unzipping instance_analytics to " (u.files/relative-path instance-analytics-plugin-dir)))
         (u.files/unzip-file analytics-zip-resource
-                            (fn entry-name->out-path [entry-name]
-                              (str/replace-first entry-name
-                                                 "resources/instance_analytics/"
-                                                 (str ;; usually: "plugins/instance_analytics/"
-                                                  (u.files/relative-path instance-analytics-plugin-dir)
-                                                  fs/file-separator))))
+                               (fn [entry-name]
+                                 (str/replace-first
+                                  entry-name
+                                  #"instance_analytics/|resources/instance_analytics/"
+                                  "plugins/instance_analytics/")))
         (log/info "Unzipping complete."))
     dir-resource
     (do
