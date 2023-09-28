@@ -230,23 +230,6 @@ jobs:
           list-tests: failed
           fail-on-error: false
 
-  be-tests-stub:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      always() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
-    runs-on: ubuntu-22.04
-    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        edition: [oss, ee]
-        java-version: [11, 17]
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
 
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
@@ -267,19 +250,3 @@ jobs:
           m2-cache-key: be-check
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
-
-  be-check-stub:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      always() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'false' && needs.static-viz-files-changed.outputs.static_viz == 'false')
-    runs-on: ubuntu-22.04
-    name: be-check-java-${{ matrix.java-version }}
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        java-version: [11, 17, 19]
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
