@@ -238,9 +238,7 @@ describe("scenarios > search", () => {
             cy.findByLabelText("close icon").should("exist");
           });
         });
-      });
 
-      typeFilters.forEach(({ label, resultInfoText }) => {
         it(`should filter results by ${label}`, () => {
           cy.visit("/");
 
