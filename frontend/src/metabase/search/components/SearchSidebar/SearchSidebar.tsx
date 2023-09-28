@@ -8,11 +8,11 @@ import type {
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter/CreatedByFilter";
 import { Stack } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { DropdownSidebarFilter } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/DropdownSidebarFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
 import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
+import { DropdownSidebarFilter } from "./DropdownSidebarFilter/DropdownSidebarFilter";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;

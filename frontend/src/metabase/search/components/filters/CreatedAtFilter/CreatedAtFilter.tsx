@@ -9,4 +9,6 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = {
   type: "dropdown",
   DisplayComponent: CreatedAtDisplay,
   ContentComponent: CreatedAtContent,
+  fromUrl: value => value,
+  toUrl: value => value,
 };

@@ -19,7 +19,7 @@ export const CreatedAtContent: SearchFilterDropdown<"created_at">["ContentCompon
   ({ value, onChange }) => (
     <CreatedAtDatePicker
       value={value}
-      setValue={(value: string | null) => onChange(value ?? undefined)}
+      setValue={(value: string | null) => onChange(value)}
       operators={CREATED_AT_FILTERS}
       dateShortcutOptions={CREATED_AT_SHORTCUTS}
       withPadding={false}

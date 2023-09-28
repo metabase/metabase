@@ -19,7 +19,7 @@ const noopRef = null;
 
 export interface DateAllOptionsProps {
   setValue: (value: string | null) => void;
-  value?: string;
+  value?: string | null;
   onClose?: () => void;
   disableOperatorSelection?: boolean;
   className?: string;

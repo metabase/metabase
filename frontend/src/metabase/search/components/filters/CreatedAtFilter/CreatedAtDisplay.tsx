@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import type {SearchFilterDropdown} from "metabase/search/types";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter/CreatedAtFilter";
 import { Text } from "metabase/ui";
 import { getFilterTitle } from "metabase/parameters/utils/date-formatting";
@@ -11,7 +11,7 @@ export const CreatedAtDisplay: SearchFilterDropdown<"created_at">["DisplayCompon
 
     return (
       <Text c="inherit" fw={700}>
-        {dateFilter ? getFilterTitle(dateFilter) : CreatedAtFilter.title}
+        {value ? getFilterTitle(dateFilter) : CreatedAtFilter.title}
       </Text>
     );
   };
