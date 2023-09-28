@@ -1,88 +1,58 @@
-description: All Metabase users including active and deactivated users.
+description: null
 archived: false
-collection_position: 8
+collection_position: 10
 table_id:
 - Internal Metabase Database
 - public
-- v_users
+- v_dashboardcard
 result_metadata:
 - description: null
   semantic_type: type/PK
   coercion_strategy: null
-  name: user_id
+  name: id
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
-    - user_id
+    - v_dashboardcard
+    - id
   - null
-  effective_type: type/Integer
+  effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
-  - v_users
-  - user_id
+  - v_dashboardcard
+  - id
   visibility_type: normal
-  display_name: User ID
+  display_name: ID
   fingerprint: null
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: email
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - email
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - email
-  visibility_type: normal
-  display_name: Email
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 1
-        percent-state: 0
-        average-length: 19.5
   base_type: type/Text
 - description: null
-  semantic_type: type/Name
+  semantic_type: type/FK
   coercion_strategy: null
-  name: first_name
+  name: dashboard_id
   settings: null
+  fk_target_field_id: 919
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
-    - first_name
+    - v_dashboardcard
+    - dashboard_id
   - null
   effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
-  - v_users
-  - first_name
+  - v_dashboardcard
+  - dashboard_id
   visibility_type: normal
-  display_name: First Name
+  display_name: Dashboard ID
   fingerprint:
     global:
-      distinct-count: 2
+      distinct-count: 964
       nil%: 0
     type:
       type/Text:
@@ -90,131 +60,104 @@ result_metadata:
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 4.5
+        average-length: 13.164144011756061
   base_type: type/Text
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: last_name
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - last_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - last_name
-  visibility_type: normal
-  display_name: Last Name
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 6
-  base_type: type/Text
-- description: null
-  semantic_type: type/Name
-  coercion_strategy: null
-  name: full_name
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
-  visibility_type: normal
-  display_name: Full Name
-  fingerprint:
-    global:
-      distinct-count: 5
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 9.8
-  base_type: type/Text
-- description: null
-  semantic_type: type/JoinTimestamp
-  coercion_strategy: null
-  unit: default
-  name: date_joined
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - date_joined
-  - temporal-unit: default
-  effective_type: type/DateTimeWithLocalTZ
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - date_joined
-  visibility_type: normal
-  display_name: Date Joined
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2023-06-08T14:02:23.48704Z'
-        latest: '2023-06-08T14:42:49.058862Z'
-  base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: null
   coercion_strategy: null
-  unit: default
-  name: last_login
+  name: dashboardtab_id
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
-    - last_login
+    - v_dashboardcard
+    - dashboardtab_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - dashboardtab_id
+  visibility_type: normal
+  display_name: Dashboardtab ID
+  fingerprint:
+    global:
+      distinct-count: 104
+      nil%: 0.8749448934606907
+    type:
+      type/Text:
+        percent-json: 0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
+        average-length: 1.985598824393828
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: question_id
+  settings: null
+  fk_target_field_id: 919
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - question_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - question_id
+  visibility_type: normal
+  display_name: Question ID
+  fingerprint:
+    global:
+      distinct-count: 3712
+      nil%: 0.2329169728141073
+    type:
+      type/Text:
+        percent-json: 0
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
+        average-length: 10.028655400440853
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
+  coercion_strategy: null
+  unit: default
+  name: created_at
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - created_at
   - temporal-unit: default
   effective_type: type/DateTimeWithLocalTZ
   id:
   - Internal Metabase Database
   - public
-  - v_users
-  - last_login
+  - v_dashboardcard
+  - created_at
   visibility_type: normal
-  display_name: Last Login
+  display_name: Created At
   fingerprint:
     global:
-      distinct-count: 2
-      nil%: 0.5
+      distinct-count: 4742
+      nil%: 0
     type:
       type/DateTime:
-        earliest: '2023-06-09T13:37:55.93202Z'
-        latest: '2023-06-09T13:37:55.93202Z'
+        earliest: '2015-10-24T15:06:24.172Z'
+        latest: '2023-09-21T00:12:54.060828Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -222,149 +165,238 @@ result_metadata:
   unit: default
   name: updated_at
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
+    - v_dashboardcard
     - updated_at
   - temporal-unit: default
-  effective_type: type/DateTime
+  effective_type: type/DateTimeWithLocalTZ
   id:
   - Internal Metabase Database
   - public
-  - v_users
+  - v_dashboardcard
   - updated_at
   visibility_type: normal
   display_name: Updated At
   fingerprint:
     global:
-      distinct-count: 2
+      distinct-count: 5221
       nil%: 0
     type:
       type/DateTime:
-        earliest: '2023-06-08T14:42:59.563714Z'
-        latest: '2023-06-09T17:27:11.418799Z'
-  base_type: type/DateTime
+        earliest: '2022-06-02T13:37:56.486145Z'
+        latest: '2023-09-21T13:18:24.459914Z'
+  base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/Category
   coercion_strategy: null
-  name: is_admin
+  name: size_x
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
-    - is_admin
+    - v_dashboardcard
+    - size_x
   - null
-  effective_type: type/Boolean
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
-  - v_users
-  - is_admin
+  - v_dashboardcard
+  - size_x
   visibility_type: normal
-  display_name: Is Admin
+  display_name: Size X
   fingerprint:
     global:
-      distinct-count: 1
+      distinct-count: 23
       nil%: 0
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: is_active
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - is_active
-  - null
-  effective_type: type/Boolean
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - is_active
-  visibility_type: normal
-  display_name: Is Active
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-  base_type: type/Boolean
-- description: null
-  semantic_type: type/Source
-  coercion_strategy: null
-  name: sso_source
-  settings: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - sso_source
-  - null
-  effective_type: type/Text
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - sso_source
-  visibility_type: normal
-  display_name: Sso Source
-  fingerprint:
-    global:
-      distinct-count: 1
-      nil%: 1
     type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 0
-  base_type: type/Text
+      type/Number:
+        min: 1
+        q1: 6.231338150329106
+        q3: 15.647543451754933
+        max: 24
+        sd: 6.767071177106806
+        avg: 11.868479059515062
+  base_type: type/Integer
 - description: null
   semantic_type: null
   coercion_strategy: null
-  name: locale
+  name: size_y
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
-    - v_users
-    - locale
+    - v_dashboardcard
+    - size_y
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - size_y
+  visibility_type: normal
+  display_name: Size Y
+  fingerprint:
+    global:
+      distinct-count: 31
+      nil%: 0
+    type:
+      type/Number:
+        min: 1
+        q1: 3.1826881414282955
+        q3: 5.798712883491861
+        max: 39
+        sd: 2.6853042700448704
+        avg: 4.595885378398238
+  base_type: type/Integer
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: row
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - row
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - row
+  visibility_type: normal
+  display_name: Row
+  fingerprint:
+    global:
+      distinct-count: 323
+      nil%: 0
+    type:
+      type/Number:
+        min: 0
+        q1: 1.9382922546877586
+        q3: 23.153250670120297
+        max: 494
+        sd: 56.065451345367705
+        avg: 25.129316678912563
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: col
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - col
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - col
+  visibility_type: normal
+  display_name: Col
+  fingerprint:
+    global:
+      distinct-count: 22
+      nil%: 0
+    type:
+      type/Number:
+        min: 0
+        q1: 0
+        q3: 11.814122649476184
+        max: 21
+        sd: 6.805388672509809
+        avg: 5.514621601763409
+  base_type: type/Integer
+- description: null
+  semantic_type: type/SerializedJSON
+  coercion_strategy: null
+  name: visualization_settings
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - visualization_settings
   - null
   effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
-  - v_users
-  - locale
+  - v_dashboardcard
+  - visualization_settings
   visibility_type: normal
-  display_name: Locale
+  display_name: Visualization Settings
   fingerprint:
     global:
-      distinct-count: 1
-      nil%: 1
+      distinct-count: 2003
+      nil%: 0
     type:
       type/Text:
-        percent-json: 0
+        percent-json: 1
         percent-url: 0
         percent-email: 0
         percent-state: 0
-        average-length: 0
+        average-length: 158.65260837619397
+  base_type: type/Text
+- description: null
+  semantic_type: type/SerializedJSON
+  coercion_strategy: null
+  name: parameter_mappings
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - parameter_mappings
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - parameter_mappings
+  visibility_type: normal
+  display_name: Parameter Mappings
+  fingerprint:
+    global:
+      distinct-count: 1880
+      nil%: 0
+    type:
+      type/Text:
+        percent-json: 1
+        percent-url: 0
+        percent-email: 0
+        percent-state: 0
+        average-length: 61.29301983835415
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
-name: Users
+name: Dashboard Cards
 creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
@@ -375,21 +407,21 @@ dataset_query:
     source-table:
     - Internal Metabase Database
     - public
-    - v_users
+    - v_dashboardcard
   type: query
 parameter_mappings: []
 serdes/meta:
 - model: Card
-  id: 0wVIfjBJWclD0lKeABYYl
-  label: users
+  id: pKdvc0pwu1zDi8NqnyJkt
+  label: dashboard_cards
 display: table
-entity_id: 0wVIfjBJWclD0lKeABYYl
+entity_id: pKdvc0pwu1zDi8NqnyJkt
 collection_preview: true
 visualization_settings:
-  table.pivot_column: sso_source
-  table.cell_column: locale
+  table.pivot_column: dashboardtab_id
+  table.cell_column: size_x
   column_settings: null
 parameters: []
 dataset: true
-created_at: '2023-06-08T14:18:48.912368Z'
+created_at: '2023-09-21T13:24:15.758371Z'
 public_uuid: null
