@@ -9,7 +9,11 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { DatasetColumn } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettingId,
+} from "metabase-types/api";
 
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
@@ -21,8 +25,8 @@ export function getOptionFromColumn(col: DatasetColumn) {
 }
 
 export function metricSetting(
-  id: string,
-  def: VisualizationSettingDefinition<unknown, unknown> = {},
+  id: VisualizationSettingId,
+  def: VisualizationSettingDefinition = {},
 ) {
   return fieldSetting(id, {
     fieldFilter: isMetric,
@@ -31,7 +35,10 @@ export function metricSetting(
   });
 }
 
-export function dimensionSetting(id: string, def = {}) {
+export function dimensionSetting(
+  id: VisualizationSettingId,
+  def: VisualizationSettingDefinition = {},
+) {
   return fieldSetting(id, {
     fieldFilter: isDimension,
     getDefault: series => getDefaultDimensionAndMetric(series).dimension,
@@ -42,23 +49,24 @@ export function dimensionSetting(id: string, def = {}) {
 const DEFAULT_FIELD_FILTER = () => true;
 
 export function fieldSetting(
-  id: string,
+  id: VisualizationSettingId,
   {
     fieldFilter = DEFAULT_FIELD_FILTER,
     showColumnSetting,
     ...def
-  }: VisualizationSettingDefinition<unknown, unknown> & {
+  }: VisualizationSettingDefinition & {
     fieldFilter?: () => boolean;
     showColumnSetting?: boolean;
   } = {},
-): VisualizationSettingsDefinitions {
+): VisualizationSettingsDefinitions<Series> {
   return {
     [id]: {
       widget: "field",
-      isValid: ([{ card, data }], vizSettings) =>
+      isValid: ([{ card, data }]: Series) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getDefault: ([{ data }]) => (_.find(data.cols, fieldFilter) || {}).name,
-      getProps: ([{ card, data }], vizSettings) => ({
+      getDefault: ([{ data }]: Series) =>
+        (_.find(data.cols, fieldFilter) || {}).name,
+      getProps: ([{ card, data }]: Series) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
         showColumnSetting: showColumnSetting,
