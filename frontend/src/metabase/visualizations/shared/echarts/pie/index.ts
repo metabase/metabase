@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import type { EChartsOption } from "echarts";
 import type {
+  ColorGetter,
   ComputedVisualizationSettings,
   RenderingEnvironment,
 } from "metabase/visualizations/types";
@@ -118,6 +119,7 @@ export function getSlices(
 export const getTotalValueGraphic = (
   slices: PieSlice[],
   formatMetric: Formatter,
+  getColor: ColorGetter,
 ) => {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   const formattedTotal = formatMetric(total);
@@ -130,10 +132,11 @@ export const getTotalValueGraphic = (
       {
         type: "text",
         cursor: "text",
-        // TODO styles
         style: {
-          fill: "#000",
-          font: "bold 26px sans-serif",
+          fill: getColor("text-dark"),
+          fontSize: "22px",
+          fontFamily: "Lato, sans-serif",
+          fontWeight: "700",
           textAlign: "center",
           text: formattedTotal,
         },
@@ -142,12 +145,14 @@ export const getTotalValueGraphic = (
         type: "text",
         cursor: "text",
         top: 25,
-        // TODO styles
         style: {
-          fill: "#000",
-          font: "bold 26px sans-serif",
+          fill: getColor("text-light"),
+          fontSize: "14px",
+          fontFamily: "Lato, sans-serif",
+          fontWeight: "700",
           textAlign: "center",
-          text: t`Total`,
+          // no text-transform support
+          text: t`Total`.toUpperCase(),
         },
       },
     ],
@@ -216,13 +221,22 @@ export const buildPieChart = (
   );
 
   const option = {
+    // should be shared between charts
+    // also we need to inject the fontFamily from the top
+    textStyle: {
+      fontFamily: "Lato, sans-serif",
+    },
     graphic: settings["pie.show_total"]
-      ? getTotalValueGraphic(slices, formatMetric)
+      ? getTotalValueGraphic(slices, formatMetric, environment.getColor)
       : null,
     series: {
       type: "sunburst",
       radius: ["60%", "90%"],
       sort: undefined,
+      label: {
+        rotate: 0,
+        overflow: "none",
+      },
       data: slices.map(s => ({
         value: s.value,
         name: s.key,

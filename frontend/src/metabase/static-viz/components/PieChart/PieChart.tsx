@@ -7,8 +7,8 @@ import { calculateLegendRows } from "metabase/static-viz/components/Legend/utils
 import { buildPieChart } from "metabase/visualizations/shared/echarts/pie";
 import { computeStaticPieChartSettings } from "metabase/static-viz/components/PieChart/settings";
 
-const WIDTH = 400;
-const HEIGHT = 400;
+const WIDTH = 500;
+const HEIGHT = 500;
 
 export const PieChart = ({ rawSeries, environment }: IsomorphicChartProps) => {
   const chart = init(null, null, {
