@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   ActionFormSettings,
   FieldType,
@@ -8,8 +6,6 @@ import type {
   ParameterType,
   TemplateTag,
   TemplateTagType,
-  WritebackParameter,
-  WritebackQueryAction,
 } from "metabase-types/api";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -87,39 +83,5 @@ export const setParameterTypesFromFieldSettings = (
         ? getParameterTypeFromFieldSettings(field.fieldType, field.inputType)
         : "string/=",
     };
-  });
-};
-
-export const areActionsEqual = (
-  action1: Partial<WritebackQueryAction>,
-  action2: Partial<WritebackQueryAction>,
-): boolean => {
-  const { parameters: action1Parameters, ...action1Rest } = action1;
-  const { parameters: action2Parameters, ...action2Rest } = action2;
-
-  return (
-    _.isEqual(action1Rest, action2Rest) &&
-    _.isEqual(
-      getCleanParameters(action1Parameters),
-      getCleanParameters(action2Parameters),
-    )
-  );
-};
-
-/**
- * The presence of "value" and "hasVariableTemplateTagTarget" attributes
- * is due to Question usage in QueryActionContextProvider.
- * They are not useful in the context of creating/editing actions.
- * Note: "value" is used when running the action though.
- *
- * @see https://github.com/metabase/metabase/pull/28031
- */
-const getCleanParameters = (parameters?: WritebackParameter[]) => {
-  if (!parameters) {
-    return parameters;
-  }
-
-  return parameters.map(parameter => {
-    return _.omit(parameter, ["value", "hasVariableTemplateTagTarget"]);
   });
 };

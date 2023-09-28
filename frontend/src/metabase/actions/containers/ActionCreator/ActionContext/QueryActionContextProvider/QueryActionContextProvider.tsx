@@ -25,7 +25,6 @@ import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 import {
-  areActionsEqual,
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
@@ -125,24 +124,19 @@ function QueryActionContextProvider({
   databaseId,
   children,
 }: QueryActionContextProviderProps) {
-  const newEmptyAction = convertQuestionToAction(
-    resolveQuestion(undefined, { metadata, databaseId }),
-    initialAction?.visualization_settings || {},
-  );
-
-  const originalAction = initialAction || newEmptyAction;
-
-  const [question, setQuestion] = useState(
+  const [initialQuestion, setInitialQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
   );
+  const initialFormSettings = useMemo(
+    () => getDefaultFormSettings(initialAction?.visualization_settings),
+    [initialAction?.visualization_settings],
+  );
+
+  const [question, setQuestion] = useState(initialQuestion);
 
   const query = useMemo(() => question.query() as NativeQuery, [question]);
 
-  const originalFormSettings = getDefaultFormSettings(
-    originalAction.visualization_settings,
-  );
-
-  const [formSettings, setFormSettings] = useState(originalFormSettings);
+  const [formSettings, setFormSettings] = useState(initialFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -157,7 +151,12 @@ function QueryActionContextProvider({
   const canSave = !query.isEmpty();
 
   useEffect(() => {
-    setQuestion(resolveQuestion(initialAction, { metadata, databaseId }));
+    const newQuestion = resolveQuestion(initialAction, {
+      metadata,
+      databaseId,
+    });
+    setInitialQuestion(newQuestion);
+    setQuestion(newQuestion);
     // we do not want to update this any time
     // the props or metadata change, only if action id changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,14 +197,10 @@ function QueryActionContextProvider({
   );
 
   const isDirty = useMemo(() => {
-    const isActionDirty = !areActionsEqual(
-      _.omit(action, "visualization_settings"),
-      _.omit(originalAction, "visualization_settings"),
-    );
-    const areFormSettingsDirty = !_.isEqual(formSettings, originalFormSettings);
-
-    return isActionDirty || areFormSettingsDirty;
-  }, [action, originalAction, formSettings, originalFormSettings]);
+    const isQuestionDirty = question.isDirtyComparedTo(initialQuestion);
+    const areFormSettingsDirty = !_.isEqual(formSettings, initialFormSettings);
+    return isQuestionDirty || areFormSettingsDirty;
+  }, [question, initialQuestion, formSettings, initialFormSettings]);
 
   const value = useMemo(
     (): ActionContextType => ({
