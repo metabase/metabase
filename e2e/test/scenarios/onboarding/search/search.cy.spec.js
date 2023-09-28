@@ -345,12 +345,9 @@ describe("scenarios > search", () => {
 
         // Check that we're getting elements from other users by checking for other types,
         // since all assets, for the user we're querying are questions
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
-            );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+        getNumberOfUniqueResultDescriptions().then(
+          ({ uniqueTypeDescriptionsCount }) => {
+            expect(uniqueTypeDescriptionsCount).to.be.greaterThan(1);
           },
         );
       });
