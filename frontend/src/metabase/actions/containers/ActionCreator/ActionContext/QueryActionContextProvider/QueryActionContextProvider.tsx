@@ -48,7 +48,6 @@ function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
         database: databaseId ?? null,
         native: {
           query: "",
-          "template-tags": {},
         },
       },
     },
@@ -101,7 +100,7 @@ function convertQuestionToAction(
     cleanQuestion.parameters(),
   );
 
-  const action: Partial<WritebackQueryAction> = {
+  return {
     name: question.displayName() as string,
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
@@ -109,8 +108,6 @@ function convertQuestionToAction(
     type: "query" as const,
     visualization_settings: formSettings,
   };
-
-  return action;
 }
 
 function resolveQuestion(
