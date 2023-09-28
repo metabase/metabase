@@ -266,6 +266,12 @@ function QueryBuilder(props) {
     toggleBookmark(id);
   };
 
+  const [scheduledCallback, setScheduledCallback] = useState(null);
+
+  useEffect(() => {
+    scheduledCallback?.();
+  }, [scheduledCallback]);
+
   const handleCreate = useCallback(
     async newQuestion => {
       const shouldBePinned = newQuestion.isDataset();
@@ -273,9 +279,13 @@ function QueryBuilder(props) {
         newQuestion.setPinned(shouldBePinned),
       );
 
-      await updateUrl(createdQuestion, { dirty: false });
+      setScheduledCallback(() => async () => {
+        await updateUrl(createdQuestion, { dirty: false });
 
-      setRecentlySaved("created");
+        setRecentlySaved("created");
+
+        setScheduledCallback(null);
+      });
     },
     [apiCreateQuestion, setRecentlySaved, updateUrl],
   );
@@ -283,14 +293,20 @@ function QueryBuilder(props) {
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
-      if (!rerunQuery) {
-        await updateUrl(updatedQuestion, { dirty: false });
-      }
-      if (fromUrl) {
-        onChangeLocation(fromUrl);
-      } else {
-        setRecentlySaved("updated");
-      }
+
+      setScheduledCallback(() => async () => {
+        if (!rerunQuery) {
+          await updateUrl(updatedQuestion, { dirty: false });
+        }
+
+        if (fromUrl) {
+          onChangeLocation(fromUrl);
+        } else {
+          setRecentlySaved("updated");
+        }
+
+        setScheduledCallback(null);
+      });
     },
     [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
   );
@@ -436,7 +452,7 @@ function QueryBuilder(props) {
       />
 
       <LeaveConfirmationModal
-        isEnabled={shouldShowUnsavedChangesWarning}
+        isEnabled={shouldShowUnsavedChangesWarning && !scheduledCallback}
         isLocationAllowed={isLocationAllowed}
         route={route}
       />
