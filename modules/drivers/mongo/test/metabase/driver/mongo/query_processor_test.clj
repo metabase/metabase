@@ -103,8 +103,14 @@
                    (qp/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
+(deftest ^:parallel no-initial-projection-test-2
+  (mt/test-driver :mongo
+    (testing "Don't need to create initial projections anymore (#4216)"
+      (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
+        (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
+          (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
@@ -181,32 +187,30 @@
           (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest ^:synchronized grouping-with-timezone-test
+(deftest ^:parallel grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
-        (testing "Querying in UTC works"
-          (mt/with-system-timezone-id "UTC"
-            (is (= [["2019-11-20T20:00:00Z" 1]
-                    ["2019-11-19T00:00:00Z" 1]
-                    ["2019-11-18T20:00:00Z" 1]
-                    ["2019-11-17T14:00:00Z" 1]]
-                   (mt/rows (mt/run-mbql-query attempts
-                              {:aggregation [[:count]]
-                               :breakout [[:field %datetime {:temporal-unit :hour}]]
-                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                               :limit 4}))))))
-        (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id "Asia/Kathmandu"
-            (is (= [["2019-11-21T01:00:00+05:45" 1]
-                    ["2019-11-19T06:00:00+05:45" 1]
-                    ["2019-11-19T02:00:00+05:45" 1]
-                    ["2019-11-17T19:00:00+05:45" 1]]
-                   (mt/rows (mt/run-mbql-query attempts
-                              {:aggregation [[:count]]
-                               :breakout [[:field %datetime {:temporal-unit :hour}]]
-                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                               :limit 4}))))))))))
+        (letfn [(query []
+                  (mt/rows (mt/run-mbql-query attempts
+                             {:aggregation [[:count]]
+                              :breakout    [[:field %datetime {:temporal-unit :hour}]]
+                              :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                              :limit       4})))]
+          (testing "Querying in UTC works"
+            (mt/with-temporary-setting-values [report-timezone "UTC"]
+              (is (= [["2019-11-20T20:00:00Z" 1]
+                      ["2019-11-19T00:00:00Z" 1]
+                      ["2019-11-18T20:00:00Z" 1]
+                      ["2019-11-17T14:00:00Z" 1]]
+                     (query)))))
+          (testing "Querying in Kathmandu works"
+            (mt/with-temporary-setting-values [report-timezone "Asia/Kathmandu"]
+              (is (= [["2019-11-21T01:00:00+05:45" 1]
+                      ["2019-11-19T06:00:00+05:45" 1]
+                      ["2019-11-19T02:00:00+05:45" 1]
+                      ["2019-11-17T19:00:00+05:45" 1]]
+                     (query))))))))))
 
 (deftest ^:parallel nested-columns-test
   (mt/test-driver :mongo
@@ -223,8 +227,13 @@
                  (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
-                     :filter      [:= $tips.source.username "tupac"]}))))
+                     :filter      [:= $tips.source.username "tupac"]})))))))))
 
+(deftest ^:parallel nested-columns-test-2
+  (mt/test-driver :mongo
+    (testing "Should generate correct queries against nested columns"
+      (mt/dataset geographical-tips
+        (mt/with-metadata-provider (mt/id)
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
                                            "count" {"$sum" 1}}}
@@ -236,7 +245,13 @@
                  (qp/compile
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
-                     :breakout    [$tips.source.username]}))))
+                     :breakout    [$tips.source.username]})))))))))
+
+(deftest ^:parallel nested-columns-test-3
+  (mt/test-driver :mongo
+    (testing "Should generate correct queries against nested columns"
+      (mt/dataset geographical-tips
+        (mt/with-metadata-provider (mt/id)
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
             (let [table       (t2/select-one Table :db_id (mt/id))
                   fields      (t2/select Field :table_id (u/the-id table))

@@ -264,28 +264,29 @@
              (:engine database)
              (:id database)
              (pr-str (:name database)))
-  ;; See explanation above [[database->unpooled-data-source-and-ssh-tunnel-spec]] for what is going on here
-  (when-let [pool-spec (pool-spec-for-database database)]
-    (when-let [pooled-data-source (pool-spec->pooled-data-source pool-spec)]
-      (.softResetAllUsers pooled-data-source))
-    ;; close existing SSH tunnel if one exists
-    (ssh/close-tunnel! pool-spec)
-    ;; create a new unpooled DataSource from the presumably updated Database details, and create a new SSH tunnel
-    (let [{:keys [unpooled-data-source ssh-tunnel-spec]} (database->unpooled-data-source-and-ssh-tunnel-spec database)
-          _                                              (assert (instance? DataSource unpooled-data-source))
-          ;; update the keys related to the SSH tunnel in the pooled spec
-          new-spec                                       (merge (select-keys pool-spec [:datasource ::unpooled-data-source])
-                                                                ssh-tunnel-spec)]
-      ;; swap out the old unpooled DataSource used to get new Connections with the new one that uses the updated
-      ;; details.
-      (reset! (::unpooled-data-source pool-spec) unpooled-data-source)
-      ;; now update the cached pooled spec and unpooled spec hash.
-      (swap! database-id->connection-pool-spec-and-hash
-             assoc
-             (u/the-id database)
-             {:spec new-spec
-              :hash (jdbc-spec-hash database)})
-      new-spec)))
+  (locking database-id->connection-pool-spec-and-hash
+    ;; See explanation above [[database->unpooled-data-source-and-ssh-tunnel-spec]] for what is going on here
+    (when-let [pool-spec (pool-spec-for-database database)]
+      (when-let [pooled-data-source (pool-spec->pooled-data-source pool-spec)]
+        (.softResetAllUsers pooled-data-source))
+      ;; close existing SSH tunnel if one exists
+      (ssh/close-tunnel! pool-spec)
+      ;; create a new unpooled DataSource from the presumably updated Database details, and create a new SSH tunnel
+      (let [{:keys [unpooled-data-source ssh-tunnel-spec]} (database->unpooled-data-source-and-ssh-tunnel-spec database)
+            _                                              (assert (instance? DataSource unpooled-data-source))
+            ;; update the keys related to the SSH tunnel in the pooled spec
+            new-spec                                       (merge (select-keys pool-spec [:datasource ::unpooled-data-source])
+                                                                  ssh-tunnel-spec)]
+        ;; swap out the old unpooled DataSource used to get new Connections with the new one that uses the updated
+        ;; details.
+        (reset! (::unpooled-data-source pool-spec) unpooled-data-source)
+        ;; now update the cached pooled spec and unpooled spec hash.
+        (swap! database-id->connection-pool-spec-and-hash
+               assoc
+               (u/the-id database)
+               {:spec new-spec
+                :hash (jdbc-spec-hash database)})
+        new-spec))))
 
 (mu/defn ^:private destroy-connection-pool! :- :nil
   [database :- DatabaseWithRequiredKeys]
@@ -293,11 +294,12 @@
              (:engine database)
              (:id database)
              (pr-str (:name database)))
-  (when-let [pool-spec (pool-spec->pooled-data-source database)]
-    (when-let [pooled-data-source (pool-spec->pooled-data-source pool-spec)]
-      (DataSources/destroy pooled-data-source))
-    (ssh/close-tunnel! pool-spec))
-  (swap! database-id->connection-pool-spec-and-hash dissoc (u/the-id database))
+  (locking database-id->connection-pool-spec-and-hash
+    (when-let [pool-spec (pool-spec-for-database database)]
+      (when-let [pooled-data-source (pool-spec->pooled-data-source pool-spec)]
+        (DataSources/destroy pooled-data-source))
+      (ssh/close-tunnel! pool-spec))
+    (swap! database-id->connection-pool-spec-and-hash dissoc (u/the-id database)))
   nil)
 
 (mu/defn notify-database-updated! :- :nil

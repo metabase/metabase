@@ -62,7 +62,7 @@
 
   This is a wrapper around `plugins-dir-info` which also contains a :temp key indicating whether a temporary directory
   was used."
-  []
+  ^Path []
   (:path (plugins-dir-info)))
 
 (defn- extract-system-modules! []

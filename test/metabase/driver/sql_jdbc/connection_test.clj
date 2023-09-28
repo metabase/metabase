@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
+   [metabase.sample-data :as sample-data]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -19,7 +20,9 @@
    [metabase.util :as u]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.mchange.v2.c3p0 PooledDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -207,3 +210,28 @@
         (is (= first-pool second-pool))
         (is (= ::audit-db-not-in-cache!
                (get @#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash audit-db-id ::audit-db-not-in-cache!)))))))
+
+(deftest destroy-pool-test
+  (let [details   (-> (#'sample-data/try-to-extract-sample-database!)
+                                (update :db str ";ACCESS_MODE_DATA=r"))
+        pooled-data-source* (atom nil)]
+    (mt/with-temp [:model/Database database {:engine :h2, :name "Sample Database", :details details}]
+      (sql-jdbc.execute/do-with-connection-with-options
+       :h2 database {:write? false}
+       (fn [^java.sql.Connection conn]
+         #_(is (.isReadOnly conn))
+         (is (= [{:one 1}]
+                (next.jdbc/execute! conn ["SELECT 1 AS \"one\";"])))))
+      (let [spec-and-hash (get @@#'sql-jdbc.conn/database-id->connection-pool-spec-and-hash (u/the-id database))]
+        (is (=? {:spec {::sql-jdbc.conn/unpooled-data-source clojure.lang.Atom
+                        :datasource                          PooledDataSource}
+                 :hash integer?}
+                spec-and-hash))
+        (let [^PooledDataSource pooled-data-source (get-in spec-and-hash [:spec :datasource])]
+          (is (pos? (.getNumConnectionsAllUsers pooled-data-source)))
+          (reset! pooled-data-source* pooled-data-source))))
+    (let [^PooledDataSource pooled-data-source @pooled-data-source*]
+      (is (thrown-with-msg?
+           java.sql.SQLException
+           #"\Qhas been closed() -- you can no longer use it\E"
+           (.getNumConnectionsAllUsers pooled-data-source))))))
