@@ -500,9 +500,10 @@
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 200
-               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
-               :field-ids (codec/url-encode [(mt/id :people :latitude)
-                                             (mt/id :people :longitude)])))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "GenericTable"
+                       (codec/url-encode [(mt/id :people :latitude)
+                                          (mt/id :people :longitude)]))))))
     (is (= {:satisfiable-affinities
             '({:metrics       ("TotalOrders"),
                :dimensions    (),
@@ -522,10 +523,11 @@
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 200
-               (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
-               :field-ids (codec/url-encode [(mt/id :people :latitude)
-                                             (mt/id :people :longitude)
-                                             (mt/id :people :state)])))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "TransactionTable"
+                       (codec/url-encode [(mt/id :people :latitude)
+                                          (mt/id :people :longitude)
+                                          (mt/id :people :state)]))))))
     (testing "Fields need not be sourced from the same table and multiple affinities of the same name may be satisfied
               with different combinations of dimensions."
       (is (= {:satisfiable-affinities
@@ -552,9 +554,10 @@
              (mt/dataset sample-dataset
                (mt/user-http-request
                  :rasta :get 200
-                 (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
-                 :field-ids (codec/url-encode [(mt/id :orders :created_at)
-                                               (mt/id :people :source)]))))))))
+                 (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                         "TransactionTable"
+                         (codec/url-encode [(mt/id :orders :created_at)
+                                            (mt/id :people :source)])))))))))
 
 (deftest affinity-groups-empty-fields-test
   (testing "Undiscovered field ids won't map to any fields and are are ignored. Only dimensionless cards are returned."
@@ -563,9 +566,10 @@
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 200
-               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
-               :field-ids (codec/url-encode [Long/MIN_VALUE
-                                             Long/MAX_VALUE])))))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "GenericTable"
+                       (codec/url-encode [Long/MIN_VALUE
+                                          Long/MAX_VALUE]))))))))
 
 (deftest affinity-groups-bad-fields-test
   (testing "Anything besides a sequence of integers for the field-ids is a bad request."
@@ -573,14 +577,16 @@
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 400
-               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
-               :field-ids (codec/url-encode ["1"])))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "GenericTable"
+                       (codec/url-encode ["1"]))))))
     (is (= "Invalid Request."
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 400
-               (format "automagic-dashboards/affinity_groups/%s" "GenericTable")
-               :field-ids (codec/url-encode ["FOO"])))))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "GenericTable"
+                       (codec/url-encode ["FOO"]))))))))
 
 (deftest affinity-groups-entity-type-not-found-test
   (testing "If entity type is not understood, a 404 is returned."
@@ -588,9 +594,10 @@
            (mt/dataset sample-dataset
              (mt/user-http-request
                :rasta :get 404
-               (format "automagic-dashboards/affinity_groups/%s" "Froob")
-               :field-ids (codec/url-encode [(mt/id :people :latitude)
-                                             (mt/id :people :longitude)])))))))
+               (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                       "Froob"
+                       (codec/url-encode [(mt/id :people :latitude)
+                                          (mt/id :people :longitude)]))))))))
 
 (deftest affinity-groups-permissions-test
   (testing "Verify permissions check fails if the user doesn't have permissions."
@@ -600,8 +607,9 @@
                (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
                (mt/user-http-request
                  :rasta :get 403
-                 (format "automagic-dashboards/affinity_groups/%s" "TransactionTable")
-                 :field-ids (codec/url-encode [(mt/id :orders :created_at)
-                                               (mt/id :people :source)]))
+                 (format "automagic-dashboards/affinity_groups/%s/field-ids/%s"
+                         "TransactionTable"
+                         (codec/url-encode [(mt/id :orders :created_at)
+                                            (mt/id :people :source)])))
                (finally
                  (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))))))

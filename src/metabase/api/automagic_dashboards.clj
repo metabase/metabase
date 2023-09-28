@@ -260,11 +260,13 @@
                                    :model-index       model-index
                                    :model-index-value model-index-value})]
       (create-linked-dashboard {:model             model
-                                :linked-tables     linked
-                                :model-index       model-index
+                                        :linked-tables     linked
+                                        :model-index       model-index
                                 :model-index-value model-index-value}))))
 
-(api/defendpoint GET "/affinity_groups/:entity-type"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(api/defendpoint GET "/affinity_groups/:entity-type/field-ids/:field-ids"
   "Return affinity groups for the provided entity type and field ids"
   [entity-type field-ids]
   {entity-type :string
@@ -287,6 +289,31 @@
                         (update :metrics vec)
                         (update :filters vec)
                         (update :base-dims vec)))))})))
+
+(api/defendpoint GET "/affinity_groups/:entity-type/table-id/:table-id"
+  "Return affinity groups for the provided entity type and table"
+  [entity-type table-id]
+  {entity-type :string
+   table-id    :int}
+  (api/let-404 [{:keys [dimensions] :as template} (dashboard-templates/get-dashboard-template ["table" entity-type])
+                table                  (t2/select-one :model/Table :id table-id)]
+    (api/read-check table)
+    (let [entity_type            (keyword "entity" entity-type)
+          fields                 (t2/select :model/Field :table_id table-id)
+          satisfiable-dimensions (magic/semantically-satisfiable-dimensions dimensions entity_type fields)]
+      {:satisfiable-affinities
+       (->> (magic/dash-template->affinities template)
+            (filter (fn [{:keys [base-dims]}]
+                      (set/subset? base-dims satisfiable-dimensions)))
+            (mapv (fn [affinity]
+                    (-> affinity
+                        (dissoc :score)
+                        (update :dimensions vec)
+                        (update :metrics vec)
+                        (update :filters vec)
+                        (update :base-dims vec)))))})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
