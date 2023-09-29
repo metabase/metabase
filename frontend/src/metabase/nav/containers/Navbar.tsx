@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
 import Database from "metabase/entities/databases";
-import { getIsNavbarOpen } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 

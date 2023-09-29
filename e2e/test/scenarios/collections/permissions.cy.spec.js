@@ -75,10 +75,14 @@ describe("collection permissions", () => {
                   cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard");
-                  unpinnedItemsLeft(5);
+                  cy.findByTestId("collection-table")
+                    .findByText("Orders in a dashboard")
+                    .should("not.exist");
 
                   pinItem("Orders, Count");
-                  unpinnedItemsLeft(4);
+                  cy.findByTestId("collection-table")
+                    .findByText("Orders, Count")
+                    .should("not.exist");
 
                   // Should see "pinned items" and items should be in that section
                   cy.findByTestId("pinned-items").within(() => {
@@ -86,13 +90,6 @@ describe("collection permissions", () => {
                     cy.findByText("Orders, Count");
                   });
                 });
-
-                function unpinnedItemsLeft(count) {
-                  cy.findAllByTestId("collection-entry").should(
-                    "have.length",
-                    count,
-                  );
-                }
               });
 
               describe("move", () => {

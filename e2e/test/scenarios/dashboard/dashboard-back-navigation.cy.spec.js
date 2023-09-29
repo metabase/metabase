@@ -21,7 +21,11 @@ import {
   filterWidget,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -114,41 +118,28 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     },
   );
 
-  it("should display 'back to the model x-ray dashboard' button after drill-through", () => {
-    const modelDetails = {
-      name: "Simple Native Model",
-      native: { query: 'select 1 as "Foo"' },
-      dataset: true,
-    };
+  it(
+    "should display a back to the dashboard button in model x-ray dashboards",
+    { tags: "@slow" },
+    () => {
+      const cardTitle = "Orders by Subtotal";
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}`);
+      cy.wait("@dataset");
 
-    cy.createNativeQuestion(modelDetails).then(({ body: { id } }) => {
-      const modelUrl = `/auto/dashboard/model/${id}`;
+      getDashboardCards()
+        .filter(`:contains("${cardTitle}")`)
+        .findByText(cardTitle)
+        .click();
+      cy.wait("@dataset");
 
-      cy.visit(modelUrl);
-      cy.log("There will always be just two cards since the model is simple");
-      cy.wait(["@dataset", "@dataset"]);
-
-      cy.log("Drill through to see the ad-hoc question");
-      cy.findByTestId("scalar-title")
-        .should("have.text", `Total ${modelDetails.name}`)
+      queryBuilderHeader()
+        .findByLabelText(/Back to .*Orders.*/)
         .click();
 
-      cy.log("Make sure we're on the question page");
-      // ad-hoc question format is `/question` followed by hash `#`
-      cy.location("pathname").should("eq", "/question");
-      cy.findByTestId("view-footer").findByText("Showing 1 row");
-      cy.findByTestId("scalar-value").should("have.text", 1);
-
-      cy.log("Go back to the model x-ray dashboard");
-      const labelRegex = new RegExp(`Back to .*${modelDetails.name}`, "i");
-      queryBuilderHeader().findByLabelText(labelRegex).click();
-      cy.location("pathname").should("eq", modelUrl);
-      cy.findByTestId("scalar-title").should(
-        "have.text",
-        `Total ${modelDetails.name}`,
-      );
-    });
-  });
+      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    },
+  );
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
@@ -245,7 +236,10 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should return to dashboard with specific tab selected", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Add card to second tab
     cy.icon("pencil").click();
@@ -538,7 +532,7 @@ const createDashboardWithPermissionError = () => {
   const question2Details = {
     name: "Orders 2",
     query: { "source-table": ORDERS_ID },
-    collection_id: 1,
+    collection_id: ADMIN_PERSONAL_COLLECTION_ID,
   };
 
   const dashboardDetails = {

@@ -293,7 +293,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should always be possible to view the full title text of the saved question", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
     savedQuestionTitle.clear();
     savedQuestionTitle.type(
