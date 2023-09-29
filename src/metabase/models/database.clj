@@ -12,6 +12,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -46,6 +47,21 @@
   (derive ::mi/read-policy.partial-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
+
+(defn- should-read-audit-db?
+  "Audit Database should only be fetched if audit app is enabled."
+  [database-id]
+  (and (not (premium-features/enable-audit-app?)) (= database-id (perms/default-audit-db-id))))
+
+(defmethod mi/can-read? Database
+  ([instance]
+   (if (should-read-audit-db? (:id instance))
+     false
+     (mi/current-user-has-partial-permissions? :read instance)))
+  ([model pk]
+   (if (should-read-audit-db? pk)
+     false
+     (mi/current-user-has-partial-permissions? :read model pk))))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
