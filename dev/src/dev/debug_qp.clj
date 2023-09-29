@@ -2,12 +2,10 @@
   "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
   (:require
    [clojure.pprint :as pprint]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -502,130 +500,6 @@
         (if context
           (qp query context)
           (qp query))))))
-
-
-;;;; [[to-mbql-shorthand]]
-
-(defn- strip-$ [coll]
-  (into []
-        (map (fn [x] (if (= x ::$) ::no-$ x)))
-        coll))
-
-(defn- can-symbolize? [x]
-  (mbql.u/match-one x
-    (_ :guard string?)
-    (not (re-find #"\s+" x))
-
-    [:field (id :guard pos-int?) nil]
-    (every? can-symbolize? (field-and-table-name id))
-
-    [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
-    (can-symbolize? field-name)
-
-    [:field _ (opts :guard :join-alias)]
-    (and (can-symbolize? (:join-alias opts))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :join-alias)))
-
-    [:field _ (opts :guard :temporal-unit)]
-    (and (can-symbolize? (name (:temporal-unit opts)))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :temporal-unit)))
-
-    [:field _ (opts :guard :source-field)]
-    (let [source-field-id (:source-field opts)]
-      (and (can-symbolize? [:field source-field-id nil])
-           (can-symbolize? (mbql.u/update-field-options &match dissoc :source-field))))
-
-    _
-    false))
-
-(defn- expand [form table]
-  (try
-    (mbql.u/replace form
-      ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
-      (let [[table-name field-name] (field-and-table-name id)
-            field-name              (some-> field-name u/lower-case-en)
-            table-name              (some-> table-name u/lower-case-en)]
-        (if (= table-name table)
-          [::$ field-name]
-          [::$ table-name field-name]))
-
-      ([:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))] :guard can-symbolize?)
-      [::* field-name (name (:base-type opts))]
-
-      ([:field _ (opts :guard :temporal-unit)] :guard can-symbolize?)
-      (let [without-unit (mbql.u/update-field-options &match dissoc :temporal-unit)
-            expansion    (expand without-unit table)]
-        [::! (name (:temporal-unit opts)) (strip-$ expansion)])
-
-      ([:field _ (opts :guard :source-field)] :guard can-symbolize?)
-      (let [without-source-field   (mbql.u/update-field-options &match dissoc :source-field)
-            expansion              (expand without-source-field table)
-            source-as-field-clause [:field (:source-field opts) nil]
-            source-expansion       (expand source-as-field-clause table)]
-        [::-> source-expansion expansion])
-
-      ([:field _ (opts :guard :join-alias)] :guard can-symbolize?)
-      (let [without-join-alias (mbql.u/update-field-options &match dissoc :join-alias)
-            expansion          (expand without-join-alias table)]
-        [::& (:join-alias opts) expansion])
-
-      [:field (id :guard pos-int?) opts]
-      (let [without-opts [:field id nil]
-            expansion    (expand without-opts table)]
-        (if (= expansion without-opts)
-          &match
-          [:field [::% (strip-$ expansion)] opts]))
-
-      (m :guard (every-pred map? (comp pos-int? :source-table)))
-      (-> (update m :source-table (fn [table-id]
-                                    [::$$ (some-> (t2/select-one-fn :name Table :id table-id) u/lower-case-en)]))
-          (expand table))
-
-      (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
-      (-> (update m :fk-field-id (fn [fk-field-id]
-                                   (let [[table-name field-name] (field-and-table-name fk-field-id)
-                                         field-name              (some-> field-name u/lower-case-en)
-                                         table-name              (some-> table-name u/lower-case-en)]
-                                     (if (= table-name table)
-                                       [::% field-name]
-                                       [::% table-name field-name]))))
-          (expand table)))
-    (catch Throwable e
-      (throw (ex-info (format "Error expanding %s: %s" (pr-str form) (ex-message e))
-                      {:form form, :table table}
-                      e)))))
-
-(defn- no-$ [x]
-  (mbql.u/replace x [::$ & args] (into [::no-$] args)))
-
-(defn- symbolize [form]
-  (mbql.u/replace form
-    [::-> x y]
-    (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
-
-    [::no-$ & args]
-    (str/join \. args)
-
-    [(qualifier :guard #{::$ ::& ::! ::%}) & args]
-    (symbol (str (name qualifier) (str/join \. (symbolize (no-$ args)))))
-
-    [::* field-name base-type]
-    (symbol (format "*%s/%s" field-name base-type))
-
-    [::$$ table-name]
-    (symbol (format "$$%s" table-name))))
-
-(defn- query-table-name [{:keys [source-table source-query], :as inner-query}]
-  (cond
-    (pos-int? source-table)
-    (u/lower-case-en (or (t2/select-one-fn :name Table :id source-table)
-                         (throw (ex-info (format "Table %d does not exist!" source-table)
-                                         {:source-table source-table, :inner-query inner-query}))))
-
-    source-query
-    (recur source-query)))
-
-;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
 
 (defn pprint-sql
   "Pretty print a SQL string."
