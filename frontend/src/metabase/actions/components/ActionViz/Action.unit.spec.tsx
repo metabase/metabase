@@ -347,9 +347,7 @@ describe("Actions > ActionViz > Action", () => {
 
       const editorModal = await screen.findByTestId("action-editor-modal");
 
-      expect(
-        within(editorModal).getByText("My Awesome Action"),
-      ).toBeInTheDocument();
+      await within(editorModal).findByText("My Awesome Action");
 
       const cancelEditButton = within(editorModal).getByText("Cancel");
       expect(cancelEditButton).toBeInTheDocument();
@@ -388,7 +386,9 @@ describe("Actions > ActionViz > Action", () => {
       const editorModal = await screen.findByTestId("action-editor-modal");
 
       // edit action title
-      const actionTitleField = within(editorModal).getByTestId("editable-text");
+      const actionTitleField = await within(editorModal).findByTestId(
+        "editable-text",
+      );
       userEvent.type(actionTitleField, updatedTitle);
       userEvent.tab(); // blur field
 
