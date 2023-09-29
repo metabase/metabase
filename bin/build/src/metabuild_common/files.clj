@@ -175,7 +175,11 @@
      (with-open [fos (FileOutputStream. ^String zip-file)
                  zos (ZipOutputStream. fos)]
        (doseq [^File file (file-seq source-path)
-               :when (not (directory? file))]
+               :when (not (directory? file))
+               :when
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (or (str/ends-with? (str/lower-case file) "yaml")
+                   (str/ends-with? (str/lower-case file) "yml"))]
          (when verbose (out/safe-println "Zipping file:" file))
          (let [file-path (.getAbsolutePath file)
                buffer (byte-array 1024)
