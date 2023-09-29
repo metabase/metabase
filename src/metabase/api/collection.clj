@@ -61,6 +61,13 @@
       (remove personal? collections)
       collections)))
 
+(defn- filter-audit-collection
+  "We should filter the audit collection from showing up if audit app is no longer enabled."
+  [colls]
+  (if (premium-features/enable-audit-app?)
+    colls
+    (filter (fn [coll] (not= (:entity_id coll) (perms/default-audit-collection-entity-id))) colls)))
+
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -94,6 +101,7 @@
           (mi/can-read? root)
           (cons root))))
     (t2/hydrate collections :can_write)
+    (filter-audit-collection collections)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -146,8 +154,9 @@
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls-with-details)))
+        colls-with-details (map collection/personal-collection-with-ui-details colls)
+        filtered-colls     (filter-audit-collection colls-with-details)]
+    (collection/collections->tree coll-type-ids filtered-colls)))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
