@@ -99,7 +99,7 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  joinOperator: JoinConditionOperator,
+  joinConditionOperator: JoinConditionOperator,
 ): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
