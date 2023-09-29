@@ -29,38 +29,6 @@
 
 (deftest to-mbql-shorthand-test
   (mt/dataset sample-dataset
-    (testing "Normal Field ID clause"
-      (is (= '$user_id
-             (debug-qp/expand-symbolize [:field (mt/id :orders :user_id) nil])))
-      (is (= '$products.id
-             (debug-qp/expand-symbolize [:field (mt/id :products :id) nil]))))
-    (testing "Field literal name"
-      (is (= '*wow/Text
-             (debug-qp/expand-symbolize [:field "wow" {:base-type :type/Text}])))
-      (is (= [:field "w o w" {:base-type :type/Text}]
-             (debug-qp/expand-symbolize [:field "w o w" {:base-type :type/Text}]))))
-    (testing "Field with join alias"
-      (is (= '&P.people.source
-             (debug-qp/expand-symbolize [:field (mt/id :people :source) {:join-alias "P"}])))
-      (is (= [:field '%people.id {:join-alias "People - User"}]
-             (debug-qp/expand-symbolize [:field (mt/id :people :id) {:join-alias "People - User"}])))
-      (is (= '&Q.*ID/BigInteger
-             (debug-qp/expand-symbolize [:field "ID" {:base-type :type/BigInteger, :join-alias "Q"}]))))
-    (testing "Field with source-field"
-      (is (= '$product_id->products.id
-             (debug-qp/expand-symbolize [:field (mt/id :products :id) {:source-field (mt/id :orders :product_id)}])))
-      (is (= '$product_id->*wow/Text
-             (debug-qp/expand-symbolize [:field "wow" {:base-type :type/Text, :source-field (mt/id :orders :product_id)}]))))
-    (testing "Binned field - no expansion (%id only)"
-      (is (= [:field '%people.source {:binning {:strategy :default}}]
-             (debug-qp/expand-symbolize [:field (mt/id :people :source) {:binning {:strategy :default}}]))))
-    (testing "Field with temporal unit"
-      (is (= '!default.created_at
-             (debug-qp/expand-symbolize [:field (mt/id :orders :created_at) {:temporal-unit :default}]))))
-    (testing "Field with join alias AND temporal unit"
-      (is (= '!default.&P1.created_at
-             (debug-qp/expand-symbolize [:field (mt/id :orders :created_at) {:temporal-unit :default, :join-alias "P1"}]))))
-
     (testing "source table"
       (is (= '(mt/mbql-query orders
                 {:joins [{:source-table $$people}]})

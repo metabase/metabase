@@ -638,9 +638,6 @@
                                          table-name (dissoc :source-table)))
        (list 'mt/$ids table-symb symbolized)))))
 
-(defn expand-symbolize [x]
-  (-> x (expand "orders") symbolize))
-
 ;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
 
 (defn pprint-sql
