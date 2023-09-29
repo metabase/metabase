@@ -1,7 +1,3 @@
-export const DATE_FORMAT = "yyyy-MM-dd";
-export const TIME_FORMAT = "HH:mm:SS";
-export const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
-
 export const STRING_FILTER_OPERATORS = [
   "=",
   "!=",

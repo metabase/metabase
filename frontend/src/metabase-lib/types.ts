@@ -1,3 +1,4 @@
+import type { Moment } from "moment-timezone";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   BOOLEAN_FILTER_OPERATORS,
@@ -247,7 +248,7 @@ export type SpecificDateFilterOperatorName =
 export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
-  values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
+  values: Moment[];
 };
 
 export type RelativeDateFilterParts = {
@@ -288,7 +289,7 @@ export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
 export type TimeFilterParts = {
   operator: TimeFilterOperatorName;
   column: ColumnMetadata;
-  values: string[]; // ISO 8601 date with time
+  values: Moment[]; // ISO 8601 date with time
 };
 
 declare const Join: unique symbol;

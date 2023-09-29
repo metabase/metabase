@@ -3,14 +3,12 @@ import * as ML from "cljs/metabase.lib.js";
 
 import {
   BOOLEAN_FILTER_OPERATORS,
-  DATE_FORMAT,
   EXCLUDE_DATE_FILTER_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
-  TIME_FORMAT,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
@@ -297,10 +295,15 @@ export function specificDateFilterParts(
     return null;
   }
 
+  const dates = values.map(value => moment.utc(value, moment.ISO_8601));
+  if (!dates.every(date => date.isValid())) {
+    return null;
+  }
+
   return {
     column,
     operator,
-    values,
+    values: dates,
   };
 }
 
@@ -433,7 +436,7 @@ function parseExcludeDateFilterValue(
   value: string,
   bucketName: ExcludeDateFilterBucketName,
 ): number {
-  const date = moment(value, DATE_FORMAT);
+  const date = moment.utc(value, moment.ISO_8601);
 
   switch (bucketName) {
     case "hour-of-day":
@@ -451,7 +454,7 @@ function formatExcludeDateFilterValue(
   value: number,
   bucketName: ExcludeDateFilterBucketName,
 ): string {
-  const date = moment();
+  const date = moment.utc();
 
   switch (bucketName) {
     case "hour-of-day":
@@ -468,7 +471,7 @@ function formatExcludeDateFilterValue(
       break;
   }
 
-  return date.format(DATE_FORMAT);
+  return date.format("yyyy-MM-dd");
 }
 
 export function isExcludeDateFilter(
@@ -484,14 +487,9 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const dates = values.map(value => moment(value, moment.ISO_8601));
-  if (!dates.every(date => date.isValid())) {
-    throw new TypeError("Invalid date format");
-  }
-
   return expressionClause(operator, [
     column,
-    ...dates.map(date => date.format(TIME_FORMAT)),
+    ...values.map(value => value.format("HH:mm:00.000")),
   ]);
 }
 
@@ -514,7 +512,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const dates = values.map(value => moment(value, TIME_FORMAT));
+  const dates = values.map(value => moment.utc(value, "HH:mm:ss.SSS"));
   if (!dates.every(date => date.isValid())) {
     return null;
   }
@@ -522,7 +520,7 @@ export function timeFilterParts(
   return {
     column,
     operator,
-    values: dates.map(date => date.toISOString()),
+    values: dates,
   };
 }
 
