@@ -39,13 +39,15 @@ describe("SearchFilterDatePicker", () => {
     expect(specificDatePicker).toBeInTheDocument();
 
     expect(
-      within(screen.getByTestId("specific-date-picker")).getByRole("input"),
+      within(screen.getByTestId("specific-date-picker")).getByRole("textbox"),
     ).toHaveValue("09/20/2023");
   });
 
   it("should populate the `Relative dates…` date picker with the value passed in", () => {
     setup({ value: "past30days" });
     expect(screen.getByTestId("relative-datetime-value")).toHaveValue("30");
-    expect(screen.getByTestId("select-button-content")).toHaveValue("30");
+    expect(screen.getByTestId("select-button-content")).toHaveTextContent(
+      "days",
+    );
   });
 });

@@ -377,7 +377,7 @@ describe("DatePicker", () => {
           <DatePickerStateWrapper filter={filter} onChange={onChangeMock} />,
         );
 
-        userEvent.click(screen.getByText("Exclude..."));
+        userEvent.click(screen.getByText("Exclude…"));
         userEvent.click(screen.getByText("Hours of the day..."));
 
         const midnightCheckbox = screen.getByRole("checkbox", {
