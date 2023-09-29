@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { CreatedAtContent } from "./CreatedAtContent";
+import { SearchFilterDatePicker } from "./SearchFilterDatePicker";
 
 type SetupProps = {
   value?: string | null;
@@ -9,15 +9,15 @@ type SetupProps = {
 const setup = ({ value = null }: SetupProps = {}) => {
   const onChangeMock = jest.fn();
   renderWithProviders(
-    <CreatedAtContent value={value} onChange={onChangeMock} />,
+    <SearchFilterDatePicker value={value} onChange={onChangeMock} />,
   );
   return {
     onChangeMock,
   };
 };
 
-describe("CreatedAtContent", () => {
-  it("should render CreatedAtContent component", () => {
+describe("SearchFilterDatePicker", () => {
+  it("should render SearchFilterDatePicker component", () => {
     setup();
     expect(screen.getByTestId("date-picker")).toBeInTheDocument();
   });
