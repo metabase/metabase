@@ -103,6 +103,10 @@ function ActionCreator({
     renderEditorBody,
   } = useActionContext();
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
