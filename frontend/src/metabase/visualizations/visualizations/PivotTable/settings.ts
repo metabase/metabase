@@ -23,7 +23,6 @@ import type {
   DatasetColumn,
   DatasetData,
   Series,
-  RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -240,9 +239,7 @@ export const _columnSettings = {
     ) => {
       //Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];
-      return rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
     },
     getHidden: (
       column: DatasetColumn,
@@ -253,9 +250,7 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      return !rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
     },
   },
   column_title: {
