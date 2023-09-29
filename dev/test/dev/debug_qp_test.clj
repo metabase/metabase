@@ -26,32 +26,3 @@
                              [:field (mt/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
               :source-table (mt/id :categories)
               :fk-field-id  (mt/id :venues :category_id)}])))))
-
-(deftest to-mbql-shorthand-test
-  (mt/dataset sample-dataset
-    (testing "source table"
-      (is (= '(mt/mbql-query orders
-                {:joins [{:source-table $$people}]})
-             (debug-qp/to-mbql-shorthand
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :orders)
-                          :joins        [{:source-table (mt/id :people)}]}}))))))
-
-(deftest to-mbql-shorthand-joins-test
-  (testing :fk-field-id
-    (is (= '(mt/$ids venues
-              [{:strategy     :left-join
-                :alias        "CATEGORIES__via__CATEGORY_ID"
-                :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                :source-table $$categories
-                :fk-field-id  %category_id}])
-           (debug-qp/to-mbql-shorthand
-            [{:strategy     :left-join
-              :alias        "CATEGORIES__via__CATEGORY_ID"
-              :condition    [:=
-                             [:field (mt/id :venues :category_id) nil]
-                             [:field (mt/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
-              :source-table (mt/id :categories)
-              :fk-field-id  (mt/id :venues :category_id)}]
-            "venues")))))

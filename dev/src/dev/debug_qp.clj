@@ -625,19 +625,6 @@
     source-query
     (recur source-query)))
 
-(defn to-mbql-shorthand
-  ([query]
-   (let [query (mbql.normalize/normalize query)]
-     (to-mbql-shorthand query (query-table-name (:query query)))))
-
-  ([query table-name]
-   (let [symbolized (-> query (expand table-name) symbolize ->sorted-mbql-query-map)
-         table-symb (some-> table-name symbol)]
-     (if (:query symbolized)
-       (list 'mt/mbql-query table-symb (cond-> (:query symbolized)
-                                         table-name (dissoc :source-table)))
-       (list 'mt/$ids table-symb symbolized)))))
-
 ;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
 
 (defn pprint-sql
