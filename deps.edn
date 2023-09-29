@@ -8,6 +8,7 @@
                                              :exclusions  [org.clojure/clojure
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+  babashka/fs                               {:mvn/version "0.4.19"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "4.1.4"}              ; Histogram data structure
   buddy/buddy-core                          {:mvn/version "1.11.423"            ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
@@ -160,7 +161,8 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
+  }
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
