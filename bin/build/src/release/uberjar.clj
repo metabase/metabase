@@ -6,11 +6,11 @@
    [release.common :as c]
    [release.common.hash :as hash]
    [release.common.http :as common.http]
-   [release.common.upload :as common.upload]))
+   [release.common.upload :as upload]))
 
 (defn build-uberjar! []
   (u/step "Build uberjar"
-    (u/delete-file-if-exists! (str c/root-directory "/target"))
+    (u/delete-file-if-exists! (str u/project-root-directory "/target"))
     (build/build! {:version (str \v (c/version))
                    :edition (c/edition)})
     (u/step "Verify uberjar exists"
@@ -36,7 +36,7 @@
 (defn upload-uberjar! []
   (u/step "Upload uberjar and validate"
     (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
-      (common.upload/upload-artifact! c/uberjar-path "metabase.jar"))
+      (upload/upload-artifact! c/uberjar-path "metabase.jar"))
     ;; TODO -- would be a lot faster to copy to copy s3 -> s3 instead of uploading twice
     (let [latest-download-url (c/artifact-download-url "latest" "metabase.jar")]
       (cond
@@ -48,5 +48,5 @@
 
         :else
         (u/step (format "Upload uberjar to %s" latest-download-url)
-          (common.upload/upload-artifact! c/uberjar-path "latest" "metabase.jar"))))
+          (upload/upload-artifact! c/uberjar-path "latest" "metabase.jar"))))
     (validate-uberjar)))

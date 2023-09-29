@@ -29,7 +29,7 @@
 (defn- check-for-required-env-vars []
   (u/step "Verify required env vars are set"
     (doseq [env-var required-env-vars
-            :let    [actual-env-var (str/upper-case (str/replace (name env-var) #"-" "_"))]]
+            :let    [actual-env-var #_{:clj-kondo/ignore [:discouraged-var]} (str/upper-case (str/replace (name env-var) #"-" "_"))]]
       (u/step (format "Verify env var %s is set" actual-env-var)
         (if (get env/env env-var)
           (u/announce "Found %s" actual-env-var)
@@ -44,7 +44,10 @@
       (throw (ex-info "Docker is not running. Please start it and try again." {})))
     (u/announce "Docker is running.")))
 
-(defn check-prereqs []
+(defn check-prereqs
+  "Make sure we have all the commands we need are available, env vars are set, Docker is running, etc. before starting
+  the build process."
+  []
   (u/step "Check prereqs"
     (check-for-required-commands)
     (check-for-required-env-vars)

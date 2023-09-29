@@ -2,13 +2,15 @@
   (:require
    [build-drivers.common :as c]
    [build-drivers.lint-manifest-file :as lint-manifest-file]
-   [clj-yaml.core :as yaml]
    [clojure.spec.alpha :as s]
    [colorize.core :as colorize]
    [expound.alpha :as expound]
-   [metabuild-common.core :as u])
+   [metabuild-common.core :as u]
+   [yaml.core :as yaml])
   (:import
    (java.util.zip ZipEntry ZipFile)))
+
+(set! *warn-on-reflection* true)
 
 (defn- get-jar-entry [^String jar-path ^String filename]
   (with-open [zip-file (ZipFile. jar-path)]

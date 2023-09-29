@@ -8,6 +8,7 @@
    [release.common :as c]
    [release.common.slack :as slack]
    [release.draft-release :as draft-release]
+   [release.elastic-beanstalk :as eb]
    [release.git-tags :as git-tags]
    [release.set-build-options :as set-build-options]
    [release.uberjar :as uberjar]
@@ -21,11 +22,13 @@
    :upload-uberjar                      uberjar/upload-uberjar!
    :push-git-tags                       git-tags/push-tags!
    :publish-draft-release               draft-release/create-draft-release!
+   :publish-elastic-beanstalk-artifacts eb/publish-elastic-beanstalk-artifacts!
    :update-version-info                 version-info/update-version-info!))
 
 (defn- do-steps! [steps]
   (slack/post-message! "%s started building %s `v%s` from branch `%s`..."
                        (env/env :user)
+                       #_{:clj-kondo/ignore [:discouraged-var]}
                        (str/upper-case (name (c/edition)))
                        (c/version)
                        (c/branch))
@@ -38,7 +41,9 @@
     (slack/post-message! "Finished `%s` :partyparrot:" step-name))
   (u/announce "Success."))
 
-(defn release [{:keys [steps]}]
+(defn release
+  "Build and release a new version of Metabase®."
+  [{:keys [steps]}]
   (u/exit-when-finished-nonzero-on-exception
     (check-prereqs/check-prereqs)
     (set-build-options/prompt-and-set-build-options!)

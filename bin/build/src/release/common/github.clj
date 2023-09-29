@@ -6,12 +6,16 @@
    [metabuild-common.core :as u]
    [release.common :as c]))
 
-(defn github-api-base []
+(defn github-api-base
+  "First part of the URL for the GitHub API."
+  []
   (str "https://api.github.com/repos/" (c/metabase-repo)))
 
-(defn github-api-request-headers []
+(defn github-api-request-headers
+  "Headers to send when making GitHub API requests."
+  []
   {"Content-Type"  "application/json"
-   "Authorization" (format "Bearer %s" (u/env-or-throw :github-token))})
+   "Authorization" (format "token %s" (u/env-or-throw :github-token))})
 
 (defn- GET [endpoint]
   (-> (http/get (str (github-api-base) endpoint) {:headers (github-api-request-headers)})
@@ -51,5 +55,7 @@
     :bug
     :enhancement))
 
-(defn recent-tags []
+(defn recent-tags
+  "Recent tags (as a sequence of tag strings) from the GitHub API."
+  []
   (map :tag_name (GET "/releases")))

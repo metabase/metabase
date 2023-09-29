@@ -3,7 +3,7 @@
    [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.uberjar :as uberjar]
-   [build.version-properties :as version-properties]
+   [build.version-info :as version-info]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -12,6 +12,8 @@
    [flatland.ordered.map :as ordered-map]
    [i18n.create-artifacts :as i18n]
    [metabuild-common.core :as u]))
+
+(set! *warn-on-reflection* true)
 
 (defn- edition-from-env-var []
   (case (env/env :mb-edition)
@@ -37,7 +39,7 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-release"))
+              "yarn" "build"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
@@ -74,20 +76,20 @@
                         "resources"
                         "license-frontend-third-party.txt") license-text))))
 
-(def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
+
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (u/delete-file-if-exists! uberjar-filename)
+  (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
     (uberjar/uberjar {:edition edition})
-    (u/assert-file-exists uberjar-filename)
+    (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
-(def all-steps
+(def ^:private all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
-                   (version-properties/generate-version-properties-file! edition version))
+                   (version-info/generate-version-info-file! edition version))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
@@ -108,7 +110,7 @@
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
    (let [version (or version
-                     (version-properties/current-snapshot-version edition))]
+                     (version-info/current-snapshot-version edition))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
