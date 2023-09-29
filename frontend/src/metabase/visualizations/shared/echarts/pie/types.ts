@@ -17,3 +17,8 @@ export interface PieSlice {
   rowIndex?: number;
   color: string;
 }
+
+export interface PieChartModel {
+  slices: PieSlice[];
+  total: number;
+}

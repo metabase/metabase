@@ -18,14 +18,27 @@ Object.assign(PieChart, {
 });
 
 export function PieChart(props: VisualizationProps) {
-  const { option, legend } = useMemo(
+  const { option, legend, eventHandlers } = useMemo(
     () =>
-      buildPieChart(props.rawSeries, props.settings, {
-        getColor: color,
-        measureText: measureTextWidth,
-        formatValue: formatValue,
-      }),
-    [props.rawSeries, props.settings],
+      buildPieChart(
+        props.rawSeries,
+        props.settings,
+        {
+          getColor: color,
+          measureText: measureTextWidth,
+          formatValue: formatValue,
+        },
+        props.onHoverChange,
+        props.hovered,
+        props.onVisualizationClick,
+      ),
+    [
+      props.rawSeries,
+      props.settings,
+      props.onHoverChange,
+      props.hovered?.index,
+      props.onVisualizationClick,
+    ],
   );
 
   const { sideLength, onChartDimensionChange } = useChartDimension();
@@ -37,7 +50,7 @@ export function PieChart(props: VisualizationProps) {
       {...props}
     >
       <EChartsRenderer
-        config={{ option, eventHandlers: [], zrEventHandlers: [] }}
+        config={{ option, eventHandlers, zrEventHandlers: [] }}
         width={sideLength}
         height={sideLength}
       />

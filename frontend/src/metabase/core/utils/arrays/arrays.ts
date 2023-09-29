@@ -17,5 +17,8 @@ export const findWithIndex = <T>(
       return { item, index: i };
     }
   }
-  return null;
+  return {
+    index: -1,
+    item: undefined,
+  };
 };
