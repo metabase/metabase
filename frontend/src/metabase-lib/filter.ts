@@ -355,7 +355,7 @@ function parseExcludeDateFilterValue(
     case "quarter-of-year":
       return date.quarter();
     default:
-      return 0;
+      return date.utcOffset();
   }
 }
 
