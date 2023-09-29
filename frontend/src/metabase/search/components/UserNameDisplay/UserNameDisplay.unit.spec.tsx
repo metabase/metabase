@@ -36,7 +36,7 @@ describe("UserNameDisplay", () => {
   });
 
   it("should initially display title when value is null", async () => {
-    await setup({ waitForLoading: false });
+    await setup({ waitForLoading: true });
     expect(screen.getByText("UserNameDisplay Test")).toBeInTheDocument();
   });
 

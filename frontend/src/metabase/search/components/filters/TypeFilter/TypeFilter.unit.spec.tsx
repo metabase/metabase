@@ -53,13 +53,13 @@ describe("toUrl", () => {
     expect(result).toEqual(["collection", "dashboard"]);
   });
 
-  it("should return undefined when the input array is empty", () => {
+  it("should return null when the input array is empty", () => {
     const types: EnabledSearchModelType[] = [];
     const result = toUrl(types);
     expect(result).toBeNull();
   });
 
-  it("should return undefined when the input is undefined", () => {
+  it("should return null when the input is undefined", () => {
     const types = undefined;
     const result = toUrl(types);
     expect(result).toBeNull();

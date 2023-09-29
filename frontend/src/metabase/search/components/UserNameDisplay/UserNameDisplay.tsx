@@ -1,16 +1,14 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Text } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
-export const UserNameDisplay = ({
-  value,
-  title,
-}: {
+export type UserNameDisplayProps = {
   value: UserId | null;
   title: string;
-}) => {
+};
+
+export const UserNameDisplay = ({ value, title }: UserNameDisplayProps) => {
   const { data: users = [], isLoading } = useUserListQuery();
 
   const user = value && users.find(user => user.id === value);
@@ -24,7 +22,11 @@ export const UserNameDisplay = ({
       return title;
     }
 
-    return user ? user.common_name : t`1 user selected`;
+    if (user && user.common_name) {
+      return user.common_name;
+    }
+
+    return t`1 user selected`;
   };
 
   return (

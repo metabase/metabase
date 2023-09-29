@@ -1,1 +1,1 @@
-export { UserNameDisplay } from "./UserNameDisplay";
+export { UserNameDisplay, U } from "./UserNameDisplay";
