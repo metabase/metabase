@@ -130,7 +130,7 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
+export type ExpressionOperatorName =
   | "+"
   | "="
   | "!="
@@ -151,11 +151,17 @@ export type ExpressionOperator =
   | "time-interval"
   | "relative-datetime";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | ExpressionClause;
 
 export type ExpressionParts = {
-  operator: ExpressionOperator;
-  args: (ExpressionArg | ExpressionParts)[];
+  operator: ExpressionOperatorName;
+  args: ExpressionArg[];
   options: ExpressionOptions;
 };
 
@@ -164,10 +170,21 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type StringFilterOperator = Extract<
-  ExpressionOperator,
+export type ExpressionOperatorDisplayInfo = {
+  shortName: ExpressionOperatorName;
+};
+
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+export type FilterOperatorName =
   | "="
   | "!="
+  | ">"
+  | "<"
+  | "between"
+  | ">="
+  | "<="
   | "contains"
   | "does-not-contain"
   | "is-null"
@@ -175,35 +192,15 @@ export type StringFilterOperator = Extract<
   | "is-empty"
   | "not-empty"
   | "starts-with"
-  | "ends-with"
->;
+  | "ends-with";
 
-export type NumberFilterOperator = Extract<
-  ExpressionOperator,
-  "=" | "!=" | ">" | "<" | "between" | ">=" | "<=" | "is-null" | "not-null"
->;
+export type FilterOperatorDisplayInfo = {
+  shortName: FilterOperatorName;
+  displayName: string;
+  default?: boolean;
+};
 
-export type BooleanFilterOperator = Extract<
-  ExpressionOperator,
-  "=" | "is-null" | "not-null"
->;
-
-export type SpecificDateFilterOperator = Extract<
-  ExpressionOperator,
-  "=" | "<" | ">" | "between"
->;
-
-export type ExcludeDateFilterOperator = Extract<
-  ExpressionOperator,
-  "!=" | "is-null" | "not-null"
->;
-
-export type TimeFilterOperator = Extract<
-  ExpressionOperator,
-  "<" | ">" | "between"
->;
-
-export type TemporalUnit =
+export type BucketName =
   | "minute"
   | "hour"
   | "day"
@@ -216,18 +213,8 @@ export type TemporalUnit =
   | "quarter-of-year"
   | "hour-of-day";
 
-export type RelativeTemporalUnit = Extract<
-  TemporalUnit,
-  "minute" | "hour" | "day" | "week" | "quarter" | "month" | "year"
->;
-
-export type ExcludeTemporalUnit = Extract<
-  TemporalUnit,
-  "day-of-week" | "month-of-year" | "quarter-of-year" | "hour-of-day"
->;
-
 export type StringFilterParts = {
-  operator: StringFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -238,34 +225,21 @@ export type StringFilterOptions = {
 };
 
 export type NumberFilterParts = {
-  operator: NumberFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: BooleanFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
 
 export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
-};
-
-export type RelativeDateFilterParts = {
-  column: ColumnMetadata;
-  value: number | "current";
-  unit: RelativeTemporalUnit;
-  offsetValue?: number;
-  offsetUnit?: RelativeTemporalUnit;
-  options: RelativeDateFilterOptions;
-};
-
-export type RelativeDateFilterOptions = {
-  "include-current"?: boolean;
 };
 
 // values depend on the unit
@@ -275,14 +249,14 @@ export type RelativeDateFilterOptions = {
 // hour-of-day => 0-23
 
 export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: number[];
-  unit: ExcludeTemporalUnit;
+  bucket: Bucket;
 };
 
 export type TimeFilterParts = {
-  operator: TimeFilterOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: string[]; // HH:mm:ss
 };
@@ -293,7 +267,6 @@ export type FilterParts =
   | BooleanFilterParts
   | TimeFilterParts
   | SpecificDateFilterParts
-  | RelativeDateFilterParts
   | ExcludeDateFilterParts;
 
 declare const Join: unique symbol;

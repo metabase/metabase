@@ -31,6 +31,8 @@ import type {
   TableDisplayInfo,
   TableMetadata,
   Query,
+  FilterOperator,
+  FilterOperatorDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -97,13 +99,18 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  filterOperator: JoinConditionOperator,
+  joinOperator: JoinConditionOperator,
 ): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  filterOperator: FilterOperator,
+): FilterOperatorDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

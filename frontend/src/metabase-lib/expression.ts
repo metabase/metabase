@@ -3,7 +3,7 @@ import type {
   ColumnMetadata,
   ExpressionArg,
   ExpressionClause,
-  ExpressionOperator,
+  ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
   FilterClause,
@@ -43,8 +43,8 @@ export function expressionParts(
 }
 
 export function expressionClause(
-  operator: ExpressionOperator,
-  args: (ExpressionArg | ExpressionClause)[],
+  operator: ExpressionOperatorName,
+  args: ExpressionArg[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {
   return ML.expression_clause(operator, args, options);
