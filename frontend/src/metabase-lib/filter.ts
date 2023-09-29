@@ -10,6 +10,7 @@ import type {
   ExpressionClause,
   FilterClause,
   FilterOperator,
+  FilterOperatorName,
   FilterParts,
   NumberFilterParts,
   Query,
@@ -30,18 +31,16 @@ export function filterableColumnOperators(
   return ML.filterable_column_operators(column);
 }
 
-function findFilterOperator(
+function isFilterOperator(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
   operatorName: string,
-): FilterOperator | null {
-  const operator = filterableColumnOperators(column).find(operator => {
+): operatorName is FilterOperatorName {
+  return filterableColumnOperators(column).some(operator => {
     const operatorInfo = displayInfo(query, stageIndex, operator);
     return operatorInfo.shortName === operatorName;
   });
-
-  return operator ?? null;
 }
 
 export function filter(
@@ -84,13 +83,13 @@ function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
 }
 
-export function stringFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, options }: StringFilterParts,
-): ExpressionClause {
-  const operatorInfo = displayInfo(query, stageIndex, operator);
-  return expressionClause(operatorInfo.shortName, [column, ...values], options);
+export function stringFilterClause({
+  operator,
+  column,
+  values,
+  options,
+}: StringFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values], options);
 }
 
 export function stringFilterParts(
@@ -98,27 +97,22 @@ export function stringFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): StringFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  if (filterParts.args.length < 1) {
+  const { operator, args, options } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (args.length < 1) {
     return null;
   }
 
-  const [column, ...values] = filterParts.args;
+  const [column, ...values] = args;
   if (
     !isColumnMetadata(column) ||
     !isString(column) ||
-    !isStringLiteralArray(values)
+    !isStringLiteralArray(values) ||
+    !isFilterOperator(query, stageIndex, column, operator)
   ) {
-    return null;
-  }
-
-  const operator = findFilterOperator(
-    query,
-    stageIndex,
-    column,
-    filterParts.operator,
-  );
-  if (!operator) {
     return null;
   }
 
@@ -126,7 +120,7 @@ export function stringFilterParts(
     column,
     operator,
     values,
-    options: filterParts.options,
+    options,
   };
 }
 
@@ -138,13 +132,12 @@ export function isStringFilter(
   return stringFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function numberFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values }: NumberFilterParts,
-): ExpressionClause {
-  const operatorInfo = displayInfo(query, stageIndex, operator);
-  return expressionClause(operatorInfo.shortName, [column, ...values]);
+export function numberFilterClause({
+  operator,
+  column,
+  values,
+}: NumberFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function numberFilterParts(
@@ -152,27 +145,18 @@ export function numberFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): NumberFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  if (filterParts.args.length < 1) {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
     return null;
   }
 
-  const [column, ...values] = filterParts.args;
+  const [column, ...values] = args;
   if (
     !isColumnMetadata(column) ||
     !isNumeric(column) ||
-    !isNumberLiteralArray(values)
+    !isNumberLiteralArray(values) ||
+    !isFilterOperator(query, stageIndex, column, operator)
   ) {
-    return null;
-  }
-
-  const operator = findFilterOperator(
-    query,
-    stageIndex,
-    column,
-    filterParts.operator,
-  );
-  if (!operator) {
     return null;
   }
 
@@ -191,13 +175,12 @@ export function isNumberFilter(
   return numberFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function booleanFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values }: BooleanFilterParts,
-): ExpressionClause {
-  const operatorInfo = displayInfo(query, stageIndex, operator);
-  return expressionClause(operatorInfo.shortName, [column, ...values]);
+export function booleanFilterClause({
+  operator,
+  column,
+  values,
+}: BooleanFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function booleanFilterParts(
@@ -205,27 +188,18 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  if (filterParts.args.length < 1) {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
     return null;
   }
 
-  const [column, ...values] = filterParts.args;
+  const [column, ...values] = args;
   if (
     !isColumnMetadata(column) ||
     !isBoolean(column) ||
-    !isBooleanLiteralArray(values)
+    !isBooleanLiteralArray(values) ||
+    !isFilterOperator(query, stageIndex, column, operator)
   ) {
-    return null;
-  }
-
-  const operator = findFilterOperator(
-    query,
-    stageIndex,
-    column,
-    filterParts.operator,
-  );
-  if (!operator) {
     return null;
   }
 

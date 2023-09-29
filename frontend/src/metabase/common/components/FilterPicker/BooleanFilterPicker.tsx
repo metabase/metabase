@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -8,13 +8,38 @@ import { BackButton } from "./BackButton";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 
-type BooleanPickerValue = "is-null" | "not-null" | "true" | "false";
+type OptionType = "true" | "false" | "empty" | "not-empty";
 
-const DISPLAY_OPTIONS = [
-  { label: t`True`, value: "true", isAdvanced: false },
-  { label: t`False`, value: "false", isAdvanced: false },
-  { label: t`Empty`, value: "is-null", isAdvanced: true },
-  { label: t`Not empty`, value: "not-null", isAdvanced: true },
+type Option = {
+  name: string;
+  type: OptionType;
+  operator: Lib.FilterOperatorName;
+  isAdvanced?: boolean;
+};
+
+const OPTIONS: Option[] = [
+  {
+    name: t`True`,
+    type: "true",
+    operator: "=",
+  },
+  {
+    name: t`False`,
+    type: "false",
+    operator: "=",
+  },
+  {
+    name: t`Empty`,
+    type: "empty",
+    operator: "is-null",
+    isAdvanced: true,
+  },
+  {
+    name: t`Not empty`,
+    type: "not-empty",
+    operator: "not-null",
+    isAdvanced: true,
+  },
 ];
 
 export function BooleanFilterPicker({
@@ -25,53 +50,60 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
-  const filterParts = filter
-    ? Lib.booleanFilterParts(query, stageIndex, filter)
-    : null;
+  const columnInfo = useMemo(() => {
+    return Lib.displayInfo(query, stageIndex, column);
+  }, [query, stageIndex, column]);
 
-  const [currentValue, setCurrentValue] = useState<BooleanPickerValue>(
-    getBooleanPickerValue(filterParts),
+  const options = useMemo(() => {
+    return getOptions(query, stageIndex, column);
+  }, [query, stageIndex, column]);
+
+  const [optionType, setOptionType] = useState(() =>
+    getOptionType(query, stageIndex, filter),
   );
 
-  const displayOption =
-    DISPLAY_OPTIONS.find(({ value }) => value === currentValue) ??
-    DISPLAY_OPTIONS[0];
+  const [isExpanded, setIsExpanded] = useState(() =>
+    options.some(option => option.type === optionType && option.isAdvanced),
+  );
 
-  const [expanded, setExpanded] = useState<boolean>(displayOption.isAdvanced);
+  const visibleOptions = useMemo(() => {
+    return isExpanded ? options : options.filter(option => option.isAdvanced);
+  }, [options, isExpanded]);
 
-  const visibleOptions = expanded
-    ? DISPLAY_OPTIONS
-    : DISPLAY_OPTIONS.filter(({ isAdvanced }) => !isAdvanced);
+  const handleChange = (type: string) => {
+    setOptionType(type as OptionType);
+  };
 
-  const handleChange = (value: BooleanPickerValue) => {
-    const filter = getFilter(value, column);
-    onChange(filter);
+  const handleSubmit = () => {
+    onChange(getFilterClause(column, optionType));
   };
 
   return (
     <>
       <Header>
-        <BackButton onClick={onBack}>{columnName}</BackButton>
+        <BackButton onClick={onBack}>{columnInfo.displayName}</BackButton>
       </Header>
       <Stack p="md">
-        <Radio.Group
-          value={currentValue}
-          onChange={newValue => setCurrentValue(newValue as BooleanPickerValue)}
-        >
-          {visibleOptions.map(({ value, label }) => (
-            <Radio key={value} value={value} label={label} pb={6} size="xs" />
+        <Radio.Group value={optionType} onChange={handleChange}>
+          {visibleOptions.map(option => (
+            <Radio
+              key={option.type}
+              value={option.type}
+              label={option.name}
+              pb={6}
+              size="xs"
+            />
           ))}
         </Radio.Group>
-        {!expanded && (
-          <Button variant="subtle" onClick={() => setExpanded(prev => !prev)}>
+        {!isExpanded && (
+          <Button variant="subtle" onClick={() => setIsExpanded(true)}>
             {t`More options`}
           </Button>
         )}
       </Stack>
       <Footer>
         <Box />
-        <Button onClick={() => handleChange(currentValue)}>
+        <Button onClick={handleSubmit}>
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
       </Footer>
@@ -79,52 +111,72 @@ export function BooleanFilterPicker({
   );
 }
 
-// we have to make this kinda verbose to make typescript happy
-function getBooleanPickerValue(
-  filterParts: Lib.BooleanFilterParts | null,
-): BooleanPickerValue {
-  if (filterParts === null) {
+function getOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Option[] {
+  const operators = Lib.filterableColumnOperators(column);
+  const operatorNames = operators.map(
+    operator => Lib.displayInfo(query, stageIndex, operator).shortName,
+  );
+  return OPTIONS.filter(option => operatorNames.includes(option.operator));
+}
+
+function getOptionType(
+  query: Lib.Query,
+  stageIndex: number,
+  filterClause?: Lib.FilterClause,
+): OptionType {
+  if (!filterClause) {
     return "true";
   }
 
-  if (filterParts.operator === "=" && filterParts.values?.length === 1) {
-    return filterParts.values[0] ? "true" : "false";
+  const filterParts = Lib.booleanFilterParts(query, stageIndex, filterClause);
+  if (!filterParts) {
+    return "true";
   }
 
-  if (
-    filterParts.operator === "is-null" ||
-    filterParts.operator === "not-null"
-  ) {
-    return filterParts.operator;
+  switch (filterParts.operator) {
+    case "=":
+      return filterParts.values[0] ? "true" : "false";
+    case "is-null":
+      return "empty";
+    case "not-null":
+      return "not-empty";
+    default:
+      return "true";
   }
-
-  return "true";
 }
 
-function getFilter(
-  value: BooleanPickerValue,
+function getFilterClause(
   column: Lib.ColumnMetadata,
+  filterType: OptionType,
 ): Lib.ExpressionClause {
-  switch (value) {
-    case "is-null":
-      return Lib.booleanFilterClause({
-        operator: "is-null",
-        column,
-        values: [],
-      });
-    case "not-null":
-      return Lib.booleanFilterClause({
-        operator: "not-null",
-        column,
-        values: [],
-      });
+  switch (filterType) {
     case "true":
-      return Lib.booleanFilterClause({ operator: "=", column, values: [true] });
+      return Lib.booleanFilterClause({
+        operator: "=",
+        column,
+        values: [true],
+      });
     case "false":
       return Lib.booleanFilterClause({
         operator: "=",
         column,
         values: [false],
+      });
+    case "empty":
+      return Lib.booleanFilterClause({
+        operator: "is-null",
+        column,
+        values: [],
+      });
+    case "not-empty":
+      return Lib.booleanFilterClause({
+        operator: "not-null",
+        column,
+        values: [],
       });
   }
 }

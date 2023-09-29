@@ -64,6 +64,25 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
+export type BucketName =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";
+
+export type BucketDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -120,12 +139,6 @@ export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BucketDisplayInfo = {
-  displayName: string;
-  default?: boolean;
-  selected?: boolean;
-};
-
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
@@ -170,10 +183,6 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type ExpressionOperatorDisplayInfo = {
-  shortName: ExpressionOperatorName;
-};
-
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
@@ -200,21 +209,8 @@ export type FilterOperatorDisplayInfo = {
   default?: boolean;
 };
 
-export type BucketName =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year"
-  | "hour-of-day";
-
 export type StringFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -225,38 +221,38 @@ export type StringFilterOptions = {
 };
 
 export type NumberFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };
 
 export type SpecificDateFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
 };
 
-// values depend on the unit
+// values depend on the bucket
 // day-of-week => 1-7 (Monday-Sunday)
 // month-of-year => 0-11 (January-December)
 // quarter-of-year => 1-4
 // hour-of-day => 0-23
 
 export type ExcludeDateFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: number[];
-  bucket: Bucket;
+  bucket: BucketName;
 };
 
 export type TimeFilterParts = {
-  operator: FilterOperator;
+  operator: FilterOperatorName;
   column: ColumnMetadata;
   values: string[]; // HH:mm:ss
 };
