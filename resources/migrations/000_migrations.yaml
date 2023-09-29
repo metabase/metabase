@@ -15320,7 +15320,7 @@ databaseChangeLog:
                   type: char(7)
                   remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
                   constraints:
-                    nullable: false
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
