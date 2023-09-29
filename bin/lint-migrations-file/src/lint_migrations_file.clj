@@ -7,7 +7,8 @@
    [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.walk :as walk]
+   [metabase.util.log :as log]))
 
 (comment change-set.strict/keep-me
          change-set.unstrict/keep-me)
@@ -143,7 +144,7 @@
 (defn validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
-      (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
+      (throw (ex-info (str "Validation failed:\n" (with-out-str (log/infof (mapv #(dissoc % :val)
                                                                                      (::s/problems data)))))
                       (or (dissoc data ::s/value) {})))))
   :ok)
@@ -165,12 +166,12 @@
   (validate-migrations (migrations)))
 
 (defn -main []
-  (println "Check Liquibase migrations file...")
+  (log/info "Check Liquibase migrations file...")
   (try
     (validate-all)
-    (println "Ok.")
+    (log/info "Ok.")
     (System/exit 0)
     (catch Throwable e
-      (pprint/pprint (Throwable->map e))
-      (println (.getMessage e))
+      (log/infof (Throwable->map e))
+      (log/info (.getMessage e))
       (System/exit 1))))

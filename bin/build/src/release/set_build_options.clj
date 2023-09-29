@@ -1,6 +1,7 @@
 (ns release.set-build-options
   (:require
    [clojure.string :as str]
+   [metabase.util.log :as log]
    [metabuild-common.core :as u]
    [release.common :as c]))
 
@@ -17,7 +18,7 @@
         (if-not (u/yes-or-no-prompt (format "Building %s version %s from branch %s. Is this correct?"
                                             (pr-str edition) (pr-str version) (pr-str branch)))
           (do
-            (println "Please enter new build options, or press Ctrl-C to quit.")
+            (log/info "Please enter new build options, or press Ctrl-C to quit.")
             (recur))
           (do
             (c/set-version! version)

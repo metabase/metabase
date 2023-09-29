@@ -28,7 +28,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.build.api :as b])
+   [clojure.tools.build.api :as b]
+   [metabase.util.log :as log])
   (:import
    (java.io FileReader)
    (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
@@ -151,12 +152,12 @@
 
 (defn- write-license [success-os [lib {:keys [coords license]}]]
   (binding [*out* success-os]
-    (println "The following software may be included in this product:"
+    (log/info "The following software may be included in this product:"
              (str lib ": " (:version coords) ".")
              "This software contains the following license and notice below:")
-    (println "\n")
-    (println license)
-    (println "\n\n----------\n")))
+    (log/info "\n")
+    (log/info license)
+    (log/info "\n\n----------\n")))
 
 (defn- report-missing [error-os [jar {:keys [coords]}]]
   (let [{:keys [group artifact]} coords
@@ -164,7 +165,7 @@
                        (str (when group (str group ":")) artifact))
                      jar)]
     (binding [*out* error-os]
-      (println dep-name " : No license information found."))))
+      (log/info dep-name " : No license information found."))))
 
 (defn process*
   "Returns a map of `:with-license` and `:without-license`."
@@ -221,7 +222,7 @@
       (when (seq without-license)
         (run! #(report-missing *err* %) without-license))
       (when (seq with-license)
-        (println "License information for" (count with-license) "libraries written to "
+        (log/info "License information for" (count with-license) "libraries written to "
                  output-filename)
         ;; we call this from the build script. if we switch to the shell we can reenable this and figure out the
         ;; best defaults. Want to make sure we never kill our build script

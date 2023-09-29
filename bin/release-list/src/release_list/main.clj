@@ -1,7 +1,8 @@
 ;; #!/usr/bin/env bb
 (ns release-list.main
   (:require [babashka.process :refer [shell]]
-            [clojure.string  :as str]))
+            [clojure.string  :as str]
+            [metabase.util.log :as log]))
 
 (def release-page
   "Template for docs page that will list releases."
@@ -97,4 +98,4 @@
               prep-links
               group-versions
               prep-page))
-    (println "List of releases updated in `docs/releases.md`.")))
+    (log/info "List of releases updated in `docs/releases.md`.")))

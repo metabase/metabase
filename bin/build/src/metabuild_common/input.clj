@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase.util.log :as log]
    [metabuild-common.output :as out]))
 
 (set! *warn-on-reflection* true)
@@ -25,9 +26,9 @@
         (throw (ex-info "Cannot prompt for a value when script is ran non-interactively; specify a :default value."
                         {})))
     (loop []
-      (print (str prompt " "))
+      (log/info (str prompt " "))
       (when default
-        (printf "(default %s) " (pr-str default)))
+        (log/info "(default %s) " (pr-str default)))
       (flush)
       (let [line (or (not-empty (str/trim (read-line)))
                      default)]
@@ -41,7 +42,7 @@
           (let [error (validator line)]
             (if error
               (do
-                (println error)
+                (log/info error)
                 (recur))
               line))
 
