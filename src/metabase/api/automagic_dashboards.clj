@@ -8,6 +8,7 @@
    [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.metric-x-rays :as metric-x-rays]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -261,6 +262,18 @@
                                 :linked-tables     linked
                                 :model-index       model-index
                                 :model-index-value model-index-value}))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(api/defendpoint GET "/metric/metric/metric/:metric-id"
+  "..."
+  [metric-id]
+  {metric-id :int}
+  (api/let-404 [{metric-name :name :as metric} (t2/select-one :model/Metric metric-id)]
+    (api/read-check metric)
+    (->> metric
+         metric-x-rays/create-metric-affinities
+         (metric-x-rays/create-dashboard {:dashboard-name metric-name}))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
