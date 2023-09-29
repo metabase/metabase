@@ -91,8 +91,6 @@ describe("actions > containers > ActionCreatorModal", () => {
     await waitFor(() => {
       expect(screen.getByTestId("action-creator")).toBeInTheDocument();
     });
-
-    expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
   });
 
   it("redirects back to the model detail page if the action is not found", async () => {
