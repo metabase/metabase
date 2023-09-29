@@ -578,6 +578,42 @@ describe("QueryBuilder", () => {
         ).toBeInTheDocument();
       });
 
+      it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+        userEvent.type(inputArea, "{backspace}");
+        userEvent.tab();
+
+        history.goBack();
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
+
       it("does not show custom warning modal when running edited question", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
