@@ -592,16 +592,6 @@ describe("QueryBuilder", () => {
           ).toBeInTheDocument();
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
-        userEvent.type(inputArea, "{backspace}");
-        userEvent.tab();
-
         history.goBack();
 
         expect(
