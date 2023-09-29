@@ -61,16 +61,16 @@ const typeFilters = [
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
-const TEST_CREATED_AT_FILTERS = {
-  Today: "thisday",
-  Yesterday: "past1days",
-  "Previous Week": "past1weeks",
-  "Previous 7 Days": "past7days",
-  "Previous 30 Days": "past30days",
-  "Previous Month": "past1months",
-  "Previous 3 Months": "past3months",
-  "Previous 12 Months": "past12months",
-};
+const TEST_CREATED_AT_FILTERS = [
+  ["Today", "thisday"],
+  ["Yesterday", "past1days"],
+  ["Previous Week", "past1weeks"],
+  ["Previous 7 Days", "past7days"],
+  ["Previous 30 Days", "past30days"],
+  ["Previous Month", "past1months"],
+  ["Previous 3 Months", "past3months"],
+  ["Previous 12 Months", "past12months"],
+];
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -431,7 +431,7 @@ describe("scenarios > search", () => {
     });
 
     describe("created_at filter", () => {
-      Object.entries(TEST_CREATED_AT_FILTERS).forEach(([label, filter]) => {
+      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
         it(`should hydrate created_at=${filter}`, () => {
           cy.visit(`/search?q=orders&created_at=${filter}`);
 
