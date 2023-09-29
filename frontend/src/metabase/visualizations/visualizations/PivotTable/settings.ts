@@ -241,7 +241,7 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];
       return rows
         .slice(0, -1)
         .some((row: RowValue) => _.isEqual(row, column.field_ref));
