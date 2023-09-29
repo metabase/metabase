@@ -129,9 +129,9 @@ function ActionCreator({
     handleActionChange(values);
 
     setShowSaveModal(false);
+    onSubmit?.(createdAction);
 
     scheduleCallback(() => {
-      onSubmit?.(createdAction);
       onClose?.();
     });
   };
@@ -145,9 +145,9 @@ function ActionCreator({
       });
 
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
+      onSubmit?.(updatedAction);
 
       scheduleCallback(() => {
-        onSubmit?.(updatedAction);
         onClose?.();
       });
     }
