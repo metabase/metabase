@@ -66,7 +66,9 @@ export function ArchiveApp() {
 
   useEffect(() => {
     const newWritableList = list.filter(
-      item => collectionsById[item.getCollection().id]?.can_write,
+      item =>
+        collectionsById[Search.objectSelectors.getCollection(item).id]
+          ?.can_write,
     );
 
     setWritableList(newWritableList);
