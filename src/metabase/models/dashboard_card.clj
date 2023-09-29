@@ -16,10 +16,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -111,9 +108,9 @@
   (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
            (action/select-action :id)))
 
-(s/defn retrieve-dashboard-card
+(mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- su/IntGreaterThanZero]
+  [id :- ms/PositiveInt]
   (-> (t2/select-one :model/DashboardCard :id id)
       (t2/hydrate :series)))
 
@@ -159,13 +156,13 @@
       (t2/insert! DashboardCardSeries card-series))))
 
 (def ^:private DashboardCardUpdates
-  {:id                                      su/IntGreaterThanZero
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
+  [:map
+   [:id                                      ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
+   [:visualization_settings {:optional true} [:maybe :map]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
-   s/Keyword                                s/Any})
+   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -175,7 +172,7 @@
                   (not= v (get old k)))
                 new)))
 
-(s/defn update-dashboard-card!
+(mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."

@@ -24,11 +24,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,44 +43,46 @@
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                         su/NonBlankString
-   :base-type                          (s/conditional
-                                        #(and (map? %) (contains? % :natives))
-                                        {:natives {s/Keyword su/NonBlankString}}
-                                        #(and (map? %) (contains? % :native))
-                                        {:native su/NonBlankString}
-                                        :else
-                                        su/FieldType)
-   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[mt/with-actions-test-data]]
-   ;; default is nullable
-   (s/optional-key :not-null?)         (s/maybe s/Bool)
-   (s/optional-key :unique?)           (s/maybe s/Bool)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
-   (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
+  [:map {:closed true}
+   [:field-name                          ms/NonBlankString]
+   [:base-type                           [:or
+                                          [:map {:closed true}
+                                           [:natives [:map-of :keyword ms/NonBlankString]]]
+                                          [:map {:closed true}
+                                           [:native ms/NonBlankString]]
+                                          ms/Field]]
+    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+    ;; datasets e.g. [[mt/with-actions-test-data]]
+    ;; default is nullable
+   [:not-null?         {:optional true} [:maybe :boolean]]
+   [:unique?           {:optional true} [:maybe :boolean]]
+   [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:effective-type    {:optional true} [:maybe ms/FieldType]]
+   [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
+   [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
+   [:fk                {:optional true} [:maybe ms/KeywordOrString]]
+   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]])
 
 (def ^:private ValidFieldDefinition
-  (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
+  [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
 (def ^:private ValidTableDefinition
-  (s/constrained
-   {:table-name                     su/NonBlankString
-    :field-definitions              [ValidFieldDefinition]
-    :rows                           [[s/Any]]
-    (s/optional-key :table-comment) (s/maybe su/NonBlankString)}
-   (partial instance? TableDefinition)))
+  [:and
+   [:map {:closed true}
+    [:table-name                     ms/NonBlankString]
+    [:field-definitions              [:sequential ValidFieldDefinition]]
+    [:rows                           [:sequential [:sequential :any]]]
+    [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
+   (ms/InstanceOfClass TableDefinition)])
 
 (def ^:private ValidDatabaseDefinition
-  (s/constrained
-   {:database-name     su/NonBlankString ; this must be unique
-    :table-definitions [ValidTableDefinition]}
-   (partial instance? DatabaseDefinition)))
+  [:and
+   [:map {:closed true}
+    [:database-name ms/NonBlankString] ; this must be unique
+    [:table-definitions [:sequential ValidTableDefinition]]]
+   (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
@@ -427,36 +428,39 @@
 
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  [(s/one su/NonBlankString "table name")
-   (s/one [DatasetFieldDefinition] "fields")
-   (s/one [[s/Any]] "rows")])
+  [:tuple
+   ms/NonBlankString
+   [:sequential DatasetFieldDefinition]
+   [:sequential [:sequential :any]]])
 
 ;; TODO - not sure everything below belongs in this namespace
 
-(s/defn ^:private dataset-field-definition :- ValidFieldDefinition
+(mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
-(s/defn ^:private dataset-table-definition :- ValidTableDefinition
+(mu/defn ^:private dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
   comsumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
-  ([table-name :- su/NonBlankString, field-definition-maps, rows]
+  ([table-name :- ms/NonBlankString
+    field-definition-maps
+    rows]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
      :field-definitions (mapv dataset-field-definition field-definition-maps)})))
 
-(s/defn dataset-definition :- ValidDatabaseDefinition
+(mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- su/NonBlankString & table-definitions]
-  (s/validate
+  [database-name :- ms/NonBlankString & table-definitions]
+  (mu/validate-throw
    DatabaseDefinition
    (map->DatabaseDefinition
     {:database-name     database-name
@@ -504,10 +508,10 @@
   [^EDNDatasetDefinition this]
   @(.def this))
 
-(s/defn edn-dataset-definition
+(mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- su/NonBlankString]
+  [dataset-name :- ms/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
@@ -532,10 +536,10 @@
   (pretty [_]
     (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
-(s/defn transformed-dataset-definition
+(mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- ms/NonBlankString wrapped-definition & transform-fns :- fn?]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn
@@ -551,7 +555,7 @@
   (fn [dbdef]
     (apply update dbdef :table-definitions f args)))
 
-(s/defn transform-dataset-only-tables :- (s/pred fn?)
+(mu/defn transform-dataset-only-tables :- fn?
   "Create a function for `transformed-dataset-definition` to only keep some subset of Tables from the original dataset
   definition."
   [& table-names]
@@ -582,34 +586,37 @@
 
 ;; TODO - maybe this should go in a different namespace
 
-(s/defn ^:private tabledef-with-name :- ValidTableDefinition
+(mu/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [{:keys [table-definitions]} :- DatabaseDefinition
+   table-name :- ms/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
        tabledef))
    table-definitions))
 
-(s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
+(mu/defn ^:private fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- DatabaseDefinition
+   table-name :- ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZero {su/NonBlankString s/Any}}
+(mu/defn ^:private tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
   [{:keys [field-definitions rows]} :- TableDefinition]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(s/defn ^:private dbdef->table->id->row :- {su/NonBlankString {su/IntGreaterThanZero {su/NonBlankString s/Any}}}
+(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NegativeInt [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- DatabaseDefinition]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
-(s/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(mu/defn ^:private nest-fielddefs
+  [dbdef :- DatabaseDefinition
+   table-name :- ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -618,7 +625,9 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(mu/defn ^:private flatten-rows
+  [dbdef :- DatabaseDefinition
+   table-name :- ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -640,19 +649,20 @@
           (str/replace #"s$" "")
           (str  \_ (flatten-field-name fk-dest-name))))))
 
-(s/defn flattened-dataset-definition
+(mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition, table-name :- su/NonBlankString]
+  [dataset-definition
+   table-name :- ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
     (fn [dbdef]
       (assoc dbdef
-        :table-definitions
-        [(map->TableDefinition
-          {:table-name        table-name
-           :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
-                                (update fielddef :field-name flatten-field-name))
-           :rows              (flatten-rows dbdef table-name)})]))))
+             :table-definitions
+             [(map->TableDefinition
+               {:table-name        table-name
+                :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
+                                     (update fielddef :field-name flatten-field-name))
+                :rows              (flatten-rows dbdef table-name)})]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
