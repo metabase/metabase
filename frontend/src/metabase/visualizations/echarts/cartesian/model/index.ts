@@ -38,7 +38,6 @@ export const getCardsColumns = (
 export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
-  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
   return rawSeries.flatMap((cardDataset, index) => {
@@ -65,7 +64,6 @@ export const getCartesianChartModel = (
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
-    settings,
     renderingContext,
   );
   const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
