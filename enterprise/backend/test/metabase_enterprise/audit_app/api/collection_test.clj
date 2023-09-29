@@ -9,31 +9,29 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest list-collections-instance-analytics-test
-  (premium-features-test/with-premium-features #{:audit-app}
-    (audit-db-test/with-audit-db-restoration
-      (audit-db/ensure-audit-db-installed!)
-      (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
-        (testing "Instance Analytics Collection should be the last collection."
-          (testing "GET /api/collection"
-            (is (= "instance-analytics"
-                   (->> (mt/user-http-request :rasta :get 200 "collection")
-                        last
-                        :type))))
-          (testing "GET /api/collection/test"
-            (is (= "instance-analytics"
-                   (->> (mt/user-http-request :rasta :get 200 "collection/tree")
-                        last
-                        :type))))))))
-  (premium-features-test/with-premium-features #{}
-    (audit-db-test/with-audit-db-restoration
-      (audit-db/ensure-audit-db-installed!)
+  (audit-db-test/with-audit-db-restoration
+    (audit-db/ensure-audit-db-installed!)
+    (premium-features-test/with-premium-features #{:audit-app}
+        (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
+          (testing "Instance Analytics Collection should be the last collection."
+            (testing "GET /api/collection"
+              (is (= "instance-analytics"
+                     (->> (mt/user-http-request :rasta :get 200 "collection")
+                          last
+                          :type))))
+            (testing "GET /api/collection/test"
+              (is (= "instance-analytics"
+                     (->> (mt/user-http-request :rasta :get 200 "collection/tree")
+                          last
+                          :type)))))))
+    (premium-features-test/with-premium-features #{}
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
             (is (nil?
-                   (->> (mt/user-http-request :rasta :get 200 "collection")
-                        last
-                        :type))))
+                 (->> (mt/user-http-request :rasta :get 200 "collection")
+                      last
+                      :type))))
           (testing "GET /api/collection/test"
             (is (= nil
                    (->> (mt/user-http-request :rasta :get 200 "collection/tree")
