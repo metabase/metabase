@@ -1,9 +1,12 @@
+import { getColumnIcon } from "metabase/common/utils/columns";
+import type { IconName } from "metabase/core/components/Icon";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import type {
   ColumnGroupItem,
@@ -70,6 +73,7 @@ export const getQueryColumnSettingItems = (
           metadataColumn: metadataColumns[metadataIndex],
           datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
+          icon: getColumnIcon(metadataColumns[metadataIndex]),
         });
       }
 
@@ -96,6 +100,7 @@ export const getDatasetColumnSettingItems = (
           enabled: columnSetting.enabled,
           datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
+          icon: getIconForField(datasetColumns[datasetIndex]) as IconName,
         });
       }
 

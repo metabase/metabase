@@ -4,11 +4,13 @@ import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
+import type { IconProps } from "metabase/core/components/Icon";
 import { ColumnItem } from "../ColumnItem";
 
 interface SortableItem {
   enabled: boolean;
   color?: string;
+  icon?: IconProps["name"];
 }
 
 interface SortableColumnFunctions<T> {
@@ -17,7 +19,7 @@ interface SortableColumnFunctions<T> {
   onClick?: (item: T) => void;
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
-  getItemName: (item: T) => string | React.ReactChild;
+  getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
 }
 
@@ -58,6 +60,7 @@ const SortableColumn = SortableElement(function SortableColumn<
       }
       color={item.color}
       draggable={!isDragDisabled}
+      icon={item.icon}
       role="listitem"
     />
   );

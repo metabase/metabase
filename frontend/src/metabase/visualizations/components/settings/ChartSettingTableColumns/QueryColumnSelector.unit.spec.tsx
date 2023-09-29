@@ -85,6 +85,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   const onChange = jest.fn();
   const onShowWidget = jest.fn();
+  const onWidgetOverride = jest.fn();
 
   renderWithProviders(
     <QueryColumnSelector
@@ -94,6 +95,7 @@ const setup = ({
       getColumnName={getColumnName}
       onChange={onChange}
       onShowWidget={onShowWidget}
+      handleWidgetOverride={onWidgetOverride}
     />,
   );
 

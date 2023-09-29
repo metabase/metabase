@@ -1,13 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { Button } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
   disableColumnInSettings,
@@ -91,12 +89,7 @@ export const QueryColumnSelector = ({
       >{t`Add or remove columns`}</Button>
       <TableColumnSelector
         columnItems={columnItems}
-        getColumnName={({ datasetColumn, metadataColumn }) => (
-          <>
-            {metadataColumn && <Icon name={getColumnIcon(metadataColumn)} />}{" "}
-            {getColumnName(datasetColumn)}
-          </>
-        )}
+        getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
         onEnableColumn={handleEnableColumn}
         onDisableColumn={handleDisableColumn}
         onDragColumn={handleDragColumn}

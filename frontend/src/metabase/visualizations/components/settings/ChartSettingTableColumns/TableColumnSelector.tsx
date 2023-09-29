@@ -10,7 +10,7 @@ import type {
 
 interface TableColumnSelectorProps {
   columnItems: ColumnSettingItem[];
-  getColumnName: (columnItem: ColumnSettingItem) => string | React.ReactChild;
+  getColumnName: (columnItem: ColumnSettingItem) => string;
   onEnableColumn: (columnItem: ColumnSettingItem) => void;
   onDisableColumn: (columnItem: ColumnSettingItem) => void;
   onDragColumn: (props: DragColumnProps) => void;

@@ -1,4 +1,5 @@
-import type React from "react";
+import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -11,10 +12,11 @@ import {
 
 interface ColumnItemProps {
   className?: string;
-  title: string | React.ReactChild;
+  title: string;
   color?: string;
   role?: string;
   draggable?: boolean;
+  icon?: IconProps["name"];
   onClick?: () => void;
   onAdd?: (target: HTMLElement) => void;
   onRemove?: (target: HTMLElement) => void;
@@ -29,6 +31,7 @@ const BaseColumnItem = ({
   color,
   role,
   draggable = false,
+  icon,
   onClick,
   onAdd,
   onRemove,
@@ -56,7 +59,10 @@ const BaseColumnItem = ({
           />
         )}
         <ColumnItemContent>
-          <ColumnItemSpan>{title}</ColumnItemSpan>
+          <ColumnItemSpan>
+            {icon && <Icon name={icon} />}
+            {title}
+          </ColumnItemSpan>
           {onEdit && (
             <ActionIcon
               icon="ellipsis"

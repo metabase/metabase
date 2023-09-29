@@ -20,6 +20,8 @@ export const HideColumnAction: LegacyDrill = ({
     return [];
   }
 
+  const { column } = clicked;
+
   return [
     {
       name: "formatting",
@@ -30,15 +32,10 @@ export const HideColumnAction: LegacyDrill = ({
       tooltip: t`Hide column`,
       default: true,
       action: () => {
-        const { column } = clicked;
         const columnSettings = getColumnSettingsWithRefs(
           settings?.["table.columns"] || [],
         );
         const query = question._getMLv2Query();
-
-        if (column === undefined) {
-          return null;
-        }
 
         const columnSettingIndex = findColumnSettingIndex(
           query,
