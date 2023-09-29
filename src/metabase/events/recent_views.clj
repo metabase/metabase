@@ -40,9 +40,6 @@
         (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
                    ;; we don't want to count pinned card views
                    ((complement #{:collection :dashboard}) context))
-          (def user-id user-id)
-          (def model model)
-          (def model-id model-id)
           (recent-views/update-users-recent-views! user-id model model-id))
         (record-view! model model-id user-id metadata)))
     (catch Throwable e

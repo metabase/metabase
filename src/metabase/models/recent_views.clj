@@ -36,7 +36,7 @@
     (let [ids-to-keep                    (map :id (take n prior-views))
           ;; We want to make sure we keep the most recent dashboard view for the user
           ids-to-prune                   (map :id (drop n prior-views))
-          most-recent-dashboard-id       (->> prior-views (filter #(= "dashboard" (:model %))) first :id)
+          most-recent-dashboard-id       (->> prior-views (filter #(= "Dashboard" (:model %))) first :id)
           pruning-most-recent-dashboard? ((set ids-to-prune) most-recent-dashboard-id)]
       (if pruning-most-recent-dashboard?
         (conj (remove #{most-recent-dashboard-id} (set ids-to-prune))
@@ -53,8 +53,7 @@
   (when user-id
     (t2/with-transaction [_conn]
       (t2/insert! :model/RecentViews {:user_id  user-id
-                                      ;; Lower-case the model name, since that's what the FE expects
-                                      :model    (u/lower-case-en (name model))
+                                      :model    (name model)
                                       :model_id model-id})
       (let [current-views  (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
             ids-to-prune (view-ids-to-prune current-views *recent-views-stored-per-user*)]
@@ -84,4 +83,7 @@
                                           :user_id user-id
                                           {:order-by [[:timestamp :desc]]
                                            :limit    *recent-views-stored-per-user*})]
-     (take n (distinct all-user-views)))))
+     (->> (distinct all-user-views)
+          (take n)
+          ;; Lower-case the model name, since that's what the FE expects
+          (map #(update % :model u/lower-case-en))))))
