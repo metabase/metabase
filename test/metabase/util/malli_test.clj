@@ -53,3 +53,12 @@
 
         (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                (umd/describe special-lt-4-schema)))))))
+
+(deftest validate-throw-test
+  (testing "with a schema"
+    (is (= 1 (mu/validate-throw :int 1)))
+    (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw :int "1"))))
+  (let [int-validator (mc/validator :int)]
+    (testing "with a schema"
+      (is (= 1 (mu/validate-throw int-validator 1)))
+      (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw int-validator "1"))))))

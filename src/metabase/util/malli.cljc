@@ -104,9 +104,9 @@
 #?(:clj
    (defn validate-throw
      "Returns the value if it matches the schema, else throw an exception."
-     ([schema value]
-      (validate-throw schema value nil))
-     ([schema value options]
-      (if-not (mc/validate schema value options)
-        (throw (ex-info "Value does not match schema" {:value value :schema schema}))
+     ([schema-or-validator value]
+      (validate-throw schema-or-validator value nil))
+     ([schema-or-validator value options]
+      (if-not ((mc/validator schema-or-validator options) value)
+        (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
         value))))

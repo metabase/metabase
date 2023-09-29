@@ -3,7 +3,6 @@
   (:require
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features :refer [defenterprise-schema]]
@@ -127,7 +126,7 @@
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
-   {:keys [group-mappings]} :- (mut/select-keys LDAPSettings [:group-mappings])]
+   {:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
       vals
@@ -136,7 +135,7 @@
 
 (mu/defn all-mapped-group-ids :- [:set ms/PositiveInt]
   "Returns the set of all MB group IDs that have configured mappings."
-  [{:keys [group-mappings]} :- (mut/select-keys LDAPSettings [:group-mappings])]
+  [{:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
   (-> group-mappings
       vals
       flatten

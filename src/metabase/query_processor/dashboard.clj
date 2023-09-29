@@ -15,9 +15,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -114,14 +113,14 @@
                    target)))
    dashboard-param-id->param))
 
-(s/defn ^:private resolve-params-for-query :- (s/maybe [su/Map])
+(mu/defn ^:private resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
-  [dashboard-id   :- su/IntGreaterThanZero
-   card-id        :- su/IntGreaterThanZero
-   dashcard-id    :- su/IntGreaterThanZero
-   request-params :- (s/maybe [su/Map])]
+  [dashboard-id   :- ms/PositiveInt
+   card-id        :- ms/PositiveInt
+   dashcard-id    :- ms/PositiveInt
+   request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
         ;; ignore default values in request params as well. (#20516)

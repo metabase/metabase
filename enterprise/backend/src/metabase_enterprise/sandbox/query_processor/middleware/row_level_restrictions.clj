@@ -31,9 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -145,8 +142,8 @@
                       {:source-query source-query}
                       e)))))
 
-(s/defn ^:private card-gtap->source
-  [{card-id :card_id, :as gtap}]
+(defn- card-gtap->source
+  [{card-id :card_id :as gtap}]
   (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
@@ -155,7 +152,7 @@
 (defn- table-gtap->source [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
-(s/defn ^:private mbql-query-metadata :- (su/non-empty [su/Map])
+(mu/defn ^:private mbql-query-metadata :- [:+ :map]
   [inner-query]
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols)
@@ -172,9 +169,9 @@
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))
 
-(s/defn ^:private reconcile-metadata :- (su/non-empty [su/Map])
+(mu/defn ^:private reconcile-metadata :- [:+ :map]
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
-  [source-query-metadata :- (su/non-empty [su/Map]) table-metadata]
+  [source-query-metadata :- [:+ :map] table-metadata]
   (let [col-name->table-metadata (m/index-by :name table-metadata)]
     (vec
      (for [col   source-query-metadata
@@ -184,8 +181,8 @@
          (gtap/check-column-types-match col table-col)
          table-col)))))
 
-(s/defn ^:private native-query-metadata :- (su/non-empty [su/Map])
-  [source-query :- {:source-query s/Any, s/Keyword s/Any}]
+(mu/defn ^:private native-query-metadata :- [:+ :map]
+  [source-query :- [:map [:source-query :any]]]
   (let [result (binding [*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/process-query)
                   {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
@@ -197,30 +194,31 @@
                         {:source-query source-query
                          :result       result})))))
 
-(s/defn ^:private source-query-form-ensure-metadata :- {:source-query    s/Any
-                                                        :source-metadata (su/non-empty [su/Map])
-                                                        s/Keyword        s/Any}
+(mu/defn ^:private source-query-form-ensure-metadata :- [:and [:map-of :keyword :any]
+                                                         [:map
+                                                          [:source-query :any]
+                                                          [:source-metadata [:+ :map]]]]
   "Add `:source-metadata` to a `source-query` if needed. If the source metadata had to be resolved (because Card with
   `card-id`) didn't already have it, save it so we don't have to resolve it again next time around."
-  [{:keys [source-metadata], :as source-query} :- {:source-query s/Any, s/Keyword s/Any}
-   table-id                                    :- su/IntGreaterThanZero
-   card-id                                     :- (s/maybe su/IntGreaterThanZero)]
+  [{:keys [source-metadata], :as source-query} :- [:and [:map-of :keyword :any] [:map [:source-query :any]]]
+   table-id                                    :- ms/PositiveInt
+   card-id                                     :- [:maybe ms/PositiveInt]]
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
-                           ;; if it already has `:source-metadata`, we're good to go.
-                           (seq source-metadata)
-                           [source-metadata false]
+                          ;; if it already has `:source-metadata`, we're good to go.
+                          (seq source-metadata)
+                          [source-metadata false]
 
-                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
-                           ;; get the expected metadata.
-                           (not (get-in source-query [:source-query :native]))
-                           [(mbql-query-metadata source-query) true]
+                          ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
+                          ;; get the expected metadata.
+                          (not (get-in source-query [:source-query :native]))
+                          [(mbql-query-metadata source-query) true]
 
-                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
-                           ;; expected metadata.
-                           :else
-                           [(native-query-metadata source-query) true])
+                          ;; otherwise if it's a native query we'll have to run the query really quickly to get the
+                          ;; expected metadata.
+                          :else
+                          [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]
     (assert (seq metadata))
     ;; save the result metadata so we don't have to do it again next time if applicable

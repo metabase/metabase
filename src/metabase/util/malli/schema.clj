@@ -1,4 +1,8 @@
 (ns metabase.util.malli.schema
+  "TODO: Consider refacor this namespace by defining custom schema with [[mr/def]] instead.
+
+  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
+  "
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]

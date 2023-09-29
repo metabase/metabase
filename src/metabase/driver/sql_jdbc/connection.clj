@@ -15,10 +15,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
-   [schema.core :as s]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -165,10 +163,10 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(s/defn ^:private jdbc-spec-hash
+(mu/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
+  [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 

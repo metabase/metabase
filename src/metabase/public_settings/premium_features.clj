@@ -4,10 +4,10 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   #_:clj-kondo/ignore
-   [clojure.spec.alpha :as spec]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -16,9 +16,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as schema]
+   [metabase.util.malli.schema :as ms]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
@@ -30,7 +28,7 @@
 
 (def token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
-  Specify the env var `METASTORE_DEV_SERVER_URL`."
+  sify the env var `METASTORE_DEV_SERVER_URL`."
   (or
    ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
    (when config/is-dev?
@@ -88,14 +86,13 @@
 (def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def ^:private TokenStatus
-  {:valid                               schema/Bool
-   :status                              su/NonBlankString
-   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
-   (schema/optional-key :features)      [su/NonBlankString]
-   (schema/optional-key :trial)         schema/Bool
-   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
-   ;; don't explode in the future if we add more to the response! lol
-   schema/Any                           schema/Any})
+  [:map
+   [:valid                          :boolean]
+   [:status                         ms/NonBlankString]
+   [:error-details {:optional true} [:maybe ms/NonBlankString]]
+   [:features      {:optional true} [:maybe ms/NonBlankString]]
+   [:trial         {:optional true} :boolean]
+   [:valid_thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
 
 (defn- fetch-token-and-parse-body
   [token base-url]
@@ -105,7 +102,7 @@
           :body
           (json/parse-string keyword)))
 
-(schema/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
@@ -164,7 +161,7 @@
       (locking lock
         (f token)))))
 
-(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
+(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
   [token :- ValidToken]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -204,7 +201,7 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when (schema/check ValidToken new-value)
+        (when-not (mc/validate ValidToken new-value)
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
@@ -223,7 +220,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn token-features :- #{su/NonBlankString}
+  (mu/defn token-features :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -292,7 +289,7 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
-  ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
+  ;; This sific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
@@ -389,7 +386,7 @@
   :getter     (fn [] (boolean ((token-features) "hosting")))
   :doc        false)
 
-;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
+;; `enhancements` are not currently a sific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)
 ;;
@@ -504,24 +501,24 @@
   [conformed-options]
   (into {} (map (comp (juxt :k :v) second) conformed-options)))
 
-(spec/def ::defenterprise-options
-  (spec/&
-   (spec/*
-    (spec/alt
-     :feature  (spec/cat :k #{:feature}  :v keyword?)
-     :fallback (spec/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
-   (spec/conformer options-conformer)))
+(s/def ::defenterprise-options
+  (s/&
+   (s/*
+    (s/alt
+     :feature  (s/cat :k #{:feature}  :v keyword?)
+     :fallback (s/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
+   (s/conformer options-conformer)))
 
-(spec/def ::defenterprise-args
-  (spec/cat :docstr  (spec/? string?)
-            :ee-ns   (spec/? symbol?)
-            :options (spec/? ::defenterprise-options)
-            :fn-tail (spec/* any?)))
+(s/def ::defenterprise-args
+  (s/cat :docstr  (s/? string?)
+            :ee-ns   (s/? symbol?)
+            :options (s/? ::defenterprise-options)
+            :fn-tail (s/* any?)))
 
-(spec/def ::defenterprise-schema-args
-  (spec/cat :return-schema      (spec/? (spec/cat :- #{:-}
-                                                  :schema any?))
-            :defenterprise-args (spec/? ::defenterprise-args)))
+(s/def ::defenterprise-schema-args
+  (s/cat :return-schema      (s/? (s/cat :- #{:-}
+                                             :schema any?))
+            :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
@@ -542,7 +539,7 @@
 
   A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
   always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
-  cases. You probably want to gate your code by a specific premium feature.)
+  cases. You probably want to gate your code by a sific premium feature.)
 
   ###### `:fallback`
 
@@ -552,10 +549,10 @@
   (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise args"
-                                      (spec/explain-data ::defenterprise-args parsed-args))))
+                                      (s/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
@@ -565,10 +562,10 @@
   usage details."
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-schema-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-schema-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise-schema args"
-                                      (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                                      (s/explain-data ::defenterprise-schema-args parsed-args))))
         args        (-> (:defenterprise-args parsed-args)
                         (assoc :schema? true)
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
