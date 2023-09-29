@@ -89,9 +89,8 @@
                  :model    model-name
                  :model_id model-id
                  :user_id  user-id)
-     ;; TODO: temporarily double-writing to the `activity` and `view_log` tables, delete this in Metabase v48
-     (if-not (#{:card-read :dashboard-read :table-read :card-query} unqualified-topic)
-      () #_(view-log/record-view! model-name model-id user-id details)
+     ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
+     (when-not (#{:card-read :dashboard-read :table-read :card-query} unqualified-topic)
       (activity/record-activity!
        :topic      topic
        :object     object
