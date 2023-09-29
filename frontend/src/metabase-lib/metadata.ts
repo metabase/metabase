@@ -12,6 +12,7 @@ import type {
   Bucket,
   BucketDisplayInfo,
   CardMetadata,
+  CardDisplayInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
