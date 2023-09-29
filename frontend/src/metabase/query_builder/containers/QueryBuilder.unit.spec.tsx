@@ -14,6 +14,7 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createSampleDatabase,
   ORDERS,
@@ -43,6 +44,8 @@ import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
 import QueryBuilder from "./QueryBuilder";
+
+registerVisualizations();
 
 const TEST_DB = createSampleDatabase();
 
