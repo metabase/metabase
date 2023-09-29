@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -56,7 +56,7 @@ describe("DataStep", () => {
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
       await setup();
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select none")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -68,7 +68,7 @@ describe("DataStep", () => {
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
       await setup(createMockNotebookStep({ topLevelQuery: query }));
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -80,7 +80,7 @@ describe("DataStep", () => {
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
       await setup(createMockNotebookStep({ topLevelQuery: query }));
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -96,7 +96,7 @@ describe("DataStep", () => {
       const step = createMockNotebookStep({ topLevelQuery: query });
       const { getNextColumn } = await setup(step);
 
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
       userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
@@ -107,7 +107,7 @@ describe("DataStep", () => {
     it("should allow de-selecting a column", async () => {
       const { getNextColumn } = await setup();
 
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
       userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
@@ -120,7 +120,7 @@ describe("DataStep", () => {
       const step = createMockNotebookStep({ topLevelQuery: query });
       const { getNextColumn } = await setup(step);
 
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
       userEvent.click(screen.getByLabelText("Select all"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
@@ -131,7 +131,7 @@ describe("DataStep", () => {
     it("should leave one column when de-selecting all columns", async () => {
       const { getNextQuery } = await setup();
 
-      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Pick columns"));
       userEvent.click(screen.getByLabelText("Select none"));
 
       const nextQuery = getNextQuery();

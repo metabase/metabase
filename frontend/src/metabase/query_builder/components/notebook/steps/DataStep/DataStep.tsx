@@ -7,13 +7,11 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 
 import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
-import {
-  FieldPickerContentContainer,
-  FieldsPickerIcon,
-  FIELDS_PICKER_STYLES,
-} from "../../FieldsPickerIcon";
+import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
+import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
   topLevelQuery,
@@ -56,9 +54,9 @@ export const DataStep = ({
           }
           isInitiallyOpen={!query.tableId()}
           triggerElement={
-            <FieldPickerContentContainer>
+            <DataStepCell>
               {table ? table.displayName() : t`Pick your starting data`}
-            </FieldPickerContentContainer>
+            </DataStepCell>
           }
         />
       </NotebookCellItem>
