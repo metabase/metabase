@@ -249,7 +249,6 @@ export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: Moment[];
-  withTime: boolean;
 };
 
 export type RelativeDateFilterParts = {

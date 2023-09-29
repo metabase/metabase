@@ -3,12 +3,14 @@ import * as ML from "cljs/metabase.lib.js";
 
 import {
   BOOLEAN_FILTER_OPERATORS,
+  DATE_FORMAT,
   EXCLUDE_DATE_FILTER_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
+  TIME_FORMAT,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
@@ -268,12 +270,14 @@ export function isBooleanFilter(
   return booleanFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function specificDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, withTime }: SpecificDateFilterParts,
-): ExpressionClause {
-  throw new TypeError();
+export function specificDateFilterClause({
+  operator,
+  column,
+  values,
+}: SpecificDateFilterParts): ExpressionClause {
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  const valueStrings = values.map(value => value.format(DATE_FORMAT));
+  return expressionClause(operator, [columnWithoutBucket, ...valueStrings]);
 }
 
 export function specificDateFilterParts(
@@ -295,8 +299,8 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const values = valueStrings.map(value => moment.utc(value, moment.ISO_8601));
-  if (!values.every(date => date.isValid())) {
+  const values = valueStrings.map(value => moment.utc(value, DATE_FORMAT));
+  if (!values.every(value => value.isValid())) {
     return null;
   }
 
@@ -304,7 +308,6 @@ export function specificDateFilterParts(
     column,
     operator,
     values,
-    withTime: false,
   };
 }
 
@@ -442,7 +445,7 @@ function parseExcludeDateFilterValue(
   value: string,
   bucketName: ExcludeDateFilterBucketName,
 ): number {
-  const date = moment.utc(value, moment.ISO_8601);
+  const date = moment.utc(value, DATE_FORMAT);
 
   switch (bucketName) {
     case "hour-of-day":
@@ -493,7 +496,7 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const valueStrings = values.map(value => value.format("HH:mm:00.000"));
+  const valueStrings = values.map(value => value.format(TIME_FORMAT));
   return expressionClause(operator, [column, ...valueStrings]);
 }
 
@@ -516,7 +519,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const values = valueStrings.map(value => moment.utc(value, "HH:mm:ss.SSS"));
+  const values = valueStrings.map(value => moment.utc(value, TIME_FORMAT));
   if (!values.every(date => date.isValid())) {
     return null;
   }
