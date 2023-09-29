@@ -159,6 +159,14 @@ export const getYTickWidths = (
   };
 };
 
+/**
+ * The reason this function exists in the first place is because of
+ * a bug in visx's `getTicks` function. It's supposed to ensure that
+ * the result ticks array has a length less than or equal to `numTicks`,
+ * but sometimes it returns an array with a length greater than `numTicks`.
+ *
+ * If this bug is fixed in visx, this function can be removed.
+ */
 export function fixTimeseriesTicksExceedXTickCount(
   xScaleType: XAxisType,
   xScale: XScale["scale"],
