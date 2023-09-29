@@ -1,11 +1,17 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
-import { isBoolean, isNumeric, isString, isTime } from "./column_types";
+import {
+  availableTemporalBuckets,
+  temporalBucket,
+  withTemporalBucket,
+} from "metabase-lib/temporal_bucket";
+import { isBoolean, isDate, isNumeric, isString, isTime } from "./column_types";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   BooleanFilterParts,
+  BucketName,
   ColumnMetadata,
   ExcludeDateFilterParts,
   ExpressionClause,
@@ -272,13 +278,27 @@ export function isRelativeDateFilter(
   return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function excludeDateFilterClause({
-  operator,
-  column,
-  values,
-  bucket,
-}: ExcludeDateFilterParts): ExpressionClause {
-  throw new TypeError();
+const DATE_FORMAT = "yyyy-MM-dd";
+const TIME_FORMAT = "HH:mm:SS.sss";
+
+export function excludeDateFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
+): ExpressionClause {
+  const bucket = availableTemporalBuckets(query, stageIndex, column).find(
+    bucket => displayInfo(query, stageIndex, bucket).shortName === bucketName,
+  );
+  if (!bucket) {
+    throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
+  }
+
+  const bucketColumn = withTemporalBucket(column, bucket);
+  const bucketValues = values.map(value =>
+    formatExcludeDateFilterValue(value, bucketName),
+  );
+
+  return expressionClause(operator, [bucketColumn, ...bucketValues]);
 }
 
 export function excludeDateFilterParts(
@@ -286,7 +306,83 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return null;
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isStringLiteralArray(values) ||
+    !isFilterOperator(query, stageIndex, column, operator)
+  ) {
+    return null;
+  }
+
+  const bucket = temporalBucket(column);
+  if (!bucket) {
+    return null;
+  }
+
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const bucketValues = values.map(value =>
+    parseExcludeDateFilterValue(value, bucketInfo.shortName),
+  );
+
+  return {
+    column,
+    operator,
+    values: bucketValues,
+    bucket: bucketInfo.shortName,
+  };
+}
+
+function parseExcludeDateFilterValue(
+  value: string,
+  bucketName: BucketName,
+): number {
+  const date = moment(value, DATE_FORMAT);
+
+  switch (bucketName) {
+    case "hour-of-day":
+      return date.hour();
+    case "day-of-week":
+      return date.isoWeekday();
+    case "month-of-year":
+      return date.month() + 1; // moment.month() is 0-based
+    case "quarter-of-year":
+      return date.quarter();
+    default:
+      return 0;
+  }
+}
+
+function formatExcludeDateFilterValue(
+  value: number,
+  bucketName: BucketName,
+): string {
+  const date = moment();
+
+  switch (bucketName) {
+    case "hour-of-day":
+      date.hour(value);
+      break;
+    case "day-of-week":
+      date.isoWeekday(value);
+      break;
+    case "month-of-year":
+      date.month(value - 1); // moment.month() is 0-based
+      break;
+    case "quarter-of-year":
+      date.quarter(value);
+      break;
+    default:
+      throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
+  }
+
+  return date.format(DATE_FORMAT);
 }
 
 export function isExcludeDateFilter(
@@ -297,8 +393,6 @@ export function isExcludeDateFilter(
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-const TIME_FORMAT = "HH:mm:SS.sss";
-
 export function timeFilterClause({
   operator,
   column,
@@ -306,7 +400,7 @@ export function timeFilterClause({
 }: TimeFilterParts): ExpressionClause {
   const dates = values.map(value => moment(value, moment.ISO_8601));
   if (!dates.every(date => date.isValid())) {
-    throw new TypeError();
+    throw new TypeError("Invalid date format");
   }
 
   return expressionClause(operator, [
