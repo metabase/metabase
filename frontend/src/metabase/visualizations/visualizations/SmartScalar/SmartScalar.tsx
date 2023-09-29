@@ -135,7 +135,7 @@ export function SmartScalar({
 }: VisualizationProps & {
   totalNumGridCols: number;
 }) {
-  const _scalar = useRef(null);
+  const scalarRef = useRef(null);
 
   const metricIndex = cols.findIndex(col => !isDate(col));
   const dimensionIndex = cols.findIndex(col => isDate(col));
@@ -235,11 +235,14 @@ export function SmartScalar({
           onClick={
             isClickable
               ? () =>
-                  _scalar.current &&
-                  onVisualizationClick({ ...clicked, element: _scalar.current })
+                  scalarRef.current &&
+                  onVisualizationClick({
+                    ...clicked,
+                    element: scalarRef.current,
+                  })
               : undefined
           }
-          ref={_scalar}
+          ref={scalarRef}
         >
           <ScalarValue
             fontFamily={fontFamily}
