@@ -1,11 +1,16 @@
 import userEvent from "@testing-library/user-event";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockNotebookStep } from "../../test-utils";
 import { DataStep } from "./DataStep";
@@ -17,7 +22,10 @@ const createQueryWithFields = (columnNames: string[]) => {
   return Lib.withFields(query, 0, columns);
 };
 
-const setup = async (step = createMockNotebookStep()) => {
+const setup = async (
+  step = createMockNotebookStep(),
+  { readOnly = false }: { readOnly?: boolean } = {},
+) => {
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
@@ -27,6 +35,7 @@ const setup = async (step = createMockNotebookStep()) => {
       step={step}
       topLevelQuery={step.topLevelQuery}
       query={step.query}
+      readOnly={readOnly}
       color="brand"
       isLastOpened={false}
       reportTimezone="UTC"
@@ -39,6 +48,12 @@ const setup = async (step = createMockNotebookStep()) => {
     return lastCall[0];
   };
 
+  const getNextTableName = () => {
+    const query = getNextQuery();
+    const [sampleColumn] = Lib.visibleColumns(query, 0);
+    return Lib.displayInfo(query, 0, sampleColumn).table?.displayName;
+  };
+
   const getNextColumn = (columnName: string) => {
     const nextQuery = getNextQuery();
     const nextFields = Lib.fieldableColumns(nextQuery, 0);
@@ -49,10 +64,40 @@ const setup = async (step = createMockNotebookStep()) => {
 
   await screen.findByText("Orders");
 
-  return { getNextQuery, getNextColumn };
+  return { getNextQuery, getNextTableName, getNextColumn };
 };
 
 describe("DataStep", () => {
+  it("should render without a table selected", async () => {
+    const question = Question.create({ databaseId: SAMPLE_DB_ID });
+    const legacyQuery = question.query() as StructuredQuery;
+    const query = question._getMLv2Query();
+    await setup(
+      createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
+    );
+
+    expect(screen.getByText("Pick your starting data")).toBeInTheDocument();
+
+    // Ensure the table picker is not open
+    expect(screen.getByText("Sample Database")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("Products")).toBeInTheDocument();
+    expect(screen.getByText("People")).toBeInTheDocument();
+  });
+
+  it("should render with a selected table", async () => {
+    await setup();
+
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Pick your starting data"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    expect(screen.queryByText("Products")).not.toBeInTheDocument();
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+  });
+
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
       await setup();
@@ -136,6 +181,22 @@ describe("DataStep", () => {
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
+    });
+
+    it("should not display fields picker in read-only mode", async () => {
+      await setup(createMockNotebookStep(), { readOnly: true });
+      expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+
+    it("should not display fields picker until a table is selected", async () => {
+      const question = Question.create({ databaseId: SAMPLE_DB_ID });
+      const legacyQuery = question.query() as StructuredQuery;
+      const query = question._getMLv2Query();
+      await setup(
+        createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
+      );
+
+      expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
   });
 });
