@@ -34,14 +34,14 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (mc/validate [:maybe [:sequential ms/Parameter]] parameters)
+  (when-not (mc/validate [:maybe [:sequential ms/Parameter]] parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (mc/validate [:maybe [:sequential ms/ParameterMapping]] parameter_mappings)
+  (when-not (mc/validate [:maybe [:sequential ms/ParameterMapping]] parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
