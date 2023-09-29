@@ -172,3 +172,60 @@ export const getSortedSeriesModels = (
 
   return orderedSeriesModels;
 };
+
+type ReplacerFn = (dataKey: string, value: RowValue) => RowValue;
+
+/**
+ * Creates a new dataset with the values replaced according to the provided replacer function.
+ *
+ * @param {Record<DataKey, RowValue>[]} dataset - The original dataset.
+ * @param {ReplacerFn} replacer - The function that will be used to replace values.
+ * @returns {Record<DataKey, RowValue>[]} A new dataset with the replaced values.
+ */
+export const replaceValues = (
+  dataset: Record<DataKey, RowValue>[],
+  replacer: ReplacerFn,
+) => {
+  return dataset.map(datum => {
+    return Object.keys(datum).reduce((updatedRow, dataKey) => {
+      updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
+      return updatedRow;
+    }, {} as Record<DataKey, RowValue>);
+  });
+};
+
+/**
+ * Creates a replacer function that replaces null values with zeros for specified series.
+ *
+ * @param {ComputedVisualizationSettings} settings - The computed visualization settings.
+ * @param {SeriesModel[]} seriesModels - The series models for the chart.
+ * @returns {ReplacerFn} A replacer function that replaces null values with zeros for specified series.
+ */
+export const getNullReplacerFunction = (
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+): ReplacerFn => {
+  const replaceNullsWithZeroDataKeys = seriesModels.reduce(
+    (seriesDataKeys, seriesModel) => {
+      const shouldReplaceNullsWithZeros =
+        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
+          "line.missing"
+        ] === "zero";
+
+      if (shouldReplaceNullsWithZeros) {
+        seriesDataKeys.add(seriesModel.dataKey);
+      }
+
+      return seriesDataKeys;
+    },
+    new Set<DataKey>(),
+  );
+
+  return (dataKey, value) => {
+    if (replaceNullsWithZeroDataKeys.has(dataKey) && value === null) {
+      return 0;
+    }
+
+    return value;
+  };
+};
