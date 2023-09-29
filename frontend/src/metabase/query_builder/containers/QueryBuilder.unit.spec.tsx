@@ -546,7 +546,7 @@ describe("QueryBuilder", () => {
         jest.restoreAllMocks();
       });
 
-      it("should show custom warning modal when leaving edited question via SPA navigation", async () => {
+      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
           initialRoute: "/home",
@@ -578,7 +578,7 @@ describe("QueryBuilder", () => {
         ).toBeInTheDocument();
       });
 
-      it("should not show custom warning modal when running edited question", async () => {
+      it("does not show custom warning modal when running edited question", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
           initialRoute: "/home",
@@ -616,7 +616,7 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should not show custom warning modal when saving edited question", async () => {
+      it("does not show custom warning modal when saving edited question", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
           initialRoute: "/home",
