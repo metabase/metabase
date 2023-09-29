@@ -289,7 +289,7 @@ export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
 export type TimeFilterParts = {
   operator: TimeFilterOperatorName;
   column: ColumnMetadata;
-  values: Moment[]; // ISO 8601 date with time
+  values: Moment[];
 };
 
 declare const Join: unique symbol;

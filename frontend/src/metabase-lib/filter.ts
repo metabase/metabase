@@ -480,7 +480,7 @@ function formatExcludeDateFilterValue(
       break;
   }
 
-  return date.format("yyyy-MM-dd");
+  return date.format(DATE_FORMAT);
 }
 
 export function isExcludeDateFilter(
