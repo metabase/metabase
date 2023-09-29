@@ -65,6 +65,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/RecentViews
     :model/Revision
     :model/Secret
     :model/Session

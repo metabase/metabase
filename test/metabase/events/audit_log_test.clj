@@ -1,11 +1,15 @@
 (ns metabase.events.audit-log-test
+  "Tests for `publish-event!` handlers which record events to the audit log. These tests generally call `publish-event!`
+  with the appropriate arguments for a given event, and check that the correct data was written to the audit_log table.
+  Integration tests that check that feature code is calling `publish-event!` in the correct places should be placed in
+  the test code for the feature."
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+    :refer [Card Dashboard DashboardCard Table Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -21,16 +25,6 @@
 
   ([topic model-id]
    (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  :topic    topic
-                  :model_id model-id
-                  {:order-by [[:id :desc]]})))
-
-(defn- activity
-  ([topic]
-   (activity topic nil))
-
-  ([topic model-id]
-   (t2/select-one [:model/Activity :topic :user_id :model :model_id :database_id :table_id :details]
                   :topic    topic
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
@@ -115,6 +109,43 @@
                                 dataset? (assoc :model? true))}
                    (event "card-delete" (:id card)))))))))))
 
+(deftest card-read-event-test
+  (testing :card-read
+    (doseq [dataset? [false true]]
+      (testing (if dataset? "Dataset" "Card")
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
+          (mt/with-model-cleanup [:model/AuditLog]
+            (mt/with-test-user :rasta
+              (is (= card
+                     (events/publish-event! :event/card-read card)))
+              (is (partial=
+                   {:topic    :card-read
+                    :user_id  (mt/user->id :rasta)
+                    :model    "Card"
+                    :model_id (:id card)
+                    :details  (cond-> {:name "My Cool Card", :description nil}
+                                dataset? (assoc :model? true))}
+                   (event "card-read" (:id card)))))))))))
+
+(deftest card-query-event-test
+  (testing :card-query
+    (doseq [dataset? [false true]]
+      (testing (if dataset? "Dataset" "Card")
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
+          (mt/with-model-cleanup [:model/AuditLog]
+            (mt/with-test-user :rasta
+              (events/publish-event! :event/card-query {:card_id      (u/the-id card)
+                                                        :cached       false
+                                                        :ignore_cache false
+                                                        :context      :question})
+              (is (partial=
+                   {:topic    :card-query
+                    :user_id  (mt/user->id :rasta)
+                    :model    "Card"
+                    :model_id (:id card)
+                    :details  {:cached false :ignore_cache false :context "question"}}
+                   (event "card-query" (:id card)))))))))))
+
 (deftest dashboard-create-event-test
   (testing :dashboard-create
     (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
@@ -195,24 +226,52 @@
                                              :card_id     (:id card)}]}}
                (event "dashboard-remove-cards" (:id dashboard)))))))))
 
+(deftest dashboard-read-event-test
+  (testing :dashboard-read
+    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
+      (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-test-user :rasta
+          (is (= dashboard
+                 (events/publish-event! :event/dashboard-read dashboard)))
+          (is (partial=
+               {:topic    :dashboard-read
+                :user_id  (mt/user->id :rasta)
+                :model    "Dashboard"
+                :model_id (:id dashboard)
+                :details  {:name "My Cool Dashboard", :description nil}}
+               (event "dashboard-read" (:id dashboard)))))))))
+
+(deftest table-read-event-test
+  (testing :table-read
+    (t2.with-temp/with-temp [Table table {:name "My Cool Table"}]
+      (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-test-user :rasta
+          (is (= table
+                 (events/publish-event! :event/table-read table)))
+          (is (partial=
+               {:topic    :table-read
+                :user_id  (mt/user->id :rasta)
+                :model    "Table"
+                :model_id (:id table)
+                :details  {}}
+               (event "table-read" (:id table)))))))))
+
 (deftest install-event-test
   (testing :install
-    (mt/with-model-cleanup [Activity]
+    (mt/with-model-cleanup [:model/AuditLog]
       (is (= {}
              (events/publish-event! :event/install {})))
       (is (= {:topic       :install
               :user_id     nil
-              :model       "install"
+              :model       nil
               :model_id    nil
-              :database_id nil
-              :table_id    nil
               :details     {}}
-             (activity "install"))))))
+             (event "install"))))))
 
 (deftest metric-create-event-test
   (testing :metric-create
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
           (is (= metric
                  (events/publish-event! :event/metric-create metric)))
@@ -229,7 +288,7 @@
 (deftest metric-update-event-test
   (testing :metric-update
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (let [event (-> (assoc metric
                                 :actor_id         (mt/user->id :rasta)
@@ -252,7 +311,7 @@
 (deftest metric-delete-event-test
   (testing :metric-delete
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (let [event (assoc metric
                             :actor_id         (mt/user->id :rasta)
@@ -273,7 +332,7 @@
 (deftest pulse-create-event-test
   (testing :pulse-create
     (t2.with-temp/with-temp [Pulse pulse]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (is (= pulse
                 (events/publish-event! :event/pulse-create pulse)))
@@ -287,7 +346,7 @@
 (deftest pulse-delete-event-test
   (testing :pulse-delete
     (t2.with-temp/with-temp [Pulse pulse]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (is (= pulse
                 (events/publish-event! :event/pulse-delete pulse)))
@@ -301,7 +360,7 @@
 (deftest segment-create-event-test
   (testing :segment-create
     (t2.with-temp/with-temp [Segment segment]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (is (= segment
                  (events/publish-event! :event/segment-create segment)))
@@ -318,7 +377,7 @@
 (deftest segment-update-event-test
   (testing :segment-update
     (t2.with-temp/with-temp [Segment segment]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (let [event (-> segment
                          (assoc :actor_id         (mt/user->id :rasta)
@@ -341,7 +400,7 @@
 (deftest segment-delete-event-test
   (testing :segment-delete
     (t2.with-temp/with-temp [Segment segment]
-      (mt/with-model-cleanup [Activity]
+      (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (let [event (assoc segment
                               :actor_id         (mt/user->id :rasta)
@@ -362,7 +421,7 @@
 (deftest user-joined-event-test
   (testing :user-joined
     ;; TODO - what's the difference between `user-login` / `user-joined`?
-    (mt/with-model-cleanup [Activity]
+    (mt/with-model-cleanup [:model/AuditLog]
       (let [event {:user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/user-joined event))))

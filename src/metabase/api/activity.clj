@@ -5,11 +5,11 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.util :as mdb.u]
-   [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.recent-views :as recent-views]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -18,24 +18,24 @@
 (defn- models-query
   [model ids]
   (t2/select
-      (case model
-        "card"      [Card
-                     :id :name :collection_id :description :display
-                     :dataset_query :dataset :archived
-                     :collection.authority_level]
-        "dashboard" [Dashboard
-                     :id :name :collection_id :description
-                     :archived
-                     :collection.authority_level]
-        "table"     [Table
-                     :id :name :db_id
-                     :display_name :initial_sync_status
-                     :visibility_type])
-      (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(mdb.u/qualify model-symb %)]
-        (cond-> {:where [:in (self-qualify :id) ids]}
-          (not= model "table")
-          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+   (case model
+     "card"      [Card
+                  :id :name :collection_id :description :display
+                  :dataset_query :dataset :archived
+                  :collection.authority_level]
+     "dashboard" [Dashboard
+                  :id :name :collection_id :description
+                  :archived
+                  :collection.authority_level]
+     "table"     [Table
+                  :id :name :db_id
+                  :display_name :initial_sync_status
+                  :visibility_type])
+   (let [model-symb (symbol (str/capitalize model))
+         self-qualify #(mdb.u/qualify model-symb %)]
+     (cond-> {:where [:in (self-qualify :id) ids]}
+       (not= model "table")
+       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -69,6 +69,7 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
+  ;; TODO update to use RecentViews instead of ViewLog
   (let [dashboard-and-table-views (t2/select [ViewLog
                                               [[:min :view_log.user_id] :user_id]
                                               :model
@@ -115,7 +116,7 @@
 (api/defendpoint GET "/recent_views"
   "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views            (view-log/user-recent-views)
+  (let [views            (recent-views/user-recent-views api/*current-user-id* 10)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let
@@ -135,7 +136,7 @@
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
-  (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
+  (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id api/*current-user-id*)]
     (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
       (if (mi/can-read? dashboard)
         dashboard
