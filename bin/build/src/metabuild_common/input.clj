@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabuild-common.output :as out]))
 
@@ -69,7 +70,7 @@
                                     (format "Please enter %s" (str/join " or " (map pr-str letter-strs)))))
                      options)]
     (out/safe-println (str/trim letter))
-    (keyword (str/trim (str/lower-case letter)))))
+    (keyword (str/trim (u/lower-case-en letter)))))
 
 (defn yes-or-no-prompt
   "Prompt user to type `Y` or `N`; prompt will repeat until one of those two letters is typed. Returns `true` or `false`

@@ -15,7 +15,7 @@
   (u/step "Create resources/locales.clj"
     (let [file (u/filename u/project-root-directory "resources" "locales.clj")]
       (u/delete-file-if-exists! file)
-      (spit file (with-out-str (log/info (locales-dot-edn))))
+      (spit file (with-out-str (log/infof (locales-dot-edn))))
       (u/assert-file-exists file))))
 
 (defn- create-artifacts-for-locale! [locale]

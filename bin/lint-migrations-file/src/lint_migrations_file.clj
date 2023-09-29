@@ -4,10 +4,10 @@
    [change-set.unstrict]
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
-   [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (comment change-set.strict/keep-me
@@ -72,7 +72,7 @@
       (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
             cols   (filter (fn [col-def]
                              (contains? target-types
-                                        (str/lower-case (or (get-in col-def [:column :type]) ""))))
+                                        (u/lower-case-en (or (get-in col-def [:column :type]) ""))))
                      (get-in x [op :columns]))]
         (doseq [col cols]
           (swap! found-cols conj col))
@@ -80,7 +80,7 @@
 
       ;; a modifyDataType change; see if it changes a column to target-type
       (:modifyDataType x)
-      (if (= target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
+      (if (= target-types (u/lower-case-en (or (get-in x [:modifyDataType :newDataType]) "")))
         (do (swap! found-cols conj x)
             x)
         x)
