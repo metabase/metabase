@@ -1,25 +1,21 @@
+/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import type { SearchFilterDropdown } from "metabase/search/types";
-import { CreatedByDisplay } from "metabase/search/components/filters/CreatedByFilter/CreatedByDisplay";
-import { CreatedByContent } from "metabase/search/components/filters/CreatedByFilter/CreatedByContent";
+import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
+import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
+import {
+  convertUserIdToString,
+  parseUserIdString,
+} from "metabase/search/utils/user-search-params";
 
 export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   iconName: "person",
   title: t`Creator`,
   type: "dropdown",
-  DisplayComponent: CreatedByDisplay,
-  ContentComponent: CreatedByContent,
-  fromUrl: value => {
-    if (!value || Array.isArray(value)) {
-      return null;
-    }
-    const numValue = Number(value);
-
-    if (!numValue || isNaN(numValue) || numValue <= 0) {
-      return null;
-    }
-
-    return numValue;
-  },
-  toUrl: value => (Number.isInteger(value) ? String(value) : null),
+  DisplayComponent: ({ value }) => (
+    <UserNameDisplay title={CreatedByFilter.title} value={value} />
+  ),
+  ContentComponent: SearchUserPicker,
+  fromUrl: parseUserIdString,
+  toUrl: convertUserIdToString,
 };

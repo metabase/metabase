@@ -3,7 +3,7 @@ import { setupUsersEndpoints } from "__support__/server-mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { User } from "metabase-types/api";
 import type { CreatedByFilterProps } from "metabase/search/types";
-import { CreatedByDisplay } from "./CreatedByDisplay";
+import { UserNameDisplay } from "./UserNameDisplay";
 
 const TEST_USERS = [
   createMockUser({ id: 1, common_name: "Alice" }),
@@ -17,13 +17,13 @@ type SetupProps = {
 
 const setup = async ({ users = TEST_USERS, value = null }: SetupProps = {}) => {
   setupUsersEndpoints(users);
-  renderWithProviders(<CreatedByDisplay value={value} />);
+  renderWithProviders(<UserNameDisplay value={value} />);
   await waitFor(() => {
     expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
   });
 };
 
-describe("CreatedByDisplay", () => {
+describe("UserNameDisplay", () => {
   it("displays correct user name when data is available", async () => {
     await setup({ users: TEST_USERS, value: 1 });
     expect(screen.getByText("Alice")).toBeInTheDocument();
