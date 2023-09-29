@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
@@ -88,6 +89,11 @@ describe("InlineCategoryPicker", () => {
   const remappedCategoryField = checkNotNull(
     metadata.field(REMAPPED_CATEGORY_FIELD),
   );
+
+  beforeEach(() => {
+    // mock all requests to field values
+    fetchMock.get(/\/api\/field\/\d+\/values/, []);
+  });
 
   it("should render an inline category picker", () => {
     const testFilter = new Filter(

@@ -1,5 +1,6 @@
 /* eslint-disable react/display-name, react/prop-types */
 import { Component } from "react";
+import fetchMock from "fetch-mock";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import {
@@ -275,6 +276,8 @@ class ErrorBoundary extends Component {
 }
 
 function setup({ question, subHead = false, isObjectDetail = false } = {}) {
+  fetchMock.get(`path:/api/card/${SOURCE_QUESTION_ID}`, {});
+
   const onError = jest.fn();
   renderWithProviders(
     <ErrorBoundary onError={onError}>

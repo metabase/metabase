@@ -23,6 +23,8 @@ export function setupCardEndpoints(card: Card) {
     })),
     dimension_options: {},
   });
+
+  fetchMock.get(`path:/api/card/${card.id}/series`, []);
 }
 
 export function setupCardsEndpoints(cards: Card[]) {

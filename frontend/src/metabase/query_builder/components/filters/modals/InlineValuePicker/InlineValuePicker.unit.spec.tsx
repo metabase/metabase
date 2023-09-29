@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { renderWithProviders } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
 
@@ -18,6 +19,9 @@ const PK_FIELD_ID = 1;
 const TEXT_FIELD_ID = 2;
 
 describe("InlineValuePicker", () => {
+  beforeEach(() => {
+    fetchMock.get(/\/api\/field\/\d+\/values/, []);
+  });
   const metadata = createMockMetadata({
     fields: [
       createMockField({

@@ -1,5 +1,6 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
@@ -40,6 +41,7 @@ function setup({
     }),
   });
   const metadata = getMetadata(state);
+  fetchMock.get(`path:/api/database/${database.id}/usage_info`, {});
 
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
