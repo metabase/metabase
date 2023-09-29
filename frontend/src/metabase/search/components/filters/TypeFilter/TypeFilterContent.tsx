@@ -6,7 +6,7 @@ import { enabledSearchTypes } from "metabase/search/constants";
 import { Checkbox, Stack } from "metabase/ui";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { EnabledSearchModelType } from "metabase-types/api";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/SearchFilterPopoverWrapper";
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/SearchFilterPopoverWrapper/SearchFilterPopoverWrapper";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =

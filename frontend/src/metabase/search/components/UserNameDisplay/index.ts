@@ -1,1 +1,1 @@
-export * from "./UserNameDisplay";
+export { UserNameDisplay } from "./UserNameDisplay";
