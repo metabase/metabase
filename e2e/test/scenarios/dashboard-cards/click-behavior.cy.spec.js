@@ -200,6 +200,74 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.findByText("Orders");
   });
 
+  it("should allow removing click behavior for a column hidden via visualization settings (metabase#18298)", () => {
+    const dashboardDetails = {
+      name: "18298 dashboard",
+    };
+    const questionDetails = {
+      name: "18298 orders question",
+      query: { "source-table": ORDERS_ID },
+    };
+
+    cy.createQuestionAndDashboard({
+      dashboardDetails,
+      questionDetails,
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.log('Add click behavior to "User ID" column and point it to itself');
+      addOrUpdateDashboardCard({
+        dashboard_id: dashboard_id,
+        card_id: card_id,
+        card: {
+          visualization_settings: {
+            column_settings: {
+              [`["ref",["field",${ORDERS.USER_ID},null]]`]: {
+                click_behavior: {
+                  type: "link",
+                  linkType: "question",
+                  targetId: card_id,
+                  parameterMapping: {},
+                },
+              },
+            },
+          },
+        },
+      });
+
+      cy.log('Update the question to hide "User ID" column');
+      cy.request("PUT", `/api/card/${card_id}`, {
+        dataset_query: {
+          database: 1,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+              ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+              ["field", ORDERS.TAX, { "base-type": "type/Float" }],
+              ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+              ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+            ],
+          },
+        },
+      });
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    cy.log('Select "click behavior" option');
+    showDashboardCardActions();
+    cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
+
+    sidebar().within(() => {
+      cy.findByText("Go to custom destination").should("be.visible");
+      // TODO: Add assertions for the click behavior of the hidden column
+    });
+  });
+
   it(
     "should allow settings click behavior on boolean fields (metabase#18067)",
     { tags: "@external" },
