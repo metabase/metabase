@@ -143,8 +143,6 @@ function getOptionType(
       return "empty";
     case "not-null":
       return "not-empty";
-    default:
-      return "true";
   }
 }
 
