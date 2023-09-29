@@ -66,7 +66,7 @@ export function BooleanFilterPicker({
   );
 
   const visibleOptions = useMemo(() => {
-    return isExpanded ? options : options.filter(option => option.isAdvanced);
+    return isExpanded ? options : options.filter(option => !option.isAdvanced);
   }, [options, isExpanded]);
 
   const handleOptionChange = (type: string) => {
