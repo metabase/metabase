@@ -77,13 +77,13 @@
                                                  :name "Price > 2"
                                                  :description "Price more than 2"
                                                  :collection_id collection-id}]
-         (let [fully-qualified-name (str "/collections/root/collections/:snippets/Base Collection/collections"
-                                         "/:snippets/Nested Collection/snippets/Price %3E 2")]
-           (is (= fully-qualified-name
-                  (names/fully-qualified-name snippet)))
-           (is (= {:collection collection-id
-                   :snippet    (u/the-id snippet)}
-                  (names/fully-qualified-name->context fully-qualified-name))))))
+        (let [fully-qualified-name (str "/collections/root/collections/:snippets/Base Collection/collections"
+                                        "/:snippets/Nested Collection/snippets/Price %3E 2")]
+          (is (= fully-qualified-name
+                 (names/fully-qualified-name snippet)))
+          (is (= {:collection collection-id
+                  :snippet    (u/the-id snippet)}
+                 (names/fully-qualified-name->context fully-qualified-name))))))
     (testing " with path elements matching one of our entity names"
       ; these drivers keep table names lowercased, causing "users" table to clash with our entity name "users"
       (mt/test-drivers #{:postgres :mysql}

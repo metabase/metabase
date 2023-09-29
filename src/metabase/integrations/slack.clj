@@ -283,7 +283,7 @@
 (def ^:private NonEmptyByteArray
   [:and
    (ms/InstanceOfClass (Class/forName "[B"))
-   not-empty])
+   [:fn not-empty]])
 
 (mu/defn join-channel!
   "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.

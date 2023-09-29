@@ -325,16 +325,17 @@
                       (if (empty? more)
                         new-context
                         (recur new-context more))))]
-      (when (and
-             (not (mc/validate [:maybe Context] context))
-             (not *suppress-log-name-lookup-exception*))
+      (if (and
+           (not (mc/validate [:maybe Context] context))
+           (not *suppress-log-name-lookup-exception*))
         (log/warn
          (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
                        (str/join ", " (map name (keys context)))
                        fully-qualified-name)
                   {:fully-qualified-name fully-qualified-name
                    :resolve-name-failed? true
-                   :context              context}))))))
+                   :context              context}))
+        context))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"

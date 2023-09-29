@@ -226,7 +226,7 @@
               (testing "Env var value SHOULD NOT come back with [[setting/writable-settings]] -- should NOT be WRITABLE"
                 (is (malli= [:map
                              [:key [:= :custom-geojson]]
-                             [:value [:= nil]]
+                             [:value nil?]
                              [:is_env_setting [:= true]]
                              [:env_name       [:= "MB_CUSTOM_GEOJSON"]]
                              [:description    ms/NonBlankString]

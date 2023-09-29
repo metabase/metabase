@@ -12,7 +12,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [user-agent :as user-agent])
   (:import
    (java.time ZoneId)))
@@ -154,7 +153,7 @@
 (mu/defn geocode-ip-addresses :- [:maybe IPAddress->Info]
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
-  [ip-addresses :- [:sequential :string]]
+  [ip-addresses :- [:maybe [:sequential :string]]]
   (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
