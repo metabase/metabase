@@ -21,7 +21,7 @@ import {
 } from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
-
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
@@ -266,11 +266,7 @@ function QueryBuilder(props) {
     toggleBookmark(id);
   };
 
-  const [scheduledCallback, setScheduledCallback] = useState(null);
-
-  useEffect(() => {
-    scheduledCallback?.();
-  }, [scheduledCallback]);
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
 
   const handleCreate = useCallback(
     async newQuestion => {
@@ -279,22 +275,20 @@ function QueryBuilder(props) {
         newQuestion.setPinned(shouldBePinned),
       );
 
-      setScheduledCallback(() => async () => {
+      scheduleCallback(async () => {
         await updateUrl(createdQuestion, { dirty: false });
 
         setRecentlySaved("created");
-
-        setScheduledCallback(null);
       });
     },
-    [apiCreateQuestion, setRecentlySaved, updateUrl],
+    [apiCreateQuestion, setRecentlySaved, updateUrl, scheduleCallback],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
 
-      setScheduledCallback(() => async () => {
+      scheduleCallback(async () => {
         if (!rerunQuery) {
           await updateUrl(updatedQuestion, { dirty: false });
         }
@@ -304,11 +298,16 @@ function QueryBuilder(props) {
         } else {
           setRecentlySaved("updated");
         }
-
-        setScheduledCallback(null);
       });
     },
-    [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
+    [
+      fromUrl,
+      apiUpdateQuestion,
+      updateUrl,
+      onChangeLocation,
+      setRecentlySaved,
+      scheduleCallback,
+    ],
   );
 
   useMount(() => {
@@ -452,7 +451,7 @@ function QueryBuilder(props) {
       />
 
       <LeaveConfirmationModal
-        isEnabled={shouldShowUnsavedChangesWarning && !scheduledCallback}
+        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
         route={route}
       />
