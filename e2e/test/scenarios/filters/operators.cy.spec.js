@@ -101,7 +101,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Created At").click();
-        cy.findByText("Relative dates...").click();
+        cy.findByText("Relative dates…").click();
         cy.findByText("Past").click();
       });
 
@@ -126,7 +126,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Created At").click();
-        cy.findByText("Specific dates...").click();
+        cy.findByText("Specific dates…").click();
         cy.findByText("Between").click();
       });
 
@@ -151,7 +151,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Created At").click();
-        cy.findByText("Exclude...").click();
+        cy.findByText("Exclude…").click();
       });
 
       popover().within(() => {

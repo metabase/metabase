@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("No default").click();
     // click on Relative dates..., to open the relative date filter type tabs
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
     // choose Next, under which the new options should be available
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
@@ -152,7 +152,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filtre de date").click(); // "Date Filter"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude..."
+    cy.findByText("Exclure…").click(); // "Exclude..."
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Mois de l'année...").click(); // "Months of the year..."
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

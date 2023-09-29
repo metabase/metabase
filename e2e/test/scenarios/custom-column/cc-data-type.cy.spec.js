@@ -83,7 +83,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Past").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -105,7 +105,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Past").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
