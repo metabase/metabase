@@ -2,6 +2,8 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
@@ -13,6 +15,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -68,6 +71,16 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
 (t2/define-before-insert :model/User
   [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
@@ -91,6 +104,12 @@
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
+    (let [current-version (:tag config/mb-version-info)]
+      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      ;; Can't use mw.session/with-current-user-id due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
+        (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
     (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
@@ -402,3 +421,12 @@
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
+
+;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
+
+;; NB: Settings are also defined where they're used, such as in metabase.events.view-log
+
+(defsetting last-acknowledged-version
+  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  :user-local :only
+  :type :string)
