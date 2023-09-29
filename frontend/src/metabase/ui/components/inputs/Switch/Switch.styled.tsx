@@ -39,6 +39,12 @@ const THUMB_SIZES = {
   md: rem(18),
 };
 
+const TRACK_PADDING_TOP = {
+  xs: rem(0),
+  sm: rem(2),
+  md: rem(0),
+};
+
 export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
   Switch: {
     defaultProps: {
@@ -81,6 +87,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           "input:disabled + &": {
             backgroundColor: theme.colors.bg[1],
           },
+          marginTop: getSize({ size, sizes: TRACK_PADDING_TOP }),
         },
         thumb: {
           backgroundColor: theme.white,
