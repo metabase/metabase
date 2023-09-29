@@ -1,6 +1,7 @@
+import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
-import { isBoolean, isNumeric, isString } from "./column_types";
+import { isBoolean, isNumeric, isString, isTime } from "./column_types";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
@@ -17,6 +18,7 @@ import type {
   RelativeDateFilterParts,
   SpecificDateFilterParts,
   StringFilterParts,
+  TimeFilterParts,
 } from "./types";
 
 export function filterableColumns(
@@ -295,6 +297,56 @@ export function isExcludeDateFilter(
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
+const TIME_FORMATS = ["HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
+
+export function timeFilterClause({
+  operator,
+  column,
+  values,
+}: TimeFilterParts): ExpressionClause {
+  const dates = values.map(value => moment(value, moment.ISO_8601));
+  if (!dates.every(date => date.isValid())) {
+    throw new TypeError();
+  }
+
+  return expressionClause(operator, [
+    column,
+    ...dates.map(date => date.format(TIME_FORMATS[0])),
+  ]);
+}
+
+export function timeFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): TimeFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (
+    !isColumnMetadata(column) ||
+    !isTime(column) ||
+    !isStringLiteralArray(values) ||
+    !isFilterOperator(query, stageIndex, column, operator)
+  ) {
+    return null;
+  }
+
+  const dates = values.map(value => moment(value, TIME_FORMATS));
+  if (!dates.every(date => date.isValid())) {
+    return null;
+  }
+
+  return {
+    column,
+    operator,
+    values: dates.map(date => date.toISOString()),
+  };
+}
+
 export function filterParts(
   query: Query,
   stageIndex: number,
@@ -306,6 +358,7 @@ export function filterParts(
     booleanFilterParts(query, stageIndex, filterClause) ??
     specificDateFilterParts(query, stageIndex, filterClause) ??
     relativeDateFilterParts(query, stageIndex, filterClause) ??
-    excludeDateFilterParts(query, stageIndex, filterClause)
+    excludeDateFilterParts(query, stageIndex, filterClause) ??
+    timeFilterParts(query, stageIndex, filterClause)
   );
 }

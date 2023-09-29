@@ -246,12 +246,13 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
-// values depend on the bucket
-// day-of-week => 1-7 (Monday-Sunday)
-// month-of-year => 1-12 (January-December)
-// quarter-of-year => 1-4
-// hour-of-day => 0-23
-
+/*
+ * values depend on the bucket
+ * day-of-week => 1-7 (Monday-Sunday)
+ * month-of-year => 1-12 (January-December)
+ * quarter-of-year => 1-4
+ * hour-of-day => 0-23
+ */
 export type ExcludeDateFilterParts = {
   operator: FilterOperatorName;
   column: ColumnMetadata;
@@ -262,17 +263,17 @@ export type ExcludeDateFilterParts = {
 export type TimeFilterParts = {
   operator: FilterOperatorName;
   column: ColumnMetadata;
-  values: string[]; // HH:mm:ss
+  values: string[]; // ISO 8601 date with time
 };
 
 export type FilterParts =
   | StringFilterParts
   | NumberFilterParts
   | BooleanFilterParts
-  | TimeFilterParts
   | SpecificDateFilterParts
   | RelativeDateFilterParts
-  | ExcludeDateFilterParts;
+  | ExcludeDateFilterParts
+  | TimeFilterParts;
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
