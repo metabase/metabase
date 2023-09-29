@@ -1,5 +1,7 @@
 import { restore, setupSMTP } from "e2e/support/helpers";
 
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
@@ -30,7 +32,7 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
 
     cy.url().should(
       "match",
-      /\/collection\/1-bobby-tables-s-personal-collection$/,
+      /\/collection\/\d+-bobby-tables-s-personal-collection$/,
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -42,7 +44,13 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
       // Create new pulse without relying on the previous test
       cy.request("POST", "/api/pulse", {
         name: "pulse title",
-        cards: [{ id: 2, include_csv: false, include_xls: false }],
+        cards: [
+          {
+            id: ORDERS_COUNT_QUESTION_ID,
+            include_csv: false,
+            include_xls: false,
+          },
+        ],
         channels: [
           {
             channel_type: "email",

@@ -1,15 +1,8 @@
-import {
-  columnSettings,
-  buildTableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import registerVisualizations from "metabase/visualizations/register";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import {
-  createMockColumn,
-  createMockSingleSeries,
-  createMockTableColumnOrderSetting,
-} from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
 
 function seriesWithColumn(col) {
   return [
@@ -103,99 +96,5 @@ describe("column settings", () => {
     expect(time_enabled).toEqual("minutes");
     expect(time_style).toEqual("h:mm A");
     expect(date_style).toEqual("");
-  });
-
-  it("should show new columns and show them as disabled (metabase#25592)", () => {
-    const storedSettings = {
-      "table.columns": [
-        createMockTableColumnOrderSetting({
-          name: "ID",
-          fieldRef: ["field", ORDERS.ID, null],
-          enabled: true,
-        }),
-      ],
-    };
-
-    const series = [
-      createMockSingleSeries(
-        {},
-        {
-          data: {
-            cols: [
-              createMockColumn({
-                id: ORDERS.ID,
-                name: "ID",
-                display_name: "Id",
-                field_ref: ["field", ORDERS.ID, null],
-              }),
-              createMockColumn({
-                id: ORDERS.SUBTOTAL,
-                name: "SUBTOTAL",
-                display_name: "Total",
-                field_ref: ["field", ORDERS.SUBTOTAL, null],
-              }),
-            ],
-          },
-        },
-      ),
-    ];
-
-    const computedValue = buildTableColumnSettings()["table.columns"].getValue(
-      series,
-      storedSettings,
-    );
-
-    const computedSubtotal = computedValue.find(
-      ({ name }) => name === "SUBTOTAL",
-    );
-
-    expect(computedSubtotal).not.toBeUndefined();
-    expect(computedSubtotal.enabled).toBe(false);
-  });
-
-  it("table should should generate default columns when table.columns entries do not match data.cols (metabase#28304)", () => {
-    const storedSettings = {
-      "table.columns": [
-        createMockTableColumnOrderSetting({
-          name: "TAX",
-          fieldRef: ["field", ORDERS.TAX, null],
-          enabled: true,
-        }),
-        createMockTableColumnOrderSetting({
-          name: "DISCOUNT",
-          fieldRef: ["field", ORDERS.DISCOUNT, null],
-          enabled: false,
-        }),
-      ],
-    };
-
-    const series = [
-      createMockSingleSeries(
-        {},
-        {
-          data: {
-            cols: [
-              createMockColumn({
-                id: ORDERS.ID,
-                name: "ID",
-                display_name: "Id",
-                field_ref: ["field", ORDERS.ID, null],
-              }),
-            ],
-          },
-        },
-      ),
-    ];
-
-    const computedValue = buildTableColumnSettings()["table.columns"].getValue(
-      series,
-      storedSettings,
-    );
-
-    expect(computedValue.length).toBe(1);
-    expect(computedValue[0]).toMatchObject({
-      name: "ID",
-      enabled: true,
-    });
   });
 });

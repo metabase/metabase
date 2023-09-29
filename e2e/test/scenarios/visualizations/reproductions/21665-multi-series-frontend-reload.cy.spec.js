@@ -25,19 +25,20 @@ describe("issue 21665", () => {
     cy.createNativeQuestionAndDashboard({
       questionDetails: Q1,
       dashboardDetails: { name: "21665D" },
-    }).then(({ body: { id }, questionId }) => {
+    }).then(({ dashboardId, questionId }) => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${id}`,
+        `/api/dashboard/${dashboardId}`,
         cy.spy().as("dashboardLoaded"),
       ).as("getDashboard");
 
       cy.wrap(questionId).as("questionId");
-      cy.wrap(id).as("dashboardId");
+      cy.log("dashboard id", dashboardId);
+      cy.wrap(dashboardId).as("dashboardId");
 
       cy.createNativeQuestion(Q2);
 
-      visitDashboard(id);
+      visitDashboard(dashboardId);
       editDashboard();
     });
 

@@ -8,6 +8,3 @@ jest.mock("metabase/components/ExplicitSize");
 // Otherwise ActionViz loads the NativeQueryEditor (via ActionCreator)
 // and tests fail because ace is not properly mocked
 jest.mock("metabase/query_builder/components/NativeQueryEditor");
-
-import registerVisualizations from "metabase/visualizations/register";
-registerVisualizations();

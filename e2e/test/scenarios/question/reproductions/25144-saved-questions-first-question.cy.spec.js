@@ -1,5 +1,6 @@
 import { modal, popover, restore } from "e2e/support/helpers";
 
+// TODO: figure out how to test with auditv2
 describe("issue 25144", () => {
   beforeEach(() => {
     restore("setup");
