@@ -8,6 +8,7 @@ import type { OptionsType } from "metabase/lib/formatting/types";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 import type { ClickBehavior } from "metabase-types/api/click-behavior";
 import type { ActionDisplayType } from "metabase-types/api/actions";
+import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { DatabaseId } from "./database";
 import type {
   DashboardId,
@@ -252,9 +253,21 @@ export type BasicVisualizationSettings = {
   virtual_card?: VirtualCard;
   link?: LinkCardSettings;
 
-  // options are also mixed in
-} & NumberFormatOptions &
-  OptionsType;
+  number_style?: NumberFormatOptions["number_style"];
+  number_separators?: NumberFormatOptions["number_separators"];
+  currency?: NumberFormatOptions["currency"];
+  currency_style?: NumberFormatOptions["currency_style"];
+  decimals?: NumberFormatOptions["decimals"];
+  scale?: NumberFormatOptions["scale"];
+  prefix?: NumberFormatOptions["prefix"];
+  suffix?: NumberFormatOptions["suffix"];
+
+  date_style?: DateFormatOptions["date_style"];
+  date_abbreviate?: DateFormatOptions["date_abbreviate"];
+  date_separator?: DateFormatOptions["date_separator"];
+  time_style?: DateFormatOptions["time_style"];
+  time_enabled?: OptionsType["time_enabled"];
+};
 
 export type VisualizationColumnSettings = {
   column: (column: DatasetColumn) => BasicVisualizationSettings;

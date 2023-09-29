@@ -44,7 +44,7 @@ export const getTitleForColumn = (
   settings: VisualizationSettings,
 ) => {
   const { column: _column, column_title: columnTitle } =
-    settings.column(column);
+    settings.column?.(column);
   return columnTitle || formatColumn(_column);
 };
 

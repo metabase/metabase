@@ -23,7 +23,7 @@ export interface OptionsType {
   remap?: any;
   rich?: boolean;
   suffix?: string;
-  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
+  time_enabled?: "minutes" | "milliseconds" | "seconds" | boolean | null;
   time_format?: string;
   time_style?: string;
   type?: string;

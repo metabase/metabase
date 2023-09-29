@@ -165,7 +165,10 @@ function timeStyleOption(style: string, description: string) {
 type TimeUnit = DatetimeUnit | "second" | "millisecond";
 
 function getTimeEnabledOptionsForUnit(unit?: TimeUnit) {
-  const options = [
+  const options: {
+    name: string;
+    value: VisualizationSettings["time_enabled"];
+  }[] = [
     { name: t`Off`, value: null },
     { name: t`HH:MM`, value: "minutes" },
   ];
@@ -541,7 +544,7 @@ export const getTitleForColumn = (
     return formatColumn(column) || t`Unset`;
   } else {
     return (
-      settings.column(column)["_column_title_full"] || formatColumn(column)
+      settings.column?.(column)["_column_title_full"] || formatColumn(column)
     );
   }
 };
