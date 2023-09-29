@@ -1143,7 +1143,9 @@
     (impl/test-migrations ["v48.00-017"] [_]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             migrate!      (partial db.setup/migrate! db-type data-source)
-            collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name  "Amazing collection" :color "#509EE3"}))
+            collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                       :slug "amazing-collection"
+                                                                                       :color "#509EE3"}))
             test-collection (mdb.query/query {:select [:*]
                                               :from   [:collection]
                                               :where  [:= :id collection-id]})]
