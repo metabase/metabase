@@ -41,6 +41,7 @@
   [:map {:closed true}
    [:id                               :string]
    [:type                             [:enum "card" "collection" "dashboard"]]
+   [:item_id                          ms/PositiveInt]
    [:name                             ms/NonBlankString]
    [:authority_level {:optional true} [:maybe :string]]
    [:dataset         {:optional true} [:maybe :boolean]]

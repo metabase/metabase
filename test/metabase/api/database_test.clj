@@ -766,8 +766,7 @@
                                       [:display_name     :string]
                                       [:moderated_status [:or nil? [:= "verified"]]]
                                       [:schema           :string] ; collection name
-                                      [:description      [:maybe :string]]
-                                      [:fields           [:sequential :map]]]]]])
+                                      [:description      [:maybe :string]]]]]])
 
 (defn- check-tables-included [response & tables]
   (let [response-tables (set (:tables response))]

@@ -24,7 +24,7 @@
    [:email            ms/Email]
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
-   [:sso_source       (:enum :saml :jwt)]
+   [:sso_source       [:enum :saml :jwt]]
    [:login_attributes [:maybe :map]]])
 
 (mu/defn create-new-sso-user!

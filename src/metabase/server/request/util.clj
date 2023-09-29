@@ -145,16 +145,16 @@
 (def ^:private IPAddress->Info
   [:map-of
    [:and {:error/message "valid IP address string"}
-    ms/NonBlankString u/ip-address?]
+    ms/NonBlankString [:fn u/ip-address?]]
    [:map {:closed true}
     [:description ms/NonBlankString]
-    [:timezone    (ms/InstanceOfClass ZoneId)]]])
+    [:timezone    [:maybe (ms/InstanceOfClass ZoneId)]]]])
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
 (mu/defn geocode-ip-addresses :- [:maybe IPAddress->Info]
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
-  [ip-addresses :- [s/Str]]
+  [ip-addresses :- [:sequential :string]]
   (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]

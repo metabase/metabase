@@ -144,7 +144,7 @@
                               :body    [{"Aviary KPIs" true}
                                         pulse.test-util/png-attachment]
                               :bcc?    true}
-                                  email)))
+                             email)))
 
 (defn do-with-dashboard-fixture-for-dashboard
   "Impl for [[with-link-card-fixture-for-dashboard]]."

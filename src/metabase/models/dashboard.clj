@@ -462,7 +462,7 @@
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
 (mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe :map]]]]
+  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [dashboard           (t2/hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
                              merge-with set/union
