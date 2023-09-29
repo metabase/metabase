@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
@@ -24,7 +24,7 @@ const TestComponent = ({ callback }: Props) => {
 };
 
 describe("useCallbackEffect", () => {
-  it("should not be scheduled initially", () => {
+  it("is not scheduled initially", () => {
     const callback = jest.fn(_.noop);
 
     render(<TestComponent callback={callback} />);
@@ -32,7 +32,7 @@ describe("useCallbackEffect", () => {
     expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
   });
 
-  it("should be scheduled after calling scheduleCallback", () => {
+  it("schedules callback to after re-render", async () => {
     const callback = jest.fn(_.noop);
 
     render(<TestComponent callback={callback} />);
@@ -40,5 +40,16 @@ describe("useCallbackEffect", () => {
     userEvent.click(screen.getByRole("button", { name: "Schedule" }));
 
     expect(screen.getByText("Status: scheduled")).toBeInTheDocument();
+    expect(callback).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 });
