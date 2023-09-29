@@ -100,11 +100,12 @@ function convertQuestionToAction(
   );
 
   return {
+    id: question.id(),
     name: question.displayName() as string,
+    description: question.description(),
     dataset_query: question.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
-    type: "query" as const,
     visualization_settings: formSettings,
   };
 }
