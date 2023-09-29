@@ -28,7 +28,7 @@
 
 (def token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
-  sify the env var `METASTORE_DEV_SERVER_URL`."
+  Specify the env var `METASTORE_DEV_SERVER_URL`."
   (or
    ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
    (when config/is-dev?
@@ -289,7 +289,7 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
-  ;; This sific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
+  ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
@@ -386,7 +386,7 @@
   :getter     (fn [] (boolean ((token-features) "hosting")))
   :doc        false)
 
-;; `enhancements` are not currently a sific "feature" that EE tokens can have or not have. Instead, it's a
+;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)
 ;;
@@ -539,7 +539,7 @@
 
   A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
   always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
-  cases. You probably want to gate your code by a sific premium feature.)
+  cases. You probably want to gate your code by a specific premium feature.)
 
   ###### `:fallback`
 

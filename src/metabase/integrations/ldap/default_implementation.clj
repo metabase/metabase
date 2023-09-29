@@ -115,10 +115,8 @@
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
    username        :- ms/NonBlankString
    settings        :- LDAPSettings]
-  #pp :here
- (when-let [result #pp (search ldap-connection username settings)]
-   #pp (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
-
+  (when-let [result (search ldap-connection username settings)]
+    (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
