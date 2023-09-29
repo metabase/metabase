@@ -492,7 +492,7 @@
     `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
-                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                            `(mu/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
                             `(fn ~(symbol (str fn-name)) ~@fn-tail))]
        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
        (def
@@ -561,7 +561,7 @@
 
 (defmacro defenterprise-schema
   "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
-  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
+  the same as when using `mu/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
   usage details."
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}

@@ -12,6 +12,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s])
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
@@ -226,7 +228,7 @@
    :group-base           (ldap-group-base)
    :group-mappings       (ldap-group-mappings)})
 
-(s/defn find-user :- (s/maybe default-impl/UserInfo)
+(mu/defn find-user :- [:maybe default-impl/UserInfo]
   "Get user information for the supplied username."
   ([username :- su/NonBlankString]
    (with-ldap-connection [conn]

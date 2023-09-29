@@ -13,7 +13,6 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -183,22 +182,22 @@
           (is (= "Hi rasta, you're an EE customer but not extra special."
                  (special-greeting-or-custom :rasta))))))))
 
-(defenterprise-schema greeting-with-schema :- s/Str
+(defenterprise-schema greeting-with-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the argument was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Keyword
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- :keyword
   "Returns a greeting for a user. The OSS implementation has an invalid return schema"
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Str
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
 (defenterprise greeting-with-only-ee-schema
