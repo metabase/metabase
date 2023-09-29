@@ -259,7 +259,18 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  throw new TypeError();
+  if (offsetValue == null || offsetBucket == null) {
+    return expressionClause("time-interval", [column, value, bucket], options);
+  }
+
+  return expressionClause("between", [
+    expressionClause("+", [
+      column,
+      expressionClause("interval", [-offsetValue, offsetBucket]),
+    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
+  ]);
 }
 
 export function relativeDateFilterParts(
