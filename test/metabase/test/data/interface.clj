@@ -50,7 +50,7 @@
                                            [:natives [:map-of :keyword ms/NonBlankString]]]
                                           [:map {:closed true}
                                            [:native ms/NonBlankString]]
-                                          ms/Field]]
+                                          ms/FieldType]]
     ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
     ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
     ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
@@ -461,7 +461,7 @@
   comsumption by various test-data-loading methods."
   [database-name :- ms/NonBlankString & table-definitions]
   (mu/validate-throw
-   DatabaseDefinition
+   (ms/InstanceOfClass DatabaseDefinition)
    (map->DatabaseDefinition
     {:database-name     database-name
      :table-definitions (for [table table-definitions]
@@ -539,7 +539,7 @@
 (mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- ms/NonBlankString wrapped-definition & transform-fns :- fn?]
+  [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn

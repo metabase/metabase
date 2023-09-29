@@ -26,7 +26,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
@@ -145,13 +144,13 @@
 
 (mu/defn ^:private trigger-key :- (ms/InstanceOfClass TriggerKey)
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
-  ^TriggerKey [database  :- (mi/InstanceOf Database)
+  ^TriggerKey [database  :- (ms/InstanceOf Database)
                task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
 (mu/defn ^:private cron-schedule :- u.cron/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
-  [database  :- (mi/InstanceOf Database)
+  [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
@@ -162,7 +161,7 @@
 
 (mu/defn ^:private trigger-description :- :string
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
-  [database  :- (mi/InstanceOf Database)
+  [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
@@ -178,7 +177,7 @@
 
 (mu/defn ^:private delete-task!
   "Cancel a single sync task for `database-or-id` and `task-info`."
-  [database  :- (mi/InstanceOf Database)
+  [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
@@ -187,7 +186,7 @@
 
 (mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
-  [database :- (mi/InstanceOf Database)]
+  [database :- (ms/InstanceOf Database)]
   (doseq [task [sync-analyze-task-info field-values-task-info]]
     (delete-task! database task)))
 
@@ -206,12 +205,12 @@
    (jobs/with-identity (job-key task-info))
    (jobs/store-durably)))
 
-(s/def ^:private sync-analyze-job (job sync-analyze-task-info))
-(s/def ^:private field-values-job (job field-values-task-info))
+(def ^:private sync-analyze-job (job sync-analyze-task-info))
+(def ^:private field-values-job (job field-values-task-info))
 
 (mu/defn ^:private trigger :- (ms/InstanceOfClass CronTrigger)
   "Build a Quartz Trigger for `database` and `task-info`."
-  ^CronTrigger [database  :- (mi/InstanceOf Database)
+  ^CronTrigger [database  :- (ms/InstanceOf Database)
                 task-info :- TaskInfo]
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
@@ -231,7 +230,7 @@
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
-  [database :- (mi/InstanceOf Database)]
+  [database :- (ms/InstanceOf Database)]
   (let [sync-job (task/job-info (job-key sync-analyze-task-info))
         fv-job   (task/job-info (job-key field-values-task-info))
 
