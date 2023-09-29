@@ -26,7 +26,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
