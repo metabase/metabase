@@ -18,10 +18,12 @@ import {
   selectSavedQuestionsToJoin,
   startNewQuestion,
   summarize,
+  visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -288,6 +290,43 @@ describe("scenarios > question > joined questions", () => {
     visualize();
 
     cy.get(".ScalarValue").contains("2,087");
+  });
+
+  it("should remove a join when changing the source table", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                alias: "Products",
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+              },
+            ],
+          },
+        },
+      },
+      { mode: "notebook" },
+    );
+
+    getNotebookStep("data").findByTestId("data-step-cell").click();
+    popover().findByText("People").click();
+
+    getNotebookStep("join").should("not.exist");
+
+    visualize();
+    queryBuilderMain()
+      .findAllByText(/Product/)
+      .should("have.length", 0);
   });
 });
 
