@@ -300,11 +300,7 @@ export function excludeDateFilterClause(
   const bucket = availableTemporalBuckets(query, stageIndex, column).find(
     bucket => displayInfo(query, stageIndex, bucket).shortName === bucketName,
   );
-  if (!bucket) {
-    throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
-  }
-
-  const bucketColumn = withTemporalBucket(column, bucket);
+  const bucketColumn = withTemporalBucket(column, bucket ?? null);
   const bucketValues = values.map(value =>
     formatExcludeDateFilterValue(value, bucketName),
   );
@@ -390,7 +386,8 @@ function formatExcludeDateFilterValue(
       date.quarter(value);
       break;
     default:
-      throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
+      date.utcOffset(value);
+      break;
   }
 
   return date.format(DATE_FORMAT);
