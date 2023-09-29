@@ -268,11 +268,11 @@ export function isBooleanFilter(
   return booleanFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function specificDateFilterClause({
-  operator,
-  column,
-  values,
-}: SpecificDateFilterParts): ExpressionClause {
+export function specificDateFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, values, withTime }: SpecificDateFilterParts,
+): ExpressionClause {
   throw new TypeError();
 }
 
@@ -286,24 +286,25 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const [column, ...values] = args;
+  const [column, ...valueStrings] = args;
   if (
     !isSpecificDateFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(values)
+    !isStringLiteralArray(valueStrings)
   ) {
     return null;
   }
 
-  const dates = values.map(value => moment.utc(value, moment.ISO_8601));
-  if (!dates.every(date => date.isValid())) {
+  const values = valueStrings.map(value => moment.utc(value, moment.ISO_8601));
+  if (!values.every(date => date.isValid())) {
     return null;
   }
 
   return {
     column,
     operator,
-    values: dates,
+    values,
+    withTime: false,
   };
 }
 
@@ -323,13 +324,19 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
+  const columnWithoutBucket = withTemporalBucket(column, null);
+
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause("time-interval", [column, value, bucket], options);
+    return expressionClause(
+      "time-interval",
+      [columnWithoutBucket, value, bucket],
+      options,
+    );
   }
 
   return expressionClause("between", [
     expressionClause("+", [
-      column,
+      columnWithoutBucket,
       expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
     expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
@@ -382,12 +389,11 @@ export function excludeDateFilterClause(
     throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
   }
 
-  const bucketColumn = withTemporalBucket(column, bucket);
-  const bucketValues = values.map(value =>
+  const columnWithBucket = withTemporalBucket(column, bucket);
+  const valueStrings = values.map(value =>
     formatExcludeDateFilterValue(value, bucketName),
   );
-
-  return expressionClause(operator, [bucketColumn, ...bucketValues]);
+  return expressionClause(operator, [columnWithBucket, ...valueStrings]);
 }
 
 export function excludeDateFilterParts(
@@ -400,11 +406,11 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const [column, ...values] = args;
+  const [column, ...valueStrings] = args;
   if (
     !isExcludeDateFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(values)
+    !isStringLiteralArray(valueStrings)
   ) {
     return null;
   }
@@ -420,14 +426,14 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const bucketValues = values.map(value =>
+  const values = valueStrings.map(value =>
     parseExcludeDateFilterValue(value, bucketName),
   );
 
   return {
     column,
     operator,
-    values: bucketValues,
+    values,
     bucket: bucketName,
   };
 }
@@ -487,10 +493,8 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  return expressionClause(operator, [
-    column,
-    ...values.map(value => value.format("HH:mm:00.000")),
-  ]);
+  const valueStrings = values.map(value => value.format("HH:mm:00.000"));
+  return expressionClause(operator, [column, ...valueStrings]);
 }
 
 export function timeFilterParts(
@@ -503,24 +507,24 @@ export function timeFilterParts(
     return null;
   }
 
-  const [column, ...values] = args;
+  const [column, ...valueStrings] = args;
   if (
     !isTimeFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(values)
+    !isStringLiteralArray(valueStrings)
   ) {
     return null;
   }
 
-  const dates = values.map(value => moment.utc(value, "HH:mm:ss.SSS"));
-  if (!dates.every(date => date.isValid())) {
+  const values = valueStrings.map(value => moment.utc(value, "HH:mm:ss.SSS"));
+  if (!values.every(date => date.isValid())) {
     return null;
   }
 
   return {
     column,
     operator,
-    values: dates,
+    values,
   };
 }
 
