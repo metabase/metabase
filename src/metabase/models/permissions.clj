@@ -194,9 +194,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.instance :as instance]
-   [toucan2.model :as model]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
