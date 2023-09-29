@@ -210,6 +210,27 @@ describe("scenarios > question > joined questions", () => {
       .should("be.visible");
   });
 
+  it("should handle joins on different stages", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    join();
+    joinTable("Products");
+
+    summarize({ mode: "notebook" });
+    addSummaryField({ metric: "Count of rows" });
+    addSummaryGroupingField({ table: "Product", field: "ID" });
+
+    join();
+    joinTable("Reviews", "ID", "Product ID");
+    visualize();
+
+    assertJoinValid({
+      lhsSampleColumn: "Count",
+      rhsSampleColumn: "Reviews → ID",
+    });
+    assertQueryBuilderRowCount(1136);
+  });
+
   it("should allow joins with multiple conditions", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     openOrdersTable({ mode: "notebook" });
