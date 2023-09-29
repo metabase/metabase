@@ -29,12 +29,11 @@
 
 (defn create-collection!
   "Create and return a new collection."
-  [title color description parent-collection-id]
+  [title description parent-collection-id]
   (first (t2/insert-returning-instances!
            'Collection
            (merge
              {:name        title
-              :color       color
               :description description}
              (when parent-collection-id
                {:location (collection/children-location (t2/select-one ['Collection :location :id]
@@ -46,7 +45,7 @@
   (or (t2/select-one 'Collection
         :name     "Automatically Generated Dashboards"
         :location "/")
-      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
+      (create-collection! "Automatically Generated Dashboards" nil nil)))
 
 (defn colors
   "A vector of colors used for coloring charts and collections. Uses [[public-settings/application-colors]] for user choices."
