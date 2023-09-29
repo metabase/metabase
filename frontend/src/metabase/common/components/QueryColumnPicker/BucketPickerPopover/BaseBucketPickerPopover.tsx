@@ -11,8 +11,11 @@ import {
 
 type NoBucket = null;
 
-export type BucketListItem = Lib.BucketDisplayInfo & {
+export type BucketListItem = {
+  displayName: string;
   bucket: Lib.Bucket | NoBucket;
+  default?: boolean;
+  selected?: boolean;
 };
 
 export interface BaseBucketPickerPopoverProps {

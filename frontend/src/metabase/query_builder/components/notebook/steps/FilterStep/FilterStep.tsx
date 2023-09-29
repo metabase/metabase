@@ -20,14 +20,14 @@ export function FilterStep({
     [topLevelQuery, stageIndex],
   );
 
-  const handleAddFilter = (filter: Lib.FilterClause) => {
+  const handleAddFilter = (filter: Lib.ExpressionClause) => {
     const nextQuery = Lib.filter(topLevelQuery, stageIndex, filter);
     updateQuery(nextQuery);
   };
 
   const handleUpdateFilter = (
     filter: Lib.FilterClause,
-    nextFilter: Lib.FilterClause,
+    nextFilter: Lib.ExpressionClause,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
