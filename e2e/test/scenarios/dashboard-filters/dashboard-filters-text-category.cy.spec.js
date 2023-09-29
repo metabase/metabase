@@ -8,6 +8,10 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
@@ -17,7 +21,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -44,7 +48,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery1");
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
   });
@@ -96,9 +100,9 @@ describe("scenarios > dashboard > filters > text/category", () => {
     popover().contains("User ID").click();
 
     saveDashboard();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
-    cy.location("search").should("eq", "?text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.get(".Card").within(() => {
       cy.contains("39.58");
     });
@@ -106,19 +110,19 @@ describe("scenarios > dashboard > filters > text/category", () => {
     // This part reproduces metabase#13960
     // Remove default filter (category)
     cy.get("fieldset .Icon-close").click();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
-    cy.location("search").should("eq", "?text=");
+    cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
     cy.button("Add filter").click();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     cy.location("search").should("eq", "?text=&id=4");
 
     cy.reload();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     cy.location("search").should("eq", "?text=&id=4");
     filterWidget().contains("Text");

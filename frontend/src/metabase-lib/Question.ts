@@ -13,14 +13,14 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import BaseQuery from "metabase-lib/queries/Query";
+import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
-import { memoizeClass, sortObject } from "metabase-lib/utils";
+import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
@@ -61,7 +61,6 @@ import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
   findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
 } from "metabase-lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -95,7 +94,7 @@ export type QuestionCreatorOpts = {
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
-class QuestionInner {
+class Question {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
@@ -118,7 +117,7 @@ class QuestionInner {
    * Question constructor
    */
   constructor(
-    card: CardObject,
+    card: any,
     metadata?: Metadata,
     parameterValues?: ParameterValues,
   ) {
@@ -190,7 +189,7 @@ class QuestionInner {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  query(): AtomicQuery {
+  query = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -203,7 +202,7 @@ class QuestionInner {
     // `dataset_query` is null for questions on a dashboard the user don't have access to
     !isVirtualDashcard &&
       console.warn("Unknown query type: " + datasetQuery?.type);
-  }
+  });
 
   isNative(): boolean {
     return this.query() instanceof NativeQuery;
@@ -730,7 +729,7 @@ class QuestionInner {
         this.setting("table.columns"),
       )
     ) {
-      return syncTableColumnsToQuery(this);
+      return this;
     }
 
     const addedColumnNames = _.difference(
@@ -1225,6 +1224,10 @@ class QuestionInner {
     return this.__mlv2Query;
   }
 
+  _setMLv2Query(query: Query): Question {
+    return this.setDatasetQuery(ML.toLegacyQuery(query));
+  }
+
   generateQueryDescription() {
     const query = this._getMLv2Query();
     return ML.suggestedName(query);
@@ -1233,12 +1236,7 @@ class QuestionInner {
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
-}
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Question extends memoizeClass<QuestionInner>("query")(
-  QuestionInner,
-) {
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
@@ -1282,3 +1280,6 @@ export default class Question extends memoizeClass<QuestionInner>("query")(
     return new Question(card, metadata, parameterValues);
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Question;

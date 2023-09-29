@@ -3,8 +3,9 @@ import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as questionActions from "metabase/questions/actions";
+import registerVisualizations from "metabase/visualizations/register";
 
-import {
+import type {
   Card,
   ConcreteFieldReference,
   Join,
@@ -13,7 +14,7 @@ import {
   TemplateTag,
   UnsavedCard,
 } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
+import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockDataset,
   createMockNativeDatasetQuery,
@@ -54,6 +55,8 @@ import * as querying from "../querying";
 
 import * as ui from "../ui";
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
+
+registerVisualizations();
 
 type TestCard = Card | UnsavedCard;
 

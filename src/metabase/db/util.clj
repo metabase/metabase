@@ -5,18 +5,21 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
-  (or
-    ;; toucan 2 models
-    (isa? model :metabase/model)
-    ;; toucan 1 models
-    (isa? model :toucan1/model)))
+  (isa? model :metabase/model))
+
+(defn qualify
+  "Returns a qualified field for [modelable] with [field-name]."
+  ^clojure.lang.Keyword [modelable field-name]
+  (if (vector? field-name)
+    [(qualify modelable (first field-name)) (second field-name)]
+    (let [model (t2.model/resolve-model modelable)]
+      (keyword (str (name (t2.model/table-name model)) \. (name field-name))))))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
@@ -26,7 +29,7 @@
        :active true)"
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
-               [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
+               [:= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword
   (s/constrained s/Keyword (comp seq namespace) "namespaced keyword"))

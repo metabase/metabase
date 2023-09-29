@@ -1,9 +1,16 @@
 import {
   addOrUpdateDashboardCard,
   restore,
+  resetTestTable,
+  resyncDatabase,
   visitDashboard,
+  editDashboard,
+  showDashboardCardActions,
+  sidebar,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -156,7 +163,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   it("should navigate to a target from a gauge card (metabase#23137)", () => {
-    const target_id = 1;
+    const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
       questionDetails: getQuestionDetails({ display: "gauge" }),
@@ -175,7 +182,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   it("should navigate to a target from a progress card (metabase#23137)", () => {
-    const target_id = 1;
+    const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
       questionDetails: getQuestionDetails({ display: "progress" }),
@@ -192,6 +199,51 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
+
+  it(
+    "should allow settings click behavior on boolean fields (metabase#18067)",
+    { tags: "@external" },
+    () => {
+      const dialect = "mysql";
+      const TEST_TABLE = "many_data_types";
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TEST_TABLE,
+        tableAlias: "testTable",
+      });
+
+      cy.get("@testTable").then(testTable => {
+        const dashboardDetails = {
+          name: "18067 dashboard",
+        };
+        const questionDetails = {
+          name: "18067 question",
+          database: WRITABLE_DB_ID,
+          query: { "source-table": testTable.id },
+        };
+        cy.createQuestionAndDashboard({
+          dashboardDetails,
+          questionDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        });
+      });
+
+      editDashboard();
+
+      cy.log('Select "click behavior" option');
+      showDashboardCardActions();
+      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
+
+      sidebar().within(() => {
+        cy.findByText("Boolean").scrollIntoView().click();
+        cy.contains("Click behavior for Boolean").should("be.visible");
+      });
+    },
+  );
 });
 
 const getQuestionDetails = ({ display }) => ({

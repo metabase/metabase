@@ -69,6 +69,7 @@
     :model/FakedCard
     :model/Secret
     :model/Session
+    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/User

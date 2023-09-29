@@ -1,593 +1,190 @@
-import {
-  render,
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "@testing-library/react";
 import fetchMock from "fetch-mock";
-
-import userEvent from "@testing-library/user-event";
-import { createMockMetadata } from "__support__/metadata";
+import {
+  getBrokenUpTextMatcher,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import { testDataset } from "__support__/testDataset";
 import {
   setupActionsEndpoints,
-  setupCardDataset,
   setupDatabasesEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
-import { testDataset } from "__support__/testDataset";
-import { renderWithProviders } from "__support__/ui";
-import { getNextId } from "__support__/utils";
-import { WritebackAction } from "metabase-types/api";
 import {
-  createMockCard,
-  createMockDatabase,
-  createMockField,
-  createMockImplicitQueryAction,
-  createMockQueryAction,
-  createMockTable,
-} from "metabase-types/api/mocks";
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
-  PEOPLE,
-  PEOPLE_ID,
-  createSampleDatabase,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createProductsTable,
+  createReviewsTable,
 } from "metabase-types/api/mocks/presets";
+import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/core/utils/types";
-import {
-  ObjectDetailBody,
-  ObjectDetailHeader,
-  ObjectDetailView,
-} from "./ObjectDetail";
-import type { ObjectDetailProps } from "./types";
 
-const mockCard = createMockCard({
-  id: getNextId(),
-  name: "Product",
+import type { Field } from "metabase-types/api";
+
+import ObjectDetail from "./ObjectDetail";
+
+const PRODUCTS_TABLE = createProductsTable();
+const ORDERS_TABLE = createOrdersTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
 });
+const REVIEWS_TABLE = createReviewsTable();
 
-const mockTable = createMockTable({
-  id: getNextId(),
-});
+const PRODUCTS_RECORD_RELATED_ORDERS_COUNT = 93;
+const PRODUCTS_RECORD_RELATED_REVIEWS_COUNT = 8;
 
-const mockTableNoPk = createMockTable({
-  id: getNextId(),
-  fields: [],
-});
-
-const mockTableMultiplePks = createMockTable({
-  id: getNextId(),
-  fields: [
-    createMockField({ semantic_type: "type/PK" }),
-    createMockField({ semantic_type: "type/PK" }),
-  ],
-});
-
-const databaseWithActionsEnabled = createMockDatabase({
-  id: getNextId(),
-  settings: { "database-enable-actions": true },
-});
-
-const databaseWithActionsDisabled = createMockDatabase({
-  id: getNextId(),
-  settings: { "database-enable-actions": false },
-});
-
-const mockDatasetCard = createMockCard({
-  id: getNextId(),
-  dataset: true,
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
-});
-
-const mockDatasetNoPkCard = createMockCard({
-  id: getNextId(),
-  dataset: true,
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableNoPk.id,
-    },
-  },
-});
-
-const mockDatasetMultiplePksCard = createMockCard({
-  id: getNextId(),
-  dataset: true,
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableMultiplePks.id,
-    },
-  },
-});
-
-const mockDatasetWithClausesCard = createMockCard({
-  id: getNextId(),
-  dataset: true,
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-      filter: [
-        "contains",
-        ["field", PEOPLE.NAME, null],
-        "Macy",
-        { "case-sensitive": false },
-      ],
-    },
-  },
-});
-
-const mockDatasetNoWritePermissionCard = createMockCard({
-  id: getNextId(),
-  can_write: false,
-  dataset: true,
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
-});
-
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      id: databaseWithActionsEnabled.id,
-      settings: { "database-enable-actions": true },
-    }),
-  ],
-  tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
-  questions: [
-    mockCard,
-    mockDatasetCard,
-    mockDatasetNoPkCard,
-    mockDatasetMultiplePksCard,
-    mockDatasetWithClausesCard,
-    mockDatasetNoWritePermissionCard,
-  ],
-});
-
-const mockQuestion = checkNotNull(metadata.question(mockCard.id));
-
-const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
-
-const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
-
-const mockDatasetMultiplePks = checkNotNull(
-  metadata.question(mockDatasetMultiplePksCard.id),
-);
-
-const mockDatasetWithClauses = checkNotNull(
-  metadata.question(mockDatasetWithClausesCard.id),
-);
-
-const mockDatasetNoWritePermission = checkNotNull(
-  metadata.question(mockDatasetNoWritePermissionCard.id),
-);
-
-const implicitCreateAction = createMockImplicitQueryAction({
-  id: getNextId(),
-  database_id: databaseWithActionsEnabled.id,
-  name: "Create",
-  kind: "row/create",
-});
-
-const implicitDeleteAction = createMockImplicitQueryAction({
-  id: getNextId(),
-  database_id: databaseWithActionsEnabled.id,
-  name: "Delete",
-  kind: "row/delete",
-});
-
-const implicitUpdateAction = createMockImplicitQueryAction({
-  id: getNextId(),
-  database_id: databaseWithActionsEnabled.id,
-  name: "Update",
-  kind: "row/update",
-});
-
-const implicitPublicUpdateAction = {
-  ...implicitUpdateAction,
-  id: getNextId(),
-  name: "Public Update",
-  public_uuid: "mock-uuid",
-};
-
-const implicitPublicDeleteAction = {
-  ...implicitDeleteAction,
-  id: getNextId(),
-  name: "Public Delete",
-  public_uuid: "mock-uuid",
-};
-
-const implicitArchivedUpdateAction = {
-  ...implicitUpdateAction,
-  id: getNextId(),
-  name: "Archived Implicit Update",
-  archived: true,
-};
-
-const implicitArchivedDeleteAction = {
-  ...implicitDeleteAction,
-  id: getNextId(),
-  name: "Archived Implicit Delete",
-  archived: true,
-};
-
-const queryAction = createMockQueryAction({
-  id: getNextId(),
-  name: "Query action",
-});
-
-const actions = [
-  implicitCreateAction,
-  implicitDeleteAction,
-  implicitUpdateAction,
-  implicitPublicUpdateAction,
-  implicitPublicDeleteAction,
-  implicitArchivedUpdateAction,
-  implicitArchivedDeleteAction,
-  queryAction,
-];
-
-const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
-  ...action,
-  database_id: databaseWithActionsDisabled.id,
-}));
-
-function setupPrefetch() {
-  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {});
+interface SetupOpts {
+  hideOrdersTable?: boolean;
 }
 
-function setup(
-  options: Partial<ObjectDetailProps> &
-    Required<Pick<ObjectDetailProps, "question">>,
-) {
+function setup({ hideOrdersTable = false }: SetupOpts = {}) {
+  setupDatabasesEndpoints([]);
+  setupActionsEndpoints([]);
+  const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
+  const ordersProductId = checkNotNull(
+    findField(ORDERS_TABLE.fields, "PRODUCT_ID"),
+  );
+  const reviewsProductId = checkNotNull(
+    findField(REVIEWS_TABLE.fields, "PRODUCT_ID"),
+  );
+  setupTableEndpoints(PRODUCTS_TABLE, [
+    {
+      origin: ordersProductId,
+      origin_id: ordersProductId.id as number,
+      destination: productsId,
+      destination_id: productsId.id as number,
+      relationship: "Mt1",
+    },
+    {
+      origin: reviewsProductId,
+      origin_id: reviewsProductId.id as number,
+      destination: productsId,
+      destination_id: productsId.id as number,
+      relationship: "Mt1",
+    },
+  ]);
+  setupForeignKeyCountQueryEndpoints();
+
+  const ROW_ID_INDEX = 0;
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      tables: [
+        PRODUCTS_TABLE,
+        hideOrdersTable ? HIDDEN_ORDERS_TABLE : ORDERS_TABLE,
+        REVIEWS_TABLE,
+      ],
+    }),
+    qb: createMockQueryBuilderState({
+      card: createMockCard({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+          },
+        },
+      }),
+      zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
+      queryResults: [
+        createMockDataset({
+          data: testDataset,
+        }),
+      ],
+    }),
+  });
   renderWithProviders(
-    <ObjectDetailView
+    <ObjectDetail
       data={testDataset}
-      zoomedRow={testDataset.rows[0]}
-      zoomedRowID={0}
-      tableForeignKeys={[]}
-      tableForeignKeyReferences={[]}
-      settings={{
-        column: () => null,
-      }}
-      showHeader
-      canZoom={true}
-      canZoomPreviousRow={false}
-      canZoomNextRow={false}
-      followForeignKey={() => null}
-      onVisualizationClick={() => null}
-      visualizationIsClickable={() => false}
-      fetchTableFks={() => null}
-      loadObjectDetailFKReferences={() => null}
-      viewPreviousObjectDetail={() => null}
-      viewNextObjectDetail={() => null}
-      closeObjectDetail={() => null}
-      {...options}
+      settings={{}}
+      isObjectDetail
+      onVisualizationClick={jest.fn()}
+      visualizationIsClickable={jest.fn()}
     />,
+    {
+      storeInitialState: state,
+    },
   );
 }
 
-describe("Object Detail", () => {
-  it("renders an object detail header", () => {
-    render(
-      <ObjectDetailHeader
-        actionItems={[]}
-        canZoom={false}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={false}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
-    expect(screen.getByText(/778/i)).toBeInTheDocument();
-  });
-
-  it("renders an object detail header with enabled next object button and disabled previous object button", () => {
-    render(
-      <ObjectDetailHeader
-        actionItems={[]}
-        canZoom={true}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={true}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    const nextDisabled = screen
-      .getByTestId("view-next-object-detail")
-      .getAttribute("disabled");
-
-    const prevDisabled = screen
-      .getByTestId("view-previous-object-detail")
-      .getAttribute("disabled");
-
-    expect(nextDisabled).toBeNull();
-    expect(prevDisabled).not.toBeNull();
-  });
-
-  it("renders an object detail body", () => {
-    render(
-      <ObjectDetailBody
-        data={testDataset}
-        objectName="Large Sandstone Socks"
-        zoomedRow={testDataset.rows[2]}
-        settings={{
-          column: () => null,
-        }}
-        hasRelationships={false}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        followForeignKey={() => null}
-      />,
-    );
-
-    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
-    expect(screen.getByText("Doohickey")).toBeInTheDocument();
-  });
-
-  it("renders an object detail component", () => {
-    setup({ question: mockQuestion });
-
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(checkNotNull(testDataset.rows[0][3]).toString()),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(checkNotNull(testDataset.rows[0][4]).toString()),
-    ).toBeInTheDocument();
-  });
-
-  it("fetches a missing row", async () => {
-    setupCardDataset({
-      data: {
-        rows: [
-          [
-            "101",
-            "1807963902339",
-            "Extremely Hungry Toucan",
-            "Gizmo",
-            "Larson, Pfeffer and Klocko",
-            31.78621880685793,
-            4.3,
-            "2017-01-09T09:51:20.352-07:00",
-          ],
-        ],
+function setupForeignKeyCountQueryEndpoints() {
+  fetchMock.post(
+    {
+      name: "ordersCountQuery",
+      url: "path:/api/dataset",
+      matchPartialBody: true,
+      body: {
+        query: { "source-table": ORDERS_TABLE.id },
       },
-    });
+    },
+    createMockDataset({
+      status: "completed",
+      data: {
+        rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
+      },
+    }),
+  );
+  fetchMock.post(
+    {
+      name: "reviewsCountQuery",
+      url: "path:/api/dataset",
+      matchPartialBody: true,
+      body: {
+        query: { "source-table": REVIEWS_TABLE.id },
+      },
+    },
+    createMockDataset({
+      status: "completed",
+      data: {
+        rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
+      },
+    }),
+  );
+}
 
-    // because this row is not in the test dataset, it should trigger a fetch
-    setup({ question: mockQuestion, zoomedRowID: "101", zoomedRow: undefined });
+function findField(fields: Field[] | undefined, name: string) {
+  return fields?.find(field => field.name === name);
+}
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+describe("ObjectDetail", () => {
+  it("should render foreign key count when no table is hidden", async () => {
+    setup();
+
     expect(
-      await screen.findByText(/Extremely Hungry Toucan/i),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
   });
 
-  it("shows not found if it can't find a missing row", async () => {
-    setupCardDataset({ data: { rows: [] } });
-
-    // because this row is not in the test dataset, it should trigger a fetch
-    setup({ question: mockQuestion, zoomedRowID: "102", zoomedRow: undefined });
-
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
-    expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
-  });
-
-  describe("renders actions menu", () => {
-    beforeEach(() => {
-      setupDatabasesEndpoints([databaseWithActionsEnabled]);
-      setupActionsEndpoints(actions);
-      setup({ question: mockDataset });
-    });
-
-    it("should not show implicit create action", async () => {
-      const action = await findActionInActionMenu(implicitCreateAction);
-      expect(action).not.toBeInTheDocument();
-    });
-
-    it("should show implicit update action", async () => {
-      const action = await findActionInActionMenu(implicitUpdateAction);
-      expect(action).toBeInTheDocument();
-    });
-
-    it("should show implicit delete action", async () => {
-      const action = await findActionInActionMenu(implicitDeleteAction);
-      expect(action).toBeInTheDocument();
-    });
-
-    it("should not show implicit public update action", async () => {
-      const action = await findActionInActionMenu(implicitPublicUpdateAction);
-      expect(action).not.toBeInTheDocument();
-    });
-
-    it("should not show implicit public delete action", async () => {
-      const action = await findActionInActionMenu(implicitPublicDeleteAction);
-      expect(action).not.toBeInTheDocument();
-    });
-
-    it("should not show implicit archived update action", async () => {
-      const action = await findActionInActionMenu(implicitArchivedUpdateAction);
-      expect(action).not.toBeInTheDocument();
-    });
-
-    it("should not show implicit archived delete action", async () => {
-      const action = await findActionInActionMenu(implicitArchivedDeleteAction);
-      expect(action).not.toBeInTheDocument();
-    });
-
-    it("should not show query action", async () => {
-      const action = await findActionInActionMenu(queryAction);
-      expect(action).not.toBeInTheDocument();
-    });
-  });
-
-  it("should not render actions menu for models based on database with actions disabled", async () => {
-    setupDatabasesEndpoints([databaseWithActionsDisabled]);
-    setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
-    setup({ question: mockDataset });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it("should not render actions menu for non-model questions", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockQuestion });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it(`should not render actions menu when "showControls" is "false"`, async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDataset, showControls: false });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it("should render actions menu when user has write permission", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeInTheDocument();
-  });
-
-  it("should not render actions menu when user has no write permission", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDatasetNoWritePermission });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  /**
-   * This is an exotic case. It's not possible to enable implicit actions
-   * for a model with clauses (joins, expressions, filters, etc.).
-   * Implicit actions are supported only in very simple models.
-   */
-  it("should not render actions menu when model's query has clauses", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDatasetWithClauses });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it("should not render actions menu when model's source table does not have a primary key", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDatasetNoPk });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it("should not render actions menu when model's source table has multiple primary keys", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDatasetMultiplePks });
-
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
-  });
-
-  it("should show update object modal on update action click", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
-    setupPrefetch();
+  it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
+    setup({ hideOrdersTable: true });
 
     expect(
-      screen.queryByTestId("action-execute-modal"),
-    ).not.toBeInTheDocument();
-
-    const action = await findActionInActionMenu(implicitUpdateAction);
-    expect(action).toBeInTheDocument();
-    action?.click();
-
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByText("Choose a record to update"),
+      screen.queryByText(
+        [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+      ),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
-
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-
-    const modal = await screen.findByTestId("action-execute-modal");
-    expect(modal).toBeInTheDocument();
-
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Update",
-    );
-  });
-
-  it("should show delete object modal on delete action click", async () => {
-    setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
-
-    expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
-
-    const action = await findActionInActionMenu(implicitDeleteAction);
-    expect(action).toBeInTheDocument();
-    action?.click();
-
-    const modal = await screen.findByTestId("delete-object-modal");
-    expect(modal).toBeInTheDocument();
-
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Are you sure you want to delete this row?",
-    );
   });
 });
-
-async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
-  const actionsMenu = await screen.findByTestId("actions-menu");
-  userEvent.click(actionsMenu);
-  const popover = await screen.findByTestId("popover");
-  const action = within(popover).queryByText(name);
-  return action;
-}
-
-/**
- * There is no loading state for useActionListQuery & useDatabaseListQuery
- * in ObjectDetail component, so there is no easy way to wait for relevant
- * API requests to finish. This function relies on DOM changes instead.
- */
-async function findActionsMenu() {
-  try {
-    return await screen.findByTestId("actions-menu");
-  } catch (error) {
-    return undefined;
-  }
-}

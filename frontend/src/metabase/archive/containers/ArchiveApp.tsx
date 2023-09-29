@@ -1,26 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import type { CollectionItem } from "metabase-types/api";
+// !!!!!
+// import type { EntityWrappedCollectionItem } from "metabase-types/api";
 
-import type { EntityWrappedCollectionItem } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import Button from "metabase/core/components/Button";
+import Search from "metabase/entities/search";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { useSearchListQuery } from "metabase/common/hooks";
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+
+import { openNavbar } from "metabase/redux/app";
+import { getCollectionsById } from "metabase/selectors/collection";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getUserIsAdmin } from "metabase/selectors/user";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { Button } from "metabase/ui";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
-
-import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
-
-import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getCollectionsById } from "metabase/selectors/collection";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
-import ArchivedItem from "../../components/ArchivedItem";
+import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
 
 import {
   ArchiveBarContent,
@@ -33,15 +37,30 @@ import {
 
 const ROW_HEIGHT = 68;
 
-interface ArchiveAppRootProps {
-  list: EntityWrappedCollectionItem[];
-  reload: () => void;
-}
-
-function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
+export function ArchiveApp() {
+  const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isAdmin = useSelector(getUserIsAdmin);
   const collectionsById = useSelector(getCollectionsById);
+  const mainElement = getMainElement();
+
+  useEffect(() => {
+    if (!isSmallScreen()) {
+      openNavbar();
+    }
+  }, []);
+
+  const { data, isLoading, error } = useSearchListQuery({
+    query: { archived: true },
+  });
+
+  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
+    useListSelect<CollectionItem>(item => `${item.model}:${item.id}`);
+
+  const list = useMemo(() => {
+    clear();
+    return data ?? [];
+  }, [data, clear]);
 
   const [writableList, setWritableList] = useState(list);
 
@@ -53,16 +72,6 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
     setWritableList(newWritableList);
   }, [list, collectionsById]);
 
-  const mainElement = useMemo(() => getMainElement(), []);
-  useEffect(() => {
-    if (!isSmallScreen()) {
-      openNavbar();
-    }
-  }, []);
-
-  const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
-    useListSelect(item => `${item.model}:${item.id}`);
-
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(writableList);
   }, [writableList, selectOnlyTheseItems]);
@@ -72,12 +81,16 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
     [selected, writableList],
   );
 
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
     <ArchiveRoot>
       <ArchiveHeader>
         <PageHeading>{t`Archive`}</PageHeading>
       </ArchiveHeader>
-      <ArchiveBody>
+      <ArchiveBody data-testid="archived-list">
         <Card
           style={{
             height:
@@ -91,24 +104,18 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
               scrollElement={mainElement}
               items={writableList}
               rowHeight={ROW_HEIGHT}
-              renderItem={({ item }: { item: EntityWrappedCollectionItem }) => (
+              renderItem={({ item }: { item: CollectionItem }) => (
                 <ArchivedItem
-                  type={item.type || ""}
-                  name={item.getName()}
-                  icon={item.getIcon().name}
-                  color={item.getColor()}
+                  model={item.model ?? ""}
+                  name={Search.objectSelectors.getName(item)}
+                  icon={Search.objectSelectors.getIcon(item).name}
+                  color={Search.objectSelectors.getColor(item)}
                   isAdmin={isAdmin}
-                  onUnarchive={async () => {
-                    if (item.setArchived !== undefined) {
-                      await item.setArchived(false);
-                      reload();
-                    }
+                  onUnarchive={() => {
+                    dispatch(Search.actions.setArchived(item, false));
                   }}
-                  onDelete={async () => {
-                    if (item.delete !== undefined) {
-                      await item.delete();
-                      reload();
-                    }
+                  onDelete={() => {
+                    dispatch(Search.actions.delete(item));
                   }}
                   selected={getIsSelected(item)}
                   onToggleSelected={() => toggleItem(item)}
@@ -130,11 +137,7 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
             selectAll={selectAllItems}
             clear={clear}
           />
-          <BulkActionControls
-            selected={selected}
-            reload={reload}
-            clear={clear}
-          />
+          <BulkActionControls selected={selected} />
           <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
         </ArchiveBarContent>
       </BulkActionBar>
@@ -142,52 +145,31 @@ function ArchiveAppRoot({ list, reload }: ArchiveAppRootProps) {
   );
 }
 
-export const ArchiveApp = _.compose(
-  Search.loadList({
-    query: { archived: true },
-    reload: true,
-    wrapped: true,
-  }),
-)(ArchiveAppRoot);
+const BulkActionControls = ({ selected }: { selected: any[] }) => {
+  const dispatch = useDispatch();
 
-const BulkActionControls = ({
-  selected,
-  reload,
-  clear,
-}: {
-  selected: any[];
-  reload: () => void;
-  clear: () => void;
-}) => (
-  <span>
-    <Button
-      className="ml1"
-      medium
-      onClick={async () => {
-        try {
-          await Promise.all(
-            selected.map(item => item.setArchived && item.setArchived(false)),
-          );
-        } finally {
-          reload();
-          clear();
+  return (
+    <span>
+      <Button
+        variant="default"
+        size="sm"
+        ml="1rem"
+        onClick={() =>
+          selected.forEach(item =>
+            dispatch(Search.actions.setArchived(item, false)),
+          )
         }
-      }}
-    >{t`Unarchive`}</Button>
-    <Button
-      className="ml1"
-      medium
-      onClick={async () => {
-        try {
-          await Promise.all(selected.map(item => item.delete && item.delete()));
-        } finally {
-          reload();
-          clear();
+      >{t`Unarchive`}</Button>
+      <Button
+        variant="default"
+        ml="0.5rem"
+        onClick={() =>
+          selected.forEach(item => dispatch(Search.actions.delete(item)))
         }
-      }}
-    >{t`Delete`}</Button>
-  </span>
-);
+      >{t`Delete`}</Button>
+    </span>
+  );
+};
 
 const SelectionControls = ({
   allSelected,
@@ -199,7 +181,15 @@ const SelectionControls = ({
   clear: () => void;
 }) =>
   allSelected ? (
-    <StackedCheckBox checked={true} onChange={clear} />
+    <StackedCheckBox
+      ariaLabel="bulk-actions-input"
+      checked={true}
+      onChange={clear}
+    />
   ) : (
-    <StackedCheckBox checked={false} onChange={selectAll} />
+    <StackedCheckBox
+      ariaLabel="bulk-actions-input"
+      checked={false}
+      onChange={selectAll}
+    />
   );

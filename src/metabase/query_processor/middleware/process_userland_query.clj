@@ -12,6 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -91,11 +92,12 @@
       ([acc]
        ;; We don't actually have a guarantee that it's from a card just because it's userland
        (when (integer? (:card_id execution-info))
-         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
-                                             :actor_id     (:executor_id execution-info)
-                                             :cached       (:cached acc)
-                                             :context      (:context execution-info)
-                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
+         (events/publish-event! :event/card-query {:card_id      (:card_id execution-info)
+                                                   :actor_id     (:executor_id execution-info)
+                                                   :cached       (:cached acc)
+                                                   :context      (:context execution-info)
+                                                   :ignore_cache (get-in execution-info
+                                                                         [:json_query :middleware :ignore-cached-results?])}))
        (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -87,7 +87,7 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot>
+    <ModalRoot data-testid="action-creator">
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader

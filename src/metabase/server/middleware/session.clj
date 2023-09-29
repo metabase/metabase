@@ -26,8 +26,8 @@
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
 
@@ -156,7 +156,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
+    (when (and (= config/mb-session-cookie-samesite :none) (not (request.u/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
@@ -227,7 +227,7 @@
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
-      (db/honeysql->sql
+      (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
@@ -296,13 +296,19 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
+(def ^:private ^:dynamic *user-local-values-user-id*
+  "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
+  calls to [[with-current-user]] if it is already bound, as this can mess things up since things
+  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  ;; placeholder value so we will end up rebinding [[*user-local-values*]] it if you call
+  ;;
+  ;;    (with-current-user nil
+  ;;      ...)
+  ;;
+  ::none)
 
 (defn do-with-current-user
-  "Impl for `with-current-user`."
+  "Impl for [[with-current-user]]."
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
@@ -310,8 +316,13 @@
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
-            *user-local-values*            (delay (atom (or settings
-                                                            (user-local-settings metabase-user-id))))]
+            ;; as mentioned above, do not rebind this to something new, because changes to its value will not be
+            ;; propagated to frames further up the stack
+            *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
+                                             *user-local-values*
+                                             (delay (atom (or settings
+                                                              (user/user-local-settings metabase-user-id)))))
+            *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request

@@ -19,7 +19,9 @@ Cypress.Commands.add(
               ],
             }).then(response => ({
               ...response,
+              dashboardId,
               body: response.body.cards[0],
+              questionId,
             }));
           },
         );

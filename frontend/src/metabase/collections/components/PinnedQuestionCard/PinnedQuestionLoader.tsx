@@ -5,7 +5,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export interface PinnedQuestionLoaderProps {
   id: number;

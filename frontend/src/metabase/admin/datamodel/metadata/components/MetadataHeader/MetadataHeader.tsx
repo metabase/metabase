@@ -8,9 +8,9 @@ import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import { Icon } from "metabase/core/components/Icon";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-import { Dispatch } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
+import type Database from "metabase-lib/metadata/Database";
 import { TableSettingsLink } from "./MetadataHeader.styled";
 
 interface OwnProps {

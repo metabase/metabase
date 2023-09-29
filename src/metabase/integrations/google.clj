@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
@@ -106,7 +105,7 @@
               {:status-code 401
                :errors  {:_error non-existant-account-message}}))))
 
-(s/defn ^:private google-auth-create-new-user!
+(mu/defn ^:private google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to

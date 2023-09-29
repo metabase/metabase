@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { EXCLUDE_OPTIONS } from "metabase-lib/queries/utils/query-time";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialMonthOfYearFilter,

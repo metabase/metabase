@@ -6,7 +6,10 @@ import {
   visitIframe,
 } from "e2e/support/helpers";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
@@ -192,7 +195,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should not let you embed the dashboard", () => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("share").click();
 
       ensureEmbeddingIsDisabled();
@@ -200,13 +203,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   });
 
   context("embedding enabled", () => {
+    const ids = {
+      question: ORDERS_QUESTION_ID,
+      dashboard: ORDERS_DASHBOARD_ID,
+    };
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         const embeddableObject = object === "question" ? "card" : "dashboard";
         const objectName =
           object === "question" ? "Orders" : "Orders in a dashboard";
 
-        cy.intercept("PUT", `/api/${embeddableObject}/1`).as("embedObject");
+        cy.intercept("PUT", `/api/${embeddableObject}/${ids[object]}`).as(
+          "embedObject",
+        );
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );
@@ -340,7 +349,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.log("Visit the embedding url generated with the old token");
         cy.visit(iframe.src);
         cy.findByTestId("embed-frame").findByText(
-          "Message seems corrupt or manipulated.",
+          "Message seems corrupt or manipulated",
         );
       });
     });
@@ -386,7 +395,7 @@ function visitAndEnableSharing(object) {
   }
 
   if (object === "dashboard") {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("share").click();
     cy.findByText(/Embed in your application/).click();

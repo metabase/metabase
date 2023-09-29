@@ -32,7 +32,7 @@ import {
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
-import { DashboardState } from "metabase-types/store";
+import type { DashboardState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {

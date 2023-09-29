@@ -21,10 +21,8 @@
 
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider
-   {:database meta/metadata
-    :tables   [(meta/table-metadata :venues)]
-    :fields   (mapv #(meta/field-metadata :venues %) [:id :price])
-    :segments [{:id          segment-id
+   meta/metadata-provider
+   {:segments [{:id          segment-id
                 :name        "PriceID-BBQ"
                 :table-id    (meta/id :venues)
                 :definition  segment-definition

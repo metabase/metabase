@@ -18,6 +18,7 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
+const peopleTable = metadata.table(PEOPLE_ID);
 
 describe("UnderlyingRecordsDrill", () => {
   it("should not be valid for top level actions", () => {
@@ -40,7 +41,11 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS_ID,
       filter: [
         "=",
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "temporal-unit": "month", "base-type": "type/DateTime" },
+        ],
         value,
       ],
     });
@@ -55,7 +60,7 @@ describe("UnderlyingRecordsDrill", () => {
       .breakout([
         "field",
         ORDERS.CREATED_AT,
-        { "temporal-unit": "day-of-week" },
+        { "temporal-unit": "day-of-week", "base-type": "type/DateTime" },
       ]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, value));
@@ -76,7 +81,11 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS_ID,
       filter: [
         "=",
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "temporal-unit": "day-of-week", "base-type": "type/DateTime" },
+        ],
         null,
       ],
     });
@@ -89,8 +98,12 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": PEOPLE_ID,
       condition: [
         "=",
-        ["field", ORDERS.USER_ID, null],
-        ["field", PEOPLE.ID, { "join-alias": "User" }],
+        ["field", ORDERS.USER_ID, { "base-type": "type/BigInteger" }],
+        [
+          "field",
+          PEOPLE.ID,
+          { "join-alias": "User", "base-type": "type/BigInteger" },
+        ],
       ],
     };
     const query = ordersTable
@@ -106,7 +119,15 @@ describe("UnderlyingRecordsDrill", () => {
     expect(q.query().query()).toEqual({
       "source-table": ORDERS_ID,
       joins: [join],
-      filter: ["=", ["field", PEOPLE.STATE, { "join-alias": "User" }], "CA"],
+      filter: [
+        "=",
+        [
+          "field",
+          PEOPLE.STATE,
+          { "join-alias": "User", "base-type": "type/Text" },
+        ],
+        "CA",
+      ],
     });
     expect(q.display()).toEqual("table");
   });
@@ -131,7 +152,13 @@ describe("UnderlyingRecordsDrill", () => {
       "source-query": {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.STATE,
+            { "source-field": ORDERS.USER_ID, "base-type": "type/Text" },
+          ],
+        ],
       },
     });
     expect(q.display()).toEqual("table");
@@ -157,10 +184,14 @@ describe("UnderlyingRecordsDrill", () => {
         "and",
         [
           "=",
-          ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          [
+            "field",
+            PEOPLE.STATE,
+            { "source-field": ORDERS.USER_ID, "base-type": "type/Text" },
+          ],
           "CA",
         ],
-        [">", ["field", ORDERS.TOTAL, null], 42],
+        [">", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }], 42],
       ],
       "source-table": ORDERS_ID,
     });
@@ -187,6 +218,20 @@ describe("UnderlyingRecordsDrill", () => {
       const [action] = actions;
       expect(action.title).toEqual("See these SomeTitles");
     });
+
+    // NOTE: this test is valid only until lib drill returns metric value instead of underlying rows count
+    it("should return correct pluralized title for negative numeric values (metabase#32108)", () => {
+      const query = peopleTable
+        .query()
+        .aggregate(["sum", ["field", PEOPLE.LATITUDE, null]])
+        .breakout(metadata.field(PEOPLE.STATE));
+
+      const actions = UnderlyingRecordsDrill(getActionProps(query, -1000));
+      expect(actions).toHaveLength(1);
+
+      const [action] = actions;
+      expect(action.title).toEqual("See these People");
+    });
   });
 });
 
@@ -195,7 +240,7 @@ function getActionProps(query, value) {
     question: query.question(),
     clicked: {
       column: query.aggregationDimensions()[0].column(),
-      value: 42,
+      value: value,
       dimensions: [
         {
           column: query.breakouts()[0].dimension().column(),

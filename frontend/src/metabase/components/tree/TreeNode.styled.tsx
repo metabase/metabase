@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, lighten } from "metabase/lib/colors";
-import { Icon, IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 interface TreeNodeRootProps {
   isSelected: boolean;

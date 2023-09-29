@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
@@ -452,10 +452,17 @@ function PivotTable({
                         return sumArray(subColumnWidths);
                       }}
                       estimatedColumnSize={DEFAULT_CELL_WIDTH}
-                      cellRenderer={({ rowIndex, columnIndex, key, style }) => (
+                      cellRenderer={({
+                        rowIndex,
+                        columnIndex,
+                        key,
+                        style,
+                        isScrolling,
+                      }) => (
                         <BodyCell
                           key={key}
                           style={style}
+                          showTooltip={!isScrolling}
                           rowSection={getRowSection(columnIndex, rowIndex)}
                           isNightMode={isNightMode}
                           getCellClickHandler={getCellClickHandler}

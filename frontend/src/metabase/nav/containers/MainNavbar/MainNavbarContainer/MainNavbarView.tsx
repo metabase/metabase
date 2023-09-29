@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -15,7 +15,8 @@ import * as Urls from "metabase/lib/urls";
 
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
-import { SelectedItem } from "../types";
+import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import type { SelectedItem } from "../types";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 
 import {
@@ -161,6 +162,7 @@ function MainNavbarView({
           </SidebarSection>
         )}
       </div>
+      <WhatsNewNotification />
     </SidebarContentRoot>
   );
 }

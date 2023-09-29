@@ -4,10 +4,9 @@ import type {
   CardMetadata,
   Clause,
   ColumnMetadata,
-  ExternalOp,
-  FilterClause,
-  FilterOperator,
   Join,
+  JoinCondition,
+  JoinConditionOperator,
   JoinStrategy,
   Query,
   TableMetadata,
@@ -21,9 +20,6 @@ type Joinable = TableMetadata | CardMetadata;
 
 type JoinOrJoinable = Join | Joinable;
 
-/**
- * In this case, Clause is what you'd get back from the `args` you get when calling externalOp()
- */
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
 export function joins(query: Query, stageIndex: number): Join[] {
@@ -32,7 +28,7 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: FilterClause[] | ExternalOp[],
+  conditions: JoinCondition[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
@@ -56,13 +52,13 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
   return ML.with_join_strategy(join, strategy);
 }
 
-export function joinConditions(join: Join): FilterClause[] {
+export function joinConditions(join: Join): JoinCondition[] {
   return ML.join_conditions(join);
 }
 
 export function withJoinConditions(
   join: Join,
-  newConditions: FilterClause[] | ExternalOp[],
+  newConditions: JoinCondition[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }
@@ -139,7 +135,7 @@ export function joinConditionOperators(
   stageIndex: number,
   lhsColumn?: ColumnMetadata,
   rhsColumn?: ColumnMetadata,
-): FilterOperator[] {
+): JoinConditionOperator[] {
   return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
 }
 
@@ -147,7 +143,7 @@ export function suggestedJoinCondition(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-): FilterClause | null {
+): JoinCondition | null {
   return ML.suggested_join_condition(query, stageIndex, joinable);
 }
 

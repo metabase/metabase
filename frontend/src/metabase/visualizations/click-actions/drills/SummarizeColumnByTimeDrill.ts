@@ -1,11 +1,14 @@
 import { t } from "ttag";
-import { Drill } from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import {
   summarizeColumnByTimeDrill,
   summarizeColumnByTimeDrillQuestion,
 } from "metabase-lib/queries/drills/summarize-column-by-time-drill";
 
-const SummarizeColumnByTimeDrill: Drill = ({ question, clicked = {} }) => {
+const SummarizeColumnByTimeDrill: LegacyDrill = ({
+  question,
+  clicked = {},
+}) => {
   if (!summarizeColumnByTimeDrill({ question, clicked })) {
     return [];
   }

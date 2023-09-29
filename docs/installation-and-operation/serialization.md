@@ -12,6 +12,8 @@ Once you really get rolling with Metabase, it's often the case that you'll have 
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
+> We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
+
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
@@ -119,7 +121,7 @@ Otherwise, you're good.
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java -jar metabase.jar export [export_name]
+java -jar metabase.jar export export_name
 ```
 
 ## Export options
@@ -153,7 +155,7 @@ The `--collection` flag (alias `-c`) lets you specify by ID one or more collecti
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export --collection 1,2,3
+java -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 ### `--no-collections`
@@ -178,10 +180,10 @@ The `--include-database-secrets` flag (alias `-s`) tells Metabase to include con
 
 ## Importing to a Metabase
 
-To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `[my_export]` is the path to the export you want to import:
+To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java -jar metabase.jar import [my_export]
+java -jar metabase.jar import path_to_export
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
@@ -292,4 +294,5 @@ If you've written scripts to automate serialization, you'll need to:
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
-- Need help? contact [support@metabase.com](mailto:support@metabase.com).
+- [Setting up a git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
+- Need help? Contact [support@metabase.com](mailto:support@metabase.com).

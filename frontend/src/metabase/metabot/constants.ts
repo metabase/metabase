@@ -1,4 +1,4 @@
-import { MetabotUiControls } from "metabase-types/store";
+import type { MetabotUiControls } from "metabase-types/store";
 
 export const DEFAULT_UI_CONTROLS: MetabotUiControls = {
   isShowingRawTable: false,

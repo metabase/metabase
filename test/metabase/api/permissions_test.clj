@@ -129,7 +129,7 @@
 
     (testing "group name is required"
       (is (= {:errors          {:name "value must be a non-blank string."},
-              :specific-errors {:name ["value must be a non-blank string., received: nil"]}}
+              :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
              (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
 
 (deftest delete-group-test

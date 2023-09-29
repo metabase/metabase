@@ -1,17 +1,10 @@
-import {
-  ChangeEvent,
-  MouseEvent,
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-} from "react";
+import type { ChangeEvent, MouseEvent } from "react";
+import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import { getTimelineName } from "metabase/lib/timelines";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import EventCard from "../EventCard";
 import {
   CardHeader,

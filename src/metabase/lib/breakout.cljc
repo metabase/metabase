@@ -69,21 +69,17 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [cols                (let [stage (lib.util/query-stage query stage-number)]
-                               (lib.metadata.calculation/visible-columns query stage-number stage))
-         refs                (mapv lib.ref/ref cols)
-         ref->existing-index (into {}
-                                   (map-indexed (fn [index breakout-ref]
-                                                  (when-let [matching-ref (lib.equality/find-closest-matching-ref
-                                                                           query
-                                                                           breakout-ref
-                                                                           refs)]
-                                                    [matching-ref index])))
-                                   (breakouts query stage-number))]
+   (let [cols (let [stage   (lib.util/query-stage query stage-number)
+                    options {:include-implicitly-joinable-for-source-card? false}]
+                (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq cols)
-       (mapv (fn [col a-ref]
-               (let [pos (ref->existing-index a-ref)]
-                 (cond-> col
-                   pos (assoc :breakout-position pos))))
-             cols
-             refs)))))
+       (let [matching (into {} (keep-indexed (fn [index a-breakout]
+                                               (when-let [col (lib.equality/find-matching-column
+                                                               query stage-number a-breakout cols
+                                                               {:generous? true})]
+                                                 [col index]))
+                                             (or (breakouts query stage-number) [])))]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :breakout-position pos)))
+               cols))))))

@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -28,7 +29,7 @@ export const HomeLayout = ({
   const hasIllustration = useSelector(getHasIllustration);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot data-testid="home-page">
       {hasIllustration && <LayoutIllustration />}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (

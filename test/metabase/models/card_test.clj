@@ -426,8 +426,8 @@
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56"]
-      (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
-                      :model/Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+      (mt/with-temp [Collection  coll {:name "field-db" :location "/" :created_at now}
+                     :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
         (is (= "5199edf0"
                (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
                (serdes/identity-hash card)))))))
@@ -488,25 +488,25 @@
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset sample-dataset
-    (mt/with-temp*
-      [:model/Card      [{source-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                      (mt/mbql-query products {:fields [(mt/$ids $products.title)
-                                                                                        (mt/$ids $products.category)]
-                                                                               :limit 5}))
+    (mt/with-temp
+      [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                  (mt/$ids $products.category)]
+                                                                         :limit 5}))
                                                {:database_id (mt/id)
-                                                :table_id    (mt/id :products)})]
-       :model/Card      [card                 {:parameters [{:name                  "Param 1"
-                                                             :id                    "param_1"
-                                                             :type                  "category"
-                                                             :values_source_type    "card"
-                                                             :values_source_config {:card_id source-card-id
-                                                                                    :value_field (mt/$ids $products.title)}}]}]
-       Dashboard [dashboard            {:parameters [{:name       "Param 2"
-                                                      :id         "param_2"
-                                                      :type       "category"
-                                                      :values_source_type    "card"
-                                                      :values_source_config {:card_id source-card-id
-                                                                             :value_field (mt/$ids $products.category)}}]}]]
+                                                :table_id    (mt/id :products)})
+       :model/Card card                 {:parameters [{:name                  "Param 1"
+                                                       :id                    "param_1"
+                                                       :type                  "category"
+                                                       :values_source_type    "card"
+                                                       :values_source_config {:card_id source-card-id
+                                                                              :value_field (mt/$ids $products.title)}}]}
+       Dashboard   dashboard            {:parameters [{:name       "Param 2"
+                                                       :id         "param_2"
+                                                       :type       "category"
+                                                       :values_source_type    "card"
+                                                       :values_source_config {:card_id source-card-id
+                                                                              :value_field (mt/$ids $products.category)}}]}]
       ;; check if we had parametercard to starts with
       (is (=? [{:card_id                   source-card-id
                 :parameter_id              "param_1"
@@ -521,8 +521,8 @@
       (testing "on update result_metadata"
         (t2/update! :model/Card source-card-id
                     (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query products {:fields [(mt/$ids $products.title)]
-                                               :limit 5})))
+                     (mt/mbql-query products {:fields [(mt/$ids $products.title)]
+                                              :limit 5})))
 
         (testing "ParameterCard for dashboard is removed"
           (is (=? [{:card_id                   source-card-id
@@ -546,50 +546,50 @@
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
 
-      (testing "on archive card"
-        (t2/update! :model/Card source-card-id {:archived true})
+     (testing "on archive card"
+       (t2/update! :model/Card source-card-id {:archived true})
 
-        (testing "ParameterCard for card is removed"
-          (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
+       (testing "ParameterCard for card is removed"
+         (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
 
-        (testing "update the dashboard parameter and remove values_config of card"
-          (is (=? [{:id   "param_1"
-                    :name "Param 1"
-                    :type :category}]
-                  (t2/select-one-fn :parameters :model/Card :id (:id card)))))))))
+       (testing "update the dashboard parameter and remove values_config of card"
+         (is (=? [{:id   "param_1"
+                   :name "Param 1"
+                   :type :category}]
+                 (t2/select-one-fn :parameters :model/Card :id (:id card)))))))))
 
 (deftest descendants-test
   (testing "regular cards don't depend on anything"
-    (mt/with-temp* [:model/Card [card {:name "some card"}]]
+    (mt/with-temp [:model/Card card {:name "some card"}]
       (is (empty? (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have another card as the source depend on that card"
-    (mt/with-temp* [:model/Card [card1 {:name "base card"}]
-                    :model/Card [card2 {:name "derived card"
-                                        :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
+    (mt/with-temp [:model/Card card1 {:name "base card"}
+                   :model/Card card2 {:name "derived card"
+                                      :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
              (serdes/descendants "Card" (:id card2))))))
 
   (testing "cards that has a native template tag"
-    (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
-                    :model/Card               [card {:name          "Business Card"
-                                                     :dataset_query {:native
-                                                                     {:template-tags {:snippet {:name         "snippet"
-                                                                                                :type         :snippet
-                                                                                                :snippet-name "snippet"
-                                                                                                :snippet-id   (:id snippet)}}
-                                                                      :query "select * from products where {{snippet}}"}}}]]
+    (mt/with-temp [NativeQuerySnippet snippet {:name "category" :content "category = 'Gizmo'"}
+                   :model/Card        card    {:name          "Business Card"
+                                               :dataset_query {:native
+                                                               {:template-tags {:snippet {:name         "snippet"
+                                                                                          :type         :snippet
+                                                                                          :snippet-name "snippet"
+                                                                                          :snippet-id   (:id snippet)}}
+                                                                :query "select * from products where {{snippet}}"}}}]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
              (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have parameter's source is another card"
-    (mt/with-temp* [:model/Card [card1 {:name "base card"}]
-                    :model/Card [card2 {:name       "derived card"
-                                        :parameters [{:id                   "valid-id"
-                                                      :type                 "id"
-                                                      :values_source_type   "card"
-                                                      :values_source_config {:card_id (:id card1)}}]}]]
+    (mt/with-temp [:model/Card card1 {:name "base card"}
+                   :model/Card card2 {:name       "derived card"
+                                      :parameters [{:id                   "valid-id"
+                                                    :type                 "id"
+                                                    :values_source_type   "card"
+                                                    :values_source_config {:card_id (:id card1)}}]}]
       (is (= #{["Card" (:id card1)]}
              (serdes/descendants "Card" (:id card2)))))))
 

@@ -46,78 +46,87 @@
   ([table-name]
    (+ random-id-offset
       (case table-name
-        :categories 10
-        :checkins   20
-        :users      30
-        :venues     40
-        :products   50
-        :orders     60
-        :people     70
-        :reviews    80)))
+        :categories   10
+        :checkins     20
+        :users        30
+        :venues       40
+        :products     50
+        :orders       60
+        :people       70
+        :reviews      80
+        :ic/accounts  90
+        :ic/reports  100)))
 
   ([table-name field-name]
    (+ random-id-offset
       (case table-name
-        :categories (case field-name       ;
-                      :id   100            ; :type/BigInteger
-                      :name 101)           ; :type/Text
-        :checkins   (case field-name       ;
-                      :id       200        ; :type/BigInteger
-                      :date     201        ; :type/Date
-                      :user-id  202        ; :type/Integer
-                      :venue-id 203)       ; :type/Integer
-        :users      (case field-name       ;
-                      :id         300      ; :type/BigInteger
-                      :name       301      ; :type/Text
-                      :last-login 302      ; :type/DateTime
-                      :password   303)     ; :type/Text
-        :venues     (case field-name       ;
-                      :id          400     ; :type/BigInteger
-                      :name        401     ; :type/Text
-                      :category-id 402     ; :type/Integer
-                      :latitude    403     ; :type/Float
-                      :longitude   404     ; :type/Float
-                      :price       405)    ; :type/Integer
-        :products   (case field-name       ;
-                      :id         500      ; :type/BigInteger
-                      :rating     501      ; :type/Float
-                      :category   502      ; :type/Text
-                      :price      503      ; :type/Float
-                      :title      504      ; :type/Text
-                      :created-at 505      ; :type/DateTimeWithLocalTZ
-                      :vendor     506      ; :type/Text
-                      :ean        507)     ; :type/Text
-        :orders     (case field-name       ;
-                      :id         600      ; :type/BigInteger
-                      :subtotal   601      ; :type/Float
-                      :total      602      ; :type/Float
-                      :tax        603      ; :type/Float
-                      :discount   604      ; :type/Float
-                      :quantity   605      ; :type/Integer
-                      :created-at 606      ; :type/DateTimeWithLocalTZ
-                      :product-id 607      ; :type/Integer
-                      :user-id    608)     ; :type/Integer
-        :people     (case field-name       ;
-                      :id         700      ; :type/BigInteger
-                      :state      701      ; :type/Text
-                      :city       702      ; :type/Text
-                      :address    703      ; :type/Text
-                      :name       704      ; :type/Text
-                      :source     705      ; :type/Text
-                      :zip        706      ; :type/Text
-                      :latitude   707      ; :type/Float
-                      :password   708      ; :type/Text
-                      :birth-date 709      ; :type/Date
-                      :longitude  710      ; :type/Float
-                      :email      711      ; :type/Text
-                      :created-at 712)     ; :type/DateTimeWithLocalTZ
-        :reviews    (case field-name       ;
-                      :id         800      ; :type/BigInteger
-                      :created-at 801      ; :type/DateTimeWithLocalTZ
-                      :rating     802      ; :type/Integer
-                      :reviewer   803      ; :type/Text
-                      :body       804      ; :type/Text
-                      :product-id 805))))) ; :type/Integer
+        :categories (case field-name         ;
+                      :id   100              ; :type/BigInteger
+                      :name 101)             ; :type/Text
+        :checkins   (case field-name         ;
+                      :id       200          ; :type/BigInteger
+                      :date     201          ; :type/Date
+                      :user-id  202          ; :type/Integer
+                      :venue-id 203)         ; :type/Integer
+        :users      (case field-name         ;
+                      :id         300        ; :type/BigInteger
+                      :name       301        ; :type/Text
+                      :last-login 302        ; :type/DateTime
+                      :password   303)       ; :type/Text
+        :venues     (case field-name         ;
+                      :id          400       ; :type/BigInteger
+                      :name        401       ; :type/Text
+                      :category-id 402       ; :type/Integer
+                      :latitude    403       ; :type/Float
+                      :longitude   404       ; :type/Float
+                      :price       405)      ; :type/Integer
+        :products   (case field-name         ;
+                      :id         500        ; :type/BigInteger
+                      :rating     501        ; :type/Float
+                      :category   502        ; :type/Text
+                      :price      503        ; :type/Float
+                      :title      504        ; :type/Text
+                      :created-at 505        ; :type/DateTimeWithLocalTZ
+                      :vendor     506        ; :type/Text
+                      :ean        507)       ; :type/Text
+        :orders     (case field-name         ;
+                      :id         600        ; :type/BigInteger
+                      :subtotal   601        ; :type/Float
+                      :total      602        ; :type/Float
+                      :tax        603        ; :type/Float
+                      :discount   604        ; :type/Float
+                      :quantity   605        ; :type/Integer
+                      :created-at 606        ; :type/DateTimeWithLocalTZ
+                      :product-id 607        ; :type/Integer
+                      :user-id    608)       ; :type/Integer
+        :people     (case field-name         ;
+                      :id         700        ; :type/BigInteger
+                      :state      701        ; :type/Text
+                      :city       702        ; :type/Text
+                      :address    703        ; :type/Text
+                      :name       704        ; :type/Text
+                      :source     705        ; :type/Text
+                      :zip        706        ; :type/Text
+                      :latitude   707        ; :type/Float
+                      :password   708        ; :type/Text
+                      :birth-date 709        ; :type/Date
+                      :longitude  710        ; :type/Float
+                      :email      711        ; :type/Text
+                      :created-at 712)       ; :type/DateTimeWithLocalTZ
+        :reviews    (case field-name         ;
+                      :id         800        ; :type/BigInteger
+                      :created-at 801        ; :type/DateTimeWithLocalTZ
+                      :rating     802        ; :type/Integer
+                      :reviewer   803        ; :type/Text
+                      :body       804        ; :type/Text
+                      :product-id 805)       ; :type/Integer
+        :ic/accounts (case field-name        ;
+                       :id        900        ; :type/Integer
+                       :name      901)       ; :type/Text
+        :ic/reports  (case field-name        ;
+                       :id         1000      ; :type/Integer
+                       :created-by 1100      ; :type/Integer
+                       :updated-by 1200))))) ; :type/Integer
 
 (defmulti ^:private table-metadata-method
   {:arglists '([table-name])}
@@ -1633,7 +1642,7 @@
   [_table-name _field-name]
   {:description                nil
    :database-type              "CHARACTER VARYING"
-   :semantic-type              nil
+   :semantic-type              :type/ZipCode
    :table-id                   (id :people)
    :coercion-strategy          nil
    :name                       "ZIP"
@@ -2136,13 +2145,225 @@
                              (field-metadata-method :reviews :body)
                              (field-metadata-method :reviews :product-id)]})
 
+(defmethod field-metadata-method [:ic/accounts :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :semantic-type              :type/PK
+   :table-id                   (id :ic/accounts)
+   :coercion-strategy          nil
+   :name                       "id"
+   :fingerprint-version        0
+   :has-field-values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :custom-position            0
+   :effective-type             :type/Integer
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :id                         (id :ic/accounts :id)
+   :last-analyzed              nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "ID"
+   :database-position          0
+   :database-required          true
+   :fingerprint                nil
+   :base-type                  :type/Integer
+   :points-of-interest         nil
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:ic/accounts :name]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "text"
+   :semantic-type              :type/Name
+   :table-id                   (id :ic/accounts)
+   :coercion-strategy          nil
+   :name                       "name"
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :custom-position            0
+   :effective-type             :type/Text
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :id                         (id :ic/accounts :name)
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "Name"
+   :database-position          1
+   :database-required          false
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 5.5}}},
+   :base-type                  :type/Text,
+   :points-of-interest         nil
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :ic/accounts
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/UserTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "ic_accounts"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :ic/accounts)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "IC Accounts"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :ic/accounts :id)
+                             (field-metadata-method :ic/accounts :name)]})
+
+(defmethod field-metadata-method [:ic/reports :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :semantic-type              :type/Category
+   :table-id                   (id :ic/reports)
+   :coercion-strategy          nil
+   :name                       "id"
+   :fingerprint-version        5
+   :has-field-values           "auto-list"
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :custom-position            0
+   :effective-type             :type/Integer
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :id                         (id :ic/reports :id)
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "ID"
+   :database-position          0
+   :database-required          true
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/Number {:min 1.0, :q1 1.0, :q3 2.0
+                                                       :max 2.0, :sd 0.7071067811865476, :avg 1.5}}}
+   :base-type                  :type/Integer
+   :points-of-interest         nil
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:ic/reports :created-by]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :semantic-type              :type/FK
+   :table-id                   (id :ic/reports)
+   :coercion-strategy          nil
+   :name                       "created_by"
+   :fingerprint-version        5
+   :has-field-values           "auto-list"
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :ic/accounts :id)
+   :custom-position            0
+   :effective-type             :type/Integer
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :id                         (id :ic/reports :created-by)
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "Created By"
+   :database-position          1
+   :database-required          false
+   :fingerprint                {:global {:distinct-count 1, :nil% 0.0}}
+   :base-type                  :type/Integer
+   :points-of-interest         nil
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:ic/reports :updated-by]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :semantic-type              :type/FK
+   :table-id                   (id :ic/reports)
+   :coercion-strategy          nil
+   :name                       "updated_by"
+   :fingerprint-version        5
+   :has-field-values           "auto-list"
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :ic/accounts :id)
+   :custom-position            0
+   :effective-type             :type/Integer
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :id                         (id :ic/reports :updated-by)
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "Created By"
+   :database-position          2
+   :database-required          false
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}}
+   :base-type                  :type/Integer
+   :points-of-interest         nil
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :ic/reports
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "ic_purchase_report"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :ic/reports)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "IC Purchase Report"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :ic/reports :id)
+                             (field-metadata-method :ic/reports :created-by)
+                             (field-metadata-method :ic/reports :updated-by)]})
+
 (def metadata
   "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
   of `test-data`. This is a representative example of the metadata the FE Query Builder would have available to it.
   Here so we can test things that should consume Database metadata without relying on having a REST API
   available (i.e., in Cljs tests).
 
-  This metadata matches the [[metabase.lib.metadata/DatabaseMetadata]] schema."
+  For mock Database metadata, you should probably use [[database]] instead, which doesn't include extra noise like
+  `:tables`, which are only useful to the graph metadata provider."
   {:description                 nil
    :features                    #{:actions
                                   :actions/custom
@@ -2178,7 +2399,9 @@
                                  (table-metadata-method :products)
                                  (table-metadata-method :orders)
                                  (table-metadata-method :people)
-                                 (table-metadata-method :reviews)]
+                                 (table-metadata-method :reviews)
+                                 (table-metadata-method :ic/accounts)
+                                 (table-metadata-method :ic/reports)]
    :creator-id                  nil
    :is-full-sync                true
    :cache-ttl                   nil
@@ -2191,7 +2414,12 @@
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
    :points-of-interest          nil
-   :lib/type                    :metadata/database})
+   :lib/type                    :metadata/database
+   :details                     {}})
+
+(def database
+  "Mock Database metadata. This metadata matches the [[metabase.lib.metadata/DatabaseMetadata]] schema."
+  (dissoc metadata :tables))
 
 (def metadata-provider
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."

@@ -2,15 +2,14 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import * as Errors from "metabase/core/utils/errors";
-import { LocaleData, User } from "metabase-types/api";
-import { UserProfileData } from "../../types";
+import type { LocaleData, User } from "metabase-types/api";
+import type { UserProfileData } from "../../types";
 
 const SSO_PROFILE_SCHEMA = Yup.object({
   locale: Yup.string().nullable().default(null),

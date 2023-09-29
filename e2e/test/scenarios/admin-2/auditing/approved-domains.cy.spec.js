@@ -8,7 +8,10 @@ import {
   visitDashboard,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";
@@ -51,7 +54,7 @@ describeEE(
     });
 
     it("should validate approved email domains for a dashboard subscription in the audit app", () => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create a dashboard subscription").click();

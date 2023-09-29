@@ -3,9 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [compojure.core :refer [POST]]
    [malli.core :as mc]
-   [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -37,30 +35,6 @@
            (str (su/api-error-message
                  {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
                                   (s/optional-key :optional-key) s/Int}}}}}))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/dimension"
-  "Sets the dimension for the given object with ID."
-  #_{:clj-kondo/ignore [:unused-binding :deprecated-var]}
-  [id :as {{dimension-type :type, dimension-name :name} :body}]
-  {dimension-type (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name su/NonBlankString})
-
-(deftest ^:parallel api-param-test
-  (testing "check that API error message respects `api-param` when specified"
-    (is (= (str/join "\n"
-                     ["## `POST metabase.util.schema-test/:id/dimension`"
-                      ""
-                      "Sets the dimension for the given object with ID."
-                      ""
-                      "### PARAMS:"
-                      ""
-                      "*  **`id`** "
-                      ""
-                      "*  **`type`** value must be one of: `external`, `internal`."
-                      ""
-                      "*  **`dimension-name`** value must be a non-blank string."])
-           (:doc (meta #_{:clj-kondo/ignore [:unresolved-symbol]} #'POST_:id_dimension))))))
 
 (defn- ex-info-msg [f]
   (try

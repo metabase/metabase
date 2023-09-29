@@ -1,4 +1,4 @@
-import { getStylesRef } from "@mantine/core";
+import { getStylesRef, px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
@@ -16,39 +16,37 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       item: {
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.md,
-        fontWeight: 700,
-        lineHeight: "1rem",
-        padding: theme.spacing.md,
+        lineHeight: "1.5rem",
+        padding: theme.spacing.sm,
 
         "&:hover, &:focus": {
-          color: theme.fn.primaryColor(),
-          backgroundColor: theme.colors.bg[0],
+          color: theme.colors.brand[1],
+          backgroundColor: theme.colors.brand[0],
 
           [`& .${getStylesRef("itemRightSection")}`]: {
-            color: theme.fn.primaryColor(),
+            color: theme.colors.brand[1],
           },
         },
       },
       itemIcon: {
-        marginRight: "0.75rem",
+        marginRight: theme.spacing.sm,
       },
       itemRightSection: {
         ref: getStylesRef("itemRightSection"),
         color: theme.colors.text[0],
-        marginLeft: "0.75rem",
+        marginLeft: theme.spacing.md,
       },
       label: {
         color: theme.colors.text[0],
-        fontSize: theme.fontSizes.md,
-        fontWeight: 700,
-        lineHeight: "1rem",
-        padding: `0.375rem ${theme.spacing.md}`,
+        fontSize: theme.fontSizes.sm,
+        lineHeight: theme.lineHeight,
+        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
       },
       divider: {
-        marginTop: theme.spacing.sm,
-        marginBottom: theme.spacing.sm,
-        marginLeft: theme.spacing.md,
-        marginRight: theme.spacing.md,
+        marginTop: rem(px(theme.spacing.xs) - 1),
+        marginBottom: theme.spacing.xs,
+        marginLeft: theme.spacing.sm,
+        marginRight: theme.spacing.sm,
         borderTopColor: theme.colors.border[0],
       },
     }),

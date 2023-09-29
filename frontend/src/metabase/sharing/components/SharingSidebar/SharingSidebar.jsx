@@ -23,7 +23,7 @@ import {
 
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
 
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import {
   updateEditingPulse,
@@ -36,6 +36,18 @@ import { UserApi } from "metabase/services";
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
+};
+
+const EDITING_MODES = {
+  ADD_EMAIL: "add-edit-email",
+  ADD_SLACK: "add-edit-slack",
+  NEW_PULSE: "new-pulse",
+  LIST_PULSES: "list-pulses",
+};
+
+const CHANNEL_TYPES = {
+  EMAIL: "email",
+  SLACK: "slack",
 };
 
 const cardsFromDashboard = dashboard => {
@@ -93,6 +105,7 @@ const getEditingPulseWithDefaults = (state, props) => {
 };
 
 const mapStateToProps = (state, props) => ({
+  isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
@@ -108,7 +121,7 @@ const mapDispatchToProps = {
 
 class SharingSidebarInner extends Component {
   state = {
-    editingMode: "list-pulses",
+    editingMode: EDITING_MODES.LIST_PULSES,
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
@@ -120,6 +133,7 @@ class SharingSidebarInner extends Component {
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     initialCollectionId: PropTypes.number,
+    isAdmin: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
@@ -135,8 +149,69 @@ class SharingSidebarInner extends Component {
     this.fetchUsers();
   }
 
+  componentDidUpdate(prevProps) {
+    const { isAdmin } = this.props;
+
+    if (!isAdmin) {
+      this.forwardNonAdmins({ prevProps });
+    }
+  }
+
   fetchUsers = async () => {
     this.setState({ users: (await UserApi.list()).data });
+  };
+
+  forwardNonAdmins = ({ prevProps }) => {
+    const { editingMode } = this.state;
+    const { formInput, pulses: newPulses } = this.props;
+    const { pulses: prevPulses } = prevProps;
+
+    // prevent forwarding to add-pulse editingMode after creating a new pulse
+    // when none existed previously
+    if (newPulses?.length > 0 && prevPulses?.length === 0) {
+      this.setState(() => {
+        return {
+          editingMode: EDITING_MODES.LIST_PULSES,
+          returnMode: [],
+        };
+      });
+
+      return;
+    }
+
+    const isEditingModeForwardable =
+      editingMode === EDITING_MODES.NEW_PULSE ||
+      (editingMode === EDITING_MODES.LIST_PULSES && newPulses?.length === 0);
+
+    if (isEditingModeForwardable) {
+      const emailConfigured = formInput?.channels?.email?.configured || false;
+      const slackConfigured = formInput?.channels?.slack?.configured || false;
+
+      const shouldForwardToAddEmail = emailConfigured && !slackConfigured;
+      const shouldForwardToAddSlack = slackConfigured && !emailConfigured;
+
+      if (shouldForwardToAddEmail) {
+        this.setState(() => {
+          return {
+            editingMode: EDITING_MODES.ADD_EMAIL,
+          };
+        });
+        this.setPulseWithChannel(CHANNEL_TYPES.EMAIL);
+
+        return;
+      }
+
+      if (shouldForwardToAddSlack) {
+        this.setState(() => {
+          return {
+            editingMode: EDITING_MODES.ADD_SLACK,
+          };
+        });
+        this.setPulseWithChannel(CHANNEL_TYPES.SLACK);
+
+        return;
+      }
+    }
   };
 
   setPulse = pulse => {
@@ -209,7 +284,7 @@ class SharingSidebarInner extends Component {
       this.setState({ isSaving: true });
       await this.props.updateEditingPulse(cleanedPulse);
       await this.props.saveEditingPulse();
-      this.setState({ editingMode: "list-pulses", returnMode: [] });
+      this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
     } finally {
       this.setState({ isSaving: false });
     }
@@ -218,7 +293,7 @@ class SharingSidebarInner extends Component {
   createSubscription = () => {
     this.setState(({ editingMode, returnMode }) => {
       return {
-        editingMode: "new-pulse",
+        editingMode: EDITING_MODES.NEW_PULSE,
         returnMode: returnMode.concat([editingMode]),
       };
     });
@@ -229,14 +304,16 @@ class SharingSidebarInner extends Component {
     this.setState(({ editingMode, returnMode }) => {
       return {
         editingMode: "add-edit-" + channelType,
-        returnMode: returnMode.concat([editingMode || "list-pulses"]),
+        returnMode: returnMode.concat([
+          editingMode || EDITING_MODES.LIST_PULSES,
+        ]),
       };
     });
   };
 
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
-    this.setState({ editingMode: "list-pulses", returnMode: [] });
+    this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
   };
 
   // Because you can navigate down the sidebar, we need to wrap
@@ -257,7 +334,7 @@ class SharingSidebarInner extends Component {
 
   render() {
     const { editingMode, users } = this.state;
-    const { pulse, pulses, formInput, testPulse, dashboard } = this.props;
+    const { dashboard, formInput, pulse, pulses, testPulse } = this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 
@@ -269,7 +346,7 @@ class SharingSidebarInner extends Component {
       );
     }
 
-    if (editingMode === "list-pulses" && pulses.length > 0) {
+    if (editingMode === EDITING_MODES.LIST_PULSES && pulses.length > 0) {
       return (
         <PulsesListSidebar
           pulses={pulses}
@@ -282,13 +359,15 @@ class SharingSidebarInner extends Component {
     }
 
     if (
-      editingMode === "add-edit-email" &&
+      editingMode === EDITING_MODES.ADD_EMAIL &&
       pulse.channels &&
       pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
-        .filter(([c, i]) => c.enabled && c.channel_type === "email");
+        .filter(
+          ([c, i]) => c.enabled && c.channel_type === CHANNEL_TYPES.EMAIL,
+        );
       // protection from a failure where the channels aren't loaded yet
       if (channelDetails.length === 0) {
         return <Sidebar />;
@@ -325,13 +404,15 @@ class SharingSidebarInner extends Component {
     }
 
     if (
-      editingMode === "add-edit-slack" &&
+      editingMode === EDITING_MODES.ADD_SLACK &&
       pulse.channels &&
       pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
-        .filter(([c, i]) => c.enabled && c.channel_type === "slack");
+        .filter(
+          ([c, i]) => c.enabled && c.channel_type === CHANNEL_TYPES.SLACK,
+        );
 
       // protection from a failure where the channels aren't loaded yet
       if (channelDetails.length === 0) {
@@ -365,11 +446,9 @@ class SharingSidebarInner extends Component {
       );
     }
 
-    if (editingMode === "new-pulse" || pulses.length === 0) {
-      const { configured: emailConfigured = false } =
-        formInput.channels.email || {};
-      const { configured: slackConfigured = false } =
-        formInput.channels.slack || {};
+    if (editingMode === EDITING_MODES.NEW_PULSE || pulses.length === 0) {
+      const emailConfigured = formInput?.channels?.email?.configured || false;
+      const slackConfigured = formInput?.channels?.slack?.configured || false;
 
       return (
         <NewPulseSidebar
@@ -380,22 +459,22 @@ class SharingSidebarInner extends Component {
             if (emailConfigured) {
               this.setState(({ returnMode }) => {
                 return {
-                  editingMode: "add-edit-email",
+                  editingMode: EDITING_MODES.ADD_EMAIL,
                   returnMode: returnMode.concat([editingMode]),
                 };
               });
-              this.setPulseWithChannel("email");
+              this.setPulseWithChannel(CHANNEL_TYPES.EMAIL);
             }
           }}
           onNewSlackPulse={() => {
             if (slackConfigured) {
               this.setState(({ returnMode }) => {
                 return {
-                  editingMode: "add-edit-slack",
+                  editingMode: EDITING_MODES.ADD_SLACK,
                   returnMode: returnMode.concat([editingMode]),
                 };
               });
-              this.setPulseWithChannel("slack");
+              this.setPulseWithChannel(CHANNEL_TYPES.SLACK);
             }
           }}
         />

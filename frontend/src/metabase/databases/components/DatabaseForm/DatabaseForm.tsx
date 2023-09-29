@@ -3,13 +3,12 @@ import { useFormikContext } from "formik";
 import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { DatabaseData, Engine } from "metabase-types/api";
+import type { DatabaseData, Engine } from "metabase-types/api";
 import { getEngines, getIsCachingEnabled, getIsHosted } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {

@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import { Location } from "history";
+import type { Location } from "history";
 import { Box } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
-import { AuthProvider } from "metabase/plugins/types";
+import type { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
 import { getAuthProviders } from "../../selectors";
 

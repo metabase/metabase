@@ -5,7 +5,7 @@ import {
   createMockFieldSettings,
   createMockParameter,
 } from "metabase-types/api/mocks";
-import { FieldSettingsMap } from "metabase-types/api";
+import type { FieldSettingsMap } from "metabase-types/api";
 import {
   formatInitialValue,
   getInputType,

@@ -20,7 +20,7 @@ import {
 } from "__support__/ui";
 
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import {
+import type {
   Card,
   Database,
   StructuredDatasetQuery,

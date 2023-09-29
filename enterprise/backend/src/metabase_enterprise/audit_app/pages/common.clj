@@ -93,7 +93,10 @@
   ;;
   ;; This is cached by db-type and the JDBC connection spec in case that gets changed/swapped out for one reason or
   ;; another
-  (let [timezone (memoize/ttl sql-jdbc.sync/db-default-timezone :ttl/threshold (u/hours->ms 1))]
+  (let [timezone (memoize/ttl
+                  #_{:clj-kondo/ignore [:deprecated-var]}
+                  sql-jdbc.sync/db-default-timezone
+                  :ttl/threshold (u/hours->ms 1))]
     (fn []
       (timezone (mdb/db-type) {:datasource mdb.connection/*application-db*}))))
 
@@ -120,7 +123,8 @@
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
-                cols     (sql-jdbc.execute/column-metadata driver rsmeta)
+                cols     (for [col (sql-jdbc.execute/column-metadata driver rsmeta)]
+                           (update col :name u/lower-case-en))
                 metadata {:cols cols}
                 rf       (rff metadata)]
             (reduce rf init (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))))

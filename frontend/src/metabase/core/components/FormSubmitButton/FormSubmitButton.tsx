@@ -1,8 +1,10 @@
-import { forwardRef, Ref } from "react";
+import type { Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
-import Button, { ButtonProps } from "metabase/core/components/Button";
-import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
-import { FormStatus } from "metabase/core/context/FormContext";
+import type { ButtonProps } from "metabase/core/components/Button";
+import Button from "metabase/core/components/Button";
+import { useFormSubmitButton } from "metabase/forms";
+import type { FormStatus } from "metabase/forms";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   title?: string;
@@ -11,6 +13,9 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   failedTitle?: string;
 }
 
+/**
+ * @deprecated: use FormSubmitForm from "metabase/forms"
+ */
 const FormSubmitButton = forwardRef(function FormSubmitButton(
   { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,

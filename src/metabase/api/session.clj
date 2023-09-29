@@ -15,7 +15,7 @@
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
-   [metabase.models.setting :as setting]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -61,8 +61,10 @@
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]
     (assert (map? session))
-    (events/publish-event! :user-login
-      {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+    (let [event {:user-id (u/the-id user)}]
+      (events/publish-event! :event/user-login event)
+      (when (nil? (:last_login user))
+        (events/publish-event! :event/user-joined event)))
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when-not (:last_login user)
       (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
@@ -165,12 +167,11 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
-  {username su/NonBlankString
-   password su/NonBlankString}
+  {username ms/NonBlankString
+   password ms/NonBlankString}
   (let [ip-address   (request.u/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
@@ -184,8 +185,7 @@
                                   (login-throttlers :username)   username]
            (do-login))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/"
+(api/defendpoint DELETE "/"
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
@@ -220,11 +220,10 @@
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/forgot_password"
+(api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
-  {email su/Email}
+  {email ms/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
@@ -232,9 +231,17 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(def ^:private ^:const reset-token-ttl-ms
-  "Number of milliseconds a password reset is considered valid."
-  (* 48 60 60 1000)) ; token considered valid for 48 hours
+
+(defsetting reset-token-ttl-hours
+  (deferred-tru "Number of hours a password reset is considered valid.")
+  :visibility :internal
+  :type       :integer
+  :default    48)
+
+(defn reset-token-ttl-ms
+  "number of milliseconds a password reset is considered valid."
+  []
+  (* (reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -249,15 +256,14 @@
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
-            (when (< token-age reset-token-ttl-ms)
+            (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/reset_password"
+(api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
-  {token    su/NonBlankString
-   password su/ValidPassword}
+  {token    ms/NonBlankString
+   password ms/ValidPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (user/set-password! user-id password)
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
@@ -271,25 +277,22 @@
           (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/password_reset_token_valid"
+(api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
-  {token s/Str}
+  {token ms/NonBlankString}
   {:valid (boolean (valid-reset-token->user token))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/properties"
+(api/defendpoint GET "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/google_auth"
+(api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
-  {token su/NonBlankString}
+  {token ms/NonBlankString}
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google

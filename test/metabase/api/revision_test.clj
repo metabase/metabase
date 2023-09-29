@@ -13,7 +13,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users :web-server :events))
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (def ^:private rasta-revision-info
   (delay
@@ -218,8 +218,8 @@
 (deftest permission-check-on-revert-test
   (testing "Are permissions enforced by the revert action in the revision api?"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Collection [collection {:name "Personal collection"}]
-                      Dashboard  [dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]]
+      (mt/with-temp [Collection collection {:name "Personal collection"}
+                     Dashboard  dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]
         (create-dashboard-revision! (:id dashboard) true :crowberto)
         ;; update so that the revision is accepted
         (t2/update! Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})

@@ -6,7 +6,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -190,59 +193,23 @@
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
 
-(deftest ^:parallel find-closest-matching-ref-test
-  (are [a-ref refs expected] (= expected
-                                (lib.equality/find-closest-matching-ref a-ref refs))
-    ;; strict matching
-    [:field {} 1]
-    [[:field {} 1]
-     [:field {} 2]
-     [:field {} 3]]
-    [:field {} 1]
-
-    [:field {:base-type :type/Integer} 1]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
-    [:field {:base-type :type/Integer} 1]
-
-    [:field {:join-alias "J"} 1]
-    [[:field {:join-alias "I"} 1]
-     [:field {:join-alias "J"} 1]]
-    [:field {:join-alias "J"} 1]
-
-    ;; if no strict match, should ignore type info and return first match
-    [:field {:base-type :type/Float} 1]
-    [[:field {:base-type :type/Number} 1]
-     [:field {:base-type :type/Integer} 1]]
-    [:field {:base-type :type/Number} 1]
-
-    ;; if no exact match, ignore :join-alias
-    [:field {} 1]
-    [[:field {:join-alias "J"} 1]
-     [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]))
-
-(deftest ^:parallel find-closest-matching-ref-3-arity-test
-  (is (= [:field {} "CATEGORY"]
-         (lib.equality/find-closest-matching-ref
-          meta/metadata-provider
-          [:field {} (meta/id :products :category)]
-          [[:field {} "ID"]
-           [:field {} "CATEGORY"]]))))
-
-(deftest ^:parallel find-closest-matching-ref-ignore-temporal-unit-test
-  (testing "Should find a matching ref ignoring :temporal-unit if needed (#32920)"
-    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          needle   (-> (meta/field-metadata :orders :created-at)
-                       (lib/with-temporal-bucket :month)
-                       lib/ref)
-          haystack (mapv lib/ref (lib.metadata.calculation/returned-columns query))]
+(deftest ^:parallel ignore-temporal-unit-test
+  (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        column   (meta/field-metadata :orders :created-at)
+        needle   (-> column
+                     (lib/with-temporal-bucket :month)
+                     lib/ref)
+        haystack (lib.metadata.calculation/returned-columns query)]
+    (testing "Should find a matching column ignoring :temporal-unit if needed (#32920)"
+      (is (=? column
+              (lib.equality/find-matching-column needle haystack))))
+    (testing "Should find a matching ref ignoring :temporal-unit if needed (#32920)"
       (is (=? [:field
                {:lib/uuid       string?
                 :base-type      :type/DateTimeWithLocalTZ
                 :effective-type :type/DateTimeWithLocalTZ}
                (meta/id :orders :created-at)]
-              (lib.equality/find-closest-matching-ref needle haystack))))))
+              (lib.equality/find-matching-ref column (map lib/ref haystack)))))))
 
 (deftest ^:parallel mark-selected-columns-ignore-temporal-unit-test
   (testing "Mark columns selected even if they have a :temporal-unit (#32920)"
@@ -261,4 +228,275 @@
               {:name "CREATED_AT", :selected? true}
               {:name "QUANTITY",   :selected? false}]
              (mapv #(select-keys % [:name :selected?])
-                   (lib.equality/mark-selected-columns query cols selected)))))))
+                   (lib.equality/mark-selected-columns cols selected))
+             (mapv #(select-keys % [:name :selected?])
+                   (lib.equality/mark-selected-columns query -1 cols selected)))))))
+
+(deftest ^:parallel find-matching-column-by-id-test
+  (testing "find-matching-column should find columns based on matching ID (#31482) (#33453)"
+    (let [query lib.tu/query-with-join
+          cols  (lib/returned-columns query)
+          refs  (map lib.ref/ref cols)
+          a-ref [:field {:lib/uuid (str (random-uuid))
+                         :base-type :type/Text
+                         :join-alias "Cat"}
+                 (meta/id :categories :name)]]
+      (is (=? [[:field {} (meta/id :venues :id)]
+               [:field {} (meta/id :venues :name)]
+               [:field {} (meta/id :venues :category-id)]
+               [:field {} (meta/id :venues :latitude)]
+               [:field {} (meta/id :venues :longitude)]
+               [:field {} (meta/id :venues :price)]
+               [:field {} (meta/id :categories :id)]
+               [:field {} (meta/id :categories :name)]]
+              refs))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column a-ref cols)
+             (lib.equality/find-matching-column query -1 a-ref cols))))))
+
+(deftest ^:parallel find-matching-column-by-name-test
+  (testing "find-matching-column should find columns based on matching name"
+    (let [query    (lib/append-stage lib.tu/query-with-join)
+          cols     (lib/returned-columns query)
+          refs     (map lib.ref/ref cols)
+          cat-name [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text
+                            :join-alias "Cat"}
+                    "Cat__NAME"]
+          cat-raw  [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text
+                            :join-alias "Cat"}
+                    "NAME"]
+          ven-name [:field {:lib/uuid (str (random-uuid))
+                            :base-type :type/Text}
+                    "NAME"]]
+      (is (=? [[:field {} "ID"]          ; 0
+               [:field {} "NAME"]        ; 1
+               [:field {} "CATEGORY_ID"] ; 2
+               [:field {} "LATITUDE"]    ; 3
+               [:field {} "LONGITUDE"]   ; 4
+               [:field {} "PRICE"]       ; 5
+               [:field {} "Cat__ID"]     ; 6
+               [:field {} "Cat__NAME"]]  ; 7
+              refs))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column cat-name cols)
+             (lib.equality/find-matching-column query -1 cat-name cols)))
+      (is (= (nth cols 7)
+             (lib.equality/find-matching-column cat-raw cols)
+             (lib.equality/find-matching-column query -1 cat-raw cols)))
+      (is (= (nth cols 1)
+             (lib.equality/find-matching-column ven-name cols)
+             (lib.equality/find-matching-column query -1 ven-name cols))))))
+
+(deftest ^:parallel find-matching-column-self-join-test
+  (testing "find-matching-column with a self join"
+    (let [query     lib.tu/query-with-self-join
+          cols      (for [col (meta/fields :orders)]
+                       (meta/field-metadata :orders col))
+          table-col #(assoc % :lib/source :source/table-defaults)
+          join-col  #(merge %
+                            {:lib/source                   :source/joins
+                             :metabase.lib.join/join-alias "Orders"
+                             :lib/desired-column-alias     (str "Orders__" (:name %))})
+          sorted    #(sort-by (juxt :position :source-alias) %)
+          visible   (lib/visible-columns query)]
+      (is (=? (sorted (concat (map table-col cols)
+                              (map join-col  cols)))
+              (sorted (lib/returned-columns query))))
+      (testing "matches the defaults by ID"
+        (doseq [col-key (meta/fields :orders)]
+          (is (=? (table-col (meta/field-metadata :orders col-key))
+                  (-> (meta/field-metadata :orders col-key)
+                      table-col
+                      lib/ref
+                      (lib.equality/find-matching-column visible))))))
+      (testing "matches the joined columns by ID"
+        (doseq [col-key (meta/fields :orders)]
+          (is (=? (join-col (meta/field-metadata :orders col-key))
+                  (-> (meta/field-metadata :orders col-key)
+                      join-col
+                      lib/ref
+                      (lib.equality/find-matching-column visible))))))
+      (testing "the matches of default and joins are distinct"
+        (let [matches (for [col-key (meta/fields :orders)
+                            col-fn  [table-col join-col]]
+                        (-> (meta/field-metadata :orders col-key)
+                            col-fn
+                            lib/ref
+                            (lib.equality/find-matching-column visible)))]
+          (is (every? some? matches))
+          (is (= (count matches)
+                 (count (set matches)))))))))
+
+(deftest ^:parallel find-matching-column-self-join-with-fields-test
+  (testing "find-matching-column works with a tricky case taken from an e2e test"
+    (let [base   (-> lib.tu/query-with-self-join
+                     (lib/with-fields [(meta/field-metadata :orders :id)
+                                       (meta/field-metadata :orders :tax)]))
+          [join] (lib/joins base)
+          all-4  (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)
+                                                                         (meta/field-metadata :orders :tax)]))
+          just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))]
+      (is (=? [{:lib/desired-column-alias "ID"}
+               {:lib/desired-column-alias "TAX"}
+               {:lib/desired-column-alias "Orders__ID"}
+               {:lib/desired-column-alias "Orders__TAX"}]
+              (lib/returned-columns all-4)))
+      (is (=? [{:lib/desired-column-alias "ID"}
+               {:lib/desired-column-alias "TAX"}
+               {:lib/desired-column-alias "Orders__ID"}]
+              (lib/returned-columns just-3)))
+      (testing "matching the four fields against"
+        (let [hr-own-id   {:lib/type :metadata/column
+                           :description        "Own ID"
+                           :base-type          :type/BigInteger
+                           :semantic-type      :type/PK
+                           :effective-type     :type/BigInteger
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :id)
+                           :name               "ID"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "ID"
+                           :position           0}
+              hr-own-tax  {:lib/type :metadata/column
+                           :description        "Own Tax"
+                           :base-type          :type/Float
+                           :semantic-type      nil
+                           :effective-type     :type/Float
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :tax)
+                           :name               "TAX"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Tax"
+                           :position           4}
+              hr-join-id  {:lib/type :metadata/column
+                           :description        "Join ID"
+                           :base-type          :type/BigInteger
+                           :semantic-type      :type/PK
+                           :effective-type     :type/BigInteger
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :id)
+                           :name               "ID_2"
+                           :source-alias       "Orders"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Orders → ID"
+                           :position           0}
+              hr-join-tax {:lib/type :metadata/column
+                           :description        "Join Tax"
+                           :base-type          :type/Float
+                           :semantic-type      nil
+                           :effective-type     :type/Float
+                           :table-id           (meta/id :orders)
+                           :id                 (meta/id :orders :tax)
+                           :name               "TAX_2"
+                           :source-alias       "Orders"
+                           :lib/source         :source/fields
+                           :fk-target-field-id nil
+                           :parent-id          nil
+                           :display-name       "Orders → Tax"
+                           :position           4}
+
+              ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
+              ret-3 [hr-own-id hr-own-tax hr-join-id]
+              refs  (for [join-alias       [nil "Orders"]
+                          [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
+                      [:field (merge {:lib/uuid       (str (random-uuid))
+                                      :base-type      coltype
+                                      :effective-type coltype}
+                                     (when join-alias
+                                       {:join-alias join-alias}))
+                       (meta/id :orders column)])
+              exp-4 [{:display-name "ID"}
+                     {:display-name "Tax"}
+                     {:display-name "Orders → ID"}
+                     {:display-name "Orders → Tax"}]
+              exp-3 (update exp-4 3 (constantly nil))]
+          (testing "all-4 matches everything"
+            (is (=? exp-4
+                    (->> refs
+                         (map #(lib.equality/find-matching-column % ret-4)))))
+            (is (=? exp-4
+                    (->> refs
+                         (map #(lib.equality/find-matching-column all-4 -1 % ret-4)))))
+            (is (=? [0 1 2 3]
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (lib.equality/find-column-indexes-for-refs all-4 -1 refs ret-4))))
+          (testing "just-3 does not match the joined TAX"
+            (is (=? exp-3
+                    (->> refs
+                         (map #(lib.equality/find-matching-column % ret-3)))))
+            (is (=? exp-3
+                    (->> refs
+                         (map #(lib.equality/find-matching-column just-3 -1 % ret-3)))))
+            (is (=? [0 1 2 -1]
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (lib.equality/find-column-indexes-for-refs just-3 -1 refs ret-3)))))))))
+
+(deftest ^:parallel find-matching-column-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))
+        [ag]  (lib/aggregations query)]
+    (is (=? {:display-name "Count", :lib/source :source/aggregations}
+            (lib.equality/find-matching-column
+             [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+             (lib/returned-columns query))))))
+
+(deftest ^:parallel find-matching-column-expression-test
+  (is (=? {:name "expr", :lib/source :source/expressions}
+          (lib.equality/find-matching-column
+           [:expression {:lib/uuid (str (random-uuid))} "expr"]
+           (lib/visible-columns lib.tu/query-with-expression)))))
+
+(deftest ^:parallel find-column-for-legacy-ref-field-test
+  (are [legacy-ref] (=? {:name "NAME", :id (meta/id :venues :name)}
+                        (lib/find-column-for-legacy-ref
+                         lib.tu/venues-query
+                         legacy-ref
+                         (lib/visible-columns lib.tu/venues-query)))
+    [:field (meta/id :venues :name) nil]
+    [:field (meta/id :venues :name) {}]
+    ;; should work with refs that need normalization
+    ["field" (meta/id :venues :name) nil]
+    ["field" (meta/id :venues :name)]
+    #?@(:cljs
+        [#js ["field" (meta/id :venues :name) nil]
+         #js ["field" (meta/id :venues :name) #js {}]])))
+
+(deftest ^:parallel find-column-for-legacy-ref-expression-test
+  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
+                        (lib/find-column-for-legacy-ref
+                         lib.tu/query-with-expression
+                         legacy-ref
+                         (lib/visible-columns lib.tu/query-with-expression)))
+    [:expression "expr"]
+    ["expression" "expr"]
+    ["expression" "expr" nil]
+    ["expression" "expr" {}]
+    #?@(:cljs
+        [#js ["expression" "expr"]
+         #js ["expression" "expr" #js {}]])))
+
+(deftest ^:parallel find-column-for-legacy-ref-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))]
+    (are [legacy-ref] (=? {:name           "count"
+                           :effective-type :type/Integer
+                           :lib/source     :source/aggregations}
+                          (lib/find-column-for-legacy-ref
+                           query
+                           legacy-ref
+                           (lib/returned-columns query)))
+      [:aggregation 0]
+      ["aggregation" 0]
+      ["aggregation" 0 nil]
+      ["aggregation" 0 {}]
+      #?@(:cljs
+          [#js ["aggregation" 0]
+           #js ["aggregation" 0 #js {}]]))))

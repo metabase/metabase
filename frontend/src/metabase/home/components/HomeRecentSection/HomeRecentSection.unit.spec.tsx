@@ -2,7 +2,7 @@ import { screen, waitForElementToBeRemoved } from "@testing-library/react";
 import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
-import { User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 import { HomeRecentSection } from "./HomeRecentSection";
 
 interface SetupOpts {

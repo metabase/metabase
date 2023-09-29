@@ -1,8 +1,6 @@
 (ns metabase.mbql.predicates
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
   (:require
-   [metabase.lib.schema.expression.temporal
-    :as lib.schema.expression.temporal]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.mbql.schema :as mbql.s]
@@ -11,10 +9,6 @@
 (def ^{:arglists '([unit])} DateTimeUnit?
   "Is `unit` a valid datetime bucketing unit?"
   (mr/validator ::lib.schema.temporal-bucketing/unit))
-
-(def ^{:arglists '([unit])} TimezoneId?
-  "Is `unit` a valid datetime bucketing unit?"
-  (mr/validator ::lib.schema.expression.temporal/timezone-id))
 
 (def ^{:arglists '([ag-clause])} Aggregation?
   "Is this a valid Aggregation clause?"

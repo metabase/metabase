@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Settings } from "metabase-types/api";
+import type { Card, Settings } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,

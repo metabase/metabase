@@ -18,16 +18,16 @@
 (methodical/defmethod t2/table-name :model/FakedCard [_model] :report_card)
 (derive :model/FakedCard :metabase/model)
 
-(use-fixtures :each (fn [thunk]
-                      (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
-                                                                        (case model-str
-                                                                          "Dashboard"     (deferred-tru "Dashboard")
-                                                                          "Card"          (deferred-tru "Card")
-                                                                          "Segment"       (deferred-tru "Segment")
-                                                                          "Metric"        (deferred-tru "Metric")
-                                                                          "NonExistModel" "NonExistModel"
-                                                                          "FakeCard"      "FakeCard"))]
-                        (thunk))))
+(defn- do-with-model-i18n-strs! [thunk]
+  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+                                                    (case model-str
+                                                      "Dashboard"     (deferred-tru "Dashboard")
+                                                      "Card"          (deferred-tru "Card")
+                                                      "Segment"       (deferred-tru "Segment")
+                                                      "Metric"        (deferred-tru "Metric")
+                                                      "NonExistModel" "NonExistModel"
+                                                      "FakeCard"      "FakeCard"))]
+    (thunk)))
 
 (defmethod revision/serialize-instance :model/FakedCard
   [_model _id obj]
@@ -54,7 +54,7 @@
     :object   (dissoc object :message)
     :message  message))
 
-(deftest post-select-test
+(deftest ^:parallel post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
                 "DB. This is especially important for things like Cards where we need to make sure query is "
                 "normalized")
@@ -64,7 +64,7 @@
 
 ;;; # Default diff-* implementations
 
-(deftest default-diff-str-test
+(deftest ^:parallel default-diff-str-test
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
@@ -81,7 +81,7 @@
               {:name "Spots by State", :private false}
               {:name "Spots by State", :private true}))))))
 
-(deftest multiple-changes-test
+(deftest ^:parallel multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
@@ -335,50 +335,52 @@
                   (map #(dissoc % :timestamp :id :model_id)))))))))
 
 (deftest generic-models-revision-title+description-test
-  (doseq [model ["NonExistModel" "Card" "Dashboard"]]
-   (testing (format "revision for %s models" (if (nil? model) "generic" model))
-     (testing "creation"
-       (is (= {:has_multiple_changes false
-               :description          "created this."}
-              (#'revision/revision-description-info model
-                                                     nil
-                                                     {:object       {:name "New Object"}
-                                                      :is_reversion false
-                                                      :is_creation  true}))))
+  (do-with-model-i18n-strs!
+   (fn []
+     (doseq [model ["NonExistModel" "Card" "Dashboard"]]
+       (testing (format "revision for %s models" (if (nil? model) "generic" model))
+         (testing "creation"
+           (is (= {:has_multiple_changes false
+                   :description          "created this."}
+                  (#'revision/revision-description-info model
+                                                        nil
+                                                        {:object       {:name "New Object"}
+                                                         :is_reversion false
+                                                         :is_creation  true}))))
 
-     (testing "reversion"
-       (is (= {:has_multiple_changes false
-               :description          "reverted to an earlier version."}
-              (#'revision/revision-description-info model
-                                                     {:object       {:name "New Object"}
-                                                      :is_reversion false
-                                                      :is_creation  false}
-                                                     {:object       {:name "New Object"}
-                                                      :is_reversion true
-                                                      :is_creation  false}))))
+         (testing "reversion"
+           (is (= {:has_multiple_changes false
+                   :description          "reverted to an earlier version."}
+                  (#'revision/revision-description-info model
+                                                        {:object       {:name "New Object"}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:object       {:name "New Object"}
+                                                         :is_reversion true
+                                                         :is_creation  false}))))
 
-     (testing "multiple changes"
-       {:description          "changed the display from table to bar and turned this into a model."
-        :has_multiple_changes true}
-       (#'revision/revision-description-info model
-                                              {:object       {:dataset false
-                                                              :display :table}
-                                               :is_reversion false
-                                               :is_creation  false}
-                                              {:object       {:dataset true
-                                                              :display :bar}
-                                               :is_reversion false
-                                               :is_creation  false}))
+         (testing "multiple changes"
+           {:description          "changed the display from table to bar and turned this into a model."
+            :has_multiple_changes true}
+           (#'revision/revision-description-info model
+                                                 {:object       {:dataset false
+                                                                 :display :table}
+                                                  :is_reversion false
+                                                  :is_creation  false}
+                                                 {:object       {:dataset true
+                                                                 :display :bar}
+                                                  :is_reversion false
+                                                  :is_creation  false}))
 
-     (testing "changes contains unspecified keys will not be mentioned"
-       (is (= {:description          "turned this into a model."
-               :has_multiple_changes false}
-              (#'revision/revision-description-info model
-                                                     {:object       {:dataset     false
-                                                                     :unknown_key false}
-                                                      :is_reversion false
-                                                      :is_creation  false}
-                                                     {:object       {:dataset     true
-                                                                     :unknown_key false}
-                                                      :is_reversion false
-                                                      :is_creation  false})))))))
+         (testing "changes contains unspecified keys will not be mentioned"
+           (is (= {:description          "turned this into a model."
+                   :has_multiple_changes false}
+                  (#'revision/revision-description-info model
+                                                        {:object       {:dataset     false
+                                                                        :unknown_key false}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:object       {:dataset     true
+                                                                        :unknown_key false}
+                                                         :is_reversion false
+                                                         :is_creation  false})))))))))

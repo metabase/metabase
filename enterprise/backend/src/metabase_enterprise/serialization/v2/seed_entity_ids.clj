@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -32,7 +31,8 @@
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
@@ -87,7 +87,7 @@
 
 (defn- seed-entity-ids-for-model! [model]
   (log/infof "Seeding Entity IDs for model %s" (name model))
-  (let [reducible-instances (db/select-reducible model :entity_id nil)]
+  (let [reducible-instances (t2/reducible-select model :entity_id nil)]
     (transduce
      (map (fn [instance]
             (seed-entity-id-for-instance! model instance)))

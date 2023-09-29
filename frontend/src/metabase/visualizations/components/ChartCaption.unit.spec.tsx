@@ -1,9 +1,9 @@
-import { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 
-import { Card, Series } from "metabase-types/api";
+import type { Card, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,

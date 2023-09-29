@@ -1,4 +1,4 @@
-import { Table, Schema, ForeignKey } from "metabase-types/api";
+import type { Table, Schema, ForeignKey } from "metabase-types/api";
 
 export const createMockTable = (opts?: Partial<Table>): Table => {
   return {
@@ -27,6 +27,6 @@ export const createMockForeignKey = (
 ): ForeignKey => ({
   origin_id: 1,
   destination_id: 1,
-  relationship: "",
+  relationship: "Mt1",
   ...opts,
 });

@@ -18,6 +18,10 @@ import {
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -52,7 +56,7 @@ describe("scenarios > dashboard > filters > location", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery2");
+        cy.wait("@dashcardQuery");
       },
     );
   });

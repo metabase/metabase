@@ -3,9 +3,11 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -373,21 +375,22 @@
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."
     (let [query lib.tu/query-with-source-card]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (let [name-col (m/find-first #(= (:name %) "USER_ID")
-                                     (lib/breakoutable-columns query))]
-          (is (=? {:name      "USER_ID"
-                   :base-type :type/Integer}
-                  name-col))
-          (let [query' (lib/breakout query name-col)]
-            (is (=? {:stages
-                     [{:source-card 1
-                       :breakout [[:field {:base-type :type/Integer} "USER_ID"]]}]}
-                    query'))
-            (is (= "My Card, Grouped by User ID"
-                   (lib/describe-query query')))
-            (is (= ["User ID"]
-                   (for [breakout (lib/breakouts query')]
-                     (lib/display-name query' breakout))))))))))
+        (binding [lib.card/*force-broken-card-refs* false]
+          (let [name-col (m/find-first #(= (:name %) "USER_ID")
+                                       (lib/breakoutable-columns query))]
+            (is (=? {:name      "USER_ID"
+                     :base-type :type/Integer}
+                    name-col))
+            (let [query' (lib/breakout query name-col)]
+               (is (=? {:stages
+                        [{:source-card 1
+                          :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
+                       query'))
+               (is (= "My Card, Grouped by User ID"
+                      (lib/describe-query query')))
+               (is (= ["User ID"]
+                      (for [breakout (lib/breakouts query')]
+                        (lib/display-name query' breakout)))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> lib.tu/venues-query
@@ -467,7 +470,8 @@
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
-                                 [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]}]
+                                 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text}
+                                  (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> lib.tu/venues-query
                         (lib/join (-> (lib/join-clause
@@ -484,3 +488,31 @@
                    :breakout-position 0}
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
+
+(defn- legacy-query-with-broken-breakout []
+  (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
+      ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
+      ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
+      ;; technically wrong.
+      ;;
+      ;; Actually a correct reference would be [:field {} "Products__Category"], see #29763
+      (lib/breakout [:field {:lib/uuid (str (random-uuid))
+                             :base-type :type/Text}
+                     (meta/id :products :category)])))
+
+(deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
+  (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
+    (let [query (legacy-query-with-broken-breakout)]
+      (is (=? [{:name              "CATEGORY"
+                :display-name      "Category"
+                :long-display-name "Products → Category"
+                :effective-type    :type/Text}]
+              (map (partial lib/display-info query)
+                   (lib/breakouts query)))))))
+
+(deftest ^:parallel legacy-query-with-broken-breakout-breakoutable-columns-test
+  (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
+    (is (=? {:display-name      "Products → Category"
+             :breakout-position 0}
+            (m/find-first #(= (:id %) (meta/id :products :category))
+                          (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))

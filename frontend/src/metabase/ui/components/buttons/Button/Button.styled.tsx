@@ -1,13 +1,14 @@
-import { getStylesRef, rem } from "@mantine/core";
 import type {
   ButtonStylesParams,
   MantineTheme,
   MantineThemeOverride,
 } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
 
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
     defaultProps: {
+      color: "brand",
       loaderProps: {
         size: "1rem",
         color: "currentColor",
@@ -19,7 +20,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           height: "auto",
           padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
           fontSize: theme.fontSizes.md,
-          lineHeight: "1rem",
+          lineHeight: theme.lineHeight,
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -44,82 +45,110 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       };
     },
     variants: {
-      default: theme => ({
-        root: {
-          color: theme.colors.text[2],
-          borderColor: theme.colors.border[0],
-          backgroundColor: theme.white,
-          "&:hover": {
-            color: theme.fn.primaryColor(),
-            backgroundColor: theme.colors.bg[0],
-          },
-          "&:disabled": {
-            color: theme.colors.text[0],
+      default: (theme, { color }: ButtonStylesParams) => {
+        const primaryColor = getPrimaryColor(theme, color);
+
+        return {
+          root: {
+            color: theme.colors.text[2],
             borderColor: theme.colors.border[0],
-            backgroundColor: theme.colors.bg[0],
-          },
-          "&[data-loading]": {
-            [`& .${getStylesRef("leftIcon")}`]: {
-              color: theme.fn.primaryColor(),
+            backgroundColor: theme.white,
+            "&:hover": {
+              color: primaryColor,
+              backgroundColor: theme.colors.bg[0],
+            },
+            "&:disabled": {
+              color: theme.colors.text[0],
+              borderColor: theme.colors.border[0],
+              backgroundColor: theme.colors.bg[0],
+            },
+            "&[data-loading]": {
+              [`& .${getStylesRef("leftIcon")}`]: {
+                color: primaryColor,
+              },
             },
           },
-        },
-      }),
-      filled: theme => ({
-        root: {
-          color: theme.white,
-          borderColor: theme.fn.primaryColor(),
-          backgroundColor: theme.fn.primaryColor(),
-          "&:hover": {
-            borderColor: getHoverColor(theme),
-            backgroundColor: getHoverColor(theme),
-          },
-          "&:disabled": {
-            color: theme.colors.text[0],
-            borderColor: theme.colors.border[0],
-            backgroundColor: theme.colors.bg[0],
-          },
-          "&[data-loading]": {
-            [`& .${getStylesRef("leftIcon")}`]: {
-              color: theme.colors.brand[1],
+        };
+      },
+      filled: (theme, { color }: ButtonStylesParams) => {
+        const primaryColor = getPrimaryColor(theme, color);
+        const hoverColor = getHoverColor(theme, primaryColor);
+
+        return {
+          root: {
+            color: theme.white,
+            borderColor: primaryColor,
+            backgroundColor: primaryColor,
+            "&:hover": {
+              borderColor: hoverColor,
+              backgroundColor: hoverColor,
+            },
+            "&:disabled": {
+              color: theme.colors.text[0],
+              borderColor: theme.colors.border[0],
+              backgroundColor: theme.colors.bg[0],
+            },
+            "&[data-loading]": {
+              [`& .${getStylesRef("leftIcon")}`]: {
+                color: theme.colors.focus[0],
+              },
             },
           },
-        },
-      }),
-      outline: theme => ({
-        root: {
-          color: theme.fn.primaryColor(),
-          borderColor: theme.fn.primaryColor(),
-          "&:hover": {
-            color: getHoverColor(theme),
-            borderColor: getHoverColor(theme),
-            backgroundColor: theme.colors.brand[0],
+        };
+      },
+      outline: (theme, { color }: ButtonStylesParams) => {
+        const primaryColor = getPrimaryColor(theme, color);
+        const hoverColor = getHoverColor(theme, primaryColor);
+        const backgroundColor = getBackgroundColor(theme, primaryColor);
+
+        return {
+          root: {
+            color: primaryColor,
+            borderColor: primaryColor,
+            "&:hover": {
+              color: hoverColor,
+              borderColor: hoverColor,
+              backgroundColor,
+            },
+            "&:disabled": {
+              color: theme.colors.text[0],
+              borderColor: theme.colors.border[0],
+              backgroundColor: theme.colors.bg[0],
+            },
           },
-          "&:disabled": {
-            color: theme.colors.text[0],
-            borderColor: theme.colors.border[0],
-            backgroundColor: theme.colors.bg[0],
+        };
+      },
+      subtle: (theme, { color }: ButtonStylesParams) => {
+        const primaryColor = getPrimaryColor(theme, color);
+        const hoverColor = getHoverColor(theme, primaryColor);
+
+        return {
+          root: {
+            color: primaryColor,
+            "&:hover": {
+              color: hoverColor,
+              backgroundColor: "transparent",
+            },
+            "&:disabled": {
+              color: theme.colors.text[0],
+              borderColor: "transparent",
+              backgroundColor: "transparent",
+            },
           },
-        },
-      }),
-      subtle: theme => ({
-        root: {
-          color: theme.fn.primaryColor(),
-          "&:hover": {
-            color: getHoverColor(theme),
-            backgroundColor: "transparent",
-          },
-          "&:disabled": {
-            color: theme.colors.text[0],
-            borderColor: "transparent",
-            backgroundColor: "transparent",
-          },
-        },
-      }),
+        };
+      },
     },
   },
 });
 
-const getHoverColor = (theme: MantineTheme) => {
-  return theme.fn.rgba(theme.fn.primaryColor(), 0.88);
+const getPrimaryColor = (theme: MantineTheme, colorName: string) => {
+  return theme.fn.themeColor(colorName, theme.fn.primaryShade());
+};
+
+const getHoverColor = (theme: MantineTheme, primaryColor: string) => {
+  return theme.fn.rgba(primaryColor, 0.88);
+};
+
+const getBackgroundColor = (theme: MantineTheme, primaryColor: string) => {
+  return theme.fn.rgba(primaryColor, 0.0971);
 };

@@ -336,11 +336,9 @@ export type BinnedField = [
   },
 ];
 
-export type AggregateFieldReference = [
-  "aggregation",
-  number,
-  ReferenceOptions | null,
-];
+export type AggregateFieldReference =
+  | ["aggregation", number, ReferenceOptions | null]
+  | ["aggregation", number];
 
 export type ExpressionClause = {
   [key: ExpressionName]: Expression;
@@ -357,7 +355,8 @@ export type Expression =
       ExpressionOperand,
       ExpressionOperand,
       ExpressionOperand,
-    ];
+    ]
+  | ConcreteFieldReference;
 
 type ExpressionOperator = string;
 type ExpressionOperand =

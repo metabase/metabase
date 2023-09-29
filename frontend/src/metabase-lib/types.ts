@@ -1,3 +1,5 @@
+import type { DatasetColumn, RowValue } from "metabase-types/api";
+
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
  * and in other files it gets treated like `unknown` so it can't be examined, manipulated or a new one created.
@@ -55,11 +57,6 @@ export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
-
-declare const ColumnWithOperators: unique symbol;
-export type ColumnWithOperators = ColumnMetadata & {
-  _opaque: typeof ColumnWithOperators;
-};
 
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
@@ -133,31 +130,104 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-declare const FilterOperator: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+export type ExpressionOperator =
+  | "+"
+  | "-"
+  | "*"
+  | "/"
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-width"
+  | "between"
+  | "interval"
+  | "time-interval"
+  | "relative-datetime";
 
-export type FilterOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year";
+
+export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+
+export type ExpressionParts = {
+  operator: ExpressionOperator;
+  args: (ExpressionArg | ExpressionParts)[];
+  options: ExpressionOptions;
 };
 
-export type ExpressionArg =
-  | null
-  | boolean
-  | number
-  | string
-  | ColumnMetadata
-  | Clause;
+export type ExpressionOptions = {
+  "case-sensitive"?: boolean;
+  "include-current"?: boolean;
+};
 
-export type ExternalOp = {
-  operator: string;
-  options: Record<string, unknown>;
-  args: [ColumnMetadata, ...ExpressionArg[]];
+export type TextFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: string[];
+  options: TextFilterOptions;
+};
+
+export type TextFilterOptions = {
+  "case-sensitive"?: boolean;
+};
+
+export type NumberFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: number[];
+};
+
+export type BooleanFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: boolean[];
+};
+
+export type RelativeDateFilterParts = {
+  column: ColumnMetadata;
+  value: number | "current";
+  unit: TemporalUnit;
+  offsetValue?: number;
+  offsetUnit?: TemporalUnit;
+  options: RelativeDateFilterOptions;
+};
+
+export type RelativeDateFilterOptions = {
+  "include-current"?: boolean;
 };
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
+
+declare const JoinCondition: unique symbol;
+export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
+
+declare const JoinConditionOperator: unique symbol;
+export type JoinConditionOperator = unknown & {
+  _opaque: typeof JoinConditionOperator;
+};
+
+export type JoinConditionOperatorDisplayInfo = {
+  displayName: string;
+  shortName: string;
+  default?: boolean;
+};
 
 declare const JoinStrategy: unique symbol;
 export type JoinStrategy = unknown & { _opaque: typeof Join };
@@ -167,3 +237,88 @@ export type JoinStrategyDisplayInfo = {
   default?: boolean;
   shortName: string;
 };
+
+declare const DrillThru: unique symbol;
+export type DrillThru = unknown & { _opaque: typeof DrillThru };
+
+export type DrillThruType =
+  | "drill-thru/quick-filter"
+  | "drill-thru/pk"
+  | "drill-thru/zoom"
+  | "drill-thru/fk-details"
+  | "drill-thru/pivot"
+  | "drill-thru/fk-filter"
+  | "drill-thru/distribution"
+  | "drill-thru/sort"
+  | "drill-thru/summarize-column"
+  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/column-filter"
+  | "drill-thru/underlying-records";
+
+export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
+
+export type QuickFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/quick-filter"> & {
+    operators: Array<"=" | "≠" | "<" | ">">;
+  };
+
+type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
+  BaseDrillThruInfo<Type> & {
+    objectId: string | number;
+    "manyPks?": boolean; // TODO [33479]: this should be "manyPks"
+  };
+export type PKDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pk">;
+export type ZoomDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/zoom">;
+export type FKDetailsDrillThruInfo =
+  ObjectDetailsDrillThruInfo<"drill-thru/fk-details">;
+export type PivotDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pivot">;
+
+export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
+export type DistributionDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/distribution">;
+
+export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
+  directions: Array<"asc" | "desc">;
+};
+
+export type SummarizeColumnDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/summarize-column"> & {
+    aggregations: Array<"sum" | "avg" | "distinct">;
+  };
+export type SummarizeColumnByTimeDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
+
+export type ColumnFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/column-filter"> & {
+    initialOp: { short: string } | null; // null gets returned for date column
+  };
+
+export type UnderlyingRecordsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/underlying-records"> & {
+    rowCount: number;
+    tableName: string;
+  };
+
+export type DrillThruDisplayInfo =
+  | QuickFilterDrillThruInfo
+  | PKDrillThruInfo
+  | ZoomDrillThruInfo
+  | FKDetailsDrillThruInfo
+  | PivotDrillThruInfo
+  | FKFilterDrillThruInfo
+  | DistributionDrillThruInfo
+  | SortDrillThruInfo
+  | SummarizeColumnDrillThruInfo
+  | SummarizeColumnByTimeDrillThruInfo
+  | ColumnFilterDrillThruInfo
+  | UnderlyingRecordsDrillThruInfo;
+
+export interface Dimension {
+  column: DatasetColumn;
+  value?: RowValue;
+}
+
+export type DataRow = Array<{
+  col: DatasetColumn | ColumnMetadata | null;
+  value: RowValue;
+}>;

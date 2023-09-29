@@ -1,11 +1,11 @@
 import { Component } from "react";
 import { connect } from "react-redux";
-import * as tippy from "tippy.js";
+import type * as tippy from "tippy.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
-import { Dispatch } from "metabase-types/store";
-import { Series } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
+import type { Series } from "metabase-types/api";
 import type {
   RegularClickAction,
   ClickObject,
@@ -35,7 +35,10 @@ interface State {
   popoverAction: PopoverClickAction | null;
 }
 
-class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
+export class ClickActionsPopover extends Component<
+  ChartClickActionsProps,
+  State
+> {
   state: State = {
     popoverAction: null,
   };
@@ -135,7 +138,7 @@ class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
             this.close();
           }}
           series={series}
-          onChange={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />
       );
     }

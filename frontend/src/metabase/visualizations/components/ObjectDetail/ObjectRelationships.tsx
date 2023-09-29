@@ -8,11 +8,11 @@ import { Icon } from "metabase/core/components/Icon";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
-import { ForeignKeyReferences } from "./types";
+import type { ForeignKeyReferences } from "./types";
 import {
   ObjectRelationContent,
   ObjectRelationships,
-} from "./ObjectDetail.styled";
+} from "./ObjectRelationships.styled";
 
 export interface RelationshipsProps {
   objectName: string;

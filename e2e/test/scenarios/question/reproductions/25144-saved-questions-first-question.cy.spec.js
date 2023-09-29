@@ -1,5 +1,6 @@
 import { modal, popover, restore } from "e2e/support/helpers";
 
+// TODO: figure out how to test with auditv2
 describe("issue 25144", () => {
   beforeEach(() => {
     restore("setup");
@@ -20,6 +21,7 @@ describe("issue 25144", () => {
     modal().findByLabelText("Name").clear().type("Orders question");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -41,6 +43,7 @@ describe("issue 25144", () => {
     modal().findByLabelText("Name").clear().type("Orders model");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
     cy.findByLabelText("Move, archive, and more...").click();

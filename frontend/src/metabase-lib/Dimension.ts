@@ -4,7 +4,7 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import {
+import type {
   FieldReference as AbstractField,
   ConcreteFieldReference,
   LocalFieldReference,
@@ -18,7 +18,7 @@ import { TYPE } from "metabase-lib/types/constants";
 import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/metadata/Field";
-import {
+import type {
   AggregationOperator,
   FilterOperator,
   Metadata,
@@ -27,10 +27,10 @@ import {
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/ValidationError";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import type Aggregation from "metabase-lib/queries/structured/Aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import {
   isFieldReference,
   isExpressionReference,
@@ -262,8 +262,10 @@ export default class Dimension {
 
     const otherDimension: Dimension | null | undefined =
       other instanceof Dimension ? other : this.parseMBQL(other);
-    const baseDimensionA = this.baseDimension();
-    const baseDimensionB = otherDimension && otherDimension.baseDimension();
+    const baseDimensionA = this.getMLv1CompatibleDimension().baseDimension();
+    const baseDimensionB =
+      otherDimension &&
+      otherDimension.getMLv1CompatibleDimension().baseDimension();
     return (
       !!baseDimensionA &&
       !!baseDimensionB &&

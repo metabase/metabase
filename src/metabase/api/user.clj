@@ -29,9 +29,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defsetting user-visibility
@@ -160,9 +157,19 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Fetch a list of `Users`. By default returns every active user but only active users.
+(defn- group-ids-for-manager
+  "Given a `user-id` return a list of group-ids of which the user is a group manager."
+  [user-id]
+  (t2/select-fn-set
+   :group_id
+   :model/PermissionsGroupMembership
+   {:where [:and [:= :user_id user-id]
+            [:= :is_group_manager true]
+            [:not= :group_id (:id (perms-group/all-users))]]}))
+
+(api/defendpoint GET "/"
+  "Fetch a list of `Users` for admins or group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
@@ -177,27 +184,44 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [status query group_id include_deactivated]
-  {status                 (s/maybe s/Str)
-   query                  (s/maybe s/Str)
-   group_id               (s/maybe su/IntGreaterThanZero)
-   include_deactivated    (s/maybe su/BooleanString)}
-  (when (or status include_deactivated)
-    (validation/check-group-manager))
+  {status              [:maybe :string]
+   query               [:maybe :string]
+   group_id            [:maybe ms/PositiveInt]
+   include_deactivated [:maybe ms/BooleanString]}
+  (or
+   api/*is-superuser?*
+   (if group_id
+     (validation/check-manager-of-group group_id)
+     (validation/check-group-manager)))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)
-        clauses             (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated)]
-    {:data   (cond-> (t2/select
-                      (vec (cons User (user-visible-columns)))
-                      (cond-> clauses
-                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                        true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
-               ;; For admins also include the IDs of Users' Personal Collections
-               api/*is-superuser?*
-               (t2/hydrate :personal_collection_id)
+        manager-group-ids   (set (group-ids-for-manager api/*current-user-id*))
+        group-id-clause     (cond
+                              ;; We know that the user is either admin or group manager of the given group_id (if it exists)
+                              group_id                [group_id]
+                              ;; otherwise, if the user is a group manager, only show them users in the groups they manage
+                              api/*is-group-manager?* (vec manager-group-ids))
+        clauses             (user-clauses status query group-id-clause include_deactivated)]
+    {:data (cond-> (t2/select
+                    (vec (cons User (user-visible-columns)))
+                    (cond-> clauses
+                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                      true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
+             ;; For admins also include the IDs of Users' Personal Collections
+             api/*is-superuser?*
+             (t2/hydrate :personal_collection_id)
 
-               (or api/*is-superuser?*
-                   api/*is-group-manager?*)
-               (t2/hydrate :group_ids))
-     :total  (t2/count User (filter-clauses-without-paging clauses))
+             (or api/*is-superuser?*
+                 api/*is-group-manager?*)
+             (t2/hydrate :group_ids)
+             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
+             group-id-clause
+             distinct)
+     :total  (-> (t2/query
+                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                          :from   :core_user}
+                         (filter-clauses-without-paging clauses)))
+                 first
+                 :count)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -223,29 +247,29 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   (cond
-   (or (= :all (user-visibility)) api/*is-superuser?*)
-   (let [clauses (-> (user-clauses nil nil nil nil)
-                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-    {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+    (or (= :all (user-visibility)) api/*is-superuser?*)
+    (let [clauses (-> (user-clauses nil nil nil nil)
+                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+       :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+       :limit  mw.offset-paging/*limit*
+       :offset mw.offset-paging/*offset*})
+
+    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
+    (let [user-ids (same-groups-user-ids api/*current-user-id*)
+          clauses  (cond-> (user-clauses nil nil nil nil)
+                     (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
+                     true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+       :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+       :limit  mw.offset-paging/*limit*
+       :offset mw.offset-paging/*offset*})
+
+    :else
+    {:data   [(fetch-user :id api/*current-user-id*)]
+     :total  1
      :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*})
-
-   (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
-   (let [user-ids (same-groups-user-ids api/*current-user-id*)
-         clauses  (cond-> (user-clauses nil nil nil nil)
-                    (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
-                    true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-     {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
-      :limit  mw.offset-paging/*limit*
-      :offset mw.offset-paging/*offset*})
-
-   :else
-   {:data   [(fetch-user :id api/*current-user-id*)]
-    :total  1
-    :limit  mw.offset-paging/*limit*
-    :offset mw.offset-paging/*offset*}))
+     :offset mw.offset-paging/*offset*}))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
@@ -272,8 +296,8 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (t2/exists? 'Card perms-query)
-                                                 (t2/exists? 'Dashboard perms-query)))))
+    (assoc user :has_question_and_dashboard (and (t2/exists? :model/Card perms-query)
+                                                 (t2/exists? :model/Dashboard perms-query)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -294,8 +318,6 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
-
-
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
@@ -307,10 +329,10 @@
       maybe-add-sso-source
       add-custom-homepage-info))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
+  {id ms/PositiveInt}
   (try
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
@@ -323,15 +345,14 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
-   email                  su/Email
-   user_group_memberships (s/maybe [user/UserGroupMembership])
-   login_attributes       (s/maybe user/LoginAttributes)}
+  {first_name             [:maybe ms/NonBlankString]
+   last_name              [:maybe ms/NonBlankString]
+   email                  ms/Email
+   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
+   login_attributes       [:maybe user/LoginAttributes]}
   (api/check-superuser)
   (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
@@ -373,21 +394,21 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {email                  (s/maybe su/Email)
-   first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
-   user_group_memberships (s/maybe [user/UserGroupMembership])
-   is_superuser           (s/maybe s/Bool)
-   is_group_manager       (s/maybe s/Bool)
-   login_attributes       (s/maybe user/LoginAttributes)
-   locale                 (s/maybe su/ValidLocale)}
+  {id                     ms/PositiveInt
+   email                  [:maybe ms/Email]
+   first_name             [:maybe ms/NonBlankString]
+   last_name              [:maybe ms/NonBlankString]
+   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
+   is_superuser           [:maybe :boolean]
+   is_group_manager       [:maybe :boolean]
+   login_attributes       [:maybe user/LoginAttributes]
+   locale                 [:maybe ms/ValidLocale]}
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -441,10 +462,10 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/reactivate"
+(api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
   (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
     (api/check-404 user)
@@ -458,11 +479,11 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/password"
+(api/defendpoint PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body, :as request}]
-  {password su/ValidPassword}
+  {id       ms/PositiveInt
+   password ms/ValidPassword}
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
@@ -483,10 +504,10 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
@@ -496,10 +517,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/modal/:modal"
+(api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
+  {id ms/PositiveInt}
   (check-self-or-superuser id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}

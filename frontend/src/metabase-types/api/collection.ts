@@ -1,6 +1,7 @@
-import { UserId } from "./user";
-import { CardDisplayType } from "./card";
-import { DatabaseId } from "./database";
+import type { IconName } from "metabase/core/components/Icon";
+import type { UserId } from "./user";
+import type { CardDisplayType } from "./card";
+import type { DatabaseId } from "./database";
 
 export type RegularCollectionId = number;
 
@@ -42,13 +43,14 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-type CollectionItemModel =
+export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"
   | "pulse"
   | "snippet"
-  | "collection";
+  | "collection"
+  | "indexed-entity";
 
 export type CollectionItemId = number;
 
@@ -66,7 +68,8 @@ export interface CollectionItem {
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
-  getIcon: () => { name: string };
+  type?: string;
+  getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;

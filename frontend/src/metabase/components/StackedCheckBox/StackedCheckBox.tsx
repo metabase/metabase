@@ -1,4 +1,5 @@
-import { useCallback, ChangeEvent } from "react";
+import { useCallback } from "react";
+import type { ChangeEvent } from "react";
 
 import {
   DEFAULT_CHECKED_COLOR,
@@ -15,6 +16,7 @@ import {
 
 interface StackedCheckBoxPropTypes {
   label?: string;
+  ariaLabel?: string;
   checked?: boolean;
   disabled?: boolean;
   checkedColor?: string;
@@ -27,6 +29,7 @@ interface StackedCheckBoxPropTypes {
 
 export function StackedCheckBox({
   label,
+  ariaLabel,
   checked = false,
   disabled = false,
   checkedColor = DEFAULT_CHECKED_COLOR,
@@ -44,7 +47,11 @@ export function StackedCheckBox({
   }, [label]);
 
   return (
-    <StackedCheckBoxRoot className={className} disabled={disabled}>
+    <StackedCheckBoxRoot
+      aria-label={ariaLabel ?? ""}
+      className={className}
+      disabled={disabled}
+    >
       <OpaqueCheckBox
         label={renderLabel()}
         checked={checked}

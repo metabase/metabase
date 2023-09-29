@@ -507,6 +507,9 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support storing table privileges in the application database for the current user?
+    :table-privileges
+
     ;; Does the driver support uploading files
     :uploads
 
@@ -523,6 +526,9 @@
 
     ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
     :connection-impersonation
+
+    ;; Does the driver require specifying the default connection role for connection impersonation to work?
+    :connection-impersonation-requires-role
 
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection})
@@ -666,6 +672,9 @@
   query)
 
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
+;;
+;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
+;; effects?
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -717,28 +726,14 @@
   implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
   this? Who knows, but it's something you should keep in mind.
 
-  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
-  {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
+  This method should return a [[String]], a [[java.time.ZoneId]], or a [[java.time.ZoneOffset]]."
+  {:added "0.34.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod db-default-timezone ::driver
   [_driver _database]
   nil)
-
-;; TIMEZONE FIXME — remove this method entirely
-(defmulti current-db-time
-  "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
-
-  deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
-  [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
-  method will be removed in a future release."
-  {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod current-db-time ::driver [_ _] nil)
 
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
@@ -892,5 +887,27 @@
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."
   {:added "0.47.0", :arglists '([driver upload-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponing to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

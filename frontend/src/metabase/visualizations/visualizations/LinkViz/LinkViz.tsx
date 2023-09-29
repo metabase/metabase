@@ -3,12 +3,13 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import Input from "metabase/core/components/Input";
-import SearchResults from "metabase/nav/components/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {
   DashboardOrderedCard,
   LinkCardSettings,
+  SearchModelType,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
@@ -33,9 +34,9 @@ import {
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
-import { WrappedUnrestrictedLinkEntity } from "./types";
+import type { WrappedUnrestrictedLinkEntity } from "./types";
 
-const MODELS_TO_SEARCH = [
+const MODELS_TO_SEARCH: SearchModelType[] = [
   "card",
   "dataset",
   "dashboard",

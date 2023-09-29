@@ -4,7 +4,9 @@
    [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -319,14 +321,6 @@
              :source-table 224}
      :type :query}
 
-    {:database 1
-     :type :query
-     :query
-     {:source-table 2
-      :aggregation [[:count]]
-      :breakout [[:field 14 {:temporal-unit :month}]]
-      :order-by [[:asc [:aggregation 0]]]}}
-
     {:database 23001
      :type     :query
      :query    {:source-table 224
@@ -414,6 +408,15 @@
              :aggregation [[:aggregation-options
                             [:share [:= [:expression "Additional Info Present"] "Yes"]]
                             {:name "Additional Information", :display-name "Additional Information"}]]}}))
+
+(deftest ^:parallel round-trip-aggregation-references-test
+  (test-round-trip
+   {:database 1
+    :type     :query
+    :query    {:source-table 2
+               :aggregation  [[:count]]
+               :breakout     [[:field 14 {:temporal-unit :month}]]
+               :order-by     [[:asc [:aggregation 0]]]}}))
 
 (deftest ^:parallel round-trip-aggregation-with-case-test
   (test-round-trip
@@ -672,3 +675,45 @@
                                                    :temporal-unit                              :year
                                                    :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]]}]}}
                 (lib.convert/->legacy-MBQL query)))))))
+
+(deftest ^:parallel legacy-ref->pMBQL-field-test
+  (are [legacy-ref] (=? [:field {:lib/uuid string?} (meta/id :venues :name)]
+                        (lib.convert/legacy-ref->pMBQL lib.tu/venues-query legacy-ref))
+    [:field (meta/id :venues :name) nil]
+    [:field (meta/id :venues :name) {}]
+    ;; should work with refs that need normalization
+    ["field" (meta/id :venues :name) nil]
+    ["field" (meta/id :venues :name)]
+    #?@(:cljs
+        [#js ["field" (meta/id :venues :name) nil]
+         #js ["field" (meta/id :venues :name) #js {}]]))
+  #?(:cljs
+     (is (=? [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :name)]
+             (lib.convert/legacy-ref->pMBQL
+              lib.tu/venues-query
+              #js ["field" (meta/id :venues :name) #js {"base-type" "type/Integer"}])))))
+
+(deftest ^:parallel legacy-ref->pMBQL-expression-test
+  (are [legacy-ref] (=? [:expression {:lib/uuid string?} "expr"]
+                        (lib.convert/legacy-ref->pMBQL lib.tu/query-with-expression legacy-ref))
+    [:expression "expr"]
+    ["expression" "expr"]
+    ["expression" "expr" nil]
+    ["expression" "expr" {}]
+    #?@(:cljs
+        [#js ["expression" "expr"]
+         #js ["expression" "expr" #js {}]])))
+
+(deftest ^:parallel legacy-ref->pMBQL-aggregation-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count)))
+        [ag]  (lib/aggregations query)]
+    (are [legacy-ref] (=? [:aggregation {:lib/uuid string?} (lib.options/uuid ag)]
+                          (lib.convert/legacy-ref->pMBQL query legacy-ref))
+      [:aggregation 0]
+      ["aggregation" 0]
+      ["aggregation" 0 nil]
+      ["aggregation" 0 {}]
+      #?@(:cljs
+          [#js ["aggregation" 0]
+           #js ["aggregation" 0 #js {}]]))))

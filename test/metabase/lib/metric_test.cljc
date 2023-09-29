@@ -18,14 +18,12 @@
 
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider
-   {:database meta/metadata
-    :tables   [(meta/table-metadata :venues)]
-    :fields   [(meta/field-metadata :venues :price)]
-    :metrics  [{:id          metric-id
-                :name        "Sum of Cans"
-                :table-id    (meta/id :venues)
-                :definition  metric-definition
-                :description "Number of toucans plus number of pelicans"}]}))
+   meta/metadata-provider
+   {:metrics [{:id          metric-id
+               :name        "Sum of Cans"
+               :table-id    (meta/id :venues)
+               :definition  metric-definition
+               :description "Number of toucans plus number of pelicans"}]}))
 
 (def ^:private metric-clause
   [:metric {:lib/uuid (str (random-uuid))} metric-id])

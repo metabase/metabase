@@ -277,7 +277,7 @@ describeEE("impersonated permission", () => {
       // Page leave confirmation should be on top
       modal()
         .as("leaveConfirmation")
-        .findByText("Discard your unsaved changes?")
+        .findByText("Changes were not saved")
         .should("be.visible");
 
       // Cancel
@@ -290,7 +290,7 @@ describeEE("impersonated permission", () => {
 
       // Go to settings
       cy.findByRole("dialog").findByText("Edit settings").click();
-      cy.get("@leaveConfirmation").findByText("Discard changes").click();
+      cy.get("@leaveConfirmation").findByText("Leave anyway").click();
 
       cy.focused().should("have.attr", "placeholder", "username");
     });
