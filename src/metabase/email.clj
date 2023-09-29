@@ -180,11 +180,11 @@
    [:host                         ms/NonBlankString]
    [:port                         ms/PositiveInt]
    ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   [:user        {:optional true} [:maybe ms/Str]]
+   [:user        {:optional true} [:maybe :string]]
    [:security    {:optional true} [:maybe [:enum :tls :ssl :none :starttls]]]
-   [:pass        {:optional true} [:maybe ms/Str]]
-   [:sender      {:optional true} [:maybe ms/Str]]
-   [:sender-name {:optional true} [:maybe ms/Str]]
+   [:pass        {:optional true} [:maybe :string]]
+   [:sender      {:optional true} [:maybe :string]]
+   [:sender-name {:optional true} [:maybe :string]]
    [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
 
 (mu/defn ^:private test-smtp-settings :- SMTPStatus
