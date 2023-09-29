@@ -601,9 +601,9 @@ describe("QueryBuilder", () => {
         userEvent.tab();
 
         userEvent.click(
-          within(screen.getByTestId("query-builder-main")).getByLabelText(
-            "play icon",
-          ),
+          within(screen.getByTestId("query-builder-main")).getByRole("button", {
+            name: "Get Answer",
+          }),
         );
 
         expect(
