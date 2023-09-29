@@ -134,7 +134,9 @@
   #{"-site-url"
     "enable-advanced-humanization"
     "metabot-enabled"
-    "ldap-sync-admin-group"})
+    "ldap-sync-admin-group"
+    "user-recent-views"
+    "most-recently-viewed-dashboard"})
 
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
