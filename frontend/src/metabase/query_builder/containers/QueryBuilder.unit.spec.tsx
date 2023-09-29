@@ -20,6 +20,7 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -186,6 +187,8 @@ const TestQueryBuilder = (
   );
 };
 
+const TestHome = () => <div />;
+
 function isSavedCard(card: Card | UnsavedCard): card is Card {
   return "id" in card;
 }
@@ -217,8 +220,9 @@ const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route>
+      <Route path="/home" component={TestHome} />
       <IndexRoute component={TestQueryBuilder} />
       <Route path="/model">
         <Route path=":slug/query" component={TestQueryBuilder} />
@@ -237,11 +241,16 @@ const setup = async ({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  if (initialRoute !== "/home") {
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-spinner"),
+    );
+  }
 
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 };
 
 describe("QueryBuilder", () => {
@@ -524,6 +533,47 @@ describe("QueryBuilder", () => {
         expect(mockEvent.returnValue).not.toEqual(
           BEFORE_UNLOAD_UNSAVED_MESSAGE,
         );
+      });
+    });
+  });
+
+  describe("unsaved changes warning", () => {
+    describe("native queries", () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("should show custom warning modal when leaving edited question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+
+        userEvent.tab();
+
+        history.goBack();
+
+        expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).toBeInTheDocument();
       });
     });
   });
