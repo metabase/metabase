@@ -120,8 +120,7 @@
     [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
     [metabase.util.log :as log]
     [metabase.util.malli :as mu]
-    #_{:clj-kondo/ignore [:deprecated-namespace]}
-    [metabase.util.schema :as su]
+    [metabase.util.malli.schema :as ms]
     [potemkin :as p]
     [ring.util.codec :as codec]
     [schema.core :as s]
@@ -132,10 +131,10 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field :- (s/maybe #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field))
+(mu/defn ->field :- [:maybe (ms/InstanceOf Field)]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString (s/pred mbql.preds/Field? ":field or :expression"))]
+   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (filters/field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
@@ -1024,8 +1023,8 @@
                        dashboard-templates/get-dashboard-template
                        dash-template->affinities)]
     (match-affinities affinities
-                      #{"SourceSmall" "Timestamp" "SourceMedium"}))
-  )
+                      #{"SourceSmall" "Timestamp" "SourceMedium"})))
+
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
@@ -1169,8 +1168,8 @@
     (update-vals
       (all-satisfied-bindings distinct-affinity-sets available-dimensions)
       (fn [v]
-        (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
-  )
+        (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v)))))
+
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard

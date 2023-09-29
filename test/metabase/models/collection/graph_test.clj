@@ -16,8 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -339,13 +338,13 @@
                          (nice-graph (graph/graph :currency)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZero
-                                :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
-                                :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
-                                :user_id    (s/eq (mt/user->id :crowberto))
-                                :created_at java.time.temporal.Temporal
-                                s/Keyword   s/Any}
-                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                  (is (malli= [:map
+                               [:id         ms/PositiveInt]
+                               [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace nil)))]]
+                               [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})]]
+                               [:user_id    [:= (mt/user->id :crowberto)]]
+                               [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
+                              (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
@@ -358,13 +357,13 @@
                          (nice-graph (graph/graph)))))
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (schema= {:id         su/IntGreaterThanZero
-                                :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
-                                :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
-                                :user_id    (s/eq (mt/user->id :crowberto))
-                                :created_at java.time.temporal.Temporal
-                                s/Keyword   s/Any}
-                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                  (is (malli= [:map
+                               [:id         ms/PositiveInt]
+                               [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace "currency")))]]
+                               [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})]]
+                               [:user_id    [:= (mt/user->id :crowberto)]]
+                               [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
+                              (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
               (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))

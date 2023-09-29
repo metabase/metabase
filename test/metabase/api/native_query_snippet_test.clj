@@ -9,8 +9,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -87,16 +86,17 @@
         (try
           (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
                 snippet-from-api (mt/user-http-request user :post 200 (snippet-url) snippet-input)]
-            (is (schema= {:id          su/IntGreaterThanZero
-                          :name        (s/eq "test-snippet")
-                          :description (s/eq "Just null")
-                          :content     (s/eq "NULL")
-                          :creator_id  (s/eq (mt/user->id user))
-                          :archived    (s/eq false)
-                          :created_at  java.time.OffsetDateTime
-                          :updated_at  java.time.OffsetDateTime
-                          s/Keyword    s/Any}
-                         snippet-from-api)))
+            (is (malli=
+                 [:map
+                  [:id          ms/PositiveInt]
+                  [:name        [:= "test-snippet"]]
+                  [:description [:= "Just null"]]
+                  [:content     [:= "NULL"]]
+                  [:creator_id  [:= (mt/user->id user)]]
+                  [:archived    [:= false]]
+                  [:created_at  (ms/InstanceOfClass java.time.OffsetDateTime)]
+                  [:updated_at  (ms/InstanceOfClass java.time.OffsetDateTime)]]
+                 snippet-from-api)))
           (finally
             (t2/delete! NativeQuerySnippet :name "test-snippet"))))))
 
