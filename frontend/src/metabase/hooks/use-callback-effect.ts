@@ -7,12 +7,15 @@ type IsScheduled = boolean;
 type ScheduleCallback = (callback: Callback) => void;
 
 /**
- * Will run callback once after a re-render.
+ * Will schedule running a callback once after a re-render.
  */
 export const useCallbackEffect = (): [IsScheduled, ScheduleCallback] => {
   const [callback, setCallback] = useState<Callback | null>(null);
   const isScheduled = callback !== null;
 
+  /**
+   * Schedule callback to run once after a re-render.
+   */
   const scheduleCallback = useCallback((callback: Callback) => {
     setCallback(state => {
       if (state !== null) {
