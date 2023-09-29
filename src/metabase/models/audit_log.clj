@@ -4,7 +4,6 @@
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [metabase.api.common :as api]
-   [metabase.events.view-log :as view-log]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity]
    [metabase.models.card :refer [Card]]
