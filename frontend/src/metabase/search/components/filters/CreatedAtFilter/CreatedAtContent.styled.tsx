@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import styled from "@emotion/styled";
-import { DateAllOptions } from "metabase/components/DateAllOptions";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 
-export const CreatedAtDatePicker = styled(DateAllOptions)`
+export const CreatedAtDatePicker = styled(DateAllOptionsWidget)`
   padding: 0.5rem;
 `;

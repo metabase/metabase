@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DateAllOptionsProps } from "metabase/components/DateAllOptions/DateAllOptions";
-import { DateAllOptions } from "metabase/components/DateAllOptions/DateAllOptions";
 import type { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 import { DATE_SHORTCUT_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
+import type { DateAllOptionsWidgetProps } from "metabase/components/DateAllOptionsWidget/DateAllOptionsWidget";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget/DateAllOptionsWidget";
 
 const TEST_DAY_MONTH_OPTIONS: Record<string, string> = {
   Today: "thisday",
@@ -39,7 +39,7 @@ const TestDateAllOptions = ({
   dateShortcutOptions,
   onClose,
   setValue,
-}: DateAllOptionsProps) => {
+}: DateAllOptionsWidgetProps) => {
   const [testValue, setTestValue] = useState<string | null>(null);
 
   const onSetValue = (val: string | null) => {
@@ -48,7 +48,7 @@ const TestDateAllOptions = ({
   };
 
   return (
-    <DateAllOptions
+    <DateAllOptionsWidget
       value={testValue ?? undefined}
       setValue={onSetValue}
       onClose={onClose}
@@ -83,7 +83,7 @@ const setup = ({
   };
 };
 
-describe("DateAllOptions", () => {
+describe("DateAllOptionsWidget", () => {
   it("should render shortcut options", () => {
     setup();
     for (const option of TEST_DAY_MONTH_SHORTCUTS) {
