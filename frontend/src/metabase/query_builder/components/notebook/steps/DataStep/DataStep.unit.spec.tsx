@@ -11,7 +11,11 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  findAggregationOperator,
+} from "metabase-lib/test-helpers";
 import { createMockNotebookStep } from "../../test-utils";
 import { DataStep } from "./DataStep";
 
@@ -20,6 +24,21 @@ const createQueryWithFields = (columnNames: string[]) => {
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
   const columns = columnNames.map(name => findColumn("ORDERS", name));
   return Lib.withFields(query, 0, columns);
+};
+
+const createQueryWithAggregation = () => {
+  const query = createQuery();
+  const count = findAggregationOperator(query, "count");
+  const aggregation = Lib.aggregationClause(count);
+  return Lib.aggregate(query, 0, aggregation);
+};
+
+const createQueryWithBreakout = () => {
+  const query = createQuery();
+  const columns = Lib.breakoutableColumns(query, 0);
+  const findColumn = columnFinder(query, columns);
+  const column = findColumn("ORDERS", "TAX");
+  return Lib.breakout(query, 0, column);
 };
 
 const setup = async (
@@ -67,14 +86,18 @@ const setup = async (
   return { getNextQuery, getNextTableName, getNextColumn };
 };
 
+const setupEmptyQuery = () => {
+  const question = Question.create({ databaseId: SAMPLE_DB_ID });
+  const legacyQuery = question.query() as StructuredQuery;
+  const query = question._getMLv2Query();
+  return setup(
+    createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
+  );
+};
+
 describe("DataStep", () => {
   it("should render without a table selected", async () => {
-    const question = Question.create({ databaseId: SAMPLE_DB_ID });
-    const legacyQuery = question.query() as StructuredQuery;
-    const query = question._getMLv2Query();
-    await setup(
-      createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
-    );
+    await setupEmptyQuery();
 
     expect(screen.getByText("Pick your starting data")).toBeInTheDocument();
 
@@ -96,6 +119,15 @@ describe("DataStep", () => {
     expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     expect(screen.queryByText("Products")).not.toBeInTheDocument();
     expect(screen.queryByText("People")).not.toBeInTheDocument();
+  });
+
+  it("should change a table", async () => {
+    const { getNextTableName } = await setup();
+
+    userEvent.click(screen.getByText("Orders"));
+    userEvent.click(await screen.findByText("Products"));
+
+    expect(getNextTableName()).toBe("Products");
   });
 
   describe("fields selection", () => {
@@ -189,12 +221,22 @@ describe("DataStep", () => {
     });
 
     it("should not display fields picker until a table is selected", async () => {
-      const question = Question.create({ databaseId: SAMPLE_DB_ID });
-      const legacyQuery = question.query() as StructuredQuery;
-      const query = question._getMLv2Query();
-      await setup(
-        createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
-      );
+      await setupEmptyQuery();
+      expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+
+    it("should not display fields picker if a query has aggregations", () => {
+      const topLevelQuery = createQueryWithAggregation();
+      const step = createMockNotebookStep({ topLevelQuery });
+      setup(step);
+
+      expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+
+    it("should not display fields picker if a query has breakouts", () => {
+      const topLevelQuery = createQueryWithBreakout();
+      const step = createMockNotebookStep({ topLevelQuery });
+      setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });

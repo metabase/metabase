@@ -68,6 +68,11 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
+  tableLike: CardMetadata | TableMetadata,
+): CardDisplayInfo | TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
   aggregationClause: AggregationClause,
 ): AggregationClauseDisplayInfo;
 declare function DisplayInfoFn(
