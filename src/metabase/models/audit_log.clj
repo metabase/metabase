@@ -51,6 +51,11 @@
             ;; Use `model` instead of `dataset` to mirror product terminology
             :model?      dataset?})))
 
+(defn model-name
+  "Given a keyword identifier for a model, returns the name to store in the database"
+  [model]
+  (some-> model name))
+
 (defn record-event!
   "Record an event in the Audit Log.
 
@@ -74,7 +79,7 @@
 
   ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))
-         model-name        (some-> model name)
+         model-name        (model-name model)
          details           (if (t2/model object)
                              (model-details object unqualified-topic)
                              (or object {}))]
@@ -85,11 +90,12 @@
                  :model_id model-id
                  :user_id  user-id)
      ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-     (activity/record-activity!
-      :topic      topic
-      :object     object
-      :details-fn (fn [_] details)
-      :user-id    user-id))))
+     (when-not (#{:card-read :dashboard-read :table-read :card-query} unqualified-topic)
+      (activity/record-activity!
+       :topic      topic
+       :object     object
+       :details-fn (fn [_] details)
+       :user-id    user-id)))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

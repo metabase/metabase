@@ -60,7 +60,7 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :event/table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :event/table-read (t2/select-one Table :id table-id))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id

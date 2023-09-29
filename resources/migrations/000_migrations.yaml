@@ -15362,6 +15362,50 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v48.00-018
+      author: noahmoss
+      comment: Add new recent_views table
+      changes:
+        - createTable:
+            tableName: recent_views
+            remarks: Used to store recently viewed objects for each user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user associated with this view
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_recent_views_ref_user_id
+              - column:
+                  name: model
+                  type: varchar(16)
+                  remarks: The name of the model that was viewed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model that was viewed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  remarks: The time a view was recorded
+                  constraints:
+                    nullable: false
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -2,7 +2,7 @@
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
+   [methodical.core :as m]
    [toucan2.core :as t2]))
 
 (def ViewLog
@@ -10,7 +10,7 @@
   We'll keep this till we replace all the symbols in our codebase."
   :model/ViewLog)
 
-(methodical/defmethod t2/table-name :model/ViewLog [_model] :view_log)
+(m/defmethod t2/table-name :model/ViewLog [_model] :view_log)
 
 (doto ViewLog
   (derive :metabase/model)
