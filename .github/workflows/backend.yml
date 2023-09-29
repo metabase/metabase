@@ -47,7 +47,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "files-changed"
-      - name: Build static viz frontend
+      - name: Build static-viz frontend
         run: yarn build-static-viz
       - name: Upload Static Viz Bundle Artifact
         uses: actions/upload-artifact@v3
@@ -221,12 +221,18 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-tests
-
+      # Depending on which files changed, we might either have to build static-viz
+      # from scratch or download the previously built artifact
+      - name: Build static-viz frontend
+        if: needs.files-changed.outputs.backend_all == 'true'
+        run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
+        if: needs.static-viz-files-changed.outputs.static_viz == 'true'
         uses: actions/download-artifact@v3
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
+
       - name: Run tests
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
