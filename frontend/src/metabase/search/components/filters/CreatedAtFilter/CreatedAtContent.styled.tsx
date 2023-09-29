@@ -4,4 +4,5 @@ import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 
 export const CreatedAtDatePicker = styled(DateAllOptionsWidget)`
   padding: 0.5rem;
+  min-width: unset;
 `;

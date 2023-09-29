@@ -22,8 +22,8 @@ const noopRef = null;
 
 export type DateAllOptionsWidgetProps = {
   setValue: (value: string | null) => void;
-  value?: string;
-  onClose: () => void;
+  value?: string | null;
+  onClose?: () => void;
   disableOperatorSelection?: boolean;
   className?: string;
   withPadding?: boolean;
