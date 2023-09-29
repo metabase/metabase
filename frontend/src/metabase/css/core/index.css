@@ -1,3 +1,5 @@
+@import "./colors.css";
+
 @import "./animation.css";
 @import "./arrow.css";
 @import "./base.css";
@@ -5,7 +7,6 @@
 @import "./box_sizing.css";
 @import "./breakpoints.css";
 @import "./clearfix.css";
-@import "./colors.css";
 @import "./cursor.css";
 @import "./flex.css";
 @import "./float.css";

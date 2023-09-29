@@ -3,6 +3,48 @@ import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
+export const colorsDark = {
+  brand: "#509EE3",
+  summarize: "#88BF4D",
+  filter: "#7172AD",
+  accent0: "#509EE3",
+  accent1: "#88BF4D",
+  accent2: "#A989C5",
+  accent3: "#EF8C8C",
+  accent4: "#F9D45C",
+  accent5: "#F2A86F",
+  accent6: "#98D9D9",
+  accent7: "#7172AD",
+  "admin-navbar": "#7172AD",
+  white: "#000",
+  black: "#2E353B",
+  success: "#84BB4C",
+  danger: "#ED6E6E",
+  error: "#ED6E6E",
+  warning: "#F9CF48",
+  "text-dark": "#fff",
+  "text-medium": "#696E7B",
+  "text-light": "#949AAB",
+  "text-white": "#FFFFFF",
+  "bg-black": "#2E353B",
+  "bg-dark": "#000",
+  "bg-medium": "#222",
+  "bg-light": "#111",
+  "bg-white": "#000",
+  "bg-yellow": "#FFFCF2",
+  "bg-night": "#42484E",
+  "bg-error": "#ED6E6E55",
+  shadow: "rgba(0,0,0,0.08)",
+  border: "#000",
+
+  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
+  "saturated-blue": "#2D86D4",
+  "saturated-green": "#70A63A",
+  "saturated-purple": "#885AB1",
+  "saturated-red": "#ED6E6E",
+  "saturated-yellow": "#F9CF48",
+};
+
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 export const colors = {
@@ -86,17 +128,34 @@ export function color(
 ): string;
 export function color(color: string, palette?: ColorPalette): string;
 export function color(color: any, palette: ColorPalette = colors) {
-  const fullPalette = {
-    ...colors,
-    ...palette,
-  };
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
 
-  if (color in fullPalette) {
-    return fullPalette[color as keyof ColorPalette];
-  }
+  if (!mq.matches) {
+    // light mode
+    const fullPalette = {
+      ...colors,
+      ...palette,
+    };
 
-  if (color in aliases) {
-    return aliases[color](palette);
+    if (color in fullPalette) {
+      return fullPalette[color as keyof ColorPalette];
+    }
+
+    if (color in aliases) {
+      return aliases[color](palette);
+    }
+  } else {
+    // dark mode
+    const fullPalette = {
+      ...colorsDark,
+    };
+    if (color in fullPalette) {
+      return fullPalette[color as keyof ColorPalette];
+    }
+
+    if (color in aliases) {
+      return aliases[color](palette);
+    }
   }
 
   return color;
