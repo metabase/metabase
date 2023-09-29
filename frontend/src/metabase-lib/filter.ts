@@ -3,12 +3,14 @@ import * as ML from "cljs/metabase.lib.js";
 
 import {
   BOOLEAN_FILTER_OPERATORS,
+  DATE_FORMAT,
   EXCLUDE_DATE_FILTER_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
+  TIME_FORMAT,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
@@ -348,8 +350,22 @@ export function isRelativeDateFilter(
   return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-const DATE_FORMAT = "yyyy-MM-dd";
-const TIME_FORMAT = "HH:mm:SS.sss";
+export function excludeDateFilterBuckets(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): ExcludeDateFilterBucketName[] {
+  return availableTemporalBuckets(query, stageIndex, column).reduce(
+    (buckets: ExcludeDateFilterBucketName[], bucket) => {
+      const bucketInfo = displayInfo(query, stageIndex, bucket);
+      if (isExcludeDateFilterBucket(bucketInfo.shortName)) {
+        buckets.push(bucketInfo.shortName);
+      }
+      return buckets;
+    },
+    [],
+  );
+}
 
 export function excludeDateFilterClause(
   query: Query,
