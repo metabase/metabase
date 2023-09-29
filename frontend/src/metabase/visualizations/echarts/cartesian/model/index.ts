@@ -13,7 +13,10 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getJoinedCardsDataset } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import {
+  getJoinedCardsDataset,
+  getSortedSeriesModels,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
 
 export const getCardsColumns = (
   rawSeries: RawSeries,
@@ -35,6 +38,7 @@ export const getCardsColumns = (
 export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
   return rawSeries.flatMap((cardDataset, index) => {
@@ -58,11 +62,13 @@ export const getCartesianChartModel = (
   const cardsColumns = getCardsColumns(rawSeries, settings);
 
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
-  const seriesModels = getCardsSeriesModels(
+  const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    settings,
     renderingContext,
   );
+  const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
