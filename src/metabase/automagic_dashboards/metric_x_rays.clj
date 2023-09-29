@@ -5,6 +5,9 @@
     [clojure.walk :as walk]
     [toucan2.core :as t2]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Chart generation code. This could be its very own ns independent of affinity calculation.
+
 (defmulti create-metric-chart (juxt :affinity-set :chart))
 
 (defn proto-chart [{{metric-query :definition} :metric
@@ -138,6 +141,27 @@
                     (assoc :col (* col 8))))
               cards))))
 
+(defn create-dashboard [{:keys [dashboard-name]} bound-affinities]
+  (let [cards (->> bound-affinities
+                   (mapcat (fn [{:keys [charts] :as metric-affinity}]
+                             (map (fn [chart]
+                                    (assoc
+                                      (dissoc metric-affinity :charts)
+                                      :chart chart))
+                                  charts)))
+                   (map create-metric-dashcard)
+                   do-layout)]
+    {:description        (format "An exploration of your metric %s" dashboard-name)
+     :name               (format "A look at %s" dashboard-name)
+     :creator_id         1
+     :transient_name     (format "Here's the %s dashboard" dashboard-name)
+     :param_fields       {}
+     :auto_apply_filters true
+     :ordered_cards      cards}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Global affinity definitions
+
 (defn affinity-set-interestingness [affinity-set]
   (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
 
@@ -155,6 +179,9 @@
      {:affinity-set #{:type/CreationTimestamp} :charts [:line]}
      {:affinity-set #{:type/Quantity} :charts [:line]}
      {:affinity-set #{:type/Discount} :charts [:line]}]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Code for creation of instantiated affinities
 
 (defn find-field-ids [m]
   (let [fields (atom #{})]
@@ -180,7 +207,7 @@
            (group-by :semantic_type))
       (fn [vs] (set vs)))))
 
-(defn create-metric-affinities
+(defn instantiate-affinities
   [metric]
   (let [semantic-groups      (semantic-groups metric)]
     (for [{:keys [affinity-set] :as affinity-spec} affinity-specs
@@ -191,24 +218,6 @@
         :metric       metric
         :dimensions   dimensions))))
 
-(defn create-dashboard [{:keys [dashboard-name]} bound-affinities]
-  (let [cards (->> bound-affinities
-                   (mapcat (fn [{:keys [charts] :as metric-affinity}]
-                             (map (fn [chart]
-                                    (assoc
-                                      (dissoc metric-affinity :charts)
-                                      :chart chart))
-                                  charts)))
-                   (map create-metric-dashcard)
-                   do-layout)]
-    {:description        (format "An exploration of your metric %s" dashboard-name)
-     :name               (format "A look at %s" dashboard-name)
-     :creator_id         1
-     :transient_name     (format "Here's the %s dashboard" dashboard-name)
-     :param_fields       {}
-     :auto_apply_filters true
-     :ordered_cards      cards}))
-
 (comment
   (map (juxt :name :id) (t2/select :model/Metric))
   ;(["Churn" 785] ["gmail" 909] ["Weird Thing" 910] ["Multitable Metric" 920])
@@ -218,21 +227,21 @@
 
   (let [{metric-name :name :as metric} (t2/select-one :model/Metric :name "Churn")]
     (->> metric
-         create-metric-affinities
+         instantiate-affinities
          (create-dashboard {:dashboard-name metric-name})))
 
   (->> (t2/select-one :model/Metric :name "Churn")
-       create-metric-affinities
+       instantiate-affinities
        (mapv (fn [affinity]
                (-> affinity
                    (update :dimensions #(mapv :name %))
                    (update :metric :name)))))
 
   (->> (t2/select-one :model/Metric :name "Weird Thing")
-       create-metric-affinities)
+       instantiate-affinities)
 
 
-  (->> (create-metric-affinities (t2/select-one :model/Metric :name "Churn"))
+  (->> (instantiate-affinities (t2/select-one :model/Metric :name "Churn"))
        (map :card)
        do-layout)
   )

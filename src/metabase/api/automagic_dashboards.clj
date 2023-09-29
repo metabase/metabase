@@ -271,7 +271,7 @@
   (api/let-404 [{metric-name :name :as metric} (t2/select-one :model/Metric metric-id)]
     (api/read-check metric)
     (->> metric
-         metric-x-rays/create-metric-affinities
+         metric-x-rays/instantiate-affinities
          (metric-x-rays/create-dashboard {:dashboard-name metric-name}))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
