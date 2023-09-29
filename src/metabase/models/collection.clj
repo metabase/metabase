@@ -72,7 +72,14 @@
      false
      (mi/current-user-has-full-permissions? :write instance)))
   ([_ pk]
-   (mi/can-write? (t2/select-one 'Collection :id pk))))
+   (mi/can-write? (t2/select-one :model/Collection :id pk))))
+
+(defmethod mi/can-read? Collection
+  ([instance]
+   (perms/can-read-audit-helper :model/Collection instance))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
