@@ -36,7 +36,7 @@
 
 (mu/defn ^:private record-login-history!
   [session-id  :- (ms/InstanceOfClass UUID)
-   user-id     :-  ms/PositiveInt
+   user-id     :- ms/PositiveInt
    device-info :- request.u/DeviceInfo]
   (t2/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
