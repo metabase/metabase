@@ -2,7 +2,7 @@
 import { t } from "ttag";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
-import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
+import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 import {
   convertUserIdToString,
   parseUserIdString,

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserId, UserListResult } from "metabase-types/api";
 import { UserListElement } from "metabase/search/components/UserListElement";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchSidebar/SearchFilterPopoverWrapper/SearchFilterPopoverWrapper";
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserPickerContainer,
   SearchUserPickerContent,

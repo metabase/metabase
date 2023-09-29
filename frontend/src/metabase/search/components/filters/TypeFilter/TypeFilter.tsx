@@ -6,7 +6,7 @@ import type {
 import { TypeFilterContent } from "metabase/search/components/filters/TypeFilter/TypeFilterContent";
 import { TypeFilterDisplay } from "metabase/search/components/filters/TypeFilter/TypeFilterDisplay";
 import type { EnabledSearchModelType } from "metabase-types/api";
-import { isEnabledSearchModelType } from "metabase/search/utils/enabled-search-type/enabled-search-type";
+import { isEnabledSearchModelType } from "metabase/search/utils/enabled-search-type";
 
 export const TypeFilter: SearchFilterComponent<"type"> = {
   iconName: "dashboard",

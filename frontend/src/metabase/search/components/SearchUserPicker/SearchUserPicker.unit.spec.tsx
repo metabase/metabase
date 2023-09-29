@@ -5,7 +5,7 @@ import type { User } from "metabase-types/api";
 import { screen, renderWithProviders, waitFor } from "__support__/ui";
 import type { CreatedByFilterProps } from "metabase/search/types";
 import { setupUsersEndpoints } from "__support__/server-mocks";
-import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
+import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 
 const TEST_USERS: User[] = [
   createMockUser({ id: 1, common_name: "Alice" }),

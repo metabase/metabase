@@ -1,11 +1,11 @@
 import { renderWithProviders } from "__support__/ui";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockState } from "metabase-types/store/mocks";
 import { mockSettings } from "__support__/settings";
 import type { TokenFeatures } from "metabase-types/api";
 import type { URLSearchFilterQueryParams } from "metabase/search/types";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 
 export interface SearchSidebarSetupOptions {
   tokenFeatures?: TokenFeatures;
