@@ -108,8 +108,30 @@ describe("scenarios > question > joined questions", () => {
         rhsSampleColumn: `Question ${joinedQuestionId} → B Column`,
       });
     });
-
     assertQueryBuilderRowCount(1);
+
+    openNotebook();
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText("B_COLUMN").click();
+        cy.findByPlaceholderText("Enter some text").type("foo");
+        cy.button("Add filter").click();
+      });
+
+      summarize({ mode: "notebook" });
+      addSummaryGroupingField({
+        table: `Question ${joinedQuestionId}`,
+        field: "B_COLUMN",
+      });
+    });
+    visualize();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("B_COLUMN is foo")
+      .should("be.visible");
+    cy.get(".ScalarValue").contains("foo").should("be.visible");
   });
 
   it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
@@ -162,20 +184,30 @@ describe("scenarios > question > joined questions", () => {
 
     openNotebook();
 
-    // cy.log("joined questions should create custom column (metabase#13649)");
-    // add a custom column on top of the steps from the #13000 repro which was simply asserting
-    // that a question could be made by joining two previously saved questions
-    addCustomColumn();
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      // add a custom column on top of the steps from the #13000 repro which was simply asserting
+      // that a question could be made by joining two previously saved questions
+      addCustomColumn();
       enterCustomColumnDetails({
         formula: `[Question ${joinedQuestionId} → Sum of Rating] / [Sum of Total]`,
         name: "Sum Divide",
       });
+      popover().button("Done").click();
+
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText("ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("12");
+        cy.button("Add filter").click();
+      });
     });
-    popover().button("Done").click();
 
     visualize();
     queryBuilderMain().findByText("Sum Divide");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("ID is 12")
+      .should("be.visible");
   });
 
   it("should allow joins with multiple conditions", () => {
