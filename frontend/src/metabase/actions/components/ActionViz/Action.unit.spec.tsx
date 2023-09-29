@@ -351,11 +351,8 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(editActionEl);
 
       const editorModal = await screen.findByTestId("action-editor-modal");
-      const actionTitle = await within(editorModal).findByText(
-        "My Awesome Action",
-      );
 
-      expect(actionTitle).toBeInTheDocument();
+      await within(editorModal).findByText("My Awesome Action");
 
       const cancelEditButton = within(editorModal).getByText("Cancel");
       expect(cancelEditButton).toBeInTheDocument();
