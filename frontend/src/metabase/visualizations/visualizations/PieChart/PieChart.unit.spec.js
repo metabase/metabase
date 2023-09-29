@@ -5,6 +5,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createSampleDatabase,
   ORDERS,
@@ -12,6 +13,8 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+
+registerVisualizations();
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

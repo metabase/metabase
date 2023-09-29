@@ -3,7 +3,7 @@
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
    [medley.core :as m]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
@@ -46,16 +46,14 @@
   [field-ids]
   (when (seq field-ids)
     (not-empty
-      (let [field-values       (t2/select [FieldValues :values :human_readable_values :field_id]
-                                          :type :full
-                                          :field_id [:in (set field-ids)])
-            readable-fields    (when (seq field-values)
-                                 (field/readable-fields-only (t2/select [Field :id :table_id]
-                                                               :id [:in (set (map :field_id field-values))])))
-            readable-field-ids (set (map :id readable-fields))]
-       (->> field-values
-            (filter #(contains? readable-field-ids (:field_id %)))
-            (m/index-by :field_id))))))
+     (let [fields       (-> (t2/select :model/Field :id [:in (set field-ids)])
+                            (field/readable-fields-only)
+                            (t2/hydrate :values))
+           field-values (->> (map #(select-keys (field-values/get-or-create-full-field-values! %)
+                                                [:field_id :human_readable_values :values])
+                                  fields)
+                             (keep not-empty))]
+       (m/index-by :field_id field-values)))))
 
 (defenterprise field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of

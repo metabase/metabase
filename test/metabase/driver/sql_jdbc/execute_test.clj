@@ -12,4 +12,4 @@
     {}                               nil
     {:session-timezone nil}          nil
     {:session-timezone "US/Pacific"} nil
-    {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\""]}))
+    {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))

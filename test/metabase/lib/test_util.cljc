@@ -159,6 +159,13 @@
                     (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
                                                (lib/with-join-alias "Cat"))])))))
 
+(def query-with-self-join
+  "A query against `ORDERS` joined to `ORDERS` by ID."
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                 [(lib/= (lib/ref (meta/field-metadata :orders :id))
+                                         (lib/ref (meta/field-metadata :orders :id)))]))))
+
 (def query-with-expression
   "A query with an expression."
   (-> venues-query

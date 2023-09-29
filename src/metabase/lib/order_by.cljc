@@ -152,8 +152,13 @@
        (vec columns)
 
        :else
-       (let [matching (lib.equality/closest-matches-in-metadata
-                        query stage-number (map lib.ref/ref existing-order-bys) columns)]
+       (let [matching (into {}
+                            (comp (map lib.ref/ref)
+                                  (keep-indexed (fn [index an-order-by]
+                                                  (when-let [col (lib.equality/find-matching-column
+                                                                   query stage-number an-order-by columns)]
+                                                    [col index]))))
+                            existing-order-bys)]
          (mapv #(let [pos (matching %)]
                   (cond-> %
                     pos (assoc :order-by-position pos)))

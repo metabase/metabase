@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -88,7 +87,7 @@
 
 (defn- seed-entity-ids-for-model! [model]
   (log/infof "Seeding Entity IDs for model %s" (name model))
-  (let [reducible-instances (db/select-reducible model :entity_id nil)]
+  (let [reducible-instances (t2/reducible-select model :entity_id nil)]
     (transduce
      (map (fn [instance]
             (seed-entity-id-for-instance! model instance)))

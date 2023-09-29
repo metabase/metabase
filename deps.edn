@@ -72,7 +72,6 @@
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.524"}
-  io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.524"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -572,17 +571,9 @@
   ;;    :upload-uberjar
   ;;    :push-git-tags
   ;;    :publish-draft-release
-  ;;    :publish-elastic-beanstalk-artifacts
   ;;    :update-version-info
   :build/release
   {:exec-fn release/release}
-
-  ;; Only in the CI for now: publish EBS artifact
-  ;; FIXME: remove after full release automation on CI
-  ;;
-  ;;    clojure -X:build:build/publish-ebs
-  :build/publish-ebs
-  {:exec-fn release/publish-ebs}
 
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev
