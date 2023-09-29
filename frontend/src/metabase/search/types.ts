@@ -24,6 +24,7 @@ export interface WrappedResult extends SearchResult {
 export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId;
 export type CreatedAtFilterProps = string;
+export type LastEditedAtFilterProps = string;
 export type VerifiedFilterProps = true;
 
 export type SearchFilterPropTypes = {
@@ -31,6 +32,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
   [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
+  [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

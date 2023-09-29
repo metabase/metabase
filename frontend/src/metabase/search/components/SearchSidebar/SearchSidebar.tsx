@@ -12,6 +12,7 @@ import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
 import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
+import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
 import { DropdownSidebarFilter } from "./DropdownSidebarFilter/DropdownSidebarFilter";
 
 type SearchSidebarProps = {
@@ -24,6 +25,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
     [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
+    [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
   };
 
