@@ -238,6 +238,19 @@ export type SpecificDateFilterParts = {
   values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
 };
 
+export type RelativeDateFilterParts = {
+  column: ColumnMetadata;
+  value: number | "current";
+  bucket: BucketName;
+  offsetValue?: number;
+  offsetBucket?: BucketName;
+  options: RelativeDateFilterOptions;
+};
+
+export type RelativeDateFilterOptions = {
+  "include-current"?: boolean;
+};
+
 // values depend on the bucket
 // day-of-week => 1-7 (Monday-Sunday)
 // month-of-year => 0-11 (January-December)
@@ -263,6 +276,7 @@ export type FilterParts =
   | BooleanFilterParts
   | TimeFilterParts
   | SpecificDateFilterParts
+  | RelativeDateFilterParts
   | ExcludeDateFilterParts;
 
 declare const Join: unique symbol;

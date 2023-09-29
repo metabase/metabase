@@ -14,6 +14,7 @@ import type {
   FilterParts,
   NumberFilterParts,
   Query,
+  RelativeDateFilterParts,
   SpecificDateFilterParts,
   StringFilterParts,
 } from "./types";
@@ -240,6 +241,36 @@ export function isSpecificDateFilter(
   filterClause: FilterClause,
 ): boolean {
   return specificDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function relativeDateFilterClause({
+  column,
+  value,
+  bucket,
+  offsetValue,
+  offsetBucket,
+  options,
+}: RelativeDateFilterParts): ExpressionClause {
+  if (offsetValue == null || offsetBucket == null) {
+    return expressionClause("time-interval", [column, value, bucket], options);
+  }
+
+  return expressionClause("between", [
+    expressionClause("+", [
+      column,
+      expressionClause("interval", [-offsetValue, offsetBucket]),
+    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
+  ]);
+}
+
+export function relativeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): RelativeDateFilterParts | null {
+  return null;
 }
 
 export function excludeDateFilterClause({
