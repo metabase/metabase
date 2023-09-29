@@ -1190,7 +1190,7 @@
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [{root :root :as base-context}
+  [{{:keys [extra-cards extra-groups] :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-filters    :filters
@@ -1198,7 +1198,8 @@
     :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions   (->> (bind-dimensions base-context template-dimensions)
+  (let [dashboard-template     (update dashboard-template :groups into extra-groups)
+        available-dimensions   (->> (bind-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
         available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)
@@ -1223,7 +1224,7 @@
          :filters (->> dashboard_filters
                        (mapcat (comp :matches available-dimensions))
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
-         :cards cards)
+         :cards (into cards extra-cards))
        dashboard-template
        available-values])))
 
@@ -1456,9 +1457,33 @@
   (fn [entity _]
     (mi/model entity)))
 
+(defn linked-metric-cards [{table-id :id :as _table}]
+  (->> (t2/select :model/Metric :table_id table-id)
+       (map (fn [{metric-name :name :as metric}]
+              (let [cards (-> metric ->root find-first-match-dashboard-template first :cards)]
+                {:metric-group {metric-name {:title
+                                             (deferred-tru "A look at the {0} metric" metric-name)}}
+                 :metric-cards (->> cards
+                                    (sort-by (comp - :score))
+                                    (group-by :dimensions)
+                                    vals
+                                    (map (comp #(assoc % :group metric-name) first))
+                                    (sort-by (juxt (comp - :score) (comp count :dimensions)))
+                                    (take 3))})))
+       (reduce
+         (fn [acc {:keys [metric-group metric-cards]}]
+           (-> acc
+               (update :extra-groups into metric-group)
+               (update :extra-cards into metric-cards)))
+         {:extra-groups {}
+          :extra-cards []})))
+
 (defmethod automagic-analysis Table
   [table opts]
-  (automagic-dashboard (merge (->root table) opts)))
+  (automagic-dashboard
+    (merge (->root table)
+           opts
+           (linked-metric-cards table))))
 
 (defmethod automagic-analysis Segment
   [segment opts]
