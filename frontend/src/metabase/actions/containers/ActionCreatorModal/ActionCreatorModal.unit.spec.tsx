@@ -160,7 +160,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       userEvent.type(screen.getByDisplayValue("New Action"), "a change");
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       history.goBack();
 
@@ -187,7 +187,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       userEvent.type(screen.getByDisplayValue("New Action"), "a change");
       userEvent.type(screen.queryAllByRole("textbox")[1], query);
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       fetchMock.post("path:/api/action", {
         name: "New Actiona change",
@@ -243,6 +243,12 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
+      const input = screen.getByDisplayValue(action.name);
+      userEvent.type(input, "12");
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      userEvent.type(input, "{backspace}{backspace}");
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
       history.goBack();
 
       expect(
@@ -268,7 +274,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       userEvent.type(screen.getByDisplayValue(action.name), "a change");
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       history.goBack();
 
@@ -294,7 +300,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       userEvent.type(screen.getByDisplayValue(action.name), "a change");
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       fetchMock.put(
         `path:/api/action/${action.id}`,
