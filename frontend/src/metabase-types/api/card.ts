@@ -4,7 +4,12 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 import type { DatabaseId } from "./database";
-import type { DashboardId, DashCardId } from "./dashboard";
+import type {
+  DashboardId,
+  DashCardId,
+  LinkCardSettings,
+  VirtualCard,
+} from "./dashboard";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type {
@@ -104,14 +109,16 @@ export type TableColumnOrderSetting = {
   field_ref?: FieldReference;
 };
 
+export type ButtonVariant =
+  | "primary"
+  | "default"
+  | "danger"
+  | "success"
+  | "borderless";
+
 export type BasicVisualizationSettings = {
   "button.label"?: string;
-  "button.variant"?:
-    | "primary"
-    | "default"
-    | "danger"
-    | "success"
-    | "borderless";
+  "button.variant"?: ButtonVariant;
   "card.description"?: string;
   "card.hide_empty"?: boolean;
   "card.title"?: string;
@@ -246,6 +253,9 @@ export type BasicVisualizationSettings = {
 
   click_behavior?: ClickBehavior;
   actionDisplayType?: ActionDisplayType;
+
+  virtual_card?: VirtualCard;
+  link?: LinkCardSettings;
 
   // options are also mixed in
 } & NumberFormatOptions &

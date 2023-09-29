@@ -75,8 +75,11 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import type Field from "metabase-lib/metadata/Field";
 
-export function getGlobalSettingsForColumn(column: DatasetColumn) {
+export function getGlobalSettingsForColumn(
+  fieldOrColumn?: Field | DatasetColumn,
+) {
   const columnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
