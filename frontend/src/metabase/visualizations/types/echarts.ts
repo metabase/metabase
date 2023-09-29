@@ -2,14 +2,14 @@ import type { EChartsOption } from "echarts";
 
 import { VisualizationProps } from "./visualization";
 
-type EChartsEventHandler = {
+export type EChartsEventHandler = {
   // TODO better types
   eventName: string;
   query?: string;
   handler: (event: any) => void;
 };
 
-type ZREventHandler = {
+export type ZREventHandler = {
   // TODO better types
   eventName: string;
   handler: (event: any) => void;

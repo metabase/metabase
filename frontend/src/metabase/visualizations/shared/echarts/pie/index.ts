@@ -4,19 +4,27 @@ import type { EChartsOption } from "echarts";
 import type {
   ColorGetter,
   ComputedVisualizationSettings,
+  EChartsEventHandler,
+  HoveredObject,
   RenderingEnvironment,
 } from "metabase/visualizations/types";
 import type { RawSeries, RowValues } from "metabase-types/api";
 import { findWithIndex } from "metabase/core/utils/arrays";
 import type {
   PieChartColumns,
+  PieChartModel,
   PieLegendItem,
   PieSlice,
 } from "metabase/visualizations/shared/echarts/pie/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isNotNull } from "metabase/core/utils/types";
 import { OTHER_SLICE_MIN_PERCENTAGE } from "metabase/visualizations/echarts/visualizations/PieChart/constants";
-import { computeLegendDecimals } from "./utils";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  computeLegendDecimals,
+  computeLabelDecimals,
+  getTooltipModel,
+} from "./utils";
 
 type Formatter = (value: unknown) => string;
 type PercentFormatter = (value: unknown, decimals: number) => string;
@@ -63,13 +71,13 @@ const getFormatters = (
   };
 };
 
-export function getSlices(
+const getSlices = (
   rows: RowValues[],
   pieColumns: PieChartColumns,
   settings: ComputedVisualizationSettings,
   sliceThreshold: number,
   { getColor }: RenderingEnvironment,
-): PieSlice[] {
+): PieChartModel => {
   const { dimension, metric } = pieColumns;
 
   const total = rows.reduce((sum, row) => sum + row[metric.index], 0);
@@ -113,16 +121,18 @@ export function getSlices(
     slices.push(otherSlice);
   }
 
-  return slices;
-}
+  return {
+    slices,
+    total,
+  };
+};
 
 export const getTotalValueGraphic = (
-  slices: PieSlice[],
+  total: number,
   formatMetric: Formatter,
   getColor: ColorGetter,
 ) => {
-  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-  const formattedTotal = formatMetric(total);
+  const formattedTotal = formatMetric(Math.round(total));
 
   return {
     type: "group",
@@ -194,13 +204,20 @@ export const buildPieChart = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
-): { option: EChartsOption; legend: PieLegendItem[] } => {
+  onHoverChange?: any,
+  hovered?: HoveredObject,
+  onVisualizationClick?: any,
+): {
+  option: EChartsOption;
+  legend: PieLegendItem[];
+  eventHandlers: EChartsEventHandler[];
+} => {
   if (series.length === 0) {
-    return { option: {}, legend: [] };
+    return { option: {}, legend: [], eventHandlers: [] };
   }
 
   const [{ data }] = series;
-  const { rows } = data;
+  const { rows, cols } = data;
 
   const pieColumns = getPieChartColumns(series, settings);
 
@@ -212,13 +229,17 @@ export const buildPieChart = (
 
   const sliceThreshold = settings["pie.slice_threshold"]! / 100;
 
-  const slices = getSlices(
+  const { slices, total } = getSlices(
     rows,
     pieColumns,
     settings,
     sliceThreshold,
     environment,
   );
+
+  const percentages = slices.map(s => s.percentage);
+  const legendDecimals = computeLegendDecimals({ percentages });
+  const labelsDecimals = computeLabelDecimals({ percentages }) ?? 0;
 
   const option = {
     // should be shared between charts
@@ -227,28 +248,50 @@ export const buildPieChart = (
       fontFamily: "Lato, sans-serif",
     },
     graphic: settings["pie.show_total"]
-      ? getTotalValueGraphic(slices, formatMetric, environment.getColor)
+      ? getTotalValueGraphic(total, formatMetric, environment.getColor)
       : null,
     series: {
+      nodeClick: false,
       type: "sunburst",
       radius: ["60%", "90%"],
+      emphasis: { focus: "none" },
       sort: undefined,
       label: {
         rotate: 0,
         overflow: "none",
-      },
-      data: slices.map(s => ({
-        value: s.value,
-        name: s.key,
-        itemStyle: {
-          color: s.color,
+        lineHeight: 50,
+        fontSize: 16,
+        formatter: ({ value }) => {
+          const percent = value / total;
+          if (percent > 0.1) {
+            return formatPercent(value / total, labelsDecimals);
+          }
+          // returning an " " when we want to hide a label :(
+          // requires computing arcs by ourselves to detect if a label can fit inside one
+          return " ";
         },
-      })),
+        // should check contrast manually — that's ok
+        color: "white",
+      },
+      data: slices.map((s, index) => {
+        let opacity = 1;
+
+        if (hovered != null && index !== hovered?.index) {
+          opacity = 0.2;
+        }
+
+        return {
+          value: s.value,
+          name: s.key,
+          itemStyle: {
+            color: s.color,
+            opacity,
+          },
+        };
+      }),
     },
   };
 
-  const percentages = slices.map(s => s.percentage);
-  const legendDecimals = computeLegendDecimals({ percentages });
   const legend = slices.map(slice => ({
     color: slice.color,
     title: [
@@ -259,8 +302,74 @@ export const buildPieChart = (
     ].filter(isNotNull),
   }));
 
+  const eventHandlers: EChartsEventHandler[] = [
+    {
+      eventName: "mouseout",
+      handler: () => {
+        onHoverChange?.(null);
+      },
+    },
+    {
+      eventName: "mousemove",
+      handler: event => {
+        const { index } = findWithIndex(
+          slices,
+          slice => slice.key === event.data?.name,
+        );
+
+        const simplifiedTooltipModelForTest = getTooltipModel(
+          slices,
+          index,
+          getFriendlyName(pieColumns.dimension.column),
+          formatDimension,
+          formatMetric,
+        );
+
+        onHoverChange?.({
+          settings,
+          index,
+          event: event.event.event,
+          stackedTooltipModel: simplifiedTooltipModelForTest,
+        });
+      },
+    },
+    {
+      eventName: "click",
+      handler: event => {
+        const slice = slices.find(slice => slice.key === event.data?.name);
+
+        if (!slice) {
+          return;
+        }
+
+        const sliceRows = slice.rowIndex != null && rows[slice.rowIndex];
+        const data =
+          sliceRows &&
+          sliceRows.map((value, index) => ({
+            value,
+            col: cols[index],
+          }));
+
+        onVisualizationClick?.({
+          event: event.event.event,
+          value: slice.value,
+          column: pieColumns.metric.column,
+          data,
+          dimensions: [
+            {
+              value: slice.key,
+              column: pieColumns.dimension.column,
+            },
+          ],
+          settings,
+        });
+      },
+    },
+  ];
+
   return {
     option,
     legend,
+    eventHandlers,
   };
 };
