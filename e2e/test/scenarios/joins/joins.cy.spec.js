@@ -47,6 +47,23 @@ describe("scenarios > question > joined questions", () => {
       rhsSampleColumn: "Reviews - Product → ID",
     });
 
+    openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Body").click();
+      cy.findByText("Created At").click();
+    });
+    visualize();
+
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Reviews",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Reviews - Product → Reviewer",
+    });
+    queryBuilderMain().findByText("Body").should("not.exist");
+
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
     openNotebook();
     filter({ mode: "notebook" });
@@ -81,13 +98,13 @@ describe("scenarios > question > joined questions", () => {
   it("should join a native question", () => {
     cy.createNativeQuestion({
       name: "question a",
-      native: { query: "select 'foo' as a_column" },
+      native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
     });
 
     cy.createNativeQuestion(
       {
         name: "question b",
-        native: { query: "select 'foo' as b_column" },
+        native: { query: "select * from products" },
       },
       {
         wrapId: true,
@@ -97,8 +114,8 @@ describe("scenarios > question > joined questions", () => {
 
     startNewQuestion();
     selectSavedQuestionsToJoin("question a", "question b");
-    popover().findByText("A_COLUMN").click();
-    popover().findByText("B_COLUMN").click();
+    popover().findByText("PRODUCT_ID").click();
+    popover().findByText("ID").click();
 
     visualize();
 
@@ -106,34 +123,53 @@ describe("scenarios > question > joined questions", () => {
       assertJoinValid({
         lhsTable: "question a",
         rhsTable: "question b",
-        lhsSampleColumn: "A_COLUMN",
-        rhsSampleColumn: `Question ${joinedQuestionId} → B Column`,
+        lhsSampleColumn: "TOTAL",
+        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
       });
     });
-    assertQueryBuilderRowCount(1);
+
+    openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().within(() => {
+      cy.findByText("EAN").click();
+      cy.findByText("VENDOR").click();
+      cy.findByText("PRICE").click();
+      cy.findByText("CATEGORY").click();
+      cy.findByText("CREATED_AT").click();
+    });
+    visualize();
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      assertJoinValid({
+        lhsTable: "question a",
+        rhsTable: "question b",
+        lhsSampleColumn: "TOTAL",
+        rhsSampleColumn: `Question ${joinedQuestionId} → Rating`,
+      });
+    });
+    queryBuilderMain().findByText("EAN").should("not.exist");
 
     openNotebook();
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
       filter({ mode: "notebook" });
       popover().within(() => {
         cy.findByText(`Question ${joinedQuestionId}`).click();
-        cy.findByText("B_COLUMN").click();
-        cy.findByPlaceholderText("Enter some text").type("foo");
+        cy.findByText("CATEGORY").click();
+        cy.findByPlaceholderText("Enter some text").type("Gadget");
         cy.button("Add filter").click();
       });
 
       summarize({ mode: "notebook" });
       addSummaryGroupingField({
         table: `Question ${joinedQuestionId}`,
-        field: "B_COLUMN",
+        field: "CATEGORY",
       });
     });
     visualize();
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("B_COLUMN is foo")
+      .findByText("CATEGORY is Gadget")
       .should("be.visible");
-    cy.get(".ScalarValue").contains("foo").should("be.visible");
+    cy.get(".ScalarValue").contains("Gadget").should("be.visible");
   });
 
   it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
@@ -185,7 +221,23 @@ describe("scenarios > question > joined questions", () => {
     });
 
     openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().findByText("ID").click();
+    visualize();
 
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      assertJoinValid({
+        lhsTable: "Q1",
+        rhsTable: "Q2",
+        lhsSampleColumn: "Product ID",
+        rhsSampleColumn: `Question ${joinedQuestionId} → Sum of Total`,
+      });
+      queryBuilderMain()
+        .findByText(`Question ${joinedQuestionId} → ID`)
+        .should("not.exist");
+    });
+
+    openNotebook();
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
       // add a custom column on top of the steps from the #13000 repro which was simply asserting
       // that a question could be made by joining two previously saved questions
